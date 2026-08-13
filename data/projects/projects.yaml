@@ -1,0 +1,11 @@
+version: "0.1"
+
+projects:
+  - id: project_hengxin_explainability_pilot
+    name: 衡信风险因子解释机制试点
+    faction_id: faction_003
+    description: 衡信保险正在试点的风险因子解释机制项目，允许客户查看关键风险因子并提交复核证据。
+    lore_refs:
+      - lore_017
+    assignment_refs:
+      - hengxin_explainability_pilot

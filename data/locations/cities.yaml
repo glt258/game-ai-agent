@@ -1,0 +1,9 @@
+version: "0.1"
+
+# City entity Source of Truth. Future cities are added only when formally designed.
+cities:
+  - id: city_linzhou
+    name: 临洲市
+    narrative_status: primary
+    canon_status: established
+    description: 游戏 1.0 / 首发阶段首先详细展开的主要城市；不是世界唯一城市。

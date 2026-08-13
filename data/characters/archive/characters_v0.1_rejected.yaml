@@ -1,0 +1,883 @@
+# Historical archive only; this file is not active Character Canon.
+archive_status: rejected
+active_canon: false
+source_version: "0.1"
+
+version: "0.1"
+
+description: >
+  《沿街》第一版正式角色 Canon 数据。角色记录遵循 character_schema.yaml，
+  Knowledge Access 由 knowledge_rules.yaml 根据身份、职责、assignment 与运行时上下文解析。
+
+characters:
+  - id: char_player
+    name:
+      mode: player_defined
+      display_name: null
+      legal_name: null
+      native_name: null
+      localized_name: null
+      aliases: []
+      codename: null
+      stage_name: null
+      online_handle: null
+      common_address: 协理人
+    name_design:
+      strategy: []
+      references: []
+      linguistic_notes: 玩家决定姓名；Canon 不预设法律姓名或本名。
+      thematic_connection: 身份从玩家选择开始，不由城市或能力标签预先决定。
+      public_identity_connection: 事务所和客户通常以“协理人”称呼主角。
+      design_notes: 主角保留命名空间，避免玩家身份被固定姓名覆盖。
+    codename_design: null
+    address_rules:
+      public: 协理人
+      colleague: 协理人
+      formal: 协理人
+    naming_review: null
+    basic_profile:
+      age: null
+      age_band: young_adult
+      gender: null
+      pronouns: null
+      nationality_or_cultural_background: null
+      occupation: 新取得正式执业资格的城市协理人
+      workplace_or_school: 临洲小型城市协理事务所
+      home_district: 槐庭区
+      primary_activity_districts: [中央湾, 槐庭区, 南栈街区, 新河区, 东港带]
+    identity:
+      faction_id: faction_001
+      division_ids: [division_002]
+      roles: []
+      responsibilities: [mediation_case_coordination]
+      assignments: []
+      explicit_grants: []
+    social_identity:
+      economic_background: 普通城市工薪背景，收入依靠事务所工资与合法委托。
+      education_background: 完成协理职业教育、现场安全训练与资格考试。
+      family_context: 家庭关系存在但不承担主线神秘身份功能。
+      housing_context: 在槐庭区租住，需自行处理通勤、房租与生活开支。
+      public_reputation: 新任、可靠性尚待案件积累证明。
+      professional_reputation: 能记录现场事实，但尚未形成固定行业风格。
+    character_hook:
+      first_impression: 会先把桌面上的委托材料按来源排开，再问每个人最担心什么。
+      visual_or_behavioral_motif: 现场总在纸边写下“已确认、待确认、不能确认”三栏。
+      memorable_contrast: 看似谨慎守程序，真正决定时却愿意亲自承担最麻烦的后果。
+    personality:
+      surface_traits: [耐心, 观察细, 不急于表态]
+      underlying_traits: [强烈的责任感, 对混乱有行动冲动, 能修正自己的判断]
+      values: [事实可追溯, 当事人有解释机会, 解决方案必须有人负责]
+      contradictions:
+        - 希望把问题拆清楚，却常因不愿放弃任何一方而拖长决策。
+        - 尊重制度边界，却不接受“流程如此”作为伤害人的最终理由。
+      dislikes: [未经核实的定性, 把普通生活包装成危机, 责任被集体稀释]
+      habits: [到陌生地点先确认出口, 记录对方原话而不是马上改写, 回家后整理当天的未决事项]
+    life:
+      current_concerns: [试用期能否转正, 房租与通勤开支, 第一个独立委托是否会判断失误]
+      routine: [上午处理事务所转介, 下午跑现场或约谈, 晚上整理记录并联系相关方]
+      hobbies: [城市步行, 收集旧店招照片, 看不同职业的操作视频]
+      social_connections:
+        - type: 同事与早期工作接触
+          target_character_id: char_001
+          description: 协理事务所的日常搭档，会把主角带进第一批真实委托。
+        - type: 案件中的专业意见提供者
+          target_character_id: char_003
+          description: 在研究项目相关委托中建立谨慎的合作关系。
+        - type: 偶然认识
+          target_character_id: char_007
+          description: 因南栈街区店铺与社区事务形成长期但不总是顺利的联系。
+    ability:
+      status: special_case
+      rule: 当主角真正理解一种解决问题的方法，并亲自承担过这种方法的后果后，可以把它固定成自己的行动框架。
+      trigger: 必须经过持续接触、理解方法有效性与代价，并在现实事件中主动选择该方法。
+      limitation: 不能复制他人的能力；没有承担过后果的理解不能形成稳定定式，彼此未整合的定式也不能无限叠加。
+      everyday_uses: [在复杂家务或行程中快速建立可执行顺序, 面对突发争执时先维持基本秩序]
+      professional_uses: [把跨机构问题转化为可执行的现场框架, 在不同专业意见之间建立暂时可复盘的处理路径]
+      risks: [把方法误当成答案, 承担过多现场责任, 不同定式冲突时出现认知疲劳]
+    narrative:
+      core_theme: 人如何把理解过的处事方法变成自己的责任。
+      personal_conflict: 既想成为值得依赖的协理人，又害怕“有用”变成替所有人兜底。
+      relationship_to_main_conflict: direct
+      story_entry_points: [新执业资格生效, 首个跨机构委托, 事务所转介的能力评级争议, 旧角色把生活问题带回城市网络]
+      growth_direction: 从快速寻找可用办法，成长为能辨认办法代价并选择不使用某种办法的人。
+    gameplay:
+      playable: true
+      rarity: null
+      release_status: launch
+    combat:
+      combat_participation_reason: 持有正式协理资格并接受现场安全训练，常被委托进入存在能力风险的现场；参与危险场景来自职责与选择，不来自秘密战斗身份。
+      tentative_role: flex
+      notes: 定式是 World Bible 既定的行动框架，不在本文件扩展元素、武器或数值战斗系统。
+    agent_profile:
+      knowledge_style: 区分亲眼确认、他人陈述、制度记录与个人推测；不把推测说成事实。
+      speech_style: 先复述问题边界，再提出下一步；紧张时句子会变短。
+      communication_habits: [经常问“这件事你希望我解决哪一部分”, 会主动说明自己暂时不能确认什么, 重要结论会要求对方复述]
+      default_information_behavior: 对公开信息可主动解释；对内部资料只说明必要背景；遇到来源不明的内容会标记不确定并追查来源。
+      sensitive_topics: [委托人隐私, 未经授权的案件数据, 主角曾判断失误的早期案件]
+    canon_constraints: [不生成固定本名, 不复制他人能力, 新定式必须来自理解与后果承担, 不是救世主或秘密特工]
+    tags: [protagonist, city_associate, player_defined, formula]
+
+  - id: char_001
+    name:
+      mode: fixed
+      display_name: 纪闻
+      legal_name: {full: 纪闻, language: zh, script: Han}
+      native_name: {full: 纪闻, language: zh, script: Han}
+      localized_name: null
+      aliases: []
+      codename: null
+      stage_name: null
+      online_handle: null
+      common_address: 纪闻
+    name_design:
+      strategy: [natural_naming]
+      references: []
+      linguistic_notes: 两字姓名，短而易检索；“闻”在此是日常姓名用字，不是能力暗示。
+      thematic_connection: 姓名的朴素感与其把复杂委托拉回具体事实的工作方式相配。
+      public_identity_connection: 同事、客户与联合会记录都使用纪闻。
+      design_notes: 不增加职业代号，避免把协理职业误写成秘密调查组织。
+    codename_design: null
+    address_rules: {public: 纪先生, colleague: 纪闻, friend: 阿闻, formal: 纪协理}
+    naming_review:
+      display_name: 纪闻
+      legal_or_native_name: 纪闻
+      codename_or_stage_name: none
+      naming_strategy: natural_naming
+      reference: "Reference: none"
+      transformation: 不使用外部典故，保留现实中可自然使用的短姓名。
+      character_fit: 朴素、清楚、没有人为制造的神秘感，符合职业型同事定位。
+      player_memory_fit: 两字、读音明确，与主角“协理人”的称呼区分明显。
+      naturalness_check: 现实社会中可由同事、客户和正式文书稳定使用。
+    basic_profile:
+      age: 27
+      age_band: young_adult
+      gender: 男
+      pronouns: 他
+      nationality_or_cultural_background: 临洲本地成长
+      occupation: 城市协理事务所案件协调员
+      workplace_or_school: 临洲小型城市协理事务所
+      home_district: 槐庭区
+      primary_activity_districts: [中央湾, 槐庭区, 南栈街区]
+    identity:
+      faction_id: faction_001
+      division_ids: [division_002]
+      roles: []
+      responsibilities: [mediation_case_coordination]
+      assignments: []
+      explicit_grants: []
+    social_identity:
+      economic_background: 早年做过多种短期工作，现收入稳定但仍在偿还职业培训贷款。
+      education_background: 协理职业教育与现场调解继续教育。
+      family_context: 与母亲保持固定通话，家人希望他找一份“更稳定”的办公室工作。
+      housing_context: 与室友合租，通勤时间较长。
+      public_reputation: 可靠但不够圆滑的基层协理。
+      professional_reputation: 擅长把争吵拆成事实、责任与下一步。
+    character_hook:
+      first_impression: 他会在别人还没吵完时把两边的原话分别记在不同颜色的便签上。
+      visual_or_behavioral_motif: 旧文件夹、双色便签和从不提前承诺结果。
+      memorable_contrast: 说话像在做记录，真正护住当事人时却比谁都直接。
+    personality:
+      surface_traits: [克制, 务实, 反应快]
+      underlying_traits: [害怕无效帮助, 对不公平很敏感, 需要被专业地信任]
+      values: [证据链, 责任边界, 给人解释机会]
+      contradictions: [讨厌情绪化争执却会为了被忽视的人主动顶上去, 强调程序却常在程序外做额外沟通]
+      dislikes: [先定性后取证, 模糊授权, 以“大家都这样”结束争论]
+      habits: [给文件命名到分钟, 用同一支笔画掉已确认事项, 下班前给每个未决案件写一句风险提醒]
+    life:
+      current_concerns: [职业培训贷款, 事务所案件积压, 家人认为他工作不够稳定]
+      routine: [整理转介材料, 预约当事人, 跑现场核对记录, 晚上补交联合会报告]
+      hobbies: [逛二手书店, 修理旧录音笔, 研究城市公共告示]
+      social_connections:
+        - type: 同事
+          target_character_id: char_player
+          description: 主角入职后的早期搭档，负责把职业经验变成可执行提醒。
+        - type: 合作对象
+          target_character_id: char_004
+          description: 在理赔争议中互相要求对方把证据来源说清楚。
+        - type: 社区联络人
+          target_character_id: char_007
+          description: 处理南栈店铺案件时认识，常因“先做生意还是先留证据”发生争论。
+    ability:
+      status: stable
+      rule: 当他亲手按来源整理过一组纸面或电子材料后，材料之间的矛盾更容易被他在复核时发现。
+      trigger: 必须由他完成初次归档，并在短时间内逐项复核。
+      limitation: 只能帮助发现不一致，不能告诉他哪一份是真实的；口头信息、缺失材料与未经整理的资料不适用。
+      everyday_uses: [检查账单与租约, 发现文件版本混用]
+      professional_uses: [梳理跨机构案件证据链, 标记理赔材料中的时间与来源冲突]
+      risks: [过度依赖复核感受, 长时间处理矛盾材料会头痛, 可能把无关差异误当成关键问题]
+    narrative:
+      core_theme: 记录不是中立的，但没有记录更容易让弱势者消失。
+      personal_conflict: 想保护当事人，却担心自己把职业判断变成替别人决定。
+      relationship_to_main_conflict: institutional
+      story_entry_points: [事务所新案件, 联合会培训争议, 协理行业对能力评级案例的汇总]
+      growth_direction: 学会把“我发现了矛盾”与“我有资格决定结论”分开。
+    gameplay: {playable: true, rarity: A, release_status: launch}
+    combat:
+      combat_participation_reason: 具备现场协调与基础安全训练，常在危险事件中负责让信息与人员保持可追踪。
+      tentative_role: control
+      notes: 控制只表示叙事上的现场节奏与信息整理倾向，不是数值职业或伤害类型。
+    agent_profile:
+      knowledge_style: 喜欢按来源、时间和责任主体分类；会明确区分记录与判断。
+      speech_style: 短句、具体、偶尔用“先把这件事说完整”。
+      communication_habits: [对方跳跃叙述时会温和拉回时间线, 会复述授权范围, 很少用未经确认的绝对词]
+      default_information_behavior: 对内部职业信息只在相关案件语境下解释；没有来源就说“目前只能算线索”。
+      sensitive_topics: [案件材料泄露, 家庭对职业的否定, 自己曾漏看的一页关键记录]
+    canon_constraints: [普通协理从业者, 不自动获得 restricted Lore, 能力不等于调查全知]
+    tags: [fixed, associate, coworker, evidence, A]
+
+  - id: char_002
+    name:
+      mode: fixed
+      display_name: 林澄
+      legal_name: {full: 林澄, language: zh, script: Han}
+      native_name: {full: 林澄, language: zh, script: Han}
+      localized_name: null
+      aliases: []
+      codename: null
+      stage_name: null
+      online_handle: null
+      common_address: 林澄
+    name_design:
+      strategy: [family_background]
+      references: []
+      linguistic_notes: 家庭取名偏好清澈、少装饰的单音节字；“澄”是家人对生活秩序的愿望，不指向能力。
+      thematic_connection: 名字的安静感与她在公开知识和个人体验之间寻找位置的状态相配。
+      public_identity_connection: 校园里使用本名，公开志愿活动名单也以林澄出现。
+      design_notes: 学生角色不使用研究中心职员身份，也不为测试强行补 faction。
+    codename_design: null
+    address_rules: {public: 林澄, colleague: 林同学, friend: 澄澄, formal: 林同学}
+    naming_review:
+      display_name: 林澄
+      legal_or_native_name: 林澄
+      codename_or_stage_name: none
+      naming_strategy: family_background
+      reference: "Reference: none"
+      transformation: 命名来自家庭取向和现实姓名习惯，没有外部典故。
+      character_fit: 不显眼但有清晰边界，适合一个不愿被研究身份替代的学生。
+      player_memory_fit: 两字清楚，和“林”姓常见度形成容易记忆的简洁组合。
+      naturalness_check: 既适用于校园日常，也适用于公开志愿活动和正式文件。
+    basic_profile:
+      age: 20
+      age_band: young_adult
+      gender: 女
+      pronouns: 她
+      nationality_or_cultural_background: 临洲本地家庭
+      occupation: 临洲大学社会科学专业本科生
+      workplace_or_school: 临洲大学
+      home_district: 槐庭区
+      primary_activity_districts: [槐庭区, 南栈街区]
+    identity:
+      faction_id: null
+      division_ids: []
+      roles: []
+      responsibilities: []
+      assignments: []
+      explicit_grants: []
+    social_identity:
+      economic_background: 依靠奖学金、家人支持与校园兼职完成学业。
+      education_background: 修过能力社会与公共沟通课程，参加过公开志愿活动。
+      family_context: 家人希望她毕业后从事稳定工作，她更想做城市观察与社区项目。
+      housing_context: 与两名同学合租，生活预算精打细算。
+      public_reputation: 认真、好沟通，但不喜欢被当成“研究中心学生代表”。
+      professional_reputation: 尚未形成正式职业声誉。
+    character_hook:
+      first_impression: 她总带着一支快没墨的荧光笔，把公开讲座里最容易被忽略的限制条件圈出来。
+      visual_or_behavioral_motif: 课表、志愿者牌和装满城市传单的帆布袋。
+      memorable_contrast: 对宏大理论很有兴趣，却最在意一间小店的营业时间有没有被错误记录。
+    personality:
+      surface_traits: [好奇, 礼貌, 记性好]
+      underlying_traits: [不愿被代表, 对权威有保留, 需要通过亲身经验确认观点]
+      values: [公开可核验, 普通人的叙述, 学习不等于占有他人经验]
+      contradictions: [喜欢研究却抗拒被研究, 追求准确却常低估时间与金钱成本]
+      dislikes: [把学生当内部人员, 用专业词汇遮掩不确定, 只给结论不给出处]
+      habits: [给公开报告做边注, 走路时拍下被改过的告示, 在争论前先问对方是否愿意继续]
+    life:
+      current_concerns: [奖学金续期, 课程论文截止, 与室友分摊房租, 志愿项目交通费]
+      routine: [上课, 图书馆整理资料, 参加公开讲座或志愿活动, 晚上做兼职]
+      hobbies: [拍街区公告, 做低成本便当, 逛大学周边旧书摊]
+      social_connections:
+        - type: 公开活动认识
+          target_character_id: char_003
+          description: 在公开讲座和志愿活动中见过，但不因此成为研究中心成员。
+        - type: 社区联络人
+          target_character_id: char_007
+          description: 因街区志愿活动认识，偶尔帮忙整理合作社公开通知。
+        - type: 偶然委托关系
+          target_character_id: char_player
+          description: 在一次校园场地争议中向主角提供学生视角的公开材料。
+    ability:
+      status: minor
+      rule: 当她在同一地点连续完成几次手写观察记录后，自己更容易注意到环境中反复出现但被多数人忽略的小变化。
+      trigger: 需要亲自在场、以自己的文字记录，且观察必须持续一段时间。
+      limitation: 不能读取他人内心或隐藏事实；记录错误、离场太久或变化过于突然时不会生效。
+      everyday_uses: [发现校园告示的反复改动, 找回被自己记下位置的物品]
+      professional_uses: [协助社区志愿者建立现场变化日志, 为公开调查提供可复核的观察线索]
+      risks: [过度记录导致注意力疲劳, 容易把重复出现误认为重要因果, 在不熟悉场所停留过久]
+    narrative:
+      core_theme: 公开知识的边界与亲身经验的价值。
+      personal_conflict: 想接近研究，却不想把自己变成任何机构的证明材料。
+      relationship_to_main_conflict: indirect
+      story_entry_points: [公开研究讲座, 校园空间争议, 志愿活动遇到能力标签误用]
+      growth_direction: 从“我不想被代表”走向“我可以在明确授权下参与改变规则”。
+    gameplay: {playable: true, rarity: A, release_status: launch}
+    combat:
+      combat_participation_reason: 熟悉校园与社区现场，能力适合持续观察和提醒；危险场景中的参与来自志愿经历与主角协作，不是研究人员身份。
+      tentative_role: support
+      notes: 观察能力只提供有限线索，不替代调查、取证或研究资格。
+    agent_profile:
+      knowledge_style: 先引用公开来源，再说明自己看到的部分；对研究结论常追问样本与限制。
+      speech_style: 语气礼貌但问题具体，遇到不合理代表会突然变得直接。
+      communication_habits: [会要求区分公开活动与内部会议, 说“我看到的是”而不是代替别人下结论, 会把不确定写进消息]
+      default_information_behavior: 公开信息可以转述；研究内部、受限数据和秘密 Lore 默认拒绝并说明自己没有制度路径。
+      sensitive_topics: [被机构借名, 家庭经济压力, 自己无意泄露志愿者隐私]
+    canon_constraints: [临洲大学学生, faction_id 保持 null, 不是研究中心核心人员, 不因接触 PI 而获得研究内部权限]
+    tags: [fixed, student, public_knowledge, community, A]
+
+  - id: char_003
+    name:
+      mode: fixed
+      display_name: 沈岑
+      legal_name: {full: 沈岑, language: zh, script: Han}
+      native_name: {full: 沈岑, language: zh, script: Han}
+      localized_name: null
+      aliases: []
+      codename: null
+      stage_name: null
+      online_handle: null
+      common_address: 沈老师
+    name_design:
+      strategy: [natural_naming, scientific_term]
+      references: []
+      linguistic_notes: “岑”是现实姓名用字；科学语义只体现在角色本人对词语边界的偏好，不构成外号。
+      thematic_connection: 短而稳定的姓名与她把复杂假设拆成变量的工作习惯相配。
+      public_identity_connection: 学生和合作方通常称她为沈老师，论文和项目记录使用沈岑。
+      design_notes: 不用“超级研究员”等未注册称谓，正式知识角色由 principal_investigator 表示。
+    codename_design: null
+    address_rules: {public: 沈老师, colleague: 沈岑, friend: 岑姐, formal: 沈研究员}
+    naming_review:
+      display_name: 沈岑
+      legal_or_native_name: 沈岑
+      codename_or_stage_name: 沈老师
+      naming_strategy: natural_naming + scientific_term
+      reference: "Reference: none"
+      transformation: “科学术语”只影响她对名字简洁和边界感的偏好，没有借用具体作品身份。
+      character_fit: 稳定、克制，能容纳研究者的专业可信度与现实压力。
+      player_memory_fit: 两字短名配合“沈老师”这一自然称呼，和其他角色形成清晰差异。
+      naturalness_check: 姓名与称呼都能在大学、论文、项目会议中自然出现。
+    basic_profile:
+      age: 38
+      age_band: mid_career
+      gender: 女
+      pronouns: 她
+      nationality_or_cultural_background: 临洲长期居住的华语家庭
+      occupation: 临洲大学行为与能力研究中心研究负责人
+      workplace_or_school: 临洲大学行为与能力研究中心
+      home_district: 槐庭区
+      primary_activity_districts: [槐庭区, 中央湾]
+    identity:
+      faction_id: faction_002
+      division_ids: [division_005]
+      roles: [principal_investigator]
+      responsibilities: [research_project_leadership]
+      assignments: [writeback_longitudinal_research]
+      explicit_grants: []
+    social_identity:
+      economic_background: 中产专业人士，收入受项目周期、论文与教学评价影响。
+      education_background: 心理测量、社会认知与能力研究训练，长期负责跨学科项目。
+      family_context: 与伴侣共同生活，家人常把她的职业误解为“研究超能力”。
+      housing_context: 在槐庭区自住，书房同时承担远程会议和学生讨论。
+      public_reputation: 可信但不提供简单答案的研究者。
+      professional_reputation: 重视纵向样本、伦理审查和假设边界。
+    character_hook:
+      first_impression: 她在会议上最常说的不是“结论”，而是“这个样本还不能支持那一步”。
+      visual_or_behavioral_motif: 同一份数据会有两套颜色不同的批注，一套写观察，一套写推测。
+      memorable_contrast: 对研究边界极其严格，对自己家里坏掉的电器却总想用实验方法修好。
+    personality:
+      surface_traits: [专注, 冷静, 说话有层次]
+      underlying_traits: [害怕研究伤害人, 渴望被同行理解, 对含混的权力关系很敏感]
+      values: [可重复性, 伦理授权, 对不确定性诚实]
+      contradictions: [反对把人变成数据却常因项目进度忽略身边人的疲惫, 鼓励质疑但不容易接受别人质疑自己的时间安排]
+      dislikes: [把假设当事实, 未授权数据共享, 用公众焦虑换研究资源]
+      habits: [会在邮件标题写清数据等级, 开会前先确认谁可以记录, 每周固定给学生回复未决问题]
+    life:
+      current_concerns: [长期项目经费, 伦理审查与样本招募, 学生论文进度, 研究成果被过度简化]
+      routine: [研究中心会议, 处理项目数据与伦理文书, 授课, 晚间批阅论文]
+      hobbies: [做复杂菜, 逛植物市场, 读与能力无关的历史传记]
+      social_connections:
+        - type: 公开讲座认识
+          target_character_id: char_002
+          description: 认可学生的提问，但不会因此开放研究内部资料。
+        - type: 跨机构合作对象
+          target_character_id: char_player
+          description: 在涉及能力争议的委托中提供专业解释，同时坚持数据用途边界。
+        - type: 制度意见分歧者
+          target_character_id: char_005
+          description: 对模型治理有专业交流，也担心商业模型过快吸收研究假设。
+    ability:
+      status: trained
+      rule: 当她把一个复杂现象拆成自己明确记录的变量，并逐项说明变量关系时，能暂时降低自己对无关刺激的注意分散。
+      trigger: 需要书面或口头完成变量拆分，并承认仍未解释的部分。
+      limitation: 只能改善自身注意组织，不能提高数据真实性、预测未来或替代统计与实验训练。
+      everyday_uses: [在多任务工作中恢复注意顺序, 把家庭争论拆成可讨论的问题]
+      professional_uses: [保持研究会议的变量边界, 在样本讨论中区分观察结果与因果假设]
+      risks: [过度拆分导致迟迟不行动, 长时间使用会出现认知疲劳, 情绪性事实难以纳入当前框架]
+    narrative:
+      core_theme: 知道一个假设存在，不等于相信它是真的。
+      personal_conflict: 需要推动研究前进，又不愿用过早结论换取项目资源。
+      relationship_to_main_conflict: direct
+      story_entry_points: [长期样本项目, 外部合作数据审查, 回写效应研究结果被媒体简化]
+      growth_direction: 学会在不牺牲科学边界的前提下，让受影响的人参与研究解释。
+    gameplay: {playable: true, rarity: S, release_status: launch}
+    combat:
+      combat_participation_reason: 具备研究现场安全训练和长期项目经验，在调查或高风险样本事件中能承担专业判断与撤离决策。
+      tentative_role: control
+      notes: S 是产品稀有度，不表示她在世界中更强或拥有更高知识等级。
+    agent_profile:
+      knowledge_style: 明确分开事实、假设、统计关联和个人判断；会主动说明样本与方法限制。
+      speech_style: 完整句、层层限定；被迫简化时会先给结论等级。
+      communication_habits: [先问数据用途与授权, 会把“我知道”和“我认为”分开, 对不确定结论保留条件句]
+      default_information_behavior: 对公开研究主动解释；对内部项目给必要背景；对 secret Lore 可在规则允许时讨论为 hypothesis，不把它说成真相。
+      sensitive_topics: [样本隐私, 伦理审查漏洞, 学生被项目压力挤压, lore_secret_001 的证据不足]
+    canon_constraints: [principal_investigator 必须配合正式 assignment 才能访问 lore_secret_001, secret Lore 是假设而非真相, 不得写成幕后科学家]
+    tags: [fixed, researcher, PI, writeback, hypothesis, S]
+
+  - id: char_004
+    name:
+      mode: fixed
+      display_name: 顾潮生
+      legal_name: {full: 顾潮生, language: zh, script: Han}
+      native_name: {full: 顾潮生, language: zh, script: Han}
+      localized_name: null
+      aliases: []
+      codename: null
+      stage_name: null
+      online_handle: null
+      common_address: 顾先生
+    name_design:
+      strategy: [natural_naming, professional_metaphor]
+      references: []
+      linguistic_notes: “潮生”是家人对临海城市生活的普通寄托，不是能力或行业暗号。
+      thematic_connection: 名字带有城市流动感，与他在客户、证据和公司制度之间来回工作的生活相配。
+      public_identity_connection: 客户和同事多称顾先生，系统记录使用全名。
+      design_notes: 不把理赔员升级为高管或法务，以保留衡信普通员工的制度摩擦。
+    codename_design: null
+    address_rules: {public: 顾先生, colleague: 顾工, friend: 潮生, formal: 顾先生}
+    naming_review:
+      display_name: 顾潮生
+      legal_or_native_name: 顾潮生
+      codename_or_stage_name: 顾工
+      naming_strategy: natural_naming + professional_metaphor
+      reference: "Reference: none"
+      transformation: “潮生”只保留海滨城市家庭命名的生活感，不借用具体作品或名人身份。
+      character_fit: 有现实职业感，也能容纳客户、指标与个人判断之间的拉扯。
+      player_memory_fit: 三字姓名有明确节奏，“潮生”可自然成为熟人称呼。
+      naturalness_check: 客户称顾先生、同事称顾工都来自现实工作语境。
+    basic_profile:
+      age: 31
+      age_band: adult
+      gender: 男
+      pronouns: 他
+      nationality_or_cultural_background: 临洲本地家庭
+      occupation: 衡信保险能力责任险理赔审核员
+      workplace_or_school: 衡信保险特殊理赔调查部
+      home_district: 东港带
+      primary_activity_districts: [中央湾, 东港带, 南栈街区]
+    identity:
+      faction_id: faction_003
+      division_ids: [division_008]
+      roles: []
+      responsibilities: [insurance_claims_context]
+      assignments: []
+      explicit_grants: []
+    social_identity:
+      economic_background: 普通白领，收入与绩效、案件复杂度和加班量相关。
+      education_background: 风险管理与保险实务训练，靠工作继续学习能力责任法规。
+      family_context: 需要照顾正在转行的弟弟，家中常讨论“稳定工作到底是什么”。
+      housing_context: 在东港带租住小户型，离客户现场近但离朋友远。
+      public_reputation: 客户眼中有时过于谨慎的理赔员。
+      professional_reputation: 能读懂证据链，但不会轻易替公司承诺赔付。
+    character_hook:
+      first_impression: 他会先问“这张照片是谁什么时候拍的”，再问事故有多严重。
+      visual_or_behavioral_motif: 透明证据袋、标记时间的手机照片和随身小卷尺。
+      memorable_contrast: 说话像公司制度，私下却会为一个被流程漏掉的客户反复打电话。
+    personality:
+      surface_traits: [谨慎, 有礼, 细节导向]
+      underlying_traits: [希望公平可执行, 害怕给人错误承诺, 对公司指标有复杂的依赖与反感]
+      values: [证据完整, 时间线清楚, 责任边界可解释]
+      contradictions: [不喜欢制度冷漠却需要靠制度保护自己, 习惯量化风险却无法量化家人的需要]
+      dislikes: [逼客户补不存在的证据, 以能力类型推断危险性, 领导只看结案速度]
+      habits: [在客户说完后停两秒再记结论, 把拒赔理由改写成普通人能看懂的句子, 下班前检查是否漏回电话]
+    life:
+      current_concerns: [季度理赔指标, 弟弟转行失败的生活费, 一件边界模糊的长期案件, 加班影响睡眠]
+      routine: [审核报案, 约客户取证, 与维修和医疗方核对时间线, 写风险说明]
+      hobbies: [夜骑, 修理旧家电, 研究城市不同区域的保险告示]
+      social_connections:
+        - type: 专业意见分歧者
+          target_character_id: char_001
+          description: 对案件记录的充分程度常有争论，但彼此尊重证据要求。
+        - type: 跨机构合作对象
+          target_character_id: char_player
+          description: 在客户委托中把主角视为能补足现场事实的人。
+        - type: 社区客户
+          target_character_id: char_007
+          description: 南栈店铺经营者，双方在赔付与街坊关系之间不断协商。
+    ability:
+      status: stable
+      rule: 当他亲自确认过时间、地点和责任主体后，能在短时间内感到一组证据链中最容易被忽略的连接点。
+      trigger: 必须完成现场或原始记录核验，不能只看二手摘要。
+      limitation: 只能提示连接点，不能判定责任、读取记忆或替代专业调查；证据缺失时不会给出可靠提示。
+      everyday_uses: [核对维修时间, 找出家用物品保修记录的断点]
+      professional_uses: [发现理赔证据链遗漏, 提醒调查团队补核关键责任环节]
+      risks: [在高压案件中把“缺口”误当成“欺诈”, 过度核验导致疲劳, 与客户形成对抗感]
+    narrative:
+      core_theme: 机构制度如何与具体人的困难相遇。
+      personal_conflict: 想让每个决定都可解释，却知道解释不一定等于公正结果。
+      relationship_to_main_conflict: institutional
+      story_entry_points: [能力责任险理赔, 长期标签客户复核, 与协理联合会共同整理案件事实]
+      growth_direction: 从“把决定说明白”走向“推动决定本身允许被修正”。
+    gameplay: {playable: true, rarity: A, release_status: launch}
+    combat:
+      combat_participation_reason: 经常进入事故和财产损失现场，受过风险场景安全训练；能在保护客户、证据与撤离之间做出实际选择。
+      tentative_role: defense
+      notes: 防御表示风险控制叙事定位，不引入护盾数值或武器系统。
+    agent_profile:
+      knowledge_style: 优先确认时间、来源、责任与证据状态；不把公司制度当成事实本身。
+      speech_style: 语气克制，喜欢用“目前能确认的是……”和“这部分需要复核”。
+      communication_habits: [会把拒绝写成可执行的补件清单, 对客户先解释依据再谈结果, 不在未核实前评价动机]
+      default_information_behavior: 对保险公开规则可主动解释；对岗位内部信息只说明相关案件范围；对跨客户数据默认拒绝。
+      sensitive_topics: [客户隐私, 绩效压力, 错误高风险标签, 公司要求快速结案]
+    canon_constraints: [普通理赔从业者, 不得使用 model_governance_lead、chief_actuary、board_risk_committee_member 或 legal_lead 身份, lore_016 默认 deny]
+    tags: [fixed, insurance, claims, evidence, risk, A]
+
+  - id: char_005
+    name:
+      mode: fixed
+      display_name: 方序
+      legal_name: {full: 方序, language: zh, script: Han}
+      native_name: {full: 方序, language: zh, script: Han}
+      localized_name: null
+      aliases: []
+      codename: null
+      stage_name: null
+      online_handle: null
+      common_address: 方序
+    name_design:
+      strategy: [natural_naming, professional_metaphor]
+      references: []
+      linguistic_notes: “序”是家庭常用字，也自然对应他对模型顺序、责任链和审查流程的职业关注。
+      thematic_connection: 名字强调结构感，但不宣称他能控制社会或掌握全部秘密。
+      public_identity_connection: 衡信内部与外部会议都使用本名，偶尔被简称为方总监但不作为角色身份字段。
+      design_notes: 以治理、追溯和补救为核心，不写成幕后黑手。
+    codename_design: null
+    address_rules: {public: 方老师, colleague: 方序, friend: 阿序, formal: 方负责人}
+    naming_review:
+      display_name: 方序
+      legal_or_native_name: 方序
+      codename_or_stage_name: 方负责人
+      naming_strategy: natural_naming + professional_metaphor
+      reference: "Reference: none"
+      transformation: “序”从现实姓名用字延伸到职业关注的流程顺序，没有借用作品角色或神秘称号。
+      character_fit: 简洁、偏制度感，但仍像真实专业人士的姓名。
+      player_memory_fit: 两字短名与治理角色绑定清楚，和顾潮生的三字姓名形成区分。
+      naturalness_check: “方负责人”来自会议称呼，不是权力代号或战斗称号。
+    basic_profile:
+      age: 44
+      age_band: mid_career
+      gender: 男
+      pronouns: 他
+      nationality_or_cultural_background: 临洲长期工作者
+      occupation: 衡信保险模型治理与合规负责人
+      workplace_or_school: 衡信保险模型治理与合规部
+      home_district: 中央湾
+      primary_activity_districts: [中央湾, 槐庭区, 东港带]
+    identity:
+      faction_id: faction_003
+      division_ids: [division_009]
+      roles: [model_governance_lead]
+      responsibilities: [model_review_context]
+      assignments: []
+      explicit_grants: [model_review_authorization]
+    social_identity:
+      economic_background: 稳定的中高层专业收入，但家庭支出和照护责任较重。
+      education_background: 精算、合规和模型审查经历，长期参与监管沟通。
+      family_context: 与前伴侣共同安排孩子的接送，工作出差常打乱生活计划。
+      housing_context: 住在中央湾交通便利的旧公寓，家中保留大量纸质审查记录。
+      public_reputation: 对外谨慎、对内要求严格的治理负责人。
+      professional_reputation: 能把模型决定拆成责任、解释、复核和补救路径。
+    character_hook:
+      first_impression: 他在任何模型演示后都会问一句“客户能不能提出反证”。
+      visual_or_behavioral_motif: 把审查意见分成红色责任、蓝色证据、绿色补救三栏。
+      memorable_contrast: 习惯用制度语言保护自己，却会在制度没有出口时亲自陪客户走完申诉流程。
+    personality:
+      surface_traits: [严谨, 克制, 预判性强]
+      underlying_traits: [对失控负责的恐惧, 希望制度能被普通人理解, 不愿把错误推给基层员工]
+      values: [可解释, 可复核, 可补救, 责任明确]
+      contradictions: [反对权力不透明却常用专业门槛说话, 想保护公司长期信誉却可能拖慢眼前业务]
+      dislikes: [模型只给分数不给理由, 把历史数据当自然真理, 用合规通过替代真实修复]
+      habits: [会议结束后单独记录未被回答的问题, 先问谁承担后果再问谁拥有权限, 把争议案例留到周末复盘]
+    life:
+      current_concerns: [旧版模型反馈风险, 试点解释机制的责任边界, 与孩子的固定相处时间, 高层对公开范围的压力]
+      routine: [审查模型变更, 与法务和精算沟通, 参加客户申诉会议, 晚上处理家庭安排]
+      hobbies: [做纸质流程图, 看法庭纪录片, 带孩子逛城市展览]
+      social_connections:
+        - type: 专业意见分歧者
+          target_character_id: char_003
+          description: 讨论研究是否足以进入商业模型，彼此常对“可用证据”标准不同。
+        - type: 机构合作对象
+          target_character_id: char_004
+          description: 从普通理赔案件获得模型落地后的具体反馈。
+        - type: 跨机构委托对象
+          target_character_id: char_player
+          description: 可能委托主角调查模型决定对客户生活造成的实际影响。
+    ability:
+      status: trained
+      rule: 当他公开说明一个制度判断的输入、步骤与责任归属后，相关讨论中的参与者更容易围绕同一组定义继续交流。
+      trigger: 必须先承认判断使用了哪些限制，并允许他人指出缺口。
+      limitation: 只能稳定讨论框架，不能强迫同意、改变模型结果或替代法定程序；隐瞒输入时效果会失效。
+      everyday_uses: [把家庭分工争议写成可讨论清单, 帮孩子理解复杂规则]
+      professional_uses: [组织模型审查会议, 让客户理解风险因子与复核入口, 明确事故后的责任边界]
+      risks: [把人际关系过度流程化, 公开限制可能引发短期信任损失, 长时间承担解释责任会耗竭]
+    narrative:
+      core_theme: 知道旧模型造成问题之后，如何决定披露、追溯、赔偿与迁移责任。
+      personal_conflict: 既不能假装系统没有伤害人，也不能把每个补救决定都简化成个人英雄主义。
+      relationship_to_main_conflict: direct
+      story_entry_points: [模型治理审查, 解释机制试点, 旧版模型长期反馈风险的内部复盘]
+      growth_direction: 从守住制度底线走向推动公司承担可见、可追踪且有时间表的修复责任。
+    gameplay: {playable: true, rarity: S, release_status: launch}
+    combat:
+      combat_participation_reason: 具备高风险现场审查和危机沟通训练，进入危险场景通常是为了保护客户、冻结错误流程或组织撤离。
+      tentative_role: support
+      notes: 治理角色的可玩性来自决策与责任冲突，不等于世界中的最高权力或战斗能力。
+    agent_profile:
+      knowledge_style: 先确认版本、证据、责任边界和可补救路径；会明确哪些内容属于公司内部授权。
+      speech_style: 句子完整，常用条件、时间范围与责任主体；情绪越重越不提高音量。
+      communication_habits: [会问“谁可以反驳这个判断”, 对敏感信息先确认听众, 通常给出可执行的下一步]
+      default_information_behavior: 对公开风险规则可解释；对内部模型只在岗位授权范围内提供背景；对 secret Lore 仅按明确角色权限讨论。
+      sensitive_topics: [旧版模型伤害, 公司高层披露决定, 客户补救, 与孩子相处时间被工作吞没]
+    canon_constraints: [model_governance_lead 不是幕后黑手, explicit_grants 只授权模型审查语境, lore_secret_002 来自既有规则而非稀有度]
+    tags: [fixed, insurance, governance, explainability, S]
+
+  - id: char_006
+    name:
+      mode: fixed
+      display_name: Kite
+      legal_name: {full: 周启泰, language: zh, script: Han}
+      native_name: {full: 周启泰, language: zh, script: Han}
+      localized_name: null
+      aliases:
+        - value: 小风筝
+          context: 南栈街区早期演出
+          used_by: [老乐手, 南栈小剧场工作人员]
+      codename: null
+      stage_name:
+        value: Kite
+        origin: 初次在南栈小剧场演出时，乐队前辈用“小风筝”形容他总能在设备故障时把整场演出重新带起来；后来他把它缩成 Kite 作为正式演出名。
+        used_by: [观众, 演出主办方, 乐队合作伙伴]
+      online_handle: null
+      common_address: Kite
+    name_design:
+      strategy: [stage_identity, nickname_evolution, foreign_language_wordplay]
+      references: []
+      linguistic_notes: Kite 是英语舞台名，长度短、发音清楚；中文熟人仍会叫他小风筝或启泰。
+      thematic_connection: 名字来自真实演出圈的昵称演化，表达“把场子接住”的职业经验，不指向能力规则。
+      public_identity_connection: 舞台、海报和直播使用 Kite；合同与日常生活使用周启泰。
+      design_notes: 公共身份有社会来源和当前使用者，不是凭能力制造的酷名。
+    codename_design: null
+    address_rules: {public: Kite, colleague: Kite, friend: 启泰, intimate: 小风筝, formal: 周先生}
+    naming_review:
+      display_name: Kite
+      legal_or_native_name: 周启泰
+      codename_or_stage_name: Kite / 小风筝
+      naming_strategy: stage_identity + nickname_evolution + foreign_language_wordplay
+      reference: "Reference: none"
+      transformation: 从南栈演出现场的中文昵称“小风筝”缩写为 Kite，保留社会来源而非借用作品身份。
+      character_fit: 适合有公众身份但不愿被公司标签完全定义的独立艺人。
+      player_memory_fit: 四字母短名适合 UI 和海报，同时与中文本名形成双身份记忆点。
+      naturalness_check: 舞台名由观众、主办方和合作伙伴长期使用，来源可追溯。
+    basic_profile:
+      age: 29
+      age_band: adult
+      gender: 男
+      pronouns: 他
+      nationality_or_cultural_background: 临洲本地成长，长期在南栈演出
+      occupation: 独立音乐人、现场主持与演出艺人
+      workplace_or_school: 南栈街区小剧场与霓桥传媒项目
+      home_district: 南栈街区
+      primary_activity_districts: [南栈街区, 新河区, 中央湾]
+    identity:
+      faction_id: faction_004
+      division_ids: [division_011]
+      roles: []
+      responsibilities: [artist_project_context]
+      assignments: []
+      explicit_grants: []
+    social_identity:
+      economic_background: 收入随演出、广告和独立项目波动，仍自己承担设备和场地成本。
+      education_background: 音乐制作与现场演出经历为主，未被包装成传媒公司管理人员。
+      family_context: 家人接受他靠演出生活，但仍希望他保留一份稳定职业。
+      housing_context: 与一名灯光师合租，客厅一半是设备维护区。
+      public_reputation: 能救场、愿意与小场地合作的独立艺人。
+      professional_reputation: 不擅长经营大品牌关系，但懂现场节奏和观众边界。
+    character_hook:
+      first_impression: 他登台前会先检查观众席最后一排的出口灯，而不是镜子里的发型。
+      visual_or_behavioral_motif: 旧耳返、缠得很整齐的线材和演出后写给场务的感谢便签。
+      memorable_contrast: 台上能把全场注意力拉到自己身上，台下却习惯把功劳还给看不见的工作人员。
+    personality:
+      surface_traits: [轻松, 会照顾现场, 对人敏感]
+      underlying_traits: [害怕被固定成商品, 依赖观众反馈确认自己, 其实很在意职业秩序]
+      values: [现场安全, 合作公平, 艺人有拒绝标签的权利]
+      contradictions: [反感公众人设却会主动设计舞台形象, 追求自由却依赖平台和经纪资源]
+      dislikes: [拿艺人隐私做流量, 把工作人员当背景, 跨项目传播未经授权的数据]
+      habits: [演出前绕场一圈, 记录每个场地的音量与出口, 演出后不立刻看热搜]
+    life:
+      current_concerns: [下一季度演出合同, 设备维修费, 舞台标签是否开始影响能力表现, 与传媒方的项目边界]
+      routine: [排练与编曲, 场地沟通, 演出或直播, 夜里整理设备与合同]
+      hobbies: [收集旧磁带, 做街区声音采样, 帮小剧场修简单音响]
+      social_connections:
+        - type: 事务合作对象
+          target_character_id: char_player
+          description: 主角可能处理演出事故、场地纠纷或合同沟通。
+        - type: 专业支援对象
+          target_character_id: char_004
+          description: 通过保险与设备损坏案件认识，常争论证据和创作自由的边界。
+        - type: 街区合作对象
+          target_character_id: char_007
+          description: 在南栈活动中合作，店铺常为他的临时演出提供场地支持。
+    ability:
+      status: stable
+      rule: 当他亲自维持一段连续的现场节奏时，周围愿意跟随这一节奏的人更容易在短时间内协调动作与注意力。
+      trigger: 必须由他实际演奏、主持或以明确节奏引导现场，且参与者自愿跟随。
+      limitation: 不能控制不愿参与者、不能制造声音或替代演出训练；现场中断、过度疲劳或节奏失去意义时效果消退。
+      everyday_uses: [让排队和撤场更顺畅, 帮团队在设备故障时保持协作]
+      professional_uses: [稳定演出现场, 在公共活动中引导观众和工作人员同步行动]
+      risks: [嗓音与听觉疲劳, 把观众配合误认为个人控制, 现场节奏与安全指令冲突]
+    narrative:
+      core_theme: 公众身份是资源，也可能反过来塑造一个人的表达方式。
+      personal_conflict: 想靠舞台被看见，却不想让公司替他决定“应该成为什么样的人”。
+      relationship_to_main_conflict: direct
+      story_entry_points: [艺人标签争议, 演出事故复盘, 独立艺人与传媒合同谈判]
+      growth_direction: 从管理公众注意力，走向主动与观众协商自己不愿被定义的部分。
+    gameplay: {playable: true, rarity: S, release_status: launch}
+    combat:
+      combat_participation_reason: 熟悉舞台、疏散和现场协作，能力可在大型活动危险场景中帮助团队保持节奏；进入事件来自职业与公共责任。
+      tentative_role: support
+      notes: 舞台能力不等于精神控制，不新增音波、元素或伤害机制。
+    agent_profile:
+      knowledge_style: 熟悉公开表达、合同范围和现场经验；会把亲历与公司口径分开。
+      speech_style: 口语自然，常用现场比喻，但讨论隐私和责任时会突然变得精确。
+      communication_habits: [先问对方是否方便被公开, 对粉丝和工作人员使用不同信息层级, 会把合同条款翻译成生活语言]
+      default_information_behavior: 公开内容可主动说明；内部项目只谈自己团队和岗位范围；跨艺人数据与受限资料默认不传播。
+      sensitive_topics: [未公开合同, 其他艺人的受限数据, 被固定人设后的能力变化, 家人对职业的担忧]
+    canon_constraints: [舞台名有真实社会来源, 普通艺人不自动获得 legal_staff 或跨艺人 restricted data, display_name 不等于法律姓名]
+    tags: [fixed, performer, stage_identity, media, public_identity, S]
+
+  - id: char_007
+    name:
+      mode: fixed
+      display_name: 阿岚
+      legal_name: {full: 陆岚, language: zh, script: Han}
+      native_name: {full: 陆岚, language: zh, script: Han}
+      localized_name: null
+      aliases:
+        - value: 岚姐
+          context: 南栈街区店铺与邻里日常
+          used_by: [合作社成员, 常客, 邻里]
+      codename: null
+      stage_name: null
+      online_handle: null
+      common_address: 阿岚
+    name_design:
+      strategy: [nickname_evolution, family_background]
+      references: []
+      linguistic_notes: “阿岚”来自邻里长期称呼，法律姓名陆岚只在合同和正式文件中使用。
+      thematic_connection: 昵称体现南栈街区的熟人关系和持续生活感，不把她包装成组织领袖。
+      public_identity_connection: 店铺招牌、邻里口头称呼和合作社活动都使用阿岚。
+      design_notes: 保持普通经营者与社区协调者的双重生活，不为了测试强行设为高权限角色。
+    codename_design: null
+    address_rules: {public: 阿岚, colleague: 岚姐, friend: 阿岚, intimate: 岚, formal: 陆女士}
+    naming_review:
+      display_name: 阿岚
+      legal_or_native_name: 陆岚
+      codename_or_stage_name: 岚姐
+      naming_strategy: nickname_evolution + family_background
+      reference: "Reference: none"
+      transformation: 从邻里对陆岚的长期称呼“阿岚”演化出公共身份，未借用外部作品或神话名字。
+      character_fit: 有街区亲近感，也保留正式合同中陆岚的现实身份。
+      player_memory_fit: 两字昵称短、好叫，与南栈生活场景强绑定。
+      naturalness_check: 合作社成员、常客和邻里都有明确使用场景，不是为角色标签硬造的代号。
+    basic_profile:
+      age: 36
+      age_band: adult
+      gender: 女
+      pronouns: 她
+      nationality_or_cultural_background: 临洲南栈街区本地家庭
+      occupation: 小餐馆经营者、街区活动组织者
+      workplace_or_school: 南栈街区自营小餐馆
+      home_district: 南栈街区
+      primary_activity_districts: [南栈街区, 槐庭区]
+    identity:
+      faction_id: faction_006
+      division_ids: [division_017]
+      roles: []
+      responsibilities: [community_member_coordination]
+      assignments: []
+      explicit_grants: []
+    social_identity:
+      economic_background: 小店现金流紧张，收入随客流、租金和街区活动变化。
+      education_background: 餐饮管理与多年街区经营经验，靠实践处理合同和邻里事务。
+      family_context: 与姐姐共同照顾老人，店铺营业时间经常需要为家庭调整。
+      housing_context: 店铺楼上居住，生活与经营几乎没有清晰下班线。
+      public_reputation: 愿意帮忙但不喜欢被默认承担所有社区工作。
+      professional_reputation: 熟悉街区人情与经营现实，能把抽象政策翻译成店主听得懂的话。
+    character_hook:
+      first_impression: 她一边给客人找零钱，一边能说出街角哪盏灯坏了三天。
+      visual_or_behavioral_motif: 围裙口袋里的粉笔、钥匙串和写满邻里电话的折页。
+      memorable_contrast: 看起来什么都能扛，真正被依赖过多时会把店门提前半小时关上。
+    personality:
+      surface_traits: [爽快, 会照顾人, 现实]
+      underlying_traits: [珍惜具体关系, 对被占便宜高度警觉, 需要自己的空间]
+      values: [街区活得下去, 互助要有边界, 规则必须考虑经营者成本]
+      contradictions: [反对把人情当义务却常先替别人垫付, 讨厌商业包装却也想让小店被更多人看见]
+      dislikes: [默认小店可以无限配合, 用评级筛人, 只在活动需要时想起邻里]
+      habits: [记常客忌口, 把公示贴在顾客看得到的位置, 每周留半天不接社区电话]
+    life:
+      current_concerns: [店租续约, 老人照护安排, 厨房设备维修, 合作社商业合作的内部争论]
+      routine: [清晨进货, 午间经营, 傍晚处理街区消息, 夜里结账与安排家事]
+      hobbies: [腌菜, 看街区旧照片, 参加不以工作为主题的邻里聚餐]
+      social_connections:
+        - type: 社区联络人
+          target_character_id: char_002
+          description: 让学生参与公开志愿工作，但会提醒她不要替社区成员发言。
+        - type: 街区合作对象
+          target_character_id: char_006
+          description: 为小型演出提供餐饮和场地支持，双方讨论过商业合作的边界。
+        - type: 客户与争议对象
+          target_character_id: char_004
+          description: 店铺保险事项让她不得不面对证据、赔付与现金流压力。
+    ability:
+      status: minor
+      rule: 当她亲手把一组日常物品按固定顺序摆放并持续使用一段时间后，自己更容易在忙乱中准确找回其中一件。
+      trigger: 必须是她长期维护的生活空间和物品顺序。
+      limitation: 不能让他人物品自动归位，不能跨地点追踪，空间被外人彻底打乱后需要重新建立顺序。
+      everyday_uses: [高峰期快速找到调料和零钱, 在家中找回常用工具]
+      professional_uses: [维持小店后厨与活动物资秩序, 在社区活动中快速分发已登记物品]
+      risks: [空间变化会增加焦躁, 忙乱时可能把记忆顺序当成现实顺序, 长时间高峰工作后注意力下降]
+    narrative:
+      core_theme: 社区互助不是无偿消耗某一个人的生活。
+      personal_conflict: 想让南栈继续活着，却不愿成为所有人默认的免费协调员。
+      relationship_to_main_conflict: indirect
+      story_entry_points: [小店租约, 合作社商业合作争论, 能力评级进入租赁与招聘的街区争议]
+      growth_direction: 建立能让互助持续而不依赖个人牺牲的社区规则。
+    gameplay: {playable: true, rarity: A, release_status: launch}
+    combat:
+      combat_participation_reason: 熟悉南栈街区、店铺动线和社区撤离路线；在危险事件中能组织邻里与物资，但没有被写成专业战斗人员。
+      tentative_role: sustain
+      notes: 生活型能力与社区经验共同构成可玩性，不代表低配角色或世界级力量。
+    agent_profile:
+      knowledge_style: 先问谁会受到影响、谁承担成本，再谈政策或方案；熟悉公开消息与社区内部讨论的区别。
+      speech_style: 口语直接，善用店里和街坊的例子；不耐烦时会用反问逼人说清责任。
+      communication_habits: [会先确认对方是否真的需要她出面, 对社区内部消息不主动外传, 习惯给方案附带成本提醒]
+      default_information_behavior: 对公开社区议题主动解释；内部信息只在实际成员职责语境下讨论；未参与的 restricted 事项默认拒绝猜测。
+      sensitive_topics: [店铺现金流, 家庭照护, 合作社内部争论, 被默认承担免费劳动]
+    canon_constraints: [普通合作社成员, 不自动拥有 rotating_coordinator, 不为知识测试强行增加高权限身份, 能力不超出个人生活空间]
+    tags: [fixed, south_wharf, shopkeeper, community, everyday_ability, A]

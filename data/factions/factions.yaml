@@ -1,0 +1,792 @@
+- id: faction_001
+  name: 临洲市协理人联合会
+  short_name: 协理联合会
+  type: professional_association
+  status: active
+  headquarters:
+    city: 临洲市
+    district: 中央湾
+    description: 联合会秘书处设于中央湾公共服务与行业机构集中的街区，并在槐庭区、南栈街区和东港带设有常驻联络点。
+  public_identity:
+    description: 面向注册协理人和协理事务所提供职业培训、行业规范、项目转介、争议协调与公共合作服务的专业联合组织。
+  public_reputation:
+    description: 社会普遍把协理联合会视为处理跨机构麻烦事的实务型行业组织；评价通常取决于具体协理人的专业能力，而非其拥有行政权力。
+    keywords:
+    - 第三方协调
+    - 实务
+    - 调解
+    - 跨机构
+  core_function:
+    description: 填补学校、企业、保险、公共部门与个人之间的责任缝隙，建立协理职业标准，并为复杂事件提供可追责的第三方协调机制。
+  ideology:
+    principles:
+    - 复杂问题通常不能由单一机构独立解决。
+    - 判断应尽量基于现场事实，而不是先按能力标签给人定性。
+    - 标准化工具可以使用，但必须允许复核、申诉与人工判断。
+  stance_on_main_conflict:
+    summary: 有限支持能力测评和标准化，但反对将测评结果直接固化为个人身份、职业命运或责任判断。
+    supports:
+    - 透明且可复核的能力测评
+    - 跨部门共享必要而有限的信息
+    - 针对具体用途的风险认证
+    opposes:
+    - 以单次能力评级替代个案调查
+    - 在无申诉机制的情况下长期保存高风险标签
+    - 把回写效应简化成个人失控问题
+  actual_goal:
+    description: 提升协理职业的社会可信度与案件承接能力，使协理人在跨机构事件中成为有明确责任边界、可被信任且不可被任意甩锅的专业角色。
+    visibility: internal
+  internal_structure:
+    description: 联合会规模中等，以行业治理、培训认证和案件协调为主，不直接指挥各独立事务所。
+    divisions:
+    - id: division_001
+      name: 职业标准委员会
+      function: 制定协理职业规范、继续教育要求和能力相关现场安全指引。
+    - id: division_002
+      name: 案件协调部
+      function: 承接跨机构项目转介、协调复杂委托并维护合作机构名录。
+    - id: division_003
+      name: 伦理与申诉办公室
+      function: 处理协理执业投诉、利益冲突与行业内部申诉。
+  member_profile:
+    typical_roles:
+    - 协理人
+    - 调解员
+    - 调查助理
+    - 行业培训师
+    - 前律师
+    - 安全顾问
+    recruitment:
+      description: 主要吸纳持有协理执业资格的从业者、事务所负责人，以及具有法律、保险、教育、医疗、安全等跨领域经验的专业顾问。
+    culture:
+      description: 强调记录、责任边界和可复盘性；成员之间常对标准化程度争论激烈，但普遍反感只凭能力类型给当事人贴标签。
+  relationship:
+    faction_002:
+      status: cooperative
+      description: 联合会需要研究中心提供能力与回写效应方面的专业意见，同时要求研究结论能被转化为可执行且可申诉的实务规范。
+    faction_003:
+      status: tense
+      description: 双方在事故调查、理赔和风险评估上频繁合作，但联合会常质疑衡信过度依赖评级模型替代个案判断。
+    faction_004:
+      status: cooperative
+      description: 联合会经常参与演出、艺人合同和公众能力使用争议；双方合作稳定，但会因舆论先行而产生摩擦。
+    faction_005:
+      status: cooperative
+      description: 公共安全事件常需要协理人在行政处置结束后继续协调当事人、场地方、保险与社区关系。
+    faction_006:
+      status: cooperative
+      description: 南栈的小店、居民和自由职业者是协理服务的重要使用者，合作集中在租赁、活动、保险与邻里纠纷。
+  knowledge_boundary:
+    rules_source: data/knowledge/knowledge_rules.yaml
+    public_information:
+    - lore_id: lore_001
+      summary: 临洲存在合法的协理职业，协理人主要承担跨机构协调、事实整理和民事争议处理。
+    - lore_id: lore_002
+      summary: 协理联合会负责行业培训、职业规范和部分公共项目转介，但不拥有警察或行政机关的强制权。
+    member_information:
+    - lore_id: lore_003
+      summary: 联合会近年将能力评级争议和回写效应相关委托列为高增长案件类型，并正在调整培训内容。
+    - lore_id: lore_004
+      summary: 联合会内部要求涉及多机构数据的案件必须记录信息来源、授权范围与可访问人员。
+    restricted_information:
+    - lore_id: lore_005
+      summary: 联合会正在汇总一批跨行业案例，用于证明单一能力评级在长期个案中存在系统性偏差。
+      access_requirement:
+      - 案件协调部相关项目成员
+      - 职业标准委员会相关负责人
+    secret_information: []
+  rumors:
+  - id: rumor_001
+    content: 有人说资深协理人可以绕过警方程序直接调取任何机构的内部资料。
+    truth_status: false
+    known_by:
+    - public
+  story_functions:
+  - 作为主角持续获得委托与跨圈层案件入口的制度基础
+  - 承载职业伦理、责任边界和调解失败等实务冲突
+  - 连接学校、企业、公共部门和社区的跨机构剧情
+  character_archetypes:
+  - 刚取得执业资格的年轻协理人
+  - 重视程序与证据的资深调解员
+  - 从律师或保险行业转入协理工作的专业顾问
+  - 擅长现场判断但不喜欢行政文书的自由协理人
+  canon_constraints:
+  - 该组织是行业联合组织，不是秘密侦探组织或政府情报机关。
+  - 联合会不拥有超越警察、法院或行政机关的强制权限。
+  - 成员不能因为协理身份自动读取其他机构的私密数据。
+  - 联合会可以反对粗暴标准化，但不能否定一切能力测评和专业认证。
+  - 组织剧情应以跨机构责任、调解和实务冲突为主，而非隐藏世界真相。
+  tags:
+  - 协理
+  - 调解
+  - 跨机构
+  - 职业规范
+  - 第三方
+- id: faction_002
+  name: 临洲大学行为与能力研究中心
+  short_name: 临大能力中心
+  type: academic
+  status: active
+  headquarters:
+    city: 临洲市
+    district: 槐庭区
+    description: 位于临洲大学主校区内，实验室、访谈室、数据分析组和附属医疗合作空间分布在多个教学研究楼中。
+  public_identity:
+    description: 研究个体偏置形成、能力训练、认知变化与回写效应的跨学科研究中心，承担教学、公共科普和行业合作项目。
+  public_reputation:
+    description: 公众普遍认为该中心专业、谨慎但有些理想主义；部分人担心研究成果会被企业或学校拿去强化能力标签。
+    keywords:
+    - 学术
+    - 实证
+    - 回写研究
+    - 研究伦理
+  core_function:
+    description: 通过可验证研究解释偏置与回写效应，为教育、医疗、行业标准和公共政策提供证据基础。
+  ideology:
+    principles:
+    - 能力现象应当被研究，而不是被神秘化。
+    - 可重复、可审查的证据优先于轶闻和恐慌。
+    - 研究价值不能凌驾于知情同意、隐私和受试者权益。
+  stance_on_main_conflict:
+    summary: 认为回写效应必须持续研究，支持改进测评而非全面废止；主张明确区分描述性模型和决定个人命运的规范性判断。
+    supports:
+    - 长期追踪与可复核研究
+    - 测评模型公开其适用边界
+    - 研究伦理审查与数据最小化
+    opposes:
+    - 因恐惧而停止对回写效应的研究
+    - 把相关性直接当作个人命运预测
+    - 未经同意将研究数据用于招聘、保险或商业标签
+  actual_goal:
+    description: 建立一套能够区分自我认知、群体认知与环境因素影响的回写效应研究框架，并推动社会采用更谨慎的动态测评标准。
+    visibility: internal
+  internal_structure:
+    description: 研究中心由多学科团队组成，项目制明显，实验数据与临床合作数据按伦理等级隔离。
+    divisions:
+    - id: division_004
+      name: 偏置机制组
+      function: 研究能力规则形成、稳定和变化机制。
+    - id: division_005
+      name: 回写与社会认知组
+      function: 研究群体期待、标签与长期社会环境对偏置的影响。
+    - id: division_006
+      name: 研究伦理与数据办公室
+      function: 负责受试者保护、数据权限、伦理审查和外部合作合规。
+  member_profile:
+    typical_roles:
+    - 教授
+    - 研究员
+    - 博士生
+    - 研究助理
+    - 心理学家
+    - 医疗合作人员
+    - 学生志愿者
+    recruitment:
+      description: 通过大学教职、研究岗位、研究生培养和项目合作吸纳人员；核心岗位重视科研训练与伦理记录。
+    culture:
+      description: 重证据、重同行质疑，内部对研究结论的社会应用常有激烈争论；年轻研究者更关注标签伤害，高年资成员更强调样本与长期数据。
+  relationship:
+    faction_001:
+      status: cooperative
+      description: 研究中心为协理行业提供专业咨询和培训材料，也从真实案例中获得经授权的研究问题与观察数据。
+    faction_003:
+      status: cooperative
+      description: 衡信提供部分匿名化风险数据和研究经费，但双方持续争论商业模型是否超出研究结论的适用范围。
+    faction_004:
+      status: tense
+      description: 中心需要媒体进行科普，但反感将初步研究结论包装成确定性的人格或能力标签。
+    faction_005:
+      status: cooperative
+      description: 双方在事故分析、活动安全和能力过度使用风险方面共享经过合规处理的研究成果。
+    faction_006:
+      status: cooperative
+      description: 研究中心在南栈开展社区讲座与自愿研究项目，合作良好，但居民对数据用途保持敏感。
+  knowledge_boundary:
+    rules_source: data/knowledge/knowledge_rules.yaml
+    public_information:
+    - lore_id: lore_006
+      summary: 临大能力中心公开研究偏置、能力训练和回写效应，并定期发布科普报告。
+    - lore_id: lore_007
+      summary: 回写效应已被学界视为值得持续研究的真实现象，但具体强度、条件和长期影响仍存在争议。
+    - lore_id: lore_033
+      summary: 回写效应的具体强度、条件和长期影响仍存在争议，相关研究仍在持续。
+    member_information:
+    - lore_id: lore_008
+      summary: 中心内部普遍认为单次能力测评不足以预测个体长期变化，纵向数据比静态评级更重要。
+    - lore_id: lore_009
+      summary: 外部合作项目必须经过伦理和数据用途审查，不同课题组不能默认读取彼此的受限数据。
+    restricted_information:
+    - lore_id: lore_010
+      summary: 部分长期样本显示，持续且一致的群体认知可能在个体主观认同尚未明显变化前，就与偏置表现变化出现相关。
+      access_requirement:
+      - 回写与社会认知组相关研究员
+      - 研究伦理授权人员
+    - lore_id: lore_011
+      summary: 中心正在复核一批可能被商业能力模型错误解释的历史数据，尚未形成可公开结论。
+      access_requirement:
+      - 项目负责人
+      - 数据办公室授权成员
+    secret_information:
+    - lore_id: lore_secret_001
+      summary: 极少数核心研究者认为现有模型可能系统性低估群体认知对偏置形成的早期影响，但证据尚不足以公开主张。
+      access_requirement:
+      - 中心主任
+      - 相关首席研究员
+      - 研究伦理负责人
+  rumors:
+  - id: rumor_002
+    content: 网上有人声称临大能力中心能通过一次测试准确预测一个人未来会发展成什么能力。
+    truth_status: false
+    known_by:
+    - public
+  story_functions:
+  - 承载能力机制、回写效应和研究伦理相关主线信息
+  - 产生校园、科研、受试者与数据使用争议
+  - 为主角提供需要理解而不是单纯击败的复杂事实
+  character_archetypes:
+  - 坚持研究伦理的年轻研究员
+  - 对社会应用过于乐观的博士生
+  - 善于把复杂研究讲给普通人听的教授
+  - 曾作为长期研究参与者、如今质疑研究标签的学生
+  canon_constraints:
+  - 研究中心不是疯狂人体实验机构，也不秘密拘禁能力者。
+  - 所有高风险研究必须存在知情同意、伦理审查或其缺失所带来的明确违规后果。
+  - 研究人员不能凭一项研究就确定某个人未来的能力或人格。
+  - 普通学生和普通研究助理不会自动知道受限项目数据。
+  - 研究争议应围绕证据、伦理和社会应用边界，而不是神秘超自然真相。
+  tags:
+  - 大学
+  - 研究
+  - 偏置
+  - 回写效应
+  - 伦理
+  - 数据
+- id: faction_003
+  name: 衡信保险
+  short_name: 衡信
+  type: corporation
+  status: active
+  headquarters:
+    city: 临洲市
+    district: 中央湾
+    description: 总部位于中央湾金融商务区，在东港带、新河区和主要住宅区设有理赔与企业风险服务网点。
+  public_identity:
+    description: 提供个人、企业、活动与能力责任相关保险产品的大型综合保险公司，并向企业客户提供风险评估服务。
+  public_reputation:
+    description: 以数据能力强、理赔流程严谨著称；客户认为它可靠但不够有人情味，能力评级相关产品长期受到隐私与公平性质疑。
+    keywords:
+    - 保险
+    - 风险
+    - 精算
+    - 标准化
+    - 数据
+  core_function:
+    description: 把能力相关事故与不确定性转化为可定价、可分担和可追责的风险，从而维持商业活动和个人责任体系的可运行性。
+  ideology:
+    principles:
+    - 无法测量的风险无法被公平分担。
+    - 模型应服务于风险决策，但必须持续校准。
+    - 保险的目标不是判断一个人好坏，而是估计具体场景中的损失概率。
+  stance_on_main_conflict:
+    summary: 支持能力评级和动态风险模型，认为完全放弃标准化会把成本转嫁给所有投保人；同时逐步接受模型必须提供复核和纠错通道。
+    supports:
+    - 动态风险评估
+    - 用途明确的数据授权
+    - 基于事故记录和环境因素的模型更新
+    opposes:
+    - 完全禁止能力相关风险定价
+    - 把保险模型公开误读为人格或犯罪预测
+    - 在缺乏证据时无限扩大责任范围
+  actual_goal:
+    description: 建立临洲最可靠的动态能力风险模型，降低高波动赔付并保持市场领先，同时减少因模型歧视争议导致的监管和声誉成本。
+    visibility: internal
+  internal_structure:
+    description: 业务以产品、理赔和企业风险服务为核心，数据与合规部门对能力相关模型拥有较高影响力。
+    divisions:
+    - id: division_007
+      name: 能力风险精算部
+      function: 设计和维护能力责任、职业与活动风险模型。
+    - id: division_008
+      name: 特殊理赔调查部
+      function: 处理责任边界复杂、涉及多方能力使用的理赔案件。
+    - id: division_009
+      name: 模型治理与合规部
+      function: 审查模型用途、偏差、数据授权与监管风险。
+  member_profile:
+    typical_roles:
+    - 精算师
+    - 理赔员
+    - 调查员
+    - 数据分析师
+    - 企业风险顾问
+    - 法务
+    - 合规经理
+    recruitment:
+      description: 大量吸纳金融、统计、法律、调查和行业风险背景人才；涉及能力评估的岗位通常需要额外专业认证。
+    culture:
+      description: 强数据导向、强调证据链和成本控制；内部并非铁板一块，业务部门、模型团队与合规部门经常围绕效率和公平发生冲突。
+  relationship:
+    faction_001:
+      status: tense
+      description: 衡信依赖协理人处理复杂现场和第三方协调，但认为部分协理人过于依赖个案经验、低估大样本风险模型。
+    faction_002:
+      status: cooperative
+      description: 公司与研究中心存在数据和课题合作，同时接受其对模型外推和数据用途的严格质疑。
+    faction_004:
+      status: cooperative
+      description: 衡信承保大量演出、艺人和商业活动，也会与霓桥共同处理舆论放大的责任事件。
+    faction_005:
+      status: cooperative
+      description: 公共安全事故记录和行业安全标准是保险定价的重要依据，但数据共享必须遵守法定边界。
+    faction_006:
+      status: tense
+      description: 南栈商户认为部分能力风险评级抬高了小经营者成本，衡信则认为取消差异化定价会让风险被全体客户承担。
+  knowledge_boundary:
+    rules_source: data/knowledge/knowledge_rules.yaml
+    public_information:
+    - lore_id: lore_012
+      summary: 衡信销售能力责任相关保险，并公开声明不会把单一能力类型直接等同于个人危险性。
+    - lore_id: lore_013
+      summary: 衡信使用事故记录、职业场景和能力使用特征进行风险评估，其方法受到监管与社会监督。
+    member_information:
+    - lore_id: lore_014
+      summary: 公司近年正在把静态能力评级逐步改造成动态风险模型，增加环境、训练和历史行为等变量。
+    - lore_id: lore_015
+      summary: 普通员工只能访问与本人岗位和案件相关的数据，完整模型参数和跨客户数据并不对全员开放。
+    restricted_information:
+    - lore_id: lore_016
+      summary: 一项内部模型测试发现，部分长期被高风险标签化的客户会出现与标签方向一致的行为和偏置变化，模型团队正在判断其中是否存在回写影响。
+      access_requirement:
+      - 能力风险精算部相关项目成员
+      - 模型治理与合规部授权人员
+    - lore_id: lore_017
+      summary: 公司正在试点一种允许客户查看关键风险因子并提交复核证据的新型解释机制。
+      access_requirement:
+      - 试点项目成员
+      - 相关中层管理人员
+      - 合规负责人
+    secret_information:
+    - lore_id: lore_secret_002
+      summary: 高层掌握的内部审计显示，旧版模型在少数职业群体中存在显著的长期标签反馈风险，公司尚未决定公开方式和追溯范围。
+      access_requirement:
+      - 董事会风险委员会成员
+      - 首席精算负责人
+      - 模型治理负责人
+      - 相关法务负责人
+  rumors:
+  - id: rumor_003
+    content: 社会上有人传言衡信可以根据能力测试预测某个人未来是否会犯罪。
+    truth_status: false
+    known_by:
+    - public
+  - id: rumor_004
+    content: 部分南栈商户认为衡信暗中给某些能力类型建立了永久黑名单。
+    truth_status: partial
+    known_by:
+    - public
+  story_functions:
+  - 承载标准化、风险定价、保险责任和数据公平争议
+  - 制造非邪恶但具有现实压力的制度性对立
+  - 提供理赔调查、商业事故和模型纠错类案件
+  character_archetypes:
+  - 相信数据但愿意承认模型会错的年轻精算师
+  - 擅长现场调查、经常与模型结论冲突的理赔调查员
+  - 站在公司利益与合规风险之间的法务负责人
+  - 认为公平必须能被量化的企业风险顾问
+  canon_constraints:
+  - 衡信保险不是邪恶资本组织，也不以控制能力者为目标。
+  - 保险模型只能用于具体风险判断，不能被设定为准确预测人格或犯罪的万能算法。
+  - 普通理赔员不会知道完整模型参数、董事会审计或所有客户数据。
+  - 公司内部必须存在业务、模型与合规之间的真实分歧。
+  - 衡信造成的冲突应主要来自商业激励、制度惯性和风险分配，而不是秘密毁灭计划。
+  tags:
+  - 保险
+  - 风险模型
+  - 精算
+  - 理赔
+  - 数据
+  - 标准化
+- id: faction_004
+  name: 霓桥传媒
+  short_name: 霓桥
+  type: media
+  status: active
+  headquarters:
+    city: 临洲市
+    district: 新河区
+    description: 总部与主要演播、经纪和内容运营团队位于新河区传媒产业带，另长期使用临洲多处演出场馆与商业空间。
+  public_identity:
+    description: 经营艺人经纪、直播、广告、演出制作和内容平台业务的综合传媒公司，擅长将个人能力与公众形象结合进行内容运营。
+  public_reputation:
+    description: 年轻、会造话题、懂流量，也经常被批评过度包装艺人和制造标签；旗下艺人与制作人风格差异很大。
+    keywords:
+    - 娱乐
+    - 经纪
+    - 社交媒体
+    - 人设
+    - 注意力
+  core_function:
+    description: 把个人形象、能力表现和公众注意力转化为内容、商业合作与文化产品，并管理由此产生的舆论和合同风险。
+  ideology:
+    principles:
+    - 被看见本身就是现代社会的重要资源。
+    - 公众印象无法完全避免，因此个人应尽量拥有塑造自身形象的主动权。
+    - 成功的人设必须服务真实的人，而不能最终吞掉真实的人。
+  stance_on_main_conflict:
+    summary: 认为社会标签不可消失，重点应放在谁拥有定义权、标签能否被修改以及平台应承担多少责任。
+    supports:
+    - 允许个人参与塑造和修正公众标签
+    - 对高影响力内容建立能力相关风险规范
+    - 透明处理商业人设与真实能力之间的边界
+    opposes:
+    - 把艺人锁死在不可修改的能力标签里
+    - 利用未经证实的能力测评制造人格结论
+    - 以平台数据替代当事人的真实意愿
+  actual_goal:
+    description: 维持霓桥在年轻内容市场中的品牌优势，同时建立一套可持续的艺人形象管理机制，避免公众标签和回写效应反过来损害艺人、商业项目与公司声誉。
+    visibility: internal
+  internal_structure:
+    description: 公司由艺人经纪、内容制作和平台运营三条主要业务线组成，法务与艺人支持团队介入高风险项目。
+    divisions:
+    - id: division_010
+      name: 艺人经纪部
+      function: 负责艺人发展、合同、品牌合作和日常团队管理。
+    - id: division_011
+      name: 内容与舞台制作部
+      function: 负责直播、节目、演出和大型商业内容制作。
+    - id: division_012
+      name: 公众关系与艺人支持部
+      function: 处理舆情、公众标签风险、心理支持转介与危机沟通。
+  member_profile:
+    typical_roles:
+    - 偶像
+    - 演员
+    - 主播
+    - 制作人
+    - 摄影师
+    - 经纪人
+    - 运营人员
+    - 公关
+    recruitment:
+      description: 通过公开招募、行业签约、项目合作和校园渠道吸纳艺人与内容人才；能力可以是卖点，但不是所有岗位的必要条件。
+    culture:
+      description: 节奏快、项目制强、对公众反馈极其敏感；内部既有把流量视为一切的人，也有强调长期艺人健康与作品价值的人。
+  relationship:
+    faction_001:
+      status: cooperative
+      description: 霓桥会在合同、演出事故、艺人与第三方纠纷中聘请协理人，同时嫌协理流程有时拖慢舆情响应速度。
+    faction_002:
+      status: tense
+      description: 公司依赖研究中心进行专业科普，但常因标题化表达、研究结论娱乐化和公众误读被研究人员批评。
+    faction_003:
+      status: cooperative
+      description: 双方在演出保险、艺人责任和大型商业项目风险管理上长期合作。
+    faction_005:
+      status: cooperative
+      description: 大型演出和直播活动需要公共安全部门制定现场安全方案和能力使用边界。
+    faction_006:
+      status: cooperative
+      description: 霓桥经常从南栈发掘独立艺人和小型场地，也会因商业化改造、流量涌入与居民生活产生争议。
+  knowledge_boundary:
+    rules_source: data/knowledge/knowledge_rules.yaml
+    public_information:
+    - lore_id: lore_018
+      summary: 霓桥经营艺人经纪、直播、广告和演出业务，旗下项目经常把能力表现作为舞台或内容特色。
+    - lore_id: lore_019
+      summary: 霓桥公开承认公众标签可能影响艺人长期状态，并设置艺人支持与危机沟通岗位。
+    member_information:
+    - lore_id: lore_020
+      summary: 公司内部把能力相关公众标签视为品牌资产和艺人风险的双重变量，重大项目会提前评估舆情反馈。
+    - lore_id: lore_021
+      summary: 普通艺人和员工只能访问自己项目、合同或团队范围内的信息，跨艺人数据并不默认共享。
+    restricted_information:
+    - lore_id: lore_022
+      summary: 公众关系团队正在跟踪少数艺人在长期固定人设后出现的偏置变化，以判断是否需要调整宣传策略和工作安排。
+      access_requirement:
+      - 相关艺人团队负责人
+      - 公众关系与艺人支持部授权成员
+      - 相关法务人员
+    secret_information: []
+  rumors:
+  - id: rumor_005
+    content: 有人说霓桥会故意制造负面舆论，让艺人的能力在公众压力下变得更强。
+    truth_status: false
+    known_by:
+    - public
+  story_functions:
+  - 承载公众形象、社交媒体、流量和回写效应之间的冲突
+  - 提供演出、直播、合同、偶像与创作者日常剧情
+  - 让主线问题以轻快都市娱乐内容和舆论事件进入玩家视野
+  character_archetypes:
+  - 把能力当舞台表达而非标签的年轻偶像
+  - 极其擅长塑造公众印象的经纪人
+  - 厌恶算法但离不开平台流量的独立主播
+  - 重视艺人长期状态的危机公关负责人
+  canon_constraints:
+  - 霓桥传媒不是洗脑集团，也不能直接控制公众认知或他人能力。
+  - 艺人并不自动知道公司高层策略、其他艺人隐私或受限舆情数据。
+  - 公司可以利用人设与流量，但这种行为必须受合同、舆论、法律和商业风险约束。
+  - 组织内部应存在商业增长与艺人长期健康之间的真实分歧。
+  - 娱乐剧情必须保留普通工作、演出、人际关系与创作生活，而非全部转化为阴谋。
+  tags:
+  - 传媒
+  - 娱乐
+  - 艺人
+  - 公众形象
+  - 社交媒体
+  - 人设
+- id: faction_005
+  name: 临洲市公共安全联席体系
+  short_name: 公共安全联席
+  type: public_service
+  status: active
+  headquarters:
+    city: 临洲市
+    district: 中央湾
+    description: 没有单一独立总部；常设协调办公室位于中央湾，警察、消防、急救和大型活动安全单位仍保留各自原有机构和指挥体系。
+  public_identity:
+    description: 用于协调警务、消防、急救与大型活动安全工作的跨部门公共协作机制，处理涉及多部门和能力风险的复杂公共事件。
+  public_reputation:
+    description: 公众通常把它理解为大型事故和活动中的跨部门协调机制，而不是一个独立机关；评价集中在响应速度、程序透明和现场安全。
+    keywords:
+    - 公共安全
+    - 警务
+    - 消防
+    - 急救
+    - 协作
+  core_function:
+    description: 让不同公共部门在不改变法定职责的前提下共享必要信息、统一现场接口并处理跨部门安全风险。
+  ideology:
+    principles:
+    - 能力不是特权，公共场所的安全责任适用于所有人。
+    - 高风险用途必须可预测、可训练、可追责。
+    - 跨部门协作不能成为无限扩张数据权限的理由。
+  stance_on_main_conflict:
+    summary: 在公共安全场景中倾向较严格的能力认证和可预测性要求，但反对以能力标签替代具体行为和现场证据。
+    supports:
+    - 高风险能力用途认证
+    - 大型活动能力使用备案与安全方案
+    - 事故后的跨部门复盘
+    opposes:
+    - 仅凭能力类型实施预防性处罚
+    - 建立无限范围的统一能力人员数据库
+    - 企业或平台绕过法定程序获取公共安全数据
+  actual_goal:
+    description: 降低跨部门事件中的响应断层和责任推诿，建立一套在能力社会中仍能被公众理解和监督的公共安全协作标准。
+    visibility: internal
+  internal_structure:
+    description: 联席体系本质是协调机制，各参与单位仍按法律和专业体系独立运作；常设办公室负责接口、演练和复盘。
+    divisions:
+    - id: division_013
+      name: 联席协调办公室
+      function: 维护跨部门预案、联系人机制与重大事件协调流程。
+    - id: division_014
+      name: 大型活动安全组
+      function: 协调演出、赛事和公共活动中的能力使用、消防、医疗与人群安全。
+    - id: division_015
+      name: 事故复盘与培训组
+      function: 整理跨部门事故案例并更新联合演练和培训标准。
+  member_profile:
+    typical_roles:
+    - 警员
+    - 消防员
+    - 急救医生
+    - 活动安全顾问
+    - 调度人员
+    - 社区工作人员
+    recruitment:
+      description: 成员主要来自既有公共部门和获得授权的专业单位，并非通过一个独立的联席体系统一招募。
+    culture:
+      description: 程序意识强、重现场责任和专业分工；不同部门之间存在典型的资源、职责和信息共享摩擦。
+  relationship:
+    faction_001:
+      status: cooperative
+      description: 公共安全部门负责法定处置，协理人常在后续民事协调、信息整理和多方沟通中接手工作。
+    faction_002:
+      status: cooperative
+      description: 研究中心为能力安全培训和事故机制分析提供学术支持，但联席体系不会直接采用未经验证的研究结论。
+    faction_003:
+      status: cooperative
+      description: 事故统计和安全标准会影响保险行业，但共享内容受法律、隐私和案件程序限制。
+    faction_004:
+      status: cooperative
+      description: 霓桥的大型活动需要联席体系参与安全协调，双方常在创意效果与现场限制之间谈判。
+    faction_006:
+      status: cooperative
+      description: 南栈社区需要消防、活动和治安协作，联席体系也依赖社区组织了解本地实际情况。
+  knowledge_boundary:
+    rules_source: data/knowledge/knowledge_rules.yaml
+    public_information:
+    - lore_id: lore_023
+      summary: 临洲公共安全联席体系是警务、消防、急救和大型活动安全之间的协作机制，不是独立的能力管理机关。
+    - lore_id: lore_024
+      summary: 高风险公共能力使用需要遵守与场景对应的安全规范和认证要求。
+    member_information:
+    - lore_id: lore_025
+      summary: 联席事件中不同部门只共享完成职责所必需的信息，原始案件数据仍按各自权限管理。
+    - lore_id: lore_026
+      summary: 近期联合培训开始加入回写效应相关内容，重点是避免现场人员因能力标签形成先入判断。
+    restricted_information:
+    - lore_id: lore_027
+      summary: 一批内部复盘案例显示，错误的能力风险标签可能影响现场决策并造成次生冲突，联席体系正在修改部分预案措辞。
+      access_requirement:
+      - 事故复盘与培训组成员
+      - 相关部门培训负责人
+      - 涉案专业负责人
+    secret_information: []
+  rumors:
+  - id: rumor_006
+    content: 有人认为公共安全联席体系背后其实有一份所有高风险能力者的秘密名单。
+    truth_status: false
+    known_by:
+    - public
+  story_functions:
+  - 提供城市事故、活动安全、警务与急救等现实公共事件
+  - 展现能力社会中的法律程序和公共责任边界
+  - 制造不同专业机构之间的职责摩擦，而非秘密政府阴谋
+  character_archetypes:
+  - 重程序但懂得临场变通的警员
+  - 把能力安全当职业技能而非身份标签的消防员
+  - 习惯在混乱现场做快速判断的急救医生
+  - 夹在创意活动与安全规范之间的年轻安全顾问
+  canon_constraints:
+  - 该体系是跨部门协作机制，不是独立的异能管理局。
+  - 警察、消防和急救保留各自正常机构、权限和法律责任。
+  - 不能存在无边界、面向所有市民的秘密能力监控数据库。
+  - 成员不得仅凭能力类型认定一个人有犯罪倾向。
+  - 公共安全剧情必须遵循正常法治和专业体系，而非秘密收容逻辑。
+  tags:
+  - 公共安全
+  - 警察
+  - 消防
+  - 急救
+  - 活动安全
+  - 联席机制
+- id: faction_006
+  name: 南栈生活合作社
+  short_name: 南栈合作社
+  type: community
+  status: active
+  headquarters:
+    city: 临洲市
+    district: 南栈街区
+    description: 合作社办公室设在南栈旧商业街一栋改造后的综合空间中，一层兼作居民议事和小型活动场地。
+  public_identity:
+    description: 由小店经营者、居民、自由职业者、独立艺人与工作室共同组成的社区合作组织，处理街区活动、资源共享、经营协作与公共议题。
+  public_reputation:
+    description: 在本地居民中有较强人情网络和号召力，外界常把它视为南栈独立文化的象征；也有人认为其议事效率偏低、过度保护旧有生活方式。
+    keywords:
+    - 社区
+    - 小商业
+    - 独立文化
+    - 居民
+    - 反过度标准化
+  core_function:
+    description: 帮助规模较小、资源分散的居民和经营者共同应对租赁、活动、保险、商业改造和公共沟通问题。
+  ideology:
+    principles:
+    - 一个人的社会价值不能只由效率、评级和风险数字决定。
+    - 社区规则应允许不同生活方式共存。
+    - 反对过度标准化不等于拒绝安全责任和专业规范。
+  stance_on_main_conflict:
+    summary: 对能力评级进入租赁、招聘、商业信用和社区生活保持高度警惕，支持个人拥有纠正标签和拒绝非必要测评的权利。
+    supports:
+    - 能力测评用途透明
+    - 个人数据最小化使用
+    - 社区层面的申诉和协商机制
+    opposes:
+    - 把能力评级作为租赁和招聘的默认筛选条件
+    - 未经当事人同意传播能力标签
+    - 用风险模型直接决定一个人在社区中的可信度
+  actual_goal:
+    description: 在城市更新、商业资本和标准化管理不断进入南栈的情况下，保住街区中小经营者与居民的生存空间，同时避免合作社滑向排外或拒绝一切现代规范。
+    visibility: internal
+  internal_structure:
+    description: 合作社组织松散，以成员大会、日常协调小组和项目工作组运作，没有严格等级制。
+    divisions:
+    - id: division_016
+      name: 经营互助组
+      function: 处理小店采购、租赁、保险和联合活动等现实经营问题。
+    - id: division_017
+      name: 街区文化组
+      function: 组织演出、市集、展览和独立创作者合作。
+    - id: division_018
+      name: 居民协调组
+      function: 处理邻里沟通、公共空间、噪声、活动和社区申诉。
+  member_profile:
+    typical_roles:
+    - 店主
+    - 学生
+    - 乐手
+    - 手艺人
+    - 自由职业者
+    - 社区志愿者
+    - 小型工作室经营者
+    recruitment:
+      description: 主要由南栈本地居民、经营者和长期工作者自愿加入，也接受与街区有稳定合作关系的独立职业者参与项目。
+    culture:
+      description: 重人情、重现场经验、反感空降式管理；内部意见非常多元，年轻成员与老店主之间经常就商业化、规则和开放程度争论。
+  relationship:
+    faction_001:
+      status: cooperative
+      description: 合作社经常借助协理人处理成员与房东、保险、活动方和公共部门之间的复杂纠纷。
+    faction_002:
+      status: cooperative
+      description: 合作社允许研究中心开展自愿式社区项目，但会严格追问数据用途、退出机制和研究结果如何反馈给居民。
+    faction_003:
+      status: tense
+      description: 双方围绕小商户能力责任险和风险评级长期争论，但现实经营仍需要保险服务，因此并未中断合作。
+    faction_004:
+      status: cooperative
+      description: 霓桥为本地艺人和场地带来曝光与收入，也可能造成租金上涨、客流冲击和社区生活商业化。
+    faction_005:
+      status: cooperative
+      description: 街区活动、消防、治安和急救需要稳定合作，合作社同时代表居民向公共部门反馈实际问题。
+  knowledge_boundary:
+    rules_source: data/knowledge/knowledge_rules.yaml
+    public_information:
+    - lore_id: lore_028
+      summary: 南栈生活合作社由本地小店、居民、自由职业者和独立艺人共同组成，主要处理社区经营与公共议题。
+    - lore_id: lore_029
+      summary: 合作社公开反对把能力评级作为租赁、招聘和社区信用的默认筛选条件。
+    member_information:
+    - lore_id: lore_030
+      summary: 合作社内部并不反对所有能力认证；大多数成员支持与消防、医疗、活动安全直接相关的明确专业规则。
+    - lore_id: lore_031
+      summary: 成员大会长期存在两派争论：一派希望借商业合作改善街区经济，另一派更担忧品牌化会挤压原有居民和小店。
+    restricted_information:
+    - lore_id: lore_032
+      summary: 经营互助组正在整理成员遭遇的能力评级争议案例，计划与协理联合会共同推动更明确的申诉标准。
+      access_requirement:
+      - 经营互助组项目成员
+      - 合作社轮值协调人
+      - 相关协理项目成员
+    secret_information: []
+  rumors:
+  - id: rumor_007
+    content: 网上有人把南栈合作社称为专门帮助高风险能力者逃避监管的地下网络。
+    truth_status: false
+    known_by:
+    - public
+  story_functions:
+  - 承载小店、学生、独立艺人和居民的高密度日常角色故事
+  - 让标准化争议落到租金、工作、保险和邻里关系等具体生活问题
+  - 提供城市更新、商业化与社区自治之间的长期冲突
+  character_archetypes:
+  - 经营家族小店但想改变旧规矩的年轻店主
+  - 兼职乐手与社区志愿者
+  - 反感大公司但很懂现实经营的合作社协调人
+  - 刚搬来南栈、逐渐进入社区网络的自由职业者
+  canon_constraints:
+  - 南栈合作社不是地下反抗军或非法能力者庇护组织。
+  - 合作社反对过度标准化，但不能拒绝合理的消防、医疗和公共安全规范。
+  - 成员之间必须存在真实分歧，不能被写成统一意识形态共同体。
+  - 普通成员不会自动知道其他成员的私人能力记录、合同或纠纷细节。
+  - 南栈相关剧情应保留商业、社区和日常生活质感，而非沦为反政府据点。
+  tags:
+  - 南栈
+  - 社区
+  - 小商业
+  - 独立文化
+  - 居民
+  - 生活

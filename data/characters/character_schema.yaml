@@ -1,0 +1,585 @@
+# Character Schema
+#
+# This file is the contract for character records. It intentionally describes
+# the shape and constraints of a record instead of inventing character data.
+# Missing identity layers must be null; do not fill them with placeholders.
+
+schema_version: "1.2"
+entity: character
+
+required:
+  - id
+  - name
+  - name_design
+  - basic_profile
+  - geography
+  - phenotype
+  - identity
+  - character_hook
+  - personality
+  - life
+  - ability
+  - narrative
+  - gameplay
+  - combat
+  - agent_profile
+  - canon_constraints
+  - tags
+
+fields:
+  id:
+    type: string
+    description: Stable internal identifier; it is not a player-facing name.
+
+  name:
+    type: object
+    required:
+      - mode
+      - display_name
+      - legal_name
+      - native_name
+      - localized_name
+      - aliases
+      - codename
+      - stage_name
+      - online_handle
+      - common_address
+    fields:
+      mode:
+        type: enum
+        values:
+          - fixed
+          - player_defined
+
+      display_name:
+        type: string_or_null
+        min_length_if_present: 1
+        description: Primary player-facing identity for UI, lists and gacha screens.
+
+      legal_name:
+        type: object_or_null
+        required_if_present: [full, language, script]
+        fields:
+          full: {type: string, min_length: 1}
+          language: {type: string, min_length: 1}
+          script: {type: string, min_length: 1}
+
+      native_name:
+        type: object_or_null
+        required_if_present: [full, language, script]
+        fields:
+          full: {type: string, min_length: 1}
+          language: {type: string, min_length: 1}
+          script: {type: string, min_length: 1}
+
+      localized_name:
+        type: object_or_null
+        required_if_present: [value, language, source]
+        fields:
+          value: {type: string, min_length: 1}
+          language: {type: string, min_length: 1}
+          source: {type: string, min_length: 1}
+          method:
+            type: enum
+            values: [standard_transliteration, partial_translation, established_local_name]
+
+      aliases:
+        type: array
+        unique_by: value
+        item_fields:
+          value: {type: string, min_length: 1}
+          context: {type: string, min_length: 1}
+          used_by: {type: array, item_type: string}
+
+      codename:
+        type: object_or_null
+        required_if_present: [value, type, origin, used_by]
+        fields:
+          value: {type: string, min_length: 1}
+          type:
+            type: enum
+            values:
+              - professional_alias
+              - stage_identity
+              - online_identity
+              - team_or_band_name
+              - creator_signature
+              - competition_nickname
+              - project_call_sign
+              - industry_name
+              - work_alias
+          origin: {type: string, min_length: 1}
+          used_by: {type: array, item_type: string, min_items: 1}
+
+      stage_name:
+        type: object_or_null
+        required_if_present: [value, origin, used_by]
+        fields:
+          value: {type: string, min_length: 1}
+          origin: {type: string, min_length: 1}
+          used_by: {type: array, item_type: string, min_items: 1}
+
+      online_handle:
+        type: object_or_null
+        required_if_present: [value, platform, origin]
+        fields:
+          value: {type: string, min_length: 1}
+          platform: {type: string, min_length: 1}
+          origin: {type: string, min_length: 1}
+
+      common_address:
+        type: string
+        description: Default ordinary address when no relationship-specific rule applies.
+
+  name_design:
+    type: object
+    required:
+      - strategy
+      - references
+      - linguistic_notes
+      - thematic_connection
+      - public_identity_connection
+      - design_notes
+    fields:
+      strategy:
+        type: array
+        unique_items: true
+        item_type: enum
+        values:
+          - natural_naming
+          - family_background
+          - classical_reference
+          - literary_reference
+          - mythological_reference
+          - film_reference
+          - theater_reference
+          - music_reference
+          - visual_art_reference
+          - historical_reference
+          - religious_or_folklore_reference
+          - professional_metaphor
+          - scientific_term
+          - foreign_language_wordplay
+          - phonetic_reference
+          - transliteration
+          - translation
+          - sound_design
+          - stage_identity
+          - online_identity
+          - nickname_evolution
+
+      references:
+        type: array
+        description: Empty is valid. Record creative transformation, not a borrowed identity.
+        item_fields:
+          type: {type: string, min_length: 1}
+          work_or_source: {type: string, min_length: 1}
+          element_used: {type: string, min_length: 1}
+          transformation: {type: string, min_length: 1}
+
+      linguistic_notes: {type: string}
+      thematic_connection: {type: string}
+      public_identity_connection: {type: string}
+      design_notes: {type: string}
+
+  codename_design:
+    type: object_or_null
+    required_if_present:
+      - value
+      - origin_type
+      - origin_story
+      - literal_meaning
+      - thematic_connection
+      - current_usage
+    fields:
+      value: {type: string, min_length: 1}
+      origin_type: {type: string, min_length: 1}
+      origin_story: {type: string, min_length: 1}
+      literal_meaning: {type: string}
+      thematic_connection: {type: string}
+      current_usage: {type: string, min_length: 1}
+
+  address_rules:
+    type: object
+    allowed_keys: [public, colleague, friend, intimate, formal]
+    value_type: string
+    description: Static address rules only; relationship state selection is out of scope.
+
+  naming_review:
+    type: object_or_null
+    required:
+      - display_name
+      - legal_or_native_name
+      - codename_or_stage_name
+      - naming_strategy
+      - reference
+      - transformation
+      - character_fit
+      - player_memory_fit
+      - naturalness_check
+    fields:
+      display_name: {type: string}
+      legal_or_native_name: {type: string}
+      codename_or_stage_name: {type: string}
+      naming_strategy: {type: string}
+      reference: {type: string}
+      transformation: {type: string}
+      character_fit: {type: string}
+      player_memory_fit: {type: string}
+      naturalness_check: {type: string}
+
+  basic_profile:
+    type: object
+    required:
+      - age_band
+      - legal_age_status
+      - occupation
+    fields:
+      age: {type: integer_or_null, minimum: 0}
+      age_band:
+        type: enum
+        values: [teen, young_adult, adult, mid_career, older_adult]
+      legal_age_status:
+        type: enum
+        values: [minor, adult, unknown]
+        description: Legal-age context for Story, Quest and Combat Narrative agents; this is not a gameplay rarity or personality field.
+      gender: {type: string_or_null}
+      pronouns: {type: string_or_null}
+      nationality_or_cultural_background: {type: string_or_null}
+      occupation: {type: string}
+      workplace_or_school: {type: string_or_null}
+
+  geography:
+    type: object
+    required:
+      - current_city_id
+      - home_district_id
+      - primary_activity_areas
+      - origin_context
+    fields:
+      current_city_id:
+        type: string
+        description: Current city entity reference; validate against data/locations/cities.yaml.
+      home_district_id:
+        type: string_or_null
+        description: Current home district reference; validate against districts.yaml when non-null and require it to belong to current_city_id.
+      primary_activity_areas:
+        type: array
+        item_fields:
+          city_id:
+            type: string
+          district_id:
+            type: string_or_null
+          location_id:
+            type: string_or_null
+      origin_context:
+        type: string_or_null
+        description: Optional growth or relocation context; never a nationality label.
+
+  phenotype:
+    type: object
+    required:
+      - category
+      - visible_traits
+      - design_notes
+    fields:
+      category:
+        type: enum
+        values: [baseline_humanoid, partial_theriomorphic, full_theriomorphic]
+        description: Stable population phenotype terminology, not a social rank, ability class or species society.
+      visible_traits:
+        type: array
+        item_type: string
+      design_notes:
+        type: string
+      everyday_accommodations:
+        type: array
+        item_type: string
+
+  identity:
+    type: object
+    required:
+      - faction_id
+      - division_ids
+      - roles
+      - responsibilities
+      - assignments
+      - explicit_grants
+    fields:
+      faction_id: {type: string_or_null}
+      division_ids: {type: array, item_type: string}
+      roles: {type: array, item_type: string}
+      responsibilities: {type: array, item_type: string}
+      assignments: {type: array, item_type: string}
+      explicit_grants: {type: array, item_type: string}
+
+  social_identity:
+    type: object_or_null
+    fields:
+      economic_background: {type: string_or_null}
+      education_background: {type: string_or_null}
+      family_context: {type: string_or_null}
+      housing_context: {type: string_or_null}
+      public_reputation: {type: string_or_null}
+      professional_reputation: {type: string_or_null}
+
+  character_hook:
+    type: object
+    required:
+      - first_impression
+      - visual_or_behavioral_motif
+      - memorable_contrast
+    fields:
+      first_impression: {type: string}
+      visual_or_behavioral_motif: {type: string}
+      memorable_contrast: {type: string}
+
+  personality:
+    type: object
+    required:
+      - surface_traits
+      - underlying_traits
+      - values
+      - contradictions
+      - dislikes
+      - habits
+    fields:
+      surface_traits: {type: array, item_type: string}
+      underlying_traits: {type: array, item_type: string}
+      values: {type: array, item_type: string}
+      contradictions: {type: array, item_type: string}
+      dislikes: {type: array, item_type: string}
+      habits: {type: array, item_type: string}
+
+  life:
+    type: object
+    required:
+      - current_concerns
+      - routine
+      - hobbies
+      - social_connections
+    fields:
+      current_concerns: {type: array, item_type: string}
+      routine: {type: array, item_type: string}
+      hobbies: {type: array, item_type: string}
+      social_connections:
+        type: array
+        item_fields:
+          type: {type: string, min_length: 1}
+          target_character_id: {type: string_or_null}
+          description: {type: string}
+
+  ability:
+    type: object
+    required:
+      - status
+      - rule
+      - trigger
+      - limitation
+      - everyday_uses
+      - professional_uses
+      - risks
+    fields:
+      status:
+        type: enum
+        values: [none, minor, stable, trained, high_risk_certified, special_case]
+      rule: {type: string_or_null}
+      trigger: {type: string_or_null}
+      limitation: {type: string_or_null}
+      everyday_uses: {type: array, item_type: string}
+      professional_uses: {type: array, item_type: string}
+      risks: {type: array, item_type: string}
+
+  narrative:
+    type: object
+    required:
+      - core_theme
+      - personal_conflict
+      - relationship_to_main_conflict
+      - story_entry_points
+      - growth_direction
+    fields:
+      core_theme: {type: string}
+      personal_conflict: {type: string}
+      relationship_to_main_conflict:
+        type: enum
+        values: [direct, indirect, institutional, personal, currently_none]
+      story_entry_points: {type: array, item_type: string}
+      growth_direction: {type: string}
+
+  gameplay:
+    type: object
+    required:
+      - playable
+      - rarity
+      - release_status
+    fields:
+      playable:
+        type: boolean
+      rarity:
+        type: enum_or_null
+        values: [A, S]
+        description: Gameplay, gacha and product metadata only; never an in-world rank.
+      release_status:
+        type: enum
+        values: [launch, planned, unreleased, npc_only]
+
+  combat:
+    type: object
+    required:
+      - combat_participation_reason
+      - tentative_role
+      - notes
+    fields:
+      combat_participation_reason: {type: string}
+      tentative_role:
+        type: enum
+        values: [support, control, defense, burst, sustain, flex, none]
+      notes: {type: string}
+
+  agent_profile:
+    type: object
+    required:
+      - knowledge_style
+      - speech_style
+      - communication_habits
+      - default_information_behavior
+      - sensitive_topics
+    fields:
+      knowledge_style: {type: string}
+      speech_style: {type: string}
+      communication_habits: {type: array, item_type: string}
+      default_information_behavior: {type: string}
+      sensitive_topics: {type: array, item_type: string}
+
+  canon_constraints:
+    type: array
+    item_type: string
+
+  tags:
+    type: array
+    unique_items: true
+    item_type: string
+
+validation:
+  - id: display_name_is_primary
+    rule: name.display_name must be the shortest stable player-facing identity for fixed characters, and need not equal name.legal_name.full.
+  - id: fixed_name_requires_display_name
+    rule: If name.mode == fixed, name.display_name must be present and non-empty.
+  - id: player_defined_name_is_optional
+    rule: If name.mode == player_defined, name.display_name may be null and legal/native/localized names must not be required.
+  - id: fixed_naming_review_required
+    rule: If name.mode == fixed, naming_review must be present and complete.
+  - id: player_defined_naming_review_optional
+    rule: If name.mode == player_defined, naming_review may be null.
+  - id: absent_layers_are_null
+    rule: Any absent legal, native, localized, codename, stage or online identity layer must be null.
+  - id: localized_name_has_source
+    rule: A localized_name is invalid without a source explaining how the localized form arose.
+  - id: alias_is_social
+    rule: Every aliases item must identify a real social context or users; aliases must not be padding.
+  - id: codename_has_social_origin
+    rule: A codename must explain why real people use it; combat ability alone is not an origin.
+  - id: codename_design_matches_codename
+    rule: codename_design is required exactly when name.codename is present, and its value must match.
+  - id: stage_and_online_identity_have_origin
+    rule: stage_name and online_handle require a documented origin and current social use.
+  - id: references_are_transformations
+    rule: References must document an extracted element and its transformation; copied or recognizable identities are invalid.
+  - id: strategy_is_evidence_based
+    rule: "strategy may contain only genuinely relevant strategies; natural_naming with references: [] is valid."
+  - id: naming_does_not_spoil
+    rule: Names must not directly reveal ability rules, secret lore, hidden identity or final plot outcome.
+  - id: background_is_not_archetype
+    rule: Nationality or language background must not be used as a personality shortcut or quota.
+  - id: geography_current_city_exists
+    rule: geography.current_city_id must reference an existing city in data/locations/cities.yaml; this is a cross-file validation owned by validate_data.py.
+  - id: geography_home_district_exists
+    rule: When geography.home_district_id is not null, it must reference an existing district in districts.yaml; this is a cross-file validation owned by validate_data.py.
+  - id: geography_home_district_belongs_to_city
+    rule: geography.home_district_id must belong to geography.current_city_id; this is a cross-file validation owned by validate_data.py.
+  - id: geography_activity_city_exists
+    rule: Every geography.primary_activity_areas.city_id must reference an existing city; this is a cross-file validation owned by validate_data.py.
+  - id: geography_activity_district_belongs_to_city
+    rule: When a primary activity area has district_id, that district must belong to its city_id; this is a cross-file validation owned by validate_data.py.
+  - id: geography_location_belongs_to_district
+    rule: When a primary activity area has location_id, future validate_data.py checks the location to district to city hierarchy without duplicating location vocabulary here.
+  - id: phenotype_is_not_ability
+    rule: Population phenotype must not be interpreted as an individual bias ability.
+  - id: phenotype_does_not_define_personality
+    rule: Phenotype category or animal-like visible traits must not automatically define personality, morality, profession or social role.
+  - id: phenotype_does_not_define_rarity
+    rule: Gameplay rarity A/S must not be inferred from phenotype.
+  - id: phenotype_does_not_define_combat
+    rule: Animal-like traits must not automatically create combat mechanics unless an ordinary physiological consequence is explicitly established and separately justified.
+  - id: full_theriomorphic_is_normal_citizen
+    rule: Full theriomorphic characters are ordinary members of society and must not be treated as monsters or a secret population by default.
+  - id: minor_is_not_default_frontline_professional
+    rule: A minor must not be described as routinely employed for professional high-risk frontline combat, policing, military duty or equivalent dangerous work unless future Canon establishes a lawful exception; any participation needs a concrete combat_participation_reason.
+  - id: language_is_not_caricature
+    rule: Foreign-language background must not be represented through forced grammar errors or stereotyped accents.
+  - id: first_seven_have_variety
+    rule: The first seven fixed characters should cover at least four naming strategies, with variation emerging from character design rather than nationality quotas.
+  - id: ui_and_search_review
+    rule: Review display_name for searchability, pronounceability, distinctiveness, UI length and natural nickname potential.
+  - id: occupation_is_not_knowledge_role
+    rule: occupation and identity.roles are separate; an occupation must not automatically grant a Knowledge Resolver role.
+  - id: identity_faction_reference_exists
+    rule: identity.faction_id, when present, must reference an existing faction id in data/factions/factions.yaml; cross-file validation belongs in scripts/validate_data.py.
+  - id: identity_division_reference_exists
+    rule: Every identity.division_ids item must reference an existing division id in data/factions/factions.yaml; cross-file validation belongs in scripts/validate_data.py.
+  - id: identity_division_belongs_to_faction
+    rule: Every identity.division_ids item must belong to identity.faction_id; cross-file validation belongs in scripts/validate_data.py.
+  - id: knowledge_role_registered
+    rule: Every identity.roles item used by Knowledge Resolver must exist in knowledge_rules.yaml vocabulary.role_types; cross-file validation belongs in scripts/validate_data.py.
+  - id: knowledge_responsibility_registered
+    rule: Every identity.responsibilities item used by Knowledge Resolver must exist in knowledge_rules.yaml vocabulary.responsibility_types; cross-file validation belongs in scripts/validate_data.py.
+  - id: knowledge_assignment_registered
+    rule: Every identity.assignments item used by Knowledge Resolver must exist in knowledge_rules.yaml vocabulary.assignment_types; cross-file validation belongs in scripts/validate_data.py.
+  - id: ability_is_personal_rule
+    rule: ability.rule must describe a finite personal rule with a trigger and limitation, not elemental magic, omniscience, unlimited teleportation, time stop, universal mind reading or unrestricted telekinesis.
+  - id: none_ability_is_explicitly_empty
+    rule: If ability.status == none, rule, trigger and limitation may be null and everyday_uses, professional_uses and risks must be empty arrays.
+  - id: ability_does_not_replace_profession
+    rule: Ability must not be inferred from occupation, personality or a professional skill, and must not replace ordinary training.
+  - id: narrative_does_not_require_main_conflict
+    rule: A character may have personal, professional, family, creative, academic, commercial or relationship conflict without directly relating it to the main conflict.
+  - id: playable_character_requires_rarity
+    rule: Fixed playable characters must use gameplay.rarity A or S, except the player-defined protagonist.
+  - id: npc_has_no_rarity
+    rule: Characters with gameplay.playable == false must use gameplay.rarity null; gameplay.release_status npc_only also requires playable false and rarity null.
+  - id: protagonist_has_no_gacha_rarity
+    rule: A player-defined protagonist may be playable with gameplay.rarity null because protagonist identity is outside the ordinary A/S gacha rarity system.
+  - id: rarity_is_gameplay_only
+    rule: gameplay.rarity must never be interpreted as an in-world ability rank, social rank, knowledge level or combat-power classification.
+  - id: rarity_does_not_grant_knowledge
+    rule: gameplay.rarity must never affect Knowledge Resolver access.
+  - id: rarity_does_not_define_ability
+    rule: Ability scale, complexity or rarity must not be increased merely because gameplay.rarity is S.
+  - id: playable_requires_combat_reason
+    rule: If gameplay.playable == true, combat.combat_participation_reason must be non-empty and explain why the character can reasonably participate in dangerous scenes.
+  - id: playable_release_status_consistency
+    rule: For fixed characters, gameplay.release_status values launch, planned and unreleased require gameplay.playable == true and gameplay.rarity A or S. gameplay.release_status npc_only requires gameplay.playable == false and gameplay.rarity == null. The player-defined protagonist remains the only playable character allowed to use gameplay.rarity == null.
+  - id: no_unestablished_combat_system
+    rule: combat must not introduce elements, weapon types, damage types, combat classes, skill multipliers or other uncanonized combat mechanics.
+  - id: agent_profile_is_expression_only
+    rule: agent_profile controls how information is expressed, not what the character knows.
+  - id: knowledge_is_resolver_owned
+    rule: Character records must not contain a manually enumerated complete known_lore list; knowledge is resolved from identity, knowledge_rules and explicit_grants.
+  - id: no_personality_shortcuts
+    rule: character_hook and personality must describe an individual rather than archetype-only labels such as cold big sister, energetic girl or scheming man.
+  - id: no_stereotyped_foreign_speech
+    rule: agent_profile must not represent foreign background through forced grammar errors or exaggerated accent.
+  - id: faction_and_geography_are_separate
+    rule: identity.faction_id is organizational identity and geography.current_city_id is geographic identity; neither field may be used as a substitute for the other.
+
+review_template:
+  Display Name: ""
+  Legal / Native Name: ""
+  Codename / Stage Name: ""
+  Naming Strategy: ""
+  Reference: none
+  Transformation: ""
+  Why it fits the character: ""
+  Why players can remember it: ""
+  Why it is not random or forced: ""

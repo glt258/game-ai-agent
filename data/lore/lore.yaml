@@ -1,0 +1,746 @@
+version: "0.1"
+
+description: >
+  临洲世界的客观事实数据库。Lore 描述世界中真实存在、发生或正在研究的事实，
+  不代表任何具体角色天然知道这些信息。
+
+lore:
+  - id: lore_001
+    title: 临洲存在合法的协理职业
+    statement: 临洲存在合法的协理职业，协理人主要承担跨机构协调、事实整理和民事争议处理。
+    category: institution
+    truth_status: true
+    sensitivity: public
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_001]
+      locations: []
+      characters: []
+      concepts: [mediation_profession, cross_institution_coordination]
+    source:
+      type: faction_database
+      references: [faction_001.knowledge_boundary.public_information]
+    tags: [协理职业, 民事争议, 跨机构协调]
+
+  - id: lore_002
+    title: 协理联合会的行业治理职责
+    statement: 协理联合会负责行业培训、职业规范和部分公共项目转介，但不拥有警察或行政机关的强制权。
+    category: institution
+    truth_status: true
+    sensitivity: public
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_001]
+      locations: []
+      characters: []
+      concepts: [professional_standards, public_project_referral]
+    source:
+      type: faction_database
+      references: [faction_001.knowledge_boundary.public_information]
+    tags: [协理联合会, 行业规范, 权限边界]
+
+  - id: lore_003
+    title: 协理联合会的能力评级案件增长
+    statement: 协理联合会近年将能力评级争议和回写效应相关委托列为高增长案件类型，并正在调整培训内容。
+    category: institution
+    truth_status: true
+    sensitivity: internal
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_001]
+      locations: []
+      characters: []
+      concepts: [ability_assessment, writeback_effect, professional_training]
+    source:
+      type: faction_database
+      references: [faction_001.knowledge_boundary.member_information]
+    tags: [能力评级, 回写效应, 协理培训]
+
+  - id: lore_004
+    title: 协理案件的数据来源记录要求
+    statement: 协理联合会内部要求涉及多机构数据的案件记录信息来源、授权范围与可访问人员。
+    category: policy
+    truth_status: true
+    sensitivity: internal
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_001]
+      locations: []
+      characters: []
+      concepts: [data_provenance, access_scope, accountability]
+    source:
+      type: faction_database
+      references: [faction_001.knowledge_boundary.member_information]
+    tags: [数据来源, 授权范围, 访问记录]
+
+  - id: lore_005
+    title: 协理联合会正在汇总能力评级案例
+    statement: 协理联合会正在汇总一批跨行业案例，并计划用这些案例评估单一能力评级在长期个案中是否存在系统性偏差。
+    category: research
+    truth_status: true
+    sensitivity: restricted
+    canon_level: established
+    temporal:
+      status: ongoing
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_001]
+      locations: []
+      characters: []
+      concepts: [ability_assessment, longitudinal_bias, case_review]
+    source:
+      type: faction_database
+      references: [faction_001.knowledge_boundary.restricted_information]
+    tags: [能力评级, 系统性偏差, 跨行业案例]
+
+  - id: lore_006
+    title: 临大能力中心公开研究偏置与回写效应
+    statement: 临洲大学行为与能力研究中心公开研究偏置、能力训练和回写效应，并定期发布科普报告。
+    category: research
+    truth_status: true
+    sensitivity: public
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_002]
+      locations: []
+      characters: []
+      concepts: [bias_effect, ability_training, writeback_effect]
+    source:
+      type: faction_database
+      references: [faction_002.knowledge_boundary.public_information]
+    tags: [能力研究, 能力训练, 科普报告]
+
+  - id: lore_007
+    title: 回写效应的存在
+    statement: 回写效应是已经被确认存在的能力相关现象。
+    category: research
+    truth_status: true
+    sensitivity: public
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_002]
+      locations: []
+      characters: []
+      concepts: [writeback_effect, group_cognition, research_uncertainty]
+    source:
+      type: canon
+      references: [world_bible.section_7, faction_002.knowledge_boundary.public_information]
+    tags: [回写效应, 能力机制, 世界事实]
+
+  - id: lore_033
+    title: 回写效应的具体机制尚未完全确定
+    statement: 回写效应的具体强度、发生条件和长期影响尚未被完全确定，相关研究仍在持续。
+    category: research
+    truth_status: true
+    sensitivity: public
+    canon_level: established
+    temporal:
+      status: ongoing
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_002]
+      locations: []
+      characters: []
+      concepts: [writeback_effect, research_uncertainty, group_cognition]
+    source:
+      type: canon
+      references: [world_bible.section_7, faction_002.knowledge_boundary.public_information]
+    tags: [回写效应, 研究边界, 未确定机制]
+
+  - id: lore_008
+    title: 临大能力中心关于长期测评的内部判断
+    statement: 临洲大学行为与能力研究中心当前将“单次能力测评不足以可靠预测个体长期变化、纵向数据比静态评级更重要”作为内部研究与实践判断。
+    category: research
+    truth_status: true
+    sensitivity: internal
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_002]
+      locations: []
+      characters: []
+      concepts: [ability_assessment, longitudinal_data, individual_change]
+    source:
+      type: faction_database
+      references: [faction_002.knowledge_boundary.member_information]
+    tags: [能力测评, 纵向数据, 个体变化]
+
+  - id: lore_009
+    title: 临大研究项目的数据伦理审查
+    statement: 临洲大学行为与能力研究中心的外部合作项目必须经过伦理和数据用途审查，不同课题组不能默认读取彼此的受限数据。
+    category: policy
+    truth_status: true
+    sensitivity: internal
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_002]
+      locations: []
+      characters: []
+      concepts: [research_ethics, data_use, restricted_data]
+    source:
+      type: faction_database
+      references: [faction_002.knowledge_boundary.member_information]
+    tags: [研究伦理, 数据用途, 受限数据]
+
+  - id: lore_010
+    title: 群体认知与偏置表现的长期相关性
+    statement: >
+      部分长期样本观察到，在个体主观认同尚未出现明显变化的阶段，
+      持续且一致的群体认知已经与其偏置表现变化呈现相关性。
+    category: research
+    truth_status: true
+    sensitivity: restricted
+    canon_level: established
+    temporal:
+      status: ongoing
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_002]
+      locations: []
+      characters: []
+      concepts: [group_cognition, individual_identity, bias_change]
+    source:
+      type: faction_database
+      references: [faction_002.knowledge_boundary.restricted_information]
+    tags: [群体认知, 偏置变化, 长期样本]
+
+  - id: lore_011
+    title: 商业能力模型历史数据的复核
+    statement: 临洲大学行为与能力研究中心正在复核一批可能被商业能力模型错误解释的历史数据，尚未形成可公开结论。
+    category: research
+    truth_status: true
+    sensitivity: restricted
+    canon_level: established
+    temporal:
+      status: ongoing
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_002]
+      locations: []
+      characters: []
+      concepts: [commercial_model, historical_data, data_review]
+    source:
+      type: faction_database
+      references: [faction_002.knowledge_boundary.restricted_information]
+    tags: [商业模型, 历史数据, 数据复核]
+
+  - id: lore_secret_001
+    title: 现有模型可能低估群体认知的早期影响
+    statement: 现有模型可能系统性低估群体认知对偏置形成早期阶段的影响。
+    category: research
+    truth_status: unknown
+    sensitivity: secret
+    canon_level: hypothesis
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_002]
+      locations: []
+      characters: []
+      concepts: [group_cognition, bias_formation, model_limitations]
+    source:
+      type: faction_database
+      references: [faction_002.knowledge_boundary.secret_information]
+    tags: [群体认知, 偏置形成, 模型局限]
+
+  - id: lore_012
+    title: 衡信保险提供能力责任保险
+    statement: 衡信保险销售能力责任相关保险，并公开声明不会把单一能力类型直接等同于个人危险性。
+    category: risk
+    truth_status: true
+    sensitivity: public
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_003]
+      locations: []
+      characters: []
+      concepts: [ability_liability_insurance, risk_assessment]
+    source:
+      type: faction_database
+      references: [faction_003.knowledge_boundary.public_information]
+    tags: [能力责任险, 危险性, 保险]
+
+  - id: lore_013
+    title: 衡信保险的能力风险评估因素
+    statement: 衡信保险使用事故记录、职业场景和能力使用特征进行风险评估，其方法受到监管与社会监督。
+    category: risk
+    truth_status: true
+    sensitivity: public
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_003]
+      locations: []
+      characters: []
+      concepts: [risk_assessment, accident_records, occupational_context]
+    source:
+      type: faction_database
+      references: [faction_003.knowledge_boundary.public_information]
+    tags: [风险评估, 事故记录, 职业场景]
+
+  - id: lore_014
+    title: 衡信保险转向动态风险模型
+    statement: 衡信保险近年正在把静态能力评级逐步改造成动态风险模型，增加环境、训练和历史行为等变量。
+    category: risk
+    truth_status: true
+    sensitivity: internal
+    canon_level: established
+    temporal:
+      status: ongoing
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_003]
+      locations: []
+      characters: []
+      concepts: [dynamic_risk_model, ability_assessment, behavior_history]
+    source:
+      type: faction_database
+      references: [faction_003.knowledge_boundary.member_information]
+    tags: [动态模型, 能力评级, 风险变量]
+
+  - id: lore_015
+    title: 衡信保险的岗位与案件数据访问限制
+    statement: 衡信保险普通员工只能访问与本人岗位和案件相关的数据，完整模型参数和跨客户数据并不对全员开放。
+    category: policy
+    truth_status: true
+    sensitivity: internal
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_003]
+      locations: []
+      characters: []
+      concepts: [data_access, model_parameters, customer_data]
+    source:
+      type: faction_database
+      references: [faction_003.knowledge_boundary.member_information]
+    tags: [数据访问, 模型参数, 客户数据]
+
+  - id: lore_016
+    title: 高风险标签与客户偏置变化的模型测试
+    statement: >
+      衡信保险一项内部模型测试在部分长期被高风险标签化的客户中，
+      观察到与标签方向一致的行为和偏置变化；
+      模型团队正在判断其中是否存在回写影响。
+    category: research
+    truth_status: true
+    sensitivity: restricted
+    canon_level: established
+    temporal:
+      status: ongoing
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_003]
+      locations: []
+      characters: []
+      concepts: [risk_label, writeback_effect, behavior_change]
+    source:
+      type: faction_database
+      references: [faction_003.knowledge_boundary.restricted_information]
+    tags: [高风险标签, 回写效应, 模型测试]
+
+  - id: lore_017
+    title: 衡信保险试点风险因子解释机制
+    statement: 衡信保险正在试点一种允许客户查看关键风险因子并提交复核证据的新型解释机制。
+    category: policy
+    truth_status: true
+    sensitivity: restricted
+    canon_level: established
+    temporal:
+      status: ongoing
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_003]
+      locations: []
+      characters: []
+      concepts: [explainability, risk_factors, review_process]
+    source:
+      type: faction_database
+      references: [faction_003.knowledge_boundary.restricted_information]
+    tags: [风险因子, 解释机制, 复核证据]
+
+  - id: lore_secret_002
+    title: 衡信旧版模型的长期标签反馈风险
+    statement: 衡信保险高层掌握的内部审计显示，旧版模型在少数职业群体中存在显著的长期标签反馈风险，公司尚未决定公开方式和追溯范围。
+    category: risk
+    truth_status: true
+    sensitivity: secret
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_003]
+      locations: []
+      characters: []
+      concepts: [risk_model, label_feedback, occupational_group]
+    source:
+      type: faction_database
+      references: [faction_003.knowledge_boundary.secret_information]
+    tags: [旧版模型, 标签反馈, 内部审计]
+
+  - id: lore_018
+    title: 霓桥传媒的能力内容业务
+    statement: 霓桥传媒经营艺人经纪、直播、广告和演出业务，旗下项目经常把能力表现作为舞台或内容特色。
+    category: media
+    truth_status: true
+    sensitivity: public
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_004]
+      locations: []
+      characters: []
+      concepts: [artist_management, live_streaming, ability_performance]
+    source:
+      type: faction_database
+      references: [faction_004.knowledge_boundary.public_information]
+    tags: [艺人经纪, 直播, 能力表现]
+
+  - id: lore_019
+    title: 霓桥传媒承认公众标签的长期影响
+    statement: 霓桥传媒公开承认公众标签可能影响艺人长期状态，并设置艺人支持与危机沟通岗位。
+    category: media
+    truth_status: true
+    sensitivity: public
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_004]
+      locations: []
+      characters: []
+      concepts: [public_label, artist_support, crisis_communication]
+    source:
+      type: faction_database
+      references: [faction_004.knowledge_boundary.public_information]
+    tags: [公众标签, 艺人支持, 危机沟通]
+
+  - id: lore_020
+    title: 霓桥传媒将能力标签视为双重变量
+    statement: 霓桥传媒内部把能力相关公众标签视为品牌资产和艺人风险的双重变量，重大项目会提前评估舆情反馈。
+    category: media
+    truth_status: true
+    sensitivity: internal
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_004]
+      locations: []
+      characters: []
+      concepts: [public_label, brand_asset, artist_risk]
+    source:
+      type: faction_database
+      references: [faction_004.knowledge_boundary.member_information]
+    tags: [公众标签, 品牌资产, 舆情反馈]
+
+  - id: lore_021
+    title: 霓桥传媒的项目数据访问范围
+    statement: 霓桥传媒普通艺人和员工只能访问自己项目、合同或团队范围内的信息，跨艺人数据并不默认共享。
+    category: policy
+    truth_status: true
+    sensitivity: internal
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_004]
+      locations: []
+      characters: []
+      concepts: [data_access, project_scope, artist_data]
+    source:
+      type: faction_database
+      references: [faction_004.knowledge_boundary.member_information]
+    tags: [数据访问, 项目范围, 跨艺人数据]
+
+  - id: lore_022
+    title: 霓桥传媒跟踪艺人固定人设后的偏置变化
+    statement: 霓桥传媒公众关系团队正在跟踪少数艺人在长期固定人设后出现的偏置变化，以判断是否需要调整宣传策略和工作安排。
+    category: research
+    truth_status: true
+    sensitivity: restricted
+    canon_level: established
+    temporal:
+      status: ongoing
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_004]
+      locations: []
+      characters: []
+      concepts: [public_persona, writeback_effect, publicity_strategy]
+    source:
+      type: faction_database
+      references: [faction_004.knowledge_boundary.restricted_information]
+    tags: [固定人设, 偏置变化, 宣传策略]
+
+  - id: lore_023
+    title: 临洲公共安全联席体系的协作范围
+    statement: 临洲公共安全联席体系是警务、消防、急救和大型活动安全之间的协作机制，不是独立的能力管理机关。
+    category: public_safety
+    truth_status: true
+    sensitivity: public
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_005]
+      locations: []
+      characters: []
+      concepts: [police, fire_rescue, emergency_response, event_safety]
+    source:
+      type: faction_database
+      references: [faction_005.knowledge_boundary.public_information]
+    tags: [公共安全, 警务协作, 应急处置]
+
+  - id: lore_024
+    title: 高风险公共能力使用的认证要求
+    statement: 高风险公共能力使用需要遵守与场景对应的安全规范和认证要求。
+    category: public_safety
+    truth_status: true
+    sensitivity: public
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_005]
+      locations: []
+      characters: []
+      concepts: [high_risk_use, safety_standards, use_certification]
+    source:
+      type: faction_database
+      references: [faction_005.knowledge_boundary.public_information]
+    tags: [高风险用途, 安全规范, 认证]
+
+  - id: lore_025
+    title: 联席事件的信息最小共享原则
+    statement: 联席事件中不同部门只共享完成职责所必需的信息，原始案件数据仍按各自权限管理。
+    category: policy
+    truth_status: true
+    sensitivity: internal
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_005]
+      locations: []
+      characters: []
+      concepts: [information_minimization, interagency_coordination, case_data]
+    source:
+      type: faction_database
+      references: [faction_005.knowledge_boundary.member_information]
+    tags: [信息最小化, 部门协作, 案件数据]
+
+  - id: lore_026
+    title: 公共安全联合培训纳入回写效应内容
+    statement: 临洲公共安全联席体系近期的联合培训开始加入回写效应相关内容，重点是避免现场人员因能力标签形成先入判断。
+    category: public_safety
+    truth_status: true
+    sensitivity: internal
+    canon_level: established
+    temporal:
+      status: ongoing
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_005]
+      locations: []
+      characters: []
+      concepts: [writeback_effect, field_training, labeling_bias]
+    source:
+      type: faction_database
+      references: [faction_005.knowledge_boundary.member_information]
+    tags: [联合培训, 回写效应, 先入判断]
+
+  - id: lore_027
+    title: 错误能力标签影响公共安全现场决策
+    statement: 一批公共安全联席体系的内部复盘案例显示，错误的能力风险标签可能影响现场决策并造成次生冲突，联席体系正在修改部分预案措辞。
+    category: public_safety
+    truth_status: true
+    sensitivity: restricted
+    canon_level: established
+    temporal:
+      status: ongoing
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_005]
+      locations: []
+      characters: []
+      concepts: [risk_label, field_decision, secondary_conflict]
+    source:
+      type: faction_database
+      references: [faction_005.knowledge_boundary.restricted_information]
+    tags: [风险标签, 现场决策, 次生冲突]
+
+  - id: lore_028
+    title: 南栈生活合作社的成员构成与职责
+    statement: 南栈生活合作社由本地小店、居民、自由职业者和独立艺人共同组成，主要处理社区经营与公共议题。
+    category: community
+    truth_status: true
+    sensitivity: public
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_006]
+      locations: []
+      characters: []
+      concepts: [community_cooperative, local_business, public_issues]
+    source:
+      type: faction_database
+      references: [faction_006.knowledge_boundary.public_information]
+    tags: [南栈, 社区合作社, 社区经营]
+
+  - id: lore_029
+    title: 南栈合作社反对能力评级默认筛选
+    statement: 南栈生活合作社公开反对把能力评级作为租赁、招聘和社区信用的默认筛选条件。
+    category: community
+    truth_status: true
+    sensitivity: public
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_006]
+      locations: []
+      characters: []
+      concepts: [ability_assessment, rental, hiring, community_credit]
+    source:
+      type: faction_database
+      references: [faction_006.knowledge_boundary.public_information]
+    tags: [能力评级, 租赁, 招聘, 社区信用]
+
+  - id: lore_030
+    title: 南栈合作社支持与安全直接相关的认证
+    statement: 南栈生活合作社内部并不反对所有能力认证，大多数成员支持与消防、医疗、活动安全直接相关的明确专业规则。
+    category: community
+    truth_status: true
+    sensitivity: internal
+    canon_level: established
+    temporal:
+      status: current
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_006]
+      locations: []
+      characters: []
+      concepts: [use_certification, fire_safety, medical_safety, event_safety]
+    source:
+      type: faction_database
+      references: [faction_006.knowledge_boundary.member_information]
+    tags: [能力认证, 消防安全, 医疗安全]
+
+  - id: lore_031
+    title: 南栈合作社对商业化的内部争论
+    statement: 南栈生活合作社成员大会长期存在两派争论：一派希望借商业合作改善街区经济，另一派更担忧品牌化会挤压原有居民和小店。
+    category: community
+    truth_status: true
+    sensitivity: internal
+    canon_level: established
+    temporal:
+      status: ongoing
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_006]
+      locations: []
+      characters: []
+      concepts: [commercial_partnership, neighborhood_economy, gentrification_risk]
+    source:
+      type: faction_database
+      references: [faction_006.knowledge_boundary.member_information]
+    tags: [商业合作, 街区经济, 品牌化]
+
+  - id: lore_032
+    title: 南栈合作社整理能力评级争议案例
+    statement: 南栈生活合作社经营互助组正在整理成员遭遇的能力评级争议案例，计划与协理联合会共同推动更明确的申诉标准。
+    category: policy
+    truth_status: true
+    sensitivity: restricted
+    canon_level: established
+    temporal:
+      status: ongoing
+      since: null
+      until: null
+    related_entities:
+      factions: [faction_006, faction_001]
+      locations: []
+      characters: []
+      concepts: [ability_assessment, appeal_standard, case_collection]
+    source:
+      type: faction_database
+      references: [faction_006.knowledge_boundary.restricted_information]
+    tags: [能力评级, 申诉标准, 案例整理]

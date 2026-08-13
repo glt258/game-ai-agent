@@ -1,0 +1,139 @@
+version: "0.1"
+
+description: >
+  Knowledge Boundary 测试期望数据。expected_access 只表示在正常制度路径下是否存在访问 Lore 的资格，
+  不表示角色已经记住、理解或相信该 Lore。实际知识仍由 Character Identity、Knowledge Rules 与 Runtime Context 解析。
+
+cases:
+  - id: knowledge_expectation_001
+    character_id: char_player
+    lore_id: lore_001
+    expected_access: {result: allow}
+    reason: {matched_rule: knowledge_rule_001, explanation: 公开 Lore，对所有人开放。}
+  - id: knowledge_expectation_002
+    character_id: char_player
+    lore_id: lore_007
+    expected_access: {result: allow}
+    reason: {matched_rule: knowledge_rule_007, explanation: 回写效应存在属于公开知识；主角可接触但不因此获得完整机制解释。}
+  - id: knowledge_expectation_003
+    character_id: char_player
+    lore_id: lore_secret_001
+    expected_access: {result: deny}
+    reason: {matched_rule: knowledge_rule_secret_001, explanation: 主角没有临大研究中心 role 或相关 research assignment，secret grant 不匹配。}
+
+  - id: knowledge_expectation_004
+    character_id: char_001
+    lore_id: lore_003
+    expected_access: {result: allow}
+    reason: {matched_rule: knowledge_rule_003, explanation: faction_001 成员且承担 mediation_case_coordination，满足相关职业语境。}
+  - id: knowledge_expectation_005
+    character_id: char_001
+    lore_id: lore_004
+    expected_access: {result: allow}
+    reason: {matched_rule: knowledge_rule_004, explanation: 协理案件协调工作直接涉及数据来源、授权范围与访问人员记录。}
+  - id: knowledge_expectation_006
+    character_id: char_001
+    lore_id: lore_005
+    expected_access: {result: deny}
+    reason: {matched_rule: knowledge_rule_005, explanation: 虽在 division_002，但没有 assigned_to_related_case 的实际案件 assignment。}
+
+  - id: knowledge_expectation_007
+    character_id: char_002
+    lore_id: lore_007
+    expected_access: {result: allow}
+    reason: {matched_rule: knowledge_rule_007, explanation: 学生可通过公开研究报告接触回写效应存在这一事实。}
+  - id: knowledge_expectation_008
+    character_id: char_002
+    lore_id: lore_008
+    expected_access: {result: deny}
+    reason: {matched_rule: knowledge_rule_008, explanation: 没有 faction_002 身份与 relevant_professional_context。}
+  - id: knowledge_expectation_009
+    character_id: char_002
+    lore_id: lore_010
+    expected_access: {result: deny}
+    reason: {matched_rule: knowledge_rule_010, explanation: 学生不是 division_005 成员，也没有相关研究项目或授权 role。}
+  - id: knowledge_expectation_010
+    character_id: char_002
+    lore_id: lore_secret_001
+    expected_access: {result: deny}
+    reason: {matched_rule: knowledge_rule_secret_001, explanation: public 活动接触不产生 principal_investigator 或研究授权。}
+
+  - id: knowledge_expectation_011
+    character_id: char_003
+    lore_id: lore_008
+    expected_access: {result: allow}
+    reason: {matched_rule: knowledge_rule_008, explanation: faction_002 成员且为正式研究负责人，满足研究职业语境。}
+  - id: knowledge_expectation_012
+    character_id: char_003
+    lore_id: lore_010
+    expected_access: {result: allow}
+    reason: {matched_rule: knowledge_rule_010, explanation: 属于 division_005，但相关 Project Scope 当前未被 Canon 唯一确定。}
+  - id: knowledge_expectation_013
+    character_id: char_003
+    lore_id: lore_secret_001
+    expected_access: {result: allow}
+    reason: {matched_rule: knowledge_rule_secret_001, explanation: principal_investigator 与正式相关 assignment 同时满足 assigned_to_related_project。}
+
+  - id: knowledge_expectation_014
+    character_id: char_004
+    lore_id: lore_012
+    expected_access: {result: allow}
+    reason: {matched_rule: knowledge_rule_012, explanation: 能力责任保险属于公开业务信息。}
+  - id: knowledge_expectation_015
+    character_id: char_004
+    lore_id: lore_014
+    expected_access: {result: allow}
+    reason: {matched_rule: knowledge_rule_014, explanation: 衡信成员的岗位语境直接涉及动态风险模型的应用。}
+  - id: knowledge_expectation_016
+    character_id: char_004
+    lore_id: lore_016
+    expected_access: {result: deny}
+    reason: {matched_rule: knowledge_rule_016, explanation: 普通理赔审核员不在 division_007 或 division_009，且没有 authorized_for_model_review。}
+
+  - id: knowledge_expectation_017
+    character_id: char_005
+    lore_id: lore_014
+    expected_access: {result: allow}
+    reason: {matched_rule: knowledge_rule_014, explanation: 衡信成员具备动态模型相关职业语境。}
+  - id: knowledge_expectation_018
+    character_id: char_005
+    lore_id: lore_016
+    expected_access: {result: allow}
+    reason: {matched_rule: knowledge_rule_016, explanation: division_009 与 explicit model_review_authorization 满足模型审查授权条件。}
+  - id: knowledge_expectation_019
+    character_id: char_005
+    lore_id: lore_secret_002
+    expected_access: {result: allow}
+    reason: {matched_rule: knowledge_rule_secret_002, explanation: model_governance_lead 是规则明确授权的角色。}
+
+  - id: knowledge_expectation_020
+    character_id: char_006
+    lore_id: lore_018
+    expected_access: {result: allow}
+    reason: {matched_rule: knowledge_rule_018, explanation: 霓桥传媒公开经营内容与演出业务。}
+  - id: knowledge_expectation_021
+    character_id: char_006
+    lore_id: lore_021
+    expected_access: {result: allow}
+    reason: {matched_rule: knowledge_rule_021, explanation: 艺人在自己的项目工作语境中接触项目资料访问范围。}
+  - id: knowledge_expectation_022
+    character_id: char_006
+    lore_id: lore_022
+    expected_access: {result: deny}
+    reason: {matched_rule: knowledge_rule_022, explanation: 普通艺人不属于 division_012，没有 legal_staff role 或 assigned_to_related_case。}
+
+  - id: knowledge_expectation_023
+    character_id: char_007
+    lore_id: lore_023
+    expected_access: {result: allow}
+    reason: {matched_rule: knowledge_rule_023, explanation: 公共安全联席体系的协作范围属于公开 Lore。}
+  - id: knowledge_expectation_024
+    character_id: char_007
+    lore_id: lore_030
+    expected_access: {result: allow}
+    reason: {matched_rule: knowledge_rule_030, explanation: faction_006 成员具备相关成员工作语境。}
+  - id: knowledge_expectation_025
+    character_id: char_007
+    lore_id: lore_032
+    expected_access: {result: deny}
+    reason: {matched_rule: knowledge_rule_032, explanation: 普通合作社成员没有 division_016、rotating_coordinator 或相关项目 assignment。}

@@ -1,0 +1,685 @@
+version: "0.1"
+
+description: >
+  临洲世界 Knowledge Boundary 规则。文件定义不同身份在正常制度条件下可以接触哪些 Lore，
+  不代表角色已经阅读、记住、理解或相信这些信息。
+
+principles:
+  default_policy: deny
+  public_lore_access: allow
+  relationship_does_not_imply_access: true
+  faction_membership_does_not_imply_full_access: true
+  knowledge_does_not_imply_belief: true
+
+vocabulary:
+  subject_types:
+    - everyone
+    - faction
+    - division
+    - role
+    - responsibility
+    - assignment
+    - explicit_grant
+
+  condition_types:
+    relevant_professional_context:
+      evaluator: has_relevant_responsibility
+      description: 角色当前职责或岗位语境必须与该 Lore 涉及的专业工作直接相关。
+    relevant_member_context:
+      evaluator: has_relevant_responsibility
+      description: 角色必须承担与该社区或组织内部议题直接相关的成员工作或讨论职责。
+    assigned_to_related_project:
+      evaluator: assignment_match
+      description: 角色必须被分配到与该 Lore 直接相关的项目或任务。
+    relevant_project:
+      evaluator: assignment_match
+      description: 角色当前必须存在与该 Lore 直接相关的项目 assignment。
+    assigned_to_related_case:
+      evaluator: case_assignment_match
+      description: 角色必须被分配到与该 Lore 直接相关的案件。
+    authorized_for_dataset:
+      evaluator: explicit_authorization
+      description: 角色必须拥有读取相关数据集的明确授权。
+    authorized_for_related_review:
+      evaluator: explicit_authorization
+      description: 角色必须拥有参与相关审查工作的明确授权。
+    authorized_for_model_review:
+      evaluator: explicit_authorization
+      description: 角色必须拥有参与对应模型审查工作的明确授权。
+    authorized_for_pilot:
+      evaluator: explicit_authorization
+      description: 角色必须拥有参与对应试点项目的明确授权。
+    current_rotation:
+      evaluator: active_role_assignment
+      description: 角色当前必须实际处于对应轮值岗位。
+    assigned_to_related_artist_team:
+      evaluator: artist_team_match
+      description: 角色当前必须属于与该受限信息相关的艺人团队。
+    assigned_to_incident_review:
+      evaluator: incident_assignment_match
+      description: 角色当前必须被分配到对应事故复盘任务。
+    assigned_to_related_incident:
+      evaluator: incident_assignment_match
+      description: 角色必须承担与该 Lore 对应事故相关的专业职责。
+    authorized_for_related_project:
+      evaluator: explicit_authorization
+      description: 角色必须拥有参与对应项目的明确授权。
+
+  role_types:
+    research_ethics_authorized_staff:
+      faction_id: faction_002
+      description: 研究伦理与数据授权相关工作人员。
+    project_lead:
+      faction_id: faction_002
+      description: 指定研究项目的负责人。
+    principal_investigator:
+      faction_id: faction_002
+      description: 正式研究项目的首席研究负责人。
+    data_office_authorized_member:
+      faction_id: faction_002
+      description: 研究中心数据办公室中获得相关数据授权的成员。
+    research_ethics_lead:
+      faction_id: faction_002
+      description: 负责相关研究伦理审查与授权的负责人。
+    center_director:
+      faction_id: faction_002
+      description: 临洲大学行为与能力研究中心主任。
+    compliance_lead:
+      faction_id: faction_003
+      description: 衡信保险相关合规项目负责人。
+    manager:
+      faction_id: faction_003
+      description: 衡信保险承担相关项目管理职责的管理人员。
+    board_risk_committee_member:
+      faction_id: faction_003
+      description: 衡信保险董事会风险委员会成员。
+    chief_actuary:
+      faction_id: faction_003
+      description: 衡信保险首席精算负责人。
+    model_governance_lead:
+      faction_id: faction_003
+      description: 衡信保险模型治理相关负责人。
+    legal_staff:
+      faction_id: faction_004
+      description: 霓桥传媒法务工作人员。
+    rotating_coordinator:
+      faction_id: faction_006
+      description: 当前轮值的合作社协调人。
+    legal_lead:
+      faction_id: faction_003
+      description: 衡信保险相关法务负责人。
+
+  responsibility_types:
+    department_training:
+      faction_id: faction_005
+      description: 承担相关部门培训职责。
+    incident_professional_lead:
+      faction_id: faction_005
+      description: 承担事故相关专业负责人职责。
+    mediation_case_coordination:
+      faction_id: faction_001
+      description: 承担跨机构协理案件的事实整理、沟通与协调职责。
+
+  assignment_types:
+    hengxin_explainability_pilot:
+      faction_id: faction_003
+      description: 衡信风险因子解释机制试点项目。
+
+  exclusion_predicates: {}
+
+  acquisition_channels:
+    - public_information
+    - public_report
+    - internal_training
+    - internal_documentation
+    - professional_work
+    - project_briefing
+    - case_assignment
+    - restricted_database
+    - authorized_research_data
+    - confidential_briefing
+    - community_meeting
+
+validation:
+  require_registered_subject_type: true
+  require_registered_condition: true
+  require_registered_role: true
+  require_registered_responsibility: true
+  require_registered_assignment: true
+  require_registered_acquisition_channel: true
+  forbid_relevant_prefix_in_roles: true
+  forbid_ordinary_prefix_in_roles: true
+  default_deny_when_no_grant_matches: true
+
+rules:
+  - id: knowledge_rule_001
+    lore_id: lore_001
+    access_type: public
+    grants:
+      - subject:
+          type: everyone
+        conditions: []
+    exclusions: []
+    acquisition:
+      channels: [public_information]
+    notes: ""
+
+  - id: knowledge_rule_002
+    lore_id: lore_002
+    access_type: public
+    grants:
+      - subject:
+          type: everyone
+        conditions: []
+    exclusions: []
+    acquisition:
+      channels: [public_information]
+    notes: ""
+
+  - id: knowledge_rule_003
+    lore_id: lore_003
+    access_type: internal
+    grants:
+      - subject:
+          type: faction
+          faction_id: faction_001
+        conditions: [relevant_professional_context]
+    exclusions: []
+    acquisition:
+      channels: [internal_training, internal_documentation]
+    notes: "协理联合会成员需要与职业培训、案件协调或行业治理相关的工作语境。"
+
+  - id: knowledge_rule_004
+    lore_id: lore_004
+    access_type: internal
+    grants:
+      - subject:
+          type: faction
+          faction_id: faction_001
+        conditions: [relevant_professional_context]
+    exclusions: []
+    acquisition:
+      channels: [internal_training, internal_documentation]
+    notes: ""
+
+  - id: knowledge_rule_005
+    lore_id: lore_005
+    access_type: restricted
+    grants:
+      - subject:
+          type: division
+          faction_id: faction_001
+          division_id: division_002
+        conditions: [assigned_to_related_case]
+      - subject:
+          type: division
+          faction_id: faction_001
+          division_id: division_001
+        conditions: [authorized_for_related_review]
+    exclusions: []
+    acquisition:
+      channels: [restricted_database, case_assignment, authorized_research_data]
+    notes: "来源要求案件协调部项目成员或职业标准委员会相关负责人。"
+
+  - id: knowledge_rule_006
+    lore_id: lore_006
+    access_type: public
+    grants:
+      - subject:
+          type: everyone
+        conditions: []
+    exclusions: []
+    acquisition:
+      channels: [public_information, public_report]
+    notes: ""
+
+  - id: knowledge_rule_007
+    lore_id: lore_007
+    access_type: public
+    grants:
+      - subject:
+          type: everyone
+        conditions: []
+    exclusions: []
+    acquisition:
+      channels: [public_information, public_report]
+    notes: "回写效应的存在属于世界 Canon；公开可知不代表角色理解其机制。"
+
+  - id: knowledge_rule_008
+    lore_id: lore_008
+    access_type: internal
+    grants:
+      - subject:
+          type: faction
+          faction_id: faction_002
+        conditions: [relevant_professional_context]
+    exclusions: []
+    acquisition:
+      channels: [internal_training, internal_documentation, professional_work]
+    notes: "研究中心成员可能通过研究讨论或内部培训接触该判断，但不代表所有成员都实际读过相关材料。"
+
+  - id: knowledge_rule_009
+    lore_id: lore_009
+    access_type: internal
+    grants:
+      - subject:
+          type: faction
+          faction_id: faction_002
+        conditions: [relevant_professional_context]
+    exclusions: []
+    acquisition:
+      channels: [internal_documentation, professional_work]
+    notes: ""
+
+  - id: knowledge_rule_010
+    lore_id: lore_010
+    access_type: restricted
+    grants:
+      - subject:
+          type: division
+          faction_id: faction_002
+          division_id: division_005
+        conditions: [relevant_project]
+      - subject:
+          type: role
+          faction_id: faction_002
+          role: research_ethics_authorized_staff
+        conditions: [authorized_for_dataset]
+    exclusions: []
+    acquisition:
+      channels: [restricted_database, authorized_research_data, project_briefing]
+    notes: "访问研究结果不代表角色认可其因果解释。"
+
+  - id: knowledge_rule_011
+    lore_id: lore_011
+    access_type: restricted
+    grants:
+      - subject:
+          type: role
+          faction_id: faction_002
+          role: project_lead
+        conditions: [assigned_to_related_project]
+      - subject:
+          type: role
+          faction_id: faction_002
+          role: data_office_authorized_member
+        conditions: [authorized_for_dataset]
+    exclusions: []
+    acquisition:
+      channels: [restricted_database, authorized_research_data, project_briefing]
+    notes: ""
+
+  - id: knowledge_rule_012
+    lore_id: lore_012
+    access_type: public
+    grants:
+      - subject:
+          type: everyone
+        conditions: []
+    exclusions: []
+    acquisition:
+      channels: [public_information, public_report]
+    notes: ""
+
+  - id: knowledge_rule_013
+    lore_id: lore_013
+    access_type: public
+    grants:
+      - subject:
+          type: everyone
+        conditions: []
+    exclusions: []
+    acquisition:
+      channels: [public_information, public_report]
+    notes: ""
+
+  - id: knowledge_rule_014
+    lore_id: lore_014
+    access_type: internal
+    grants:
+      - subject:
+          type: faction
+          faction_id: faction_003
+        conditions: [relevant_professional_context]
+    exclusions: []
+    acquisition:
+      channels: [internal_documentation, professional_work]
+    notes: "衡信成员是否能接触动态模型工作内容取决于岗位语境。"
+
+  - id: knowledge_rule_015
+    lore_id: lore_015
+    access_type: internal
+    grants:
+      - subject:
+          type: faction
+          faction_id: faction_003
+        conditions: [relevant_professional_context]
+    exclusions: []
+    acquisition:
+      channels: [internal_documentation, professional_work]
+    notes: ""
+
+  - id: knowledge_rule_016
+    lore_id: lore_016
+    access_type: restricted
+    grants:
+      - subject:
+          type: division
+          faction_id: faction_003
+          division_id: division_007
+        conditions: [assigned_to_related_project]
+      - subject:
+          type: division
+          faction_id: faction_003
+          division_id: division_009
+        conditions: [authorized_for_model_review]
+    exclusions: []
+    acquisition:
+      channels: [restricted_database, authorized_research_data, project_briefing]
+    notes: ""
+
+  - id: knowledge_rule_017
+    lore_id: lore_017
+    access_type: restricted
+    grants:
+      - subject:
+          type: assignment
+          faction_id: faction_003
+          assignment_id: hengxin_explainability_pilot
+        conditions: [assigned_to_related_project]
+      - subject:
+          type: role
+          faction_id: faction_003
+          role: compliance_lead
+        conditions: [authorized_for_pilot]
+      - subject:
+          type: role
+          faction_id: faction_003
+          role: manager
+        conditions: [assigned_to_related_project]
+    exclusions: []
+    acquisition:
+      channels: [restricted_database, project_briefing, case_assignment]
+    notes: ""
+
+  - id: knowledge_rule_018
+    lore_id: lore_018
+    access_type: public
+    grants:
+      - subject:
+          type: everyone
+        conditions: []
+    exclusions: []
+    acquisition:
+      channels: [public_information, public_report]
+    notes: ""
+
+  - id: knowledge_rule_019
+    lore_id: lore_019
+    access_type: public
+    grants:
+      - subject:
+          type: everyone
+        conditions: []
+    exclusions: []
+    acquisition:
+      channels: [public_information, public_report]
+    notes: ""
+
+  - id: knowledge_rule_020
+    lore_id: lore_020
+    access_type: internal
+    grants:
+      - subject:
+          type: faction
+          faction_id: faction_004
+        conditions: [relevant_professional_context]
+    exclusions: []
+    acquisition:
+      channels: [internal_documentation, professional_work]
+    notes: ""
+
+  - id: knowledge_rule_021
+    lore_id: lore_021
+    access_type: internal
+    grants:
+      - subject:
+          type: faction
+          faction_id: faction_004
+        conditions: [relevant_professional_context]
+    exclusions: []
+    acquisition:
+      channels: [internal_documentation, professional_work]
+    notes: "跨艺人数据不因公司成员身份自动开放。"
+
+  - id: knowledge_rule_022
+    lore_id: lore_022
+    access_type: restricted
+    grants:
+      - subject:
+          type: division
+          faction_id: faction_004
+          division_id: division_012
+        conditions: [assigned_to_related_artist_team]
+      - subject:
+          type: role
+          faction_id: faction_004
+          role: legal_staff
+        conditions: [assigned_to_related_case]
+    exclusions: []
+    acquisition:
+      channels: [restricted_database, project_briefing, case_assignment]
+    notes: ""
+
+  - id: knowledge_rule_023
+    lore_id: lore_023
+    access_type: public
+    grants:
+      - subject:
+          type: everyone
+        conditions: []
+    exclusions: []
+    acquisition:
+      channels: [public_information, public_report]
+    notes: ""
+
+  - id: knowledge_rule_024
+    lore_id: lore_024
+    access_type: public
+    grants:
+      - subject:
+          type: everyone
+        conditions: []
+    exclusions: []
+    acquisition:
+      channels: [public_information, public_report]
+    notes: ""
+
+  - id: knowledge_rule_025
+    lore_id: lore_025
+    access_type: internal
+    grants:
+      - subject:
+          type: faction
+          faction_id: faction_005
+        conditions: [relevant_professional_context]
+    exclusions: []
+    acquisition:
+      channels: [internal_documentation, professional_work]
+    notes: "联席体系是协作机制，不代表成员可读取其他参与部门的全部原始案件数据。"
+
+  - id: knowledge_rule_026
+    lore_id: lore_026
+    access_type: internal
+    grants:
+      - subject:
+          type: faction
+          faction_id: faction_005
+        conditions: [relevant_professional_context]
+    exclusions: []
+    acquisition:
+      channels: [internal_training, internal_documentation]
+    notes: ""
+
+  - id: knowledge_rule_027
+    lore_id: lore_027
+    access_type: restricted
+    grants:
+      - subject:
+          type: division
+          faction_id: faction_005
+          division_id: division_015
+        conditions: [assigned_to_incident_review]
+      - subject:
+          type: responsibility
+          faction_id: faction_005
+          responsibility: department_training
+        conditions: [authorized_for_related_review]
+      - subject:
+          type: responsibility
+          faction_id: faction_005
+          responsibility: incident_professional_lead
+        conditions: [assigned_to_related_incident]
+    exclusions: []
+    acquisition:
+      channels: [restricted_database, case_assignment, authorized_research_data]
+    notes: ""
+
+  - id: knowledge_rule_028
+    lore_id: lore_028
+    access_type: public
+    grants:
+      - subject:
+          type: everyone
+        conditions: []
+    exclusions: []
+    acquisition:
+      channels: [public_information, public_report]
+    notes: ""
+
+  - id: knowledge_rule_029
+    lore_id: lore_029
+    access_type: public
+    grants:
+      - subject:
+          type: everyone
+        conditions: []
+    exclusions: []
+    acquisition:
+      channels: [public_information, public_report]
+    notes: ""
+
+  - id: knowledge_rule_030
+    lore_id: lore_030
+    access_type: internal
+    grants:
+      - subject:
+          type: faction
+          faction_id: faction_006
+        conditions: [relevant_member_context]
+    exclusions: []
+    acquisition:
+      channels: [internal_documentation, community_meeting]
+    notes: "合作社组织松散，成员身份不等于参与所有项目或掌握全部内部讨论。"
+
+  - id: knowledge_rule_031
+    lore_id: lore_031
+    access_type: internal
+    grants:
+      - subject:
+          type: faction
+          faction_id: faction_006
+        conditions: [relevant_member_context]
+    exclusions: []
+    acquisition:
+      channels: [community_meeting, internal_documentation]
+    notes: ""
+
+  - id: knowledge_rule_032
+    lore_id: lore_032
+    access_type: restricted
+    grants:
+      - subject:
+          type: division
+          faction_id: faction_006
+          division_id: division_016
+        conditions: [assigned_to_related_project]
+      - subject:
+          type: role
+          faction_id: faction_006
+          role: rotating_coordinator
+        conditions: [current_rotation]
+      - subject:
+          type: responsibility
+          faction_id: faction_001
+          responsibility: mediation_case_coordination
+        conditions: [assigned_to_related_case]
+    exclusions: []
+    acquisition:
+      channels: [case_assignment, project_briefing, restricted_database]
+    notes: "协理联合会成员不会因合作关系自动获得该 Lore。"
+
+  - id: knowledge_rule_033
+    lore_id: lore_033
+    access_type: public
+    grants:
+      - subject:
+          type: everyone
+        conditions: []
+    exclusions: []
+    acquisition:
+      channels: [public_information, public_report]
+    notes: "机制尚未完全确定是公开事实；不代表公众拥有完整科学解释。"
+
+  - id: knowledge_rule_secret_001
+    lore_id: lore_secret_001
+    access_type: secret
+    grants:
+      - subject:
+          type: role
+          faction_id: faction_002
+          role: center_director
+        conditions: []
+      - subject:
+          type: role
+          faction_id: faction_002
+          role: principal_investigator
+        conditions: [assigned_to_related_project]
+      - subject:
+          type: role
+          faction_id: faction_002
+          role: research_ethics_lead
+        conditions: [authorized_for_related_project]
+    exclusions: []
+    acquisition:
+      channels: [confidential_briefing, restricted_database]
+    notes: "知道该假说不代表认同该假说。"
+
+  - id: knowledge_rule_secret_002
+    lore_id: lore_secret_002
+    access_type: secret
+    grants:
+      - subject:
+          type: role
+          faction_id: faction_003
+          role: board_risk_committee_member
+        conditions: []
+      - subject:
+          type: role
+          faction_id: faction_003
+          role: chief_actuary
+        conditions: []
+      - subject:
+          type: role
+          faction_id: faction_003
+          role: model_governance_lead
+        conditions: []
+      - subject:
+          type: role
+          faction_id: faction_003
+          role: legal_lead
+        conditions: []
+    exclusions: []
+    acquisition:
+      channels: [confidential_briefing, restricted_database]
+    notes: "仅依据明确角色授权；衡信内部其他成员不得自动访问。"

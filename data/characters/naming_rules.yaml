@@ -1,0 +1,130 @@
+# Machine-readable naming policy for the multi-city character roster.
+
+policy_id: character_naming
+version: "1.1"
+principle: identity_first_meaning_second
+
+scope:
+  world_scope: multiple_cities
+  current_primary_city: city_linzhou
+  applies_to: [fixed_characters, playable_characters, recurring_npcs]
+  relationship_system: static_rules_only
+
+identity_rules:
+  display_name:
+    priority: highest
+    may_be: [legal_name, name_part, alias, codename, stage_name, online_handle]
+    purpose: player_memory_and_public_identity
+  legal_name:
+    required: false
+    purpose: legal_and_formal_context
+  native_name:
+    required: false
+    purpose: original_language_identity
+  localized_name:
+    required: false
+    requires: [source]
+    purpose: world_or_release_localization
+  aliases:
+    required: false
+    must_have_social_origin: true
+  codename:
+    required: false
+    must_have_social_origin: true
+    forbidden_origin_only: combat_ability
+  stage_name:
+    required: false
+    must_have_origin_and_current_use: true
+  online_handle:
+    required: false
+    must_have_origin_and_current_use: true
+
+allowed_codename_origins:
+  - professional_alias
+  - stage_identity
+  - online_identity
+  - team_or_band_name
+  - creator_signature
+  - competition_nickname
+  - project_call_sign
+  - industry_name
+  - work_alias
+
+forbidden_defaults:
+  values:
+    - Raven
+    - Zero
+    - Ghost
+    - Reaper
+    - Viper
+    - Shadow
+  rule: A familiar combat-style codename is invalid unless a concrete social origin is documented.
+
+naming_strategy:
+  allowed:
+    - natural_naming
+    - family_background
+    - classical_reference
+    - literary_reference
+    - mythological_reference
+    - film_reference
+    - theater_reference
+    - music_reference
+    - visual_art_reference
+    - historical_reference
+    - religious_or_folklore_reference
+    - professional_metaphor
+    - scientific_term
+    - foreign_language_wordplay
+    - phonetic_reference
+    - transliteration
+    - translation
+    - sound_design
+    - stage_identity
+    - online_identity
+    - nickname_evolution
+  references_optional: true
+  reference_requirement: creative_transformation
+  no_forced_allusion: true
+
+reference_rules:
+  allowed_source_families: [literature, film, theater, music, visual_art, mythology, folklore, professional_domain]
+  must_record: [type, work_or_source, element_used, transformation]
+  must_not_copy: [famous_character_full_name, recognizable_parody, near_duplicate_identity]
+  direct_song_title_as_name: forbidden
+  direct_famous_myth_name_as_ordinary_surname: discouraged_without_context
+
+background_rules:
+  international_background_allowed: true
+  name_language_does_not_determine_nationality: true
+  non_chinese_name_does_not_require_foreigner_exposition: true
+  local_born_non_chinese_name_allowed: true
+  localized_identity_may_be_primary_display_name: true
+  nationality_quota: forbidden
+  nationality_as_archetype: forbidden
+  personality_must_come_from: [individual_history, family, education, work, relationships, choices]
+  culture_may_influence: [upbringing, family, language_habits, education, food, social_experience]
+  forced_foreign_accent: forbidden
+
+address_rules:
+  allowed_levels: [public, colleague, friend, intimate, formal]
+  relationship_state_engine: out_of_scope
+  missing_level_means: omit
+
+first_seven_roster:
+  minimum_distinct_strategies: 4
+  public_alias_identity_recommended: true
+  international_background_allowed: true
+  enforce_nationality_quota: false
+
+review:
+  required_checks:
+    - searchability
+    - pronounceability
+    - distinctiveness
+    - ui_length
+    - nickname_potential
+    - character_fit
+    - social_origin
+    - spoiler_safety
+  no_reference_output: "Reference: none"

@@ -1,0 +1,11 @@
+version: "0.1"
+
+authorizations:
+  - id: auth_hengxin_explainability_pilot
+    name: 衡信风险因子解释机制试点授权
+    faction_id: faction_003
+    purpose: 授权参与衡信风险因子解释机制试点。
+    scope_type: project
+    target_refs:
+      - project_hengxin_explainability_pilot
+    notes: 该记录定义合法授权键，不记录当前持有人；当前持有状态来自 Character Canon 或运行时上下文。

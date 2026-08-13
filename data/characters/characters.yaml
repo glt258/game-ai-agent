@@ -1,0 +1,962 @@
+version: "0.2"
+schema_version: "1.2"
+
+characters:
+  - id: char_launch_001
+    name:
+      mode: fixed
+      display_name: 唐栖
+      legal_name:
+        full: 唐栖
+        language: zh
+        script: Hans
+      native_name:
+        full: 唐栖
+        language: zh
+        script: Hans
+      localized_name:
+        value: Tang Qi
+        language: en
+        source: 普通话拼音转写
+        method: standard_transliteration
+      aliases: []
+      codename: null
+      stage_name: null
+      online_handle: null
+      common_address: 唐栖
+    name_design:
+      strategy: [natural_naming, family_background]
+      references: []
+      linguistic_notes: 两字中文姓名，短而易读；“栖”是日常姓名用字。
+      thematic_connection: 家人希望她不只顾着往前赶，也能在城市里找到可停留的地方。
+      public_identity_connection: 同事、客户和正式记录都使用唐栖。
+      design_notes: 自然、易检索，不暗示能力或剧情结局。
+    codename_design: null
+    address_rules:
+      public: 唐栖
+      colleague: 唐栖
+      formal: 唐协理
+    naming_review:
+      display_name: 唐栖
+      legal_or_native_name: 唐栖
+      codename_or_stage_name: none
+      naming_strategy: natural_naming + family_background
+      reference: "Reference: none"
+      transformation: 保留现实中文姓名，不增加职业代号。
+      character_fit: 简洁可靠，符合生活型职业入口。
+      player_memory_fit: 两字、读音明确，适合 UI 和对话。
+      naturalness_check: 可由家人、同事、客户和正式文书自然使用。
+    basic_profile:
+      age: 22
+      age_band: young_adult
+      legal_age_status: adult
+      gender: female
+      pronouns: 她
+      nationality_or_cultural_background: null
+      occupation: 刚取得正式资格的城市协理事务所助理协理人
+      workplace_or_school: 城市协理事务所
+    geography:
+      current_city_id: city_linzhou
+      home_district_id: null
+      primary_activity_areas:
+        - city_id: city_linzhou
+          district_id: null
+          location_id: null
+      origin_context: 在临洲城市协理事务所工作，活动范围随委托和现场转介变化。
+    phenotype:
+      category: baseline_humanoid
+      visible_traits: []
+      design_notes: 基准人形，不用身体特征替代人物识别。
+      everyday_accommodations: []
+    identity:
+      faction_id: null
+      division_ids: []
+      roles: []
+      responsibilities: []
+      assignments: []
+      explicit_grants: []
+    social_identity:
+      economic_background: 普通城市工薪背景，收入依靠事务所工资与合法委托。
+      education_background: 完成协理职业教育、现场安全训练与资格考试。
+      family_context: 与父母关系亲近但联系频率不高；家庭不承担秘密身份功能。
+      housing_context: 合租居住，需自行处理通勤、房租与生活开支。
+      public_reputation: 刚取得资格、可靠性仍在案件中积累。
+      professional_reputation: 擅长预约、现场记录和后续跟进，不替客户决定结论。
+    character_hook:
+      first_impression: 会先确认时间、地点和已同意事项，再开始记录委托。
+      visual_or_behavioral_motif: 在移动中用手指沿路线点出下一步，持续更新“已确认 / 待确认 / 不能确认”。
+      memorable_contrast: 能记住客户合同的截止日，却会拖延处理自己出租屋的漏水问题。
+    personality:
+      surface_traits: [反应快, 讲流程, 愿意先接住麻烦]
+      underlying_traits: [害怕自己的疏忽让别人承担无法申诉的后果, 对混乱有行动冲动]
+      values: [清楚的责任边界, 承诺后的持续跟进, 当事人的知情和反悔机会]
+      contradictions: [尊重选择却会用“我先替你安排好”回避混乱, 能处理客户问题却回避自己的私人沟通]
+      dislikes: [没有记录的口头承诺, 把迟到当成习惯, 未经允许整理私人房间]
+      habits: [先建立表格, 回家后整理未决事项, 买重复的充电线]
+    life:
+      current_concerns: [第一次独立接案是否会漏掉责任边界, 合租房押金争议, 想买二手洗衣机但在比较维修成本]
+      routine: [骑共享单车到事务所, 处理预约和路线, 跑现场, 晚上整理电子清单]
+      hobbies: [研究城市公交换乘, 购买小型收纳工具, 给便利店新品做通勤评分]
+      social_connections:
+        - type: 家庭关系
+          target_character_id: null
+          description: 与父母保持普通家庭联系。
+        - type: 工作同事
+          target_character_id: null
+          description: 在事务所接受资深从业者的工作照看。
+    ability:
+      status: trained
+      rule: 当她亲自走通并确认一组现实节点的先后关系时，短行动链在短时间内更不容易在执行中断裂。
+      trigger: 她必须亲自到达各节点，并确认完成当前节点后下一步由谁做什么；只看地图或替别人规划不算触发。
+      limitation: 只作用于已经走通的短链条；不能制造节点、改变建筑结构、让人服从或保证最终结果。任一节点前提改变，后续链条会从该处失稳。
+      everyday_uses: [按顺序完成搬家、取件、缴费和维修预约, 把复杂家务拆成可逐项完成的节点]
+      professional_uses: [把客户、场地方和办理地点串成行动链, 为撤离和急救交接减少交接断点]
+      risks: [节点顺序判断错误会让错误行动链短时间更难中止或重排, 连续使用会强迫自己重做前置步骤]
+    narrative:
+      core_theme: 继续前进不等于永远不能停下。
+      personal_conflict: 想证明自己可靠，于是把所有问题都变成路线管理，回避私人关系中的表达。
+      relationship_to_main_conflict: indirect
+      story_entry_points: [商铺漏水委托, 跨机构流程反复失败, 协理事务所转介]
+      growth_direction: 学会承认没有一条路线能替人做决定，并在需要时停下来沟通。
+    gameplay:
+      playable: true
+      rarity: A
+      release_status: launch
+    combat:
+      combat_participation_reason: 受训协理人，可因合法委托、撤离协作或公共安全转介进入危险现场；不承担单人清场。
+      tentative_role: flex
+      notes: 通过节点顺序和行动接续支持队伍，不是导航、空间传送或证据全知。
+    agent_profile:
+      knowledge_style: 区分亲眼确认、他人陈述、制度记录与个人推测，不把推测说成事实。
+      speech_style: 语速中快，先报结论再补条件。
+      communication_habits: [区分已确认、待确认和不能确认, 提供两个可执行选项, 说明缺少哪条信息]
+      default_information_behavior: 对公开信息直接解释；来源不明时标记不确定并追查来源。
+      sensitive_topics: [被说成只会跑腿, 未经同意改动她的安排, 委托人隐私]
+    canon_constraints:
+      - 能力只维持亲自确认过的短行动链，不是净空通路或万能导航。
+      - 协理职业不自动赋予知识权限或机构领导身份。
+      - 不替他人作决定，不保证行动链的最终结果。
+      - 不创建固定主角关系或额外角色实体。
+    tags: [city_linzhou, city_associate, young_adult, baseline_humanoid, rarity_A, bias_path, narrative_process]
+
+  - id: char_launch_002
+    name:
+      mode: fixed
+      display_name: Lumi
+      legal_name:
+        full: 林露米
+        language: zh
+        script: Hans
+      native_name: null
+      localized_name:
+        value: Lumi
+        language: en
+        source: 长期家庭昵称“露米”的稳定罗马字显示形式
+        method: established_local_name
+      aliases:
+        - value: 胶带王
+          context: 美术社内部玩笑称呼
+          used_by: [美术社部分同学]
+      codename: null
+      stage_name: null
+      online_handle: null
+      common_address: Lumi
+    name_design:
+      strategy: [nickname_evolution, sound_design, natural_naming]
+      references: []
+      linguistic_notes: Lumi 是由中文家庭昵称“露米”转成的稳定社交显示形式。
+      thematic_connection: 名字保留她主动选择显示身份的边界感。
+      public_identity_connection: 家庭、学校和社交显示场景逐渐稳定使用 Lumi。
+      design_notes: 不暗示外籍身份，不把中文本名和显示名机械拼接。
+    codename_design: null
+    address_rules:
+      public: Lumi
+      colleague: Lumi
+      formal: 林露米
+    naming_review:
+      display_name: Lumi
+      legal_or_native_name: 林露米
+      codename_or_stage_name: none
+      naming_strategy: nickname_evolution + sound_design + natural_naming
+      reference: "Reference: none"
+      transformation: 将长期家庭昵称转为本人持续使用的 Latin-script 显示身份。
+      character_fit: 短、清晰，符合她主动协商公开身份的设定。
+      player_memory_fit: 视觉和读音辨识度高，不需要括号本地化。
+      naturalness_check: 由真实家庭昵称和社交显示习惯支持。
+    basic_profile:
+      age: 16
+      age_band: teen
+      legal_age_status: minor
+      gender: female
+      pronouns: 她
+      nationality_or_cultural_background: null
+      occupation: 中学生
+      workplace_or_school: 槐庭区普通中学；校内美术社成员
+    geography:
+      current_city_id: city_linzhou
+      home_district_id: null
+      primary_activity_areas:
+        - city_id: city_linzhou
+          district_id: null
+          location_id: null
+      origin_context: 生活和上学活动集中在临洲的槐庭区生活圈；槐庭区尚无 District Canon ID。
+    phenotype:
+      category: partial_theriomorphic
+      visible_traits: [耳部兽征, 尾部兽征]
+      design_notes: 耳尾是稳定生理表型，不确定动物物种，不产生动物能力或人格结论。
+      everyday_accommodations: [校服和日常衣物为尾部留出正常适配结构]
+    identity:
+      faction_id: null
+      division_ids: []
+      roles: []
+      responsibilities: []
+      assignments: []
+      explicit_grants: []
+    social_identity:
+      economic_background: 普通家庭生活，零花钱主要用于文具和社团材料。
+      education_background: 普通中学生，参加校内美术社。
+      family_context: 与母亲、继父和年幼弟弟共同生活；家人支持但常替她预判。
+      housing_context: 共同居住，轮流使用浴室和书桌。
+      public_reputation: 直接、有判断力的美术社学生；不应被当作兽征代表。
+      professional_reputation: null
+    character_hook:
+      first_impression: 会先找墙角、门口和可贴胶带的平面，并指出不该站得太近的位置。
+      visual_or_behavioral_motif: 先用胶带标出区域，再站到边线上确认所有人理解边界。
+      memorable_contrast: 抗拒成年人替她做决定，却会主动给弟弟准备晚餐并检查作业。
+    personality:
+      surface_traits: [直接, 警觉, 会当场说不]
+      underlying_traits: [害怕拒绝让别人失望, 需要确认冲突后关系仍然存在]
+      values: [自己说出口的同意, 私人空间, 把求助视为合作]
+      contradictions: [反对成年人替她判断却常替家人预先安排情绪, 想保护边界却会封闭整个区域]
+      dislikes: [未经允许翻东西, 你还小不懂, 把兽征当装饰拍照]
+      habits: [收集胶带, 做手账贴纸, 用便签记录各方同意的版本]
+    life:
+      current_concerns: [美术社展览是否接受商业赞助, 数学成绩, 是否被当作兽征代表, 家庭住房变化]
+      routine: [上学, 参加美术社, 午休在图书馆靠窗位置吃饭, 放学去文具店, 与弟弟轮流使用书桌]
+      hobbies: [做手账贴纸, 收集胶带, 看装修和收纳视频, 给同学画不侵犯隐私的头像]
+      social_connections:
+        - type: 家庭关系
+          target_character_id: null
+          description: 与母亲、继父和弟弟共同生活。
+        - type: 同学朋友
+          target_character_id: null
+          description: 班级中有能互相吐槽的朋友，未建立固定 Character ID。
+    ability:
+      status: stable
+      rule: 当她亲手明确划出属于某人或某用途的区域，并让相关者理解边界时，区域内外的物品与行动更难无意间越界。
+      trigger: 她必须完成可见标记，并说清这里放什么、谁可以进、什么时候结束中的至少两项。
+      limitation: 不能阻止有意破坏边界的人，不能凭空封锁空间，也不能判断谁道德上正确；区域越大、参与者越多，维持时间越短。
+      everyday_uses: [整理社团材料, 保护弟弟的作业区, 区分公共桌面的待处理和已完成区域]
+      professional_uses: [美术社布展时管理作品和观众路线, 为家庭冲突建立可回到的时间和位置]
+      risks: [压力下扩大禁入区导致队友无法协作, 相关者未理解边界时效果快速剥落]
+    narrative:
+      core_theme: 边界不是把所有人挡在外面，而是让关系可以安全地继续。
+      personal_conflict: 想被当作有判断力的人，又害怕判断错误会伤害别人。
+      relationship_to_main_conflict: direct
+      story_entry_points: [美术社商业赞助, 兽征和能力被包装成宣传卖点, 校园与家庭边界冲突]
+      growth_direction: 学会区分拒绝、协商和求助，不把所有边界都变成封闭区域。
+    gameplay:
+      playable: true
+      rarity: S
+      release_status: launch
+    combat:
+      combat_participation_reason: 危险场景来自学校、家庭或社区事件中的保护与撤离；必须有成年协理人、教师或公共安全人员在场，她不是职业前线人员。
+      tentative_role: control
+      notes: 用可见边界分区，不是领域展开、空间封锁或绝对防御。
+    agent_profile:
+      knowledge_style: 先确认哪些内容公开、哪些只在当前场合说，不替别人扩大授权。
+      speech_style: 句子短，先说边界，再解释原因；被理解后会补充细节。
+      communication_habits: [确认公开范围, 用便签记录同意版本, 直接指出不能碰的地方]
+      default_information_behavior: 不确定时先标出不可触碰部分，再请求具体帮助。
+      sensitive_topics: [被拍摄, 被代表发言, 被当作兽征或能力宣传道具]
+    canon_constraints:
+      - minor，不是职业前线人员。
+      - phenotype 不产生动物能力，不推导物种、人格或社会身份。
+      - 不作为秘密实验体或秘密组织成员。
+      - boundary 不能成为绝对屏障、强制封锁或道德判断工具。
+    tags: [city_linzhou, school, partial_theriomorphic, rarity_S, bias_boundary, narrative_identity_boundary]
+
+  - id: char_launch_003
+    name:
+      mode: fixed
+      display_name: 许砚舟
+      legal_name:
+        full: 许砚舟
+        language: zh
+        script: Hans
+      native_name:
+        full: 许砚舟
+        language: zh
+        script: Hans
+      localized_name:
+        value: Xu Yanzhou
+        language: en
+        source: 普通话拼音转写
+        method: standard_transliteration
+      aliases: []
+      codename: null
+      stage_name: null
+      online_handle: null
+      common_address: 许砚舟
+    name_design:
+      strategy: [natural_naming, family_background]
+      references: []
+      linguistic_notes: 自然中文姓名；“砚”和“舟”来自父母对耐心与水上意象的家庭取名想法。
+      thematic_connection: 姓名强调日常家庭来源，不制造文学或能力典故。
+      public_identity_connection: 家庭、学校和正式记录使用许砚舟。
+      design_notes: 短而稳定，不与 Lumi 构成配套命名。
+    codename_design: null
+    address_rules:
+      public: 许砚舟
+      colleague: 许砚舟
+      formal: 许同学
+    naming_review:
+      display_name: 许砚舟
+      legal_or_native_name: 许砚舟
+      codename_or_stage_name: none
+      naming_strategy: natural_naming + family_background
+      reference: "Reference: none"
+      transformation: 保留父母取名形成的自然中文姓名。
+      character_fit: 克制、清楚，符合普通学生身份。
+      player_memory_fit: 三字姓名读音明确，和 Lumi 视觉区分明显。
+      naturalness_check: 家庭、学校、田径队和游戏社均可自然使用。
+    basic_profile:
+      age: 15
+      age_band: teen
+      legal_age_status: minor
+      gender: male
+      pronouns: 他
+      nationality_or_cultural_background: null
+      occupation: 中学生
+      workplace_or_school: 槐庭区普通中学；校田径队短跑替补与校内游戏社成员
+    geography:
+      current_city_id: city_linzhou
+      home_district_id: null
+      primary_activity_areas:
+        - city_id: city_linzhou
+          district_id: null
+          location_id: null
+      origin_context: 生活和上学活动集中在临洲的槐庭区生活圈；槐庭区尚无 District Canon ID。
+    phenotype:
+      category: baseline_humanoid
+      visible_traits: []
+      design_notes: 基准人形；动作准备感来自训练和习惯，不是额外身体能力。
+      everyday_accommodations: []
+    identity:
+      faction_id: null
+      division_ids: []
+      roles: []
+      responsibilities: []
+      assignments: []
+      explicit_grants: []
+    social_identity:
+      economic_background: 普通家庭生活，零花钱有限，倾向修理旧物。
+      education_background: 普通中学生，参加田径队和游戏社。
+      family_context: 与父母和外婆同住；父亲常直接替他报名，母亲会先询问意愿。
+      housing_context: 家庭居住，通勤和学习生活稳定。
+      public_reputation: 讲规矩、安静、在训练中可靠的学生。
+      professional_reputation: null
+    character_hook:
+      first_impression: 和老师说话使用完整句子，体育课上会默默把坏掉的起跑器搬走。
+      visual_or_behavioral_motif: 做事前用脚尖找明确起点，完成后才放松肩膀。
+      memorable_contrast: 看起来最懂规矩，却会在底线被触碰时第一次当众打断大人。
+    personality:
+      surface_traits: [有礼, 安静, 讲顺序]
+      underlying_traits: [把亲手做完视为尊严, 抵抗被别人重新定义]
+      values: [自主完成, 明确规则, 公平竞争]
+      contradictions: [讨厌别人替他做事却会替别人安排节奏, 要求完整验证却害怕说明私人感受]
+      dislikes: [未经同意替他报名, 半途改变约定, 把输赢归因于天赋差距]
+      habits: [重复短热身, 用起点和终点描述事情, 被打断时从头开始]
+    life:
+      current_concerns: [数学成绩影响分班, 是否留在田径队替补, 父亲要求参加竞赛班, 游戏社校际比赛, 零花钱不够买新手柄]
+      routine: [早自习前慢跑, 上课, 午休交换游戏攻略, 放学参加田径队或游戏社, 晚饭后写作业]
+      hobbies: [计时跑步, 研究游戏连段输入, 修理旧手柄, 观察公交车上人们的走路节奏]
+      social_connections:
+        - type: 家庭关系
+          target_character_id: null
+          description: 与父母和外婆共同生活。
+        - type: 田径队同学
+          target_character_id: null
+          description: 有兼具竞争和放学同行性质的同学关系，未建立固定 Character ID。
+    ability:
+      status: trained
+      rule: 当他亲自完整完成一段短动作，并在相同起始条件下再次开始时，下一次动作更容易沿上一次轨迹完成。
+      trigger: 动作必须由他本人从起点连续完成到终点；他人代做、剪辑和记忆想象都不算。
+      limitation: 只对短、具体、身体可执行的动作有效；起始条件变化、疲劳、受伤或情绪失稳都会使轨迹偏离。不能复制他人动作或超出训练水平。
+      everyday_uses: [练习投篮和系绳结, 修理手柄, 反复练习乐器指法]
+      professional_uses: [稳定田径起跑与转身, 把游戏社复杂操作拆成可重复片段]
+      risks: [危险条件变化时仍执着重来, 过度使用造成肌肉疲劳和动作僵化]
+    narrative:
+      core_theme: 自己完成，不等于拒绝所有帮助。
+      personal_conflict: 想保住自主权，却把任何协助都听成别人认为他做不到。
+      relationship_to_main_conflict: indirect
+      story_entry_points: [校际比赛报名被代改, 游戏社队友求助, 学校能力画像影响分班]
+      growth_direction: 学会分别说明自己要保留的决定和可以接受的帮助。
+    gameplay:
+      playable: true
+      rarity: A
+      release_status: launch
+    combat:
+      combat_participation_reason: 危险场景来自学校、家庭或社区事件中的撤离与障碍处理；由成年人组织并提供保护，他不是职业战斗员。
+      tentative_role: burst
+      notes: 主要体现短动作重复和轨迹稳定，不是时间回溯、技能复制或身体强化。
+    agent_profile:
+      knowledge_style: 按起点、过程和结果复述自己实际做过的部分，不把猜测当验证。
+      speech_style: 先完整说完一句再停顿，被打断时可能重新开始。
+      communication_habits: [按起点过程结果讲述, 请求一次实际尝试, 不主动扩展私人感受]
+      default_information_behavior: 会说明“还没做完验证”，并请求具体条件而不是猜测。
+      sensitive_topics: [被安排, 被代替, 被夸成比同龄人成熟]
+    canon_constraints:
+      - minor，不是职业前线人员。
+      - motion 不是时间回溯、记忆动作或复制技能。
+      - 能力不能让身体超出训练水平，必须受疲劳、受伤和起始条件约束。
+      - 不与 Lumi 自动建立朋友或配对关系。
+    tags: [city_linzhou, school, minor, baseline_humanoid, rarity_A, bias_motion, narrative_autonomy]
+
+  - id: char_launch_004
+    name:
+      mode: fixed
+      display_name: 余弦
+      legal_name:
+        full: 余思弦
+        language: zh
+        script: Hans
+      native_name: null
+      localized_name:
+        value: Yu Sixian
+        language: en
+        source: 普通话拼音转写
+        method: standard_transliteration
+      aliases: []
+      codename: null
+      stage_name:
+        value: 余弦
+        origin: 大学舞台社团的排练表、走位表和后台记号将“余思弦”自然缩写为“余弦”。
+        used_by: [演员, 后台工作人员, 导演, 熟悉观众]
+      online_handle: null
+      common_address: 余弦
+    name_design:
+      strategy: [stage_identity, nickname_evolution, phonetic_reference]
+      references: []
+      linguistic_notes: 余弦首先是法律姓名“余思弦”的社会性缩写，不以数学典故为来源。
+      thematic_connection: 短名连接她的舞台劳动、公众身份和主动选择。
+      public_identity_connection: 节目单、海报、社交媒体和场务沟通均可使用余弦。
+      design_notes: 不加入 scientific_term，不把同形数学词变成能力设定。
+    codename_design: null
+    address_rules:
+      public: 余弦
+      colleague: 余弦
+      formal: 余思弦
+    naming_review:
+      display_name: 余弦
+      legal_or_native_name: 余思弦
+      codename_or_stage_name: 余弦（Stage Name）
+      naming_strategy: stage_identity + nickname_evolution + phonetic_reference
+      reference: "Reference: none"
+      transformation: 法律姓名在真实舞台社交场景中自然缩写，并由本人正式保留。
+      character_fit: 兼具舞台辨识度和日常社会来源，不是能力名。
+      player_memory_fit: 两字短名清晰，适合节目单、UI 和语音。
+      naturalness_check: 起源、使用者、场景和本人沿用意愿均明确。
+    basic_profile:
+      age: 21
+      age_band: young_adult
+      legal_age_status: adult
+      gender: female
+      pronouns: 她
+      nationality_or_cultural_background: null
+      occupation: 南栈小剧场演员、舞台工作者，偶尔做活动串场和排练指导
+      workplace_or_school: 南栈小剧场及独立演出场地
+    geography:
+      current_city_id: city_linzhou
+      home_district_id: null
+      primary_activity_areas:
+        - city_id: city_linzhou
+          district_id: null
+          location_id: null
+      origin_context: 舞台和社区活动主要位于临洲的南栈生活圈；南栈街区尚无 District Canon ID。
+    phenotype:
+      category: baseline_humanoid
+      visible_traits: []
+      design_notes: 基准人形；舞台识别来自服装、站位和动作，不是身体特征。
+      everyday_accommodations: []
+    identity:
+      faction_id: null
+      division_ids: []
+      roles: []
+      responsibilities: []
+      assignments: []
+      explicit_grants: []
+    social_identity:
+      economic_background: 演出收入不稳定，愿意为舒适鞋和护嗓用品花钱。
+      education_background: 有大学舞台社团经历，现以小剧场工作为主。
+      family_context: 与父母关系不差但沟通偏功能化；家人担心收入稳定性。
+      housing_context: 南栈生活圈居住和工作，具体住址未 Canon 化。
+      public_reputation: 在熟悉的小剧场和活动圈有清晰舞台身份。
+      professional_reputation: 重视排练劳动、演员署名和合同边界。
+    character_hook:
+      first_impression: 上台前安静，开场后能把观众视线准确带到指定位置。
+      visual_or_behavioral_motif: 进入房间先找参照点，再决定自己站在哪一边。
+      memorable_contrast: 不怕陌生观众，却害怕熟人用“你平时不是这样”固定她。
+    personality:
+      surface_traits: [台上果断, 台下观察细, 对商业话术敏感]
+      underlying_traits: [希望被看见的是主动选择的表达, 对被包装固定高度警惕]
+      values: [舞台劳动被尊重, 合作贡献可记录, 表演可以主动而不等于欺骗]
+      contradictions: [讨厌固定人设却经营余弦这个名字, 反感商业要求却常用讽刺开场]
+      dislikes: [把演出叫玩票, 未沟通改动站位, 用私人生活换曝光]
+      habits: [看旧演出录像, 修补道具标签, 先用排练尝试代替争论]
+    life:
+      current_concerns: [小剧场租约调整, 是否接霓桥短期商业项目, 与老搭档的表演理念冲突, 家人希望她找稳定工作]
+      routine: [排练或接临时活动, 做台词和走位, 搬运小型道具, 演出后核对演出费]
+      hobbies: [看旧演出录像, 逛二手服装店, 制作耐用道具标签, 收集观众入场声音]
+      social_connections:
+        - type: 剧组同事与朋友
+          target_character_id: null
+          description: 剧组成员兼具同事、朋友和临时家人性质。
+        - type: 老搭档
+          target_character_id: null
+          description: 存在表演理念冲突，但没有建立独立 Character ID。
+    ability:
+      status: trained
+      rule: 当她选择并持续参照现实中的位置时，周围人的注意、站位和行动倾向更容易围绕该参照点形成清晰关系。
+      trigger: 她必须站定参照点，并让至少一名相关者知道看哪里、站哪里或等谁；纯粹喊叫不算。
+      limitation: 只能调整注意和空间关系的清晰度，不能控制思想、强迫移动或跨越距离；参照点被遮挡、她离开或目标不理解指示时效果下降。
+      everyday_uses: [帮助排练演员找位, 在车站和剧场帮助同伴汇合, 拍照时避免人群挤在同一侧]
+      professional_uses: [舞台走位, 观众视线管理, 活动队伍现场引导]
+      risks: [参照点选错会让人更高效地朝错误方向集中, 过度使用会把人当作舞台调度对象]
+    narrative:
+      core_theme: 被看见是一种关系，不是一种商品格式。
+      personal_conflict: 需要商业合作维持剧场生活，却担心合作把余弦固定成无法退出的角色。
+      relationship_to_main_conflict: direct
+      story_entry_points: [能力主题节目邀约, 合同和舆论冲突, 演出现场事故]
+      growth_direction: 在经营公众身份和保留退出权之间建立可谈判的边界。
+    gameplay:
+      playable: true
+      rarity: A
+      release_status: launch
+    combat:
+      combat_participation_reason: 参与自己所在剧场、活动安全和南栈社区事件中的现场引导；不是超自然强制控制者。
+      tentative_role: support
+      notes: support 为主要定位；对站位和注意关系的 control 倾向保留在说明中。
+    agent_profile:
+      knowledge_style: 先判断一句话给谁看，再决定提供完整版本还是舞台版本。
+      speech_style: 台上句尾利落，台下用比喻绕开直接情绪，谈合同时极其精确。
+      communication_habits: [询问信息受众, 用排练尝试验证分歧, 记录每个人的舞台贡献]
+      default_information_behavior: 区分公开表演版本、工作事实和私人信息，不主动泄露他人隐私。
+      sensitive_topics: [被要求证明私下也讨喜, 演员私人生活换曝光, 演员署名被改动]
+    canon_constraints:
+      - 余弦是正式 Stage Name，不是 codename 或能力名。
+      - relative_position 不能变成魅惑、强制位移、瞬移或引力操纵。
+      - 与霓桥存在潜在商业合作不等于 faction membership。
+      - 不自动与 Milo 建立关系；同在南栈不等于认识。
+    tags: [city_linzhou, nanzhan_context, performer, baseline_humanoid, rarity_A, bias_relative_position, narrative_public_identity]
+
+  - id: char_launch_005
+    name:
+      mode: fixed
+      display_name: Milo
+      legal_name: null
+      native_name:
+        full: Milo Hart
+        language: en
+        script: Latn
+      localized_name:
+        value: 米洛·哈特
+        language: zh
+        source: 家庭和南栈社交环境中的中文本地化形式
+        method: established_local_name
+      aliases: []
+      codename: null
+      stage_name: null
+      online_handle: null
+      common_address: Milo
+    name_design:
+      strategy: [transliteration, family_background]
+      references: []
+      linguistic_notes: Milo 为稳定使用的英文显示名，Milo Hart 为 Legal / Native Name。
+      thematic_connection: 跨语言姓名层与南栈日常身份并存，不把姓名变成职业代号。
+      public_identity_connection: 日常工作和玩家-facing 场景优先使用 Milo。
+      design_notes: 不将“小米洛”或其他临时称呼写成 Stage Name。
+    codename_design: null
+    address_rules:
+      public: Milo
+      colleague: Milo
+      formal: Milo Hart
+    naming_review:
+      display_name: Milo
+      legal_or_native_name: Milo Hart
+      codename_or_stage_name: none
+      naming_strategy: transliteration + family_background
+      reference: "Reference: none"
+      transformation: 保留法律 / 原生姓名，并使用稳定的短显示名。
+      character_fit: 简短自然，符合自由职业者在南栈的日常使用。
+      player_memory_fit: 四字母短名清晰，和中文本地化层区分明确。
+      naturalness_check: 中文本地化形式有家庭和社区使用来源，不虚构国籍。
+    basic_profile:
+      age: 23
+      age_band: young_adult
+      legal_age_status: adult
+      gender: male
+      pronouns: 他
+      nationality_or_cultural_background: null
+      occupation: 南栈街区设备维护自由职业者
+      workplace_or_school: 南栈小剧场、店铺和工作室
+    geography:
+      current_city_id: city_linzhou
+      home_district_id: null
+      primary_activity_areas:
+        - city_id: city_linzhou
+          district_id: null
+          location_id: null
+      origin_context: 设备维护工作集中在临洲南栈生活圈；南栈街区尚无 District Canon ID。
+    phenotype:
+      category: full_theriomorphic
+      visible_traits: [mustelid-like visual morphology, 圆短头部, 小型外翻耳, 短口鼻, 全身短密毛, 长柔韧尾, 五指手部, 可穿普通鞋袜的足部比例]
+      design_notes: mustelid-like 仅是视觉形态参考，不代表 species、race、社会、能力或人格；full_theriomorphic 是普通社会人口表型。
+      everyday_accommodations: [工具腰带与外套避免压迫尾部, 普通鞋袜适配足部结构]
+    identity:
+      faction_id: null
+      division_ids: []
+      roles: []
+      responsibilities: []
+      assignments: []
+      explicit_grants: []
+    social_identity:
+      economic_background: 自由职业收入不稳定，愿意投资好工具但日常饮食节省。
+      education_background: 通过维修工作和实际训练积累设备经验。
+      family_context: 与在外地工作的姐姐保持联系；父母支持职业但认为自由职业不够稳定。
+      housing_context: 南栈生活圈居住，具体住址未 Canon 化。
+      public_reputation: 南栈几家店铺和小剧场信任的设备维护联系人。
+      professional_reputation: 可靠、收费和工作边界清楚，重视检查与安全规范。
+    character_hook:
+      first_impression: 设备出故障时会立刻进入工作状态，先检查受力和连接再解释。
+      visual_or_behavioral_motif: 手边总有工具和零件，处理连接点时会逐项确认受力。
+      memorable_contrast: 能修好设备的连接，却常把关系问题翻译成需要维修的故障。
+    personality:
+      surface_traits: [可靠, 耐心, 说话不急]
+      underlying_traits: [害怕只有有用时才值得被留下, 对依赖既高兴又不安]
+      values: [东西能修就别急着丢, 工作边界清楚, 互相帮忙不能默认免费]
+      contradictions: [重视边界却接下超时急单, 会维护设备却延后处理关系感受]
+      dislikes: [把全覆兽征当拍照噱头, 天生适合体力活, 未检查就更换可修设备]
+      habits: [看维修教学视频, 收集旧零件, 先拆开检查再承诺结果]
+    life:
+      current_concerns: [南栈改造是否让小店承担不起新设备标准, 自由职业收入, 设备安全责任]
+      routine: [接收维护请求, 检查灯具门锁音响和临时结构, 记录维修, 到二手市场找零件]
+      hobbies: [拼装旧音响, 看维修视频, 找不常见的螺母和旋钮, 给朋友做小型家具]
+      social_connections:
+        - type: 家庭关系
+          target_character_id: null
+          description: 与姐姐和父母保持普通家庭联系。
+        - type: 南栈客户与邻居
+          target_character_id: null
+          description: 店主和剧场工作人员兼具客户、邻居和半个家人的关系。
+    ability:
+      status: trained
+      rule: 当他理解两个部件、物体或行动之间原本的连接方式，并亲手完成一次正确扣合时，短时间内同类连接更容易保持稳定。
+      trigger: 必须有真实连接结构且他理解结构；只靠蛮力、胶水或口头承诺不能触发。
+      limitation: 不能凭空连接不相容对象，不能修复材料已彻底失去结构的物品，也不能强迫人际关系恢复；陌生复杂设备需要先学习。
+      everyday_uses: [固定插头, 临时加固货架, 让自行车链条在短距离内不易脱落]
+      professional_uses: [维修灯具门锁音响, 舞台搭建, 检查店铺临时结构, 加固撤离门和设备接口]
+      risks: [误判连接方式会让错误连接更难拆, 过度使用会忽视关系已不适合继续维持]
+    narrative:
+      core_theme: 能修好一个连接，不代表双方必须继续相连。
+      personal_conflict: 想守住南栈街区，却也需要收入和职业成长，无法用维修解决结构性不平等。
+      relationship_to_main_conflict: indirect
+      story_entry_points: [小剧场设备整改, 南栈改造与小店成本冲突, 社区设施维修]
+      growth_direction: 学会区分可以维修的结构和必须重新协商的关系。
+    gameplay:
+      playable: true
+      rarity: A
+      release_status: launch
+    combat:
+      combat_participation_reason: 设备维护工作覆盖场地安全；危险场景来自合法维修、活动安全协作或紧急撤离，不承担警务或单人救援指挥。
+      tentative_role: defense
+      notes: defense 为主要定位；连接 stability 不自动维修物体或强化无限结构。
+    agent_profile:
+      knowledge_style: 用受力、松动和可先支撑的部件解释问题，不把比喻当证据。
+      speech_style: 平时慢，进入维修状态后连续说出部件名称和顺序。
+      communication_habits: [先拆开检查, 说明目前能保证到哪一步, 明确收费和工作边界]
+      default_information_behavior: 只依据检查结果表达，未知复杂设备需要先学习和确认。
+      sensitive_topics: [被当作兽征展示品, 被视为廉价体力劳动者, 被要求免费随叫随到]
+    canon_constraints:
+      - full_theriomorphic 是普通社会人口表型，不是怪物、秘密种族或能力来源。
+      - mustelid-like 只描述视觉形态，不建立 species system。
+      - 维修能力来自理解、训练和正确扣合，不是自动维修。
+      - connection 偏置不修复人际关系、不连接不相容对象、不提供无限结构强化。
+    tags: [city_linzhou, nanzhan_context, equipment_maintenance, full_theriomorphic, rarity_A, bias_connection, narrative_labor]
+
+  - id: char_launch_006
+    name:
+      mode: fixed
+      display_name: Ren
+      legal_name:
+        full: Ren Ainsley
+        language: en
+        script: Latn
+      native_name:
+        full: Ren Ainsley
+        language: en
+        script: Latn
+      localized_name:
+        value: 任艾因斯利
+        language: zh
+        source: 正式中文文件和社区交往中的音译 / 本地化形式
+        method: standard_transliteration
+      aliases: []
+      codename: null
+      stage_name: null
+      online_handle: null
+      common_address: Ren
+    name_design:
+      strategy: [family_background, transliteration]
+      references: []
+      linguistic_notes: Ren 是长期使用的短名；任艾因斯利是正式中文文件中的本地化形式。
+      thematic_connection: 跨语言姓名层表达身份分工，不命名能力或职业隐喻。
+      public_identity_connection: 日常和 UI 场景使用 Ren，正式文件可使用任艾因斯利。
+      design_notes: 已移除缺少证据的 professional_metaphor；不根据姓名推导国籍。
+    codename_design: null
+    address_rules:
+      public: Ren
+      colleague: Ren
+      formal: 任艾因斯利
+    naming_review:
+      display_name: Ren
+      legal_or_native_name: Ren Ainsley / 任艾因斯利
+      codename_or_stage_name: none
+      naming_strategy: family_background + transliteration
+      reference: "Reference: none"
+      transformation: 保留非中文法律 / 原生姓名及其稳定中文本地化形式，未将职业写成命名来源。
+      character_fit: 短、清楚，适合正式工作和日常社区语境。
+      player_memory_fit: 三字母显示名和中文本地化层均易检索。
+      naturalness_check: 跨语言身份有长期生活和文件使用支持，不虚构国籍。
+    basic_profile:
+      age: 25
+      age_band: young_adult
+      legal_age_status: adult
+      gender: female
+      pronouns: 她
+      nationality_or_cultural_background: null
+      occupation: 衡信保险理赔复核专员
+      workplace_or_school: 衡信保险
+    geography:
+      current_city_id: city_linzhou
+      home_district_id: null
+      primary_activity_areas:
+        - city_id: city_linzhou
+          district_id: null
+          location_id: null
+      origin_context: 在临洲接受本地教育并生活工作；不以姓名形式推出国籍或外来者身份。
+    phenotype:
+      category: partial_theriomorphic
+      visible_traits: [短角, 颞侧至耳后的有限鳞状表型, 颈侧和锁骨上方少量鳞状纹理]
+      design_notes: 不是龙族；短角和鳞片是稳定生理表型，不提供防御力、攻击能力或 passage 效果；不配置尾巴或大型兽耳。
+      everyday_accommodations: [发型绕开短角角根, 柔软领口减少颈侧鳞片摩擦]
+    identity:
+      faction_id: faction_003
+      division_ids: []
+      roles: []
+      responsibilities: []
+      assignments: []
+      explicit_grants: []
+    social_identity:
+      economic_background: 收入稳定但对大额消费反复比较，保留发票和消费记录。
+      education_background: 在临洲接受本地教育，具备理赔复核和现场证据整理训练。
+      family_context: 与姐姐关系亲近但不擅长表达；父母认为工作稳定。
+      housing_context: 租住居住，具体住址未 Canon 化。
+      public_reputation: 专业、直接、要求材料对应问题的理赔复核专员。
+      professional_reputation: 区分观察、客户陈述和推断，主动声明权限边界。
+    character_hook:
+      first_impression: 到达现场先清出直线，再沿线核对人、物和文件。
+      visual_or_behavioral_motif: 一边逐一移开普通障碍，一边目测净空宽度和出口可见度。
+      memorable_contrast: 能冷静拆解拒赔理由，却会因朋友临时取消电影约闷一整晚。
+    personality:
+      surface_traits: [专业, 直截了当, 难被闲聊拉走]
+      underlying_traits: [反感把人变成系统允许处理的形状, 依靠流程获得安全感]
+      values: [责任可解释, 申诉有路径, 专业判断允许复核]
+      contradictions: [要求模型透明却对私人情绪设高门槛, 先整理到可解释才承认自己受伤]
+      dislikes: [系统就是这么算的, 让客户寻找无法获得的证明, 把同理心当作降低标准]
+      habits: [保存消费凭证, 反复整理材料, 烦躁时按回又拔出笔帽]
+    life:
+      current_concerns: [动态风险模型的解释话术, 租房续约, 姐姐准备生孩子, 学做不靠外卖的晚饭]
+      routine: [通勤, 处理补件, 客户复核电话或现场勘查, 买固定品牌辣味饭团, 看旧综艺]
+      hobbies: [试吃便利店新品, 看法庭纪录片, 整理手机相册, 在匿名论坛回复证据保存建议]
+      social_connections:
+        - type: 家庭关系
+          target_character_id: null
+          description: 与姐姐、父母保持普通家庭关系。
+        - type: 职业朋友
+          target_character_id: null
+          description: 与医院工作的大学同学交流职业边界，未建立固定 Character ID。
+    ability:
+      status: trained
+      rule: 当她亲自识别并移除现实通路上的具体障碍后，该通路在短时间内更不容易被普通物体和人群再次堵住。
+      trigger: 必须确认起点、终点和阻碍来源，并亲自处理至少一个实际障碍；只指出问题不算。
+      limitation: 不能预测风险、改变概率、修正命运或清除不愿让路的人；通路维持有限时间，结构性障碍和持续人流会重新出现。
+      everyday_uses: [让办公室搬运保持短暂通畅, 让医院探视和商铺后门保持可通过, 清出家中不易被杂物堵住的走道]
+      professional_uses: [现场勘查, 理赔材料交接, 障碍清点, 为撤离和消防器材取用保留现实通路]
+      risks: [只清出看似合理的通路而忽略使用者需求, 过度整理空间以逃避私人冲突]
+    narrative:
+      core_theme: 有路可走，不等于所有人都能以同样代价走过去。
+      personal_conflict: 发现模型把无法提交材料归为客户责任，却仍需判断何时是专业边界、何时是逃避。
+      relationship_to_main_conflict: direct
+      story_entry_points: [错误能力风险标签导致的拒赔, 客户证据不足, 动态模型解释与申诉]
+      growth_direction: 学会在遵守专业边界和指出制度伤害之间承担可复核的选择。
+    gameplay:
+      playable: true
+      rarity: S
+      release_status: launch
+    combat:
+      combat_participation_reason: 工作包含现场调查和能力责任险事故复核；危险参与来自合法案件协作，不越权做医疗、警务或模型裁决。
+      tentative_role: support
+      notes: support 为主要定位；physical clearance 的防御倾向不等于风险预测或概率操纵。
+    agent_profile:
+      knowledge_style: 区分观察、客户陈述和推断，主动说明自己没有权限的部分。
+      speech_style: 句子短，术语少但定义清楚；情绪越大越像在写报告。
+      communication_habits: [为结论寻找对应材料, 把不确定性拆成缺材料、模型不适用和事实冲突, 说明权限边界]
+      default_information_behavior: 只按岗位和案件语境处理合法获得的信息，不把职业变成秘密 Lore 权限。
+      sensitive_topics: [被说成冷酷, 为体现同情而违反复核标准, 客户隐私]
+    canon_constraints:
+      - 短角和鳞片不是龙族或能力，不提供攻击、防御或血统解释。
+      - non-Chinese legal identity 不等于外国人 exposition 或自动国籍。
+      - passage 不允许概率操纵、风险预测、治疗或命运修正。
+      - ordinary Hengxin employee，不自动拥有 manager、compliance_lead、model_governance_lead 或 chief_actuary 权限。
+      - faction membership 不等于全部衡信 Lore Access。
+      - 普通理赔复核专员身份不自动赋予 manager、compliance_lead、model_governance_lead、chief_actuary 等 Knowledge Role。
+    tags: [city_linzhou, hengxin, insurance_claims, partial_theriomorphic, rarity_S, bias_passage, narrative_accountability]
+
+  - id: char_launch_007
+    name:
+      mode: fixed
+      display_name: 纪衡
+      legal_name:
+        full: 纪衡
+        language: zh
+        script: Hans
+      native_name:
+        full: 纪衡
+        language: zh
+        script: Hans
+      localized_name:
+        value: Ji Heng
+        language: en
+        source: 普通话拼音转写
+        method: standard_transliteration
+      aliases: []
+      codename: null
+      stage_name: null
+      online_handle: null
+      common_address: 纪衡
+    name_design:
+      strategy: [natural_naming]
+      references: []
+      linguistic_notes: 简洁稳重的中文姓名；“衡”的平衡联想服务人物主题但不是能力名。
+      thematic_connection: 姓名的记录、衡量和纪律联想与公共安全主题相邻，但不构成职业称号。
+      public_identity_connection: 家人、同事和正式文件均使用纪衡。
+      design_notes: 不恢复“纪队”，不新增静态昵称或工作代号。
+    codename_design: null
+    address_rules:
+      public: 纪衡
+      colleague: 纪衡
+      formal: 纪先生
+    naming_review:
+      display_name: 纪衡
+      legal_or_native_name: 纪衡
+      codename_or_stage_name: none
+      naming_strategy: natural_naming
+      reference: "Reference: none"
+      transformation: 保留现实姓名及有限语义联想，不把联想注册为称号或能力名。
+      character_fit: 稳重、可检索，符合普通公共安全协作人员身份。
+      player_memory_fit: 两字短名清楚，和“公共安全”职业标签区分开。
+      naturalness_check: 由家人、同事和正式文件自然使用，不依赖“纪队”等称呼。
+    basic_profile:
+      age: 26
+      age_band: young_adult
+      legal_age_status: adult
+      gender: male
+      pronouns: 他
+      nationality_or_cultural_background: null
+      occupation: 临洲公共安全联席体系中的现场急救与大型活动安全协作人员
+      workplace_or_school: 临洲市公共安全联席体系
+    geography:
+      current_city_id: city_linzhou
+      home_district_id: null
+      primary_activity_areas:
+        - city_id: city_linzhou
+          district_id: null
+          location_id: null
+      origin_context: 在临洲公共安全协作和大型活动现场工作；具体单位与居住地点未进一步 Canon 化。
+    phenotype:
+      category: baseline_humanoid
+      visible_traits: []
+      design_notes: 基准人形；安全装备和状态条视觉来自职业与能力表现，不是身体特征。
+      everyday_accommodations: []
+    identity:
+      faction_id: faction_005
+      division_ids: []
+      roles: []
+      responsibilities: []
+      assignments: []
+      explicit_grants: []
+    social_identity:
+      economic_background: 收入来自公共安全协作工作；会为急救装备和公交模型零件分别预算。
+      education_background: 接受急救与现场安全训练，不是高级官员。
+      family_context: 与母亲同住，母亲需要膝盖复查；弟弟会吐槽他的公交模型。
+      housing_context: 与母亲共同生活，具体住址未 Canon 化。
+      public_reputation: 现场指令清楚、重视复盘的安全协作人员。
+      professional_reputation: 坚持专业分工和现场边界，不把自己包装成英雄。
+    character_hook:
+      first_impression: 站位总在出口和伤员之间，先报当前状态和下一步。
+      visual_or_behavioral_motif: 到场先用三次手势分出停、看、让，确认状态稳定后才喝水。
+      memorable_contrast: 事故现场几乎不慌，回家却会为公交线路模型的换乘顺序争论到深夜。
+    personality:
+      surface_traits: [稳定, 清楚, 少废话]
+      underlying_traits: [害怕只剩能处理现场这一种价值, 极力维护普通生活细节]
+      values: [先保护人再追究责任, 让每个人知道下一步, 复盘包括自己的错误]
+      contradictions: [反对把人简化成状态却习惯把自己压缩成可用资源, 要求承认失误却不愿被称英雄]
+      dislikes: [围观者拍摄伤员, 把事故说成命不好, 没有复盘就宣布圆满]
+      habits: [反复检查已确认装备, 收集旧站牌和换乘图, 为模型布局记录数据]
+    life:
+      current_concerns: [夜班影响睡眠, 母亲膝盖复查, 新预案的标准表格可能遮住个体差异, 公交模型展的线路布局]
+      routine: [轮班起床, 检查急救包和交通路线, 参加现场安全协作, 写复盘, 重排公交模型]
+      hobbies: [公共交通微缩线路模型, 收集旧式站牌和车厢贴纸, 与朋友比赛最少换乘覆盖店铺]
+      social_connections:
+        - type: 家庭关系
+          target_character_id: null
+          description: 与母亲和弟弟共同生活。
+        - type: 公共安全同事
+          target_character_id: null
+          description: 同事知道他的模型兴趣，但没有 Canon 化具体同事实体。
+    ability:
+      status: trained
+      rule: 只有当他识别一个已经真实存在、当前相对稳定且可由现场指标确认的状态，并持续承担现实维持责任时，该状态才会在短时间内更不容易因小幅外部扰动突然偏离。
+      trigger: 状态必须已经存在并处于可辨认的相对稳定区间；纪衡须通过直接观察或普通现场指标确认，明确知道自己维持的对象，并持续执行正常的现实维持行动。
+      limitation: 不能维持抽象概念、人际关系或制度状态，不能维持胜利、和平、安全、正常、士气、忠诚、秘密、天气、运气或社会秩序等纯语义状态；不能让不存在的状态出现，不能把正在快速恶化的状态直接恢复稳定，不能治疗、复活、恢复体力、恢复损伤、倒转变化或冻结时间。只能让已经存在的稳定状态在小扰动下更不容易突然偏离。
+      everyday_uses: [让已经摆稳的公交模型部件在轻微桌面震动下不容易移位, 组装模型时让已经对齐并由他扶持的部件短时间不因轻微碰撞偏离, 搬运已经摆稳的小型物件时降低轻微晃动造成的姿态偏离]
+      professional_uses: [按受训流程进行急救观察, 维持现场交接窗口, 在已有秩序基础上协助人群分流和撤离]
+      risks: [判断错误会让错误状态持续更久, 同时维持过多对象会造成视野收窄、手部发抖和判断迟滞, 维持不能替代后续专业处置]
+    narrative:
+      core_theme: 维持局面不是拖延解决，而是给正确解决留下时间。
+      personal_conflict: 理解标准化预案的必要，却担心错误状态标签让真实需求被忽视。
+      relationship_to_main_conflict: direct
+      story_entry_points: [大型活动现场误判, 伤员观察和专业交接, 公共安全制度复盘]
+      growth_direction: 在可执行的标准化和现场个体判断之间建立能承认错误的协作方式。
+    gameplay:
+      playable: true
+      rarity: S
+      release_status: launch
+    combat:
+      combat_participation_reason: 具备急救与大型活动安全训练，危险场景来自公共安全协作、事故救援和现场撤离；后续处置仍由相应专业人员完成。
+      tentative_role: sustain
+      notes: sustain 为主要定位；state 只能维持当前现实稳定状态，不是治疗、复活、无敌或公共安全最高权限。
+    agent_profile:
+      knowledge_style: 工作中先报当前状态、风险和下一步，区分现场观察、记录和判断。
+      speech_style: 现场使用短句和动词；聊公交模型时会进入认真长句。
+      communication_habits: [先确认当前状态, 持续报告风险和下一步, 复盘时承认自己判断错误]
+      default_information_behavior: 依赖直接观察、普通现场指标、受训流程和合法协作范围，不把 S rarity 当成权限。
+      sensitive_topics: [被称作英雄, 被要求隐藏失误, 把公交模型当作随便摆的玩具]
+    canon_constraints:
+      - 不得升级为组织高官、万能急救英雄或 incident_professional_lead。
+      - state 不治疗、不复活、不恢复体力或损伤，不冻结抽象概念。
+      - state 不能维持人际关系、制度状态或社会秩序，也不能创造不存在的稳定状态。
+      - 公交模型兴趣是私人身份，不是公共安全权限或专业能力。
+      - S rarity 不代表世界实力、社会地位或 Lore Access。
+    tags: [city_linzhou, public_safety, emergency_coordination, baseline_humanoid, rarity_S, bias_state, narrative_standardization]
