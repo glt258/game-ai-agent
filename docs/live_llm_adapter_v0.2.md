@@ -3,7 +3,9 @@
 ## Purpose
 
 v0.2 lets the existing NPC conversation runtime select either its deterministic
-offline model or one live OpenAI / OpenAI-compatible Chat Completions endpoint.
+offline model or one live OpenAI-compatible Chat Completions endpoint. v0.2.1
+adds `deepseek` as a first-class provider configuration without adding another
+Agent adapter.
 It does not give the model new authority. The external model remains an
 untrusted planner and renderer inside the existing read-only runtime.
 
@@ -45,6 +47,17 @@ $env:NPC_LLM_API_KEY = "<secret>"
 py scripts\demo_npc_agent_v0_1.py
 ```
 
+DeepSeek uses the same configuration interface and does not require a manual
+Base URL:
+
+```powershell
+$env:NPC_AGENT_MODEL = "live"
+$env:NPC_LLM_PROVIDER = "deepseek"
+$env:NPC_LLM_MODEL = "<deepseek-model-id>"
+$env:NPC_LLM_API_KEY = "<secret>"
+py scripts\demo_npc_agent_v0_1.py
+```
+
 `--model live` can override `NPC_AGENT_MODEL` for the demo. There is no silent
 fallback from live to offline. The live demo runs all four existing scenarios
 and can make multiple paid requests; use the optional smoke test below for one
@@ -55,12 +68,17 @@ minimal request.
 | Variable | Required | Default | Meaning |
 |---|---:|---:|---|
 | `NPC_AGENT_MODEL` | no | `offline` | `offline` or `live` |
-| `NPC_LLM_PROVIDER` | live | `openai` | Only `openai` is implemented |
+| `NPC_LLM_PROVIDER` | live | `openai` | `openai` or `deepseek` |
 | `NPC_LLM_MODEL` | live | none | Provider model ID; non-empty |
 | `NPC_LLM_API_KEY` | live | none | Secret read from process environment |
 | `NPC_LLM_BASE_URL` | no | provider default | Absolute HTTP(S) compatible endpoint |
 | `NPC_LLM_TIMEOUT_SECONDS` | no | `30` | Request timeout, from 1 to 300 seconds |
 | `NPC_LLM_MAX_RETRIES` | no | `2` | Additional retries, from 0 to 3 |
+
+For `deepseek`, the default Base URL is `https://api.deepseek.com`. An explicit
+`NPC_LLM_BASE_URL` always overrides that default for a proxy, gateway, or local
+compatible endpoint. The model ID is always supplied by `NPC_LLM_MODEL`; the
+factory does not guess or hardcode one.
 
 `.env` and `.env.*` are ignored. `.env.example` contains placeholders only;
 the project does not load it automatically or add a dotenv dependency.
@@ -82,6 +100,13 @@ For every provider tool call the adapter:
 
 The provider schema is guidance. Runtime validation and `KnowledgeResolver` are
 the actual security boundaries.
+
+DeepSeek's current thinking mode defaults to enabled and requires
+`reasoning_content` to be preserved after tool calls. v0.2.1 intentionally does
+not add that provider-specific state to `ModelTurn` or conversation history.
+The shared OpenAI-compatible transport therefore sends
+`extra_body={"thinking":{"type":"disabled"}}` only for logical provider
+`deepseek`, selecting normal tool-calling mode. OpenAI requests are unchanged.
 
 ## Grounding and session behavior
 
@@ -154,7 +179,7 @@ cost:
 ```powershell
 $env:NPC_RUN_LIVE_SMOKE = "1"
 $env:NPC_AGENT_MODEL = "live"
-$env:NPC_LLM_PROVIDER = "openai"
+$env:NPC_LLM_PROVIDER = "deepseek"
 $env:NPC_LLM_MODEL = "<model-id>"
 $env:NPC_LLM_API_KEY = "<secret>"
 py -m pytest -m live tests\test_live_smoke.py

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Any, Mapping, Sequence
 
 import openai
@@ -14,7 +15,7 @@ from .provider_protocol import (
 
 
 class OpenAIChatClient(ProviderChatClient):
-    """OpenAI Chat Completions transport with SDK retries disabled."""
+    """OpenAI-compatible Chat Completions transport with SDK retries disabled."""
 
     def __init__(
         self,
@@ -22,8 +23,16 @@ class OpenAIChatClient(ProviderChatClient):
         api_key: str,
         base_url: str | None = None,
         timeout_seconds: float = 30.0,
+        request_options: Mapping[str, Any] | None = None,
         sdk_client: Any | None = None,
     ) -> None:
+        self.base_url = base_url
+        self.request_options = deepcopy(dict(request_options or {}))
+        reserved = {"model", "messages", "tools", "timeout"}
+        if reserved & set(self.request_options):
+            raise ValueError(
+                "Provider request options cannot override core request fields"
+            )
         if sdk_client is not None:
             self._client = sdk_client
             return
@@ -44,11 +53,14 @@ class OpenAIChatClient(ProviderChatClient):
         tools: Sequence[Mapping[str, Any]],
         timeout_seconds: float,
     ) -> ProviderCompletion:
-        request: dict[str, Any] = {
-            "model": model,
-            "messages": list(messages),
-            "timeout": timeout_seconds,
-        }
+        request: dict[str, Any] = deepcopy(self.request_options)
+        request.update(
+            {
+                "model": model,
+                "messages": list(messages),
+                "timeout": timeout_seconds,
+            }
+        )
         if tools:
             request["tools"] = list(tools)
         try:

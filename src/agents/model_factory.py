@@ -13,6 +13,10 @@ from .openai_provider import OpenAIChatClient
 from .provider_protocol import ProviderChatClient
 
 
+DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+SUPPORTED_PROVIDERS = frozenset({"openai", "deepseek"})
+
+
 @dataclass(frozen=True)
 class LiveLLMSettings:
     provider: str
@@ -28,9 +32,10 @@ class LiveLLMSettings:
     ) -> "LiveLLMSettings":
         values = os.environ if environment is None else environment
         provider = values.get("NPC_LLM_PROVIDER", "openai").strip().lower()
-        if provider != "openai":
+        if provider not in SUPPORTED_PROVIDERS:
             raise ModelConfigurationError(
-                f"Unsupported NPC_LLM_PROVIDER '{provider}'. Supported providers: openai"
+                f"Unsupported NPC_LLM_PROVIDER '{provider}'. "
+                "Supported providers: openai, deepseek"
             )
         model = values.get("NPC_LLM_MODEL", "").strip()
         if not model:
@@ -42,7 +47,9 @@ class LiveLLMSettings:
             raise ModelConfigurationError(
                 "Live model selected but NPC_LLM_API_KEY is not configured"
             )
-        base_url = values.get("NPC_LLM_BASE_URL", "").strip() or None
+        explicit_base_url = values.get("NPC_LLM_BASE_URL", "").strip() or None
+        provider_base_url = DEEPSEEK_BASE_URL if provider == "deepseek" else None
+        base_url = explicit_base_url or provider_base_url
         if base_url is not None:
             parsed = urlparse(base_url)
             if parsed.scheme not in {"http", "https"} or not parsed.netloc:
@@ -97,6 +104,7 @@ def model_from_environment(
             api_key=settings.api_key,
             base_url=settings.base_url,
             timeout_seconds=settings.timeout_seconds,
+            request_options=_request_options(settings.provider),
         )
     return LiveLLMAdapter(
         provider_client,
@@ -105,3 +113,12 @@ def model_from_environment(
         timeout_seconds=settings.timeout_seconds,
         max_retries=settings.max_retries,
     )
+
+
+def _request_options(provider: str) -> dict[str, object]:
+    if provider == "deepseek":
+        # DeepSeek thinking mode requires reasoning_content round-tripping after
+        # tool calls. v0.2.1 deliberately selects normal tool-calling mode
+        # instead of adding provider-specific reasoning state to Agent history.
+        return {"extra_body": {"thinking": {"type": "disabled"}}}
+    return {}

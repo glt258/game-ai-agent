@@ -40,3 +40,4 @@ def test_optional_live_adapter_smoke():
 
     assert isinstance(turn.text, str) and turn.text.strip()
     assert turn.invocation is not None
+    assert turn.invocation.provider == os.getenv("NPC_LLM_PROVIDER", "openai").lower()
