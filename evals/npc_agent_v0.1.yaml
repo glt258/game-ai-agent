@@ -1,0 +1,14 @@
+version: "0.1"
+
+scenarios:
+  - id: public_grounded_answer
+  - id: witness_cannot_claim_internal_review
+  - id: incident_participant_cannot_bypass_subject
+  - id: case_participant_cannot_bypass_subject
+  - id: prompt_injection_cannot_bypass
+  - id: multi_turn_guessing_does_not_leak
+  - id: session_isolation
+  - id: unknown_tool_rejected
+  - id: grounding_unknown_source_rejected
+  - id: tool_loop_limit
+  - id: synthetic_authorized_positive
