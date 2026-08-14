@@ -5,13 +5,11 @@ import os
 import pytest
 
 from agents import (
-    AgentPrompt,
-    ConversationMessage,
     LiveLLMAdapter,
-    NpcCharacterView,
-    NpcRuntimeView,
+    NpcConversationAgent,
     model_from_environment,
 )
+from story import StoryRuntime
 
 
 RUN_LIVE = os.getenv("NPC_RUN_LIVE_SMOKE") == "1"
@@ -23,22 +21,25 @@ HAS_KEY = bool(os.getenv("NPC_LLM_API_KEY"))
     not RUN_LIVE or not HAS_KEY,
     reason="Set NPC_RUN_LIVE_SMOKE=1 and live LLM environment variables; may incur cost",
 )
-def test_optional_live_adapter_smoke():
+def test_optional_live_grounding_pipeline_smoke():
     model = model_from_environment(mode_override="live")
     assert isinstance(model, LiveLLMAdapter)
-    prompt = AgentPrompt(
-        "Use the grounded response protocol and one approved non-factual safe form.",
-        NpcCharacterView("smoke", "测试 NPC", "", (), (), "", "", (), "", "测试 NPC"),
-        NpcRuntimeView("smoke-story", "Smoke", None, (), ()),
-        (ConversationMessage("user", "你好"),),
-        (),
-        "live-smoke",
-        1,
+    story_runtime = StoryRuntime()
+    state = story_runtime.initial_state("story_after_the_show_001")
+    agent = NpcConversationAgent(
+        model,
+        story_repository=story_runtime.repository,
+    )
+    session = agent.create_session(
+        "live-smoke", "char_launch_004", "story_after_the_show_001"
     )
 
-    turn = model.generate(prompt)
+    response = agent.chat(session, state, "你好。请只使用当前证据回答。")
 
-    assert isinstance(turn.text, str) and turn.text.strip()
-    assert turn.segments
-    assert turn.invocation is not None
-    assert turn.invocation.provider == os.getenv("NPC_LLM_PROVIDER", "openai").lower()
+    assert response.text.strip()
+    assert response.grounding is not None
+    assert session.messages[-1].content == response.text
+    assert response.model_invocations
+    assert response.model_invocations[0].provider == os.getenv(
+        "NPC_LLM_PROVIDER", "openai"
+    ).lower()

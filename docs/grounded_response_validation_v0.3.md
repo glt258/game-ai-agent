@@ -51,6 +51,10 @@ turn can produce the last form. Canon data is not rewritten or rechunked.
 Final model output is a JSON object containing a non-empty `segments` array.
 The adapter converts it into `GroundedResponseSegment` objects; the runtime
 constructs player-visible text only by concatenating validated segment text.
+Provider-generated integer segment labels are normalized to strings at the
+adapter boundary because they are request-local identifiers, not evidence IDs.
+Booleans and other types remain malformed, and uniqueness is checked after
+normalization. Evidence IDs are never coerced.
 
 The model may propose three kinds:
 

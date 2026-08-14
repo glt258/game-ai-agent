@@ -51,10 +51,46 @@ def grounded_json(
         "{}",
         '{"segments":[]}',
         '{"segments":[{"segment_id":"x","kind":null,"text":"x","evidence_ids":[]}]}',
+        '{"segments":[{"segment_id":true,"kind":"non_factual","text":"这件事值得继续核实。","evidence_ids":[]}]}',
     ],
 )
 def test_malformed_grounded_response_json_is_rejected(payload):
     with pytest.raises(ModelMalformedResponseError):
+        LiveLLMAdapter._parse_segments(payload)
+
+
+def test_deepseek_numeric_segment_id_is_normalized_before_grounding():
+    payload = (
+        '{"segments":[{"segment_id":1,"kind":"supported_claim",'
+        '"text":"你好","evidence_ids":[]}]}'
+    )
+
+    segments = LiveLLMAdapter._parse_segments(payload)
+
+    assert segments[0].segment_id == "1"
+
+
+def test_normalized_segment_ids_must_still_be_unique():
+    payload = json.dumps(
+        {
+            "segments": [
+                {
+                    "segment_id": 1,
+                    "kind": "non_factual",
+                    "text": "这件事值得继续核实。",
+                    "evidence_ids": [],
+                },
+                {
+                    "segment_id": "1",
+                    "kind": "non_factual",
+                    "text": "如果需要，我可以说明目前有依据的部分。",
+                    "evidence_ids": [],
+                },
+            ]
+        },
+        ensure_ascii=False,
+    )
+    with pytest.raises(ModelMalformedResponseError, match="unique"):
         LiveLLMAdapter._parse_segments(payload)
 
 
@@ -169,6 +205,32 @@ def test_live_grounding_repair_uses_only_safe_evidence_and_no_tools(story_setup)
     repair_payload = json.dumps(client.requests[1], ensure_ascii=False)
     assert "character_view" not in repair_payload
     assert "纪衡是不是应该负全责" not in repair_payload
+
+
+def test_captured_deepseek_numeric_id_reaches_grounding_repair(story_setup):
+    candidate = (
+        '{"segments":[{"segment_id":1,"kind":"supported_claim",'
+        '"text":"你好","evidence_ids":[]}]}'
+    )
+    repaired = (
+        '{"segments":[{"segment_id":2,"kind":"non_factual",'
+        '"text":"这件事值得继续核实。","evidence_ids":[]}]}'
+    )
+    agent, client = live_agent(
+        [ProviderCompletion(text=candidate), ProviderCompletion(text=repaired)],
+        story_setup,
+    )
+    _, state = story_setup
+    session = agent.create_session("deepseek-captured", "char_launch_004", STORY_ID)
+
+    response = agent.chat(session, state, "你好")
+
+    assert response.text == "这件事值得继续核实。"
+    assert response.grounding is not None
+    assert response.grounding.repair_attempted
+    assert response.grounding.repair_succeeded
+    assert len(client.requests) == 2
+    assert client.requests[1]["tools"] == []
 
 
 def test_live_search_tool_call_round_trip_preserves_id_and_grounding(story_setup):
