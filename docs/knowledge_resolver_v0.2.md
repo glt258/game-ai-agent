@@ -29,6 +29,14 @@ The resolver reads the vocabulary from `data/knowledge/knowledge_rules.yaml`. Su
 
 Static subjects are matched only against `character.identity`. A subject carrying `faction_id` also requires the character's exact faction to match. Role, responsibility, and assignment names are not inferred from occupation or tags.
 
+The formal responsibility vocabulary is defined in
+`docs/knowledge_responsibility_vocabulary_v0.2.md`. A responsibility is an
+assignable institutional duty bound to one faction; it is not a context label,
+occupation, Role alias, temporary access flag, or project name. A resolved
+responsibility scope still requires the Rule's subject faction/Role/Division
+to match, and it never broadens a separate authorization or assignment
+constraint.
+
 ## Condition Scope Binding v0.2
 
 Conditions are bound by `data/knowledge/condition_scopes.yaml` using the key

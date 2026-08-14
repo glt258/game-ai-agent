@@ -218,6 +218,7 @@ def test_active_registry_does_not_contain_known_fake_responsibilities():
         "artist_project_context",
         "community_member_coordination",
         "research_project_leadership",
+        "research_methodology_duty",
         "writeback_longitudinal_research",
     }
     resolved_values = {

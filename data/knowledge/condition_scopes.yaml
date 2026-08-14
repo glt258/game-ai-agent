@@ -9,9 +9,8 @@ bindings:
     lore_id: lore_003
     condition: relevant_professional_context
     evaluator: has_relevant_responsibility
-    status: unresolved
-    scope: {type: responsibility, match: any, values: []}
-    unresolved_reason: Existing responsibility vocabulary cannot fully express the rule's stated professional contexts.
+    status: resolved
+    scope: {type: responsibility, match: any, values: [mediation_case_coordination, professional_standards_governance]}
   - id: scope_knowledge_rule_004_relevant_professional_context
     rule_id: knowledge_rule_004
     lore_id: lore_004
@@ -42,15 +41,14 @@ bindings:
     evaluator: has_relevant_responsibility
     status: unresolved
     scope: {type: responsibility, match: any, values: []}
-    unresolved_reason: Existing responsibility vocabulary does not contain a canonical ID for this research professional context.
+    unresolved_reason: Current faction Canon establishes the research conclusion but does not define a sufficiently specific institutional responsibility that can represent this professional context.
   - id: scope_knowledge_rule_009_relevant_professional_context
     rule_id: knowledge_rule_009
     lore_id: lore_009
     condition: relevant_professional_context
     evaluator: has_relevant_responsibility
-    status: unresolved
-    scope: {type: responsibility, match: any, values: []}
-    unresolved_reason: Existing responsibility vocabulary does not contain a canonical ID for this research professional context.
+    status: resolved
+    scope: {type: responsibility, match: any, values: [research_ethics_data_governance]}
   - id: scope_knowledge_rule_010_relevant_project
     rule_id: knowledge_rule_010
     lore_id: lore_010
@@ -88,9 +86,8 @@ bindings:
     lore_id: lore_014
     condition: relevant_professional_context
     evaluator: has_relevant_responsibility
-    status: unresolved
-    scope: {type: responsibility, match: any, values: []}
-    unresolved_reason: Existing responsibility vocabulary does not contain a canonical ID for this model-review professional context.
+    status: resolved
+    scope: {type: responsibility, match: any, values: [risk_model_development_maintenance, model_governance_duty]}
   - id: scope_knowledge_rule_015_relevant_professional_context
     rule_id: knowledge_rule_015
     lore_id: lore_015
@@ -98,7 +95,7 @@ bindings:
     evaluator: has_relevant_responsibility
     status: unresolved
     scope: {type: responsibility, match: any, values: []}
-    unresolved_reason: Existing responsibility vocabulary does not contain a canonical ID for this model-review professional context.
+    unresolved_reason: Current context model cannot express job- and case-related ordinary-employee data-handling boundaries; future scope requires institutional role mapping, case or assignment context, and data-access policy scope.
   - id: scope_knowledge_rule_016_assigned_to_related_project
     rule_id: knowledge_rule_016
     lore_id: lore_016
@@ -134,9 +131,8 @@ bindings:
     lore_id: lore_020
     condition: relevant_professional_context
     evaluator: has_relevant_responsibility
-    status: unresolved
-    scope: {type: responsibility, match: any, values: []}
-    unresolved_reason: Existing responsibility vocabulary does not contain a canonical ID for this artist-project professional context.
+    status: resolved
+    scope: {type: responsibility, match: any, values: [artist_risk_management]}
   - id: scope_knowledge_rule_021_relevant_professional_context
     rule_id: knowledge_rule_021
     lore_id: lore_021
@@ -144,7 +140,7 @@ bindings:
     evaluator: has_relevant_responsibility
     status: unresolved
     scope: {type: responsibility, match: any, values: []}
-    unresolved_reason: Existing responsibility vocabulary does not contain a canonical ID for this artist-project professional context.
+    unresolved_reason: Current context model cannot express the project, contract, artist-team, and assignment boundaries required for ordinary artists and employees.
   - id: scope_knowledge_rule_022_assigned_to_related_artist_team
     rule_id: knowledge_rule_022
     lore_id: lore_022

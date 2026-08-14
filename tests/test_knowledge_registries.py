@@ -255,6 +255,7 @@ def test_support_registry_does_not_require_new_responsibility_or_assignment_voca
         "artist_project_context",
         "community_member_coordination",
         "research_project_leadership",
+        "research_methodology_duty",
     }
     assert "writeback_longitudinal_research" not in assignment_types
 

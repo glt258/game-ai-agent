@@ -119,6 +119,21 @@ vocabulary:
     mediation_case_coordination:
       faction_id: faction_001
       description: 承担跨机构协理案件的事实整理、沟通与协调职责。
+    professional_standards_governance:
+      faction_id: faction_001
+      description: 承担协理职业规范、继续教育与行业培训内容的制定、维护和审查职责；不等于拥有行政强制权或全部案件资料访问权。
+    research_ethics_data_governance:
+      faction_id: faction_002
+      description: 承担研究伦理、数据用途和跨课题数据边界的审查职责；不等于自动获得任何项目数据或替代正式授权。
+    risk_model_development_maintenance:
+      faction_id: faction_003
+      description: 承担能力责任、职业与活动风险模型的设计、维护和技术迭代职责；不等于模型治理负责人、首席精算师或管理岗位，也不自动获得模型数据访问、治理权限或衡信全部 Lore Access。
+    model_governance_duty:
+      faction_id: faction_003
+      description: 承担动态风险模型的用途、偏差、适用边界与治理审查职责；不等于首席精算、董事会或全部模型数据权限。
+    artist_risk_management:
+      faction_id: faction_004
+      description: 承担艺人项目中的公众标签风险、舆情反馈与长期工作安排评估职责；不等于艺人本人、法务角色或跨项目数据访问权。
 
   assignment_types:
     hengxin_explainability_pilot:

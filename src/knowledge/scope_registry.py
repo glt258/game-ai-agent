@@ -234,6 +234,8 @@ def _gap_type(binding: ScopeBinding | None, evaluator: str, reason: str | None) 
         return "missing_dataset_registry"
     if reason and "responsibility vocabulary" in reason.lower():
         return "insufficient_responsibility_vocabulary"
+    if reason and "context model" in reason.lower():
+        return "insufficient_context_model"
     return {
         "project": "missing_project_registry",
         "case": "missing_case_registry",

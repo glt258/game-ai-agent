@@ -22,7 +22,9 @@ Knowledge Boundary 表示角色在正常制度路径下是否有资格接触某�
 
 ## Role, responsibility, assignment
 
-`role` 表示正式知识权限角色，`responsibility` 表示当前职业或组织职责语境，`assignment` 表示与特定 Lore 直接相关的正式项目或任务。职业名称、阵营成员身份与游戏稀有度都不会自动替代这三种资格。
+`role` 表示正式知识权限角色，`responsibility` 表示可由组织明确分配并问责的制度职责，`assignment` 表示与特定 Lore 直接相关的正式项目或任务。职业名称、阵营成员身份与游戏稀有度都不会自动替代这三种资格。
+
+Knowledge Responsibility 必须是可被组织明确分配、承担、撤销、轮换和审计的制度职责；它不是 Lore 标签、职业名称、查询关键词、Role 的别名或临时 access flag。每个责任只属于一个 faction，并且不能自动授予该 faction 的全部高权限。
 
 ## Gameplay rarity
 
