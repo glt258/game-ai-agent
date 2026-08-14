@@ -94,6 +94,43 @@ def test_normalized_segment_ids_must_still_be_unique():
         LiveLLMAdapter._parse_segments(payload)
 
 
+@pytest.mark.parametrize("segment_id", ["   ", "\t", " \t "])
+def test_whitespace_only_segment_id_is_rejected(segment_id):
+    payload = json.dumps(
+        {
+            "segments": [
+                {
+                    "segment_id": segment_id,
+                    "kind": "non_factual",
+                    "text": "这件事值得继续核实。",
+                    "evidence_ids": [],
+                }
+            ]
+        },
+        ensure_ascii=False,
+    )
+    with pytest.raises(ModelMalformedResponseError, match="unique"):
+        LiveLLMAdapter._parse_segments(payload)
+
+
+def test_segment_id_with_surrounding_whitespace_is_not_trimmed():
+    payload = json.dumps(
+        {
+            "segments": [
+                {
+                    "segment_id": " 1 ",
+                    "kind": "non_factual",
+                    "text": "这件事值得继续核实。",
+                    "evidence_ids": [],
+                }
+            ]
+        },
+        ensure_ascii=False,
+    )
+    segments = LiveLLMAdapter._parse_segments(payload)
+    assert segments[0].segment_id == " 1 "
+
+
 class FakeProviderClient:
     def __init__(self, outcomes: list[Any]) -> None:
         self.outcomes = deque(outcomes)

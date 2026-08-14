@@ -156,8 +156,18 @@ class LiveLLMAdapter:
             usage=response.usage,
             provider_request_id=response.request_id,
         )
-        segments = () if calls else self._parse_segments(text or "")
-        rendered_text = text if calls else GroundingValidator.render(segments)
+        if calls:
+            segments = ()
+            structured_output = None
+            rendered_text = text
+        elif prompt.response_format == "character_draft":
+            structured_output = self._parse_structured_object(text or "")
+            segments = ()
+            rendered_text = text
+        else:
+            structured_output = None
+            segments = self._parse_segments(text or "")
+            rendered_text = GroundingValidator.render(segments)
         return ModelTurn(
             text=rendered_text,
             tool_calls=calls,
@@ -167,6 +177,7 @@ class LiveLLMAdapter:
             usage=response.usage,
             provider_request_id=response.request_id,
             invocation=invocation,
+            structured_output=structured_output,
         )
 
     @staticmethod
@@ -202,12 +213,19 @@ class LiveLLMAdapter:
             }
             for item in prompt.evidence
         ]
-        protocol_content = (
-            f"{prompt.system_contract}\n\n"
-            f"{GROUNDED_RESPONSE_PROTOCOL}\n\n"
-            "Available grounding evidence and approved safe forms:\n"
-            f"{cls._json({'evidence': safe_evidence, 'approved_uncertainty': cls._approved_uncertainty(), 'approved_non_factual': cls._approved_non_factual()})}"
-        )
+        if prompt.response_format == "character_draft":
+            protocol_content = (
+                f"{prompt.system_contract}\n\n"
+                "Return exactly one JSON object matching the requested CharacterDraft schema. "
+                "Do not return markdown, prose, or additional keys."
+            )
+        else:
+            protocol_content = (
+                f"{prompt.system_contract}\n\n"
+                f"{GROUNDED_RESPONSE_PROTOCOL}\n\n"
+                "Available grounding evidence and approved safe forms:\n"
+                f"{cls._json({'evidence': safe_evidence, 'approved_uncertainty': cls._approved_uncertainty(), 'approved_non_factual': cls._approved_non_factual()})}"
+            )
         if prompt.repair_request is None:
             system_content = (
                 f"{protocol_content}\n\n"
@@ -357,6 +375,7 @@ class LiveLLMAdapter:
             if (
                 not isinstance(segment_id, str)
                 or not segment_id
+                or not segment_id.strip()
                 or segment_id in seen_ids
             ):
                 raise ModelMalformedResponseError(
@@ -391,6 +410,20 @@ class LiveLLMAdapter:
                 )
             )
         return tuple(segments)
+
+    @staticmethod
+    def _parse_structured_object(text: str) -> Mapping[str, Any]:
+        try:
+            document = json.loads(text)
+        except json.JSONDecodeError:
+            raise ModelMalformedResponseError(
+                "Provider final response is not valid CharacterDraft JSON"
+            ) from None
+        if not isinstance(document, Mapping):
+            raise ModelMalformedResponseError(
+                "CharacterDraft response must be a JSON object"
+            )
+        return dict(document)
 
     @staticmethod
     def _valid_evidence_id(value: str) -> bool:

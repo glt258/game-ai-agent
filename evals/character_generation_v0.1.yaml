@@ -1,0 +1,13 @@
+version: "0.1"
+evals:
+  - id: basic_grounded_character
+  - id: faction_linked_character
+  - id: incident_linked_character
+  - id: existing_character_aware_generation
+  - id: invented_faction_rejection
+  - id: invented_canon_rejection
+  - id: proposal_vs_canon_separation
+  - id: hard_age_constraint
+  - id: forbidden_organization_request
+  - id: unknown_tool
+  - id: no_canon_mutation

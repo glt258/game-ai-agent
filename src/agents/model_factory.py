@@ -6,6 +6,7 @@ from typing import Mapping
 from urllib.parse import urlparse
 
 from .demo_model import DeterministicDemoModel
+from .character_generation import DeterministicCharacterGenerationModel
 from .errors import ModelConfigurationError
 from .live_llm import LiveLLMAdapter
 from .model_protocol import AgentModel
@@ -93,6 +94,43 @@ def model_from_environment(
     mode = (mode_override or values.get("NPC_AGENT_MODEL", "offline")).strip().lower()
     if mode == "offline":
         return DeterministicDemoModel()
+    if mode != "live":
+        raise ModelConfigurationError(
+            f"Unsupported NPC_AGENT_MODEL '{mode}'. Supported modes: offline, live"
+        )
+    settings = LiveLLMSettings.from_environment(values)
+    provider_client = client
+    if provider_client is None:
+        provider_client = OpenAIChatClient(
+            api_key=settings.api_key,
+            base_url=settings.base_url,
+            timeout_seconds=settings.timeout_seconds,
+            request_options=_request_options(settings.provider),
+        )
+    return LiveLLMAdapter(
+        provider_client,
+        provider=settings.provider,
+        model=settings.model,
+        timeout_seconds=settings.timeout_seconds,
+        max_retries=settings.max_retries,
+    )
+
+
+def character_model_from_environment(
+    environment: Mapping[str, str] | None = None,
+    *,
+    mode_override: str | None = None,
+    client: ProviderChatClient | None = None,
+) -> AgentModel:
+    """Build the same provider-neutral model boundary for authoring.
+
+    Configuration remains backward-compatible with the existing NPC_* names;
+    only the offline fixture differs by agent consumer.
+    """
+    values = os.environ if environment is None else environment
+    mode = (mode_override or values.get("NPC_AGENT_MODEL", "offline")).strip().lower()
+    if mode == "offline":
+        return DeterministicCharacterGenerationModel()
     if mode != "live":
         raise ModelConfigurationError(
             f"Unsupported NPC_AGENT_MODEL '{mode}'. Supported modes: offline, live"

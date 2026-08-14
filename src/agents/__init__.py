@@ -23,7 +23,7 @@ from .grounding import (
     safe_fallback_segments,
 )
 from .live_llm import LiveLLMAdapter
-from .model_factory import LiveLLMSettings, model_from_environment
+from .model_factory import LiveLLMSettings, character_model_from_environment, model_from_environment
 from .model_protocol import AgentModel, ScriptedAgentModel
 from .models import (
     AgentPrompt,
@@ -50,6 +50,24 @@ from .models import (
     ToolDefinition,
 )
 from .npc_agent import NpcConversationAgent, SYSTEM_CONTRACT
+from .character_generation import (
+    CanonBasisEntry,
+    CharacterAuthoringKnowledgeContext,
+    CharacterAuthoringToolbox,
+    CharacterGenerationToolbox,
+    CharacterGenerationContext,
+    CharacterDesignBrief,
+    CharacterDesignRequest,
+    CharacterDraft,
+    CharacterGenerationAgent,
+    CharacterGenerationAudit,
+    CharacterGenerationResult,
+    CharacterGenerationResponse,
+    CharacterGenerationRuntimeView,
+    CharacterAuthoringView,
+    DeterministicCharacterGenerationModel,
+    StoryLink,
+)
 from .openai_provider import OpenAIChatClient
 from .provider_protocol import (
     ProviderChatClient,
@@ -97,6 +115,22 @@ __all__ = [
     "NpcConversationAgent",
     "NpcResponse",
     "NpcRuntimeView",
+    "CanonBasisEntry",
+    "CharacterAuthoringKnowledgeContext",
+    "CharacterAuthoringToolbox",
+    "CharacterGenerationToolbox",
+    "CharacterGenerationContext",
+    "CharacterDesignBrief",
+    "CharacterDesignRequest",
+    "CharacterDraft",
+    "CharacterGenerationAgent",
+    "CharacterGenerationAudit",
+    "CharacterGenerationResult",
+    "CharacterGenerationResponse",
+    "CharacterGenerationRuntimeView",
+    "CharacterAuthoringView",
+    "DeterministicCharacterGenerationModel",
+    "StoryLink",
     "NpcViewFactory",
     "OpenAIChatClient",
     "ProviderChatClient",
@@ -112,6 +146,7 @@ __all__ = [
     "ToolDefinition",
     "ToolExecution",
     "model_from_environment",
+    "character_model_from_environment",
     "ALLOWED_NON_FACTUAL_TEXTS",
     "ALLOWED_UNCERTAINTY_TEXTS",
     "SAFE_FALLBACK_TEXT",

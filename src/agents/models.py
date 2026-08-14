@@ -137,6 +137,9 @@ class ModelTurn:
     usage: ModelUsage | None = None
     provider_request_id: str | None = None
     invocation: ModelInvocationAudit | None = None
+    # Provider-neutral structured payloads used by authoring agents.  NPC
+    # turns leave this unset and continue to use grounded response segments.
+    structured_output: Any | None = None
 
 
 @dataclass(frozen=True)
@@ -199,6 +202,10 @@ class AgentPrompt:
     turn_number: int
     evidence: tuple[GroundingEvidence, ...] = ()
     repair_request: GroundingRepairRequest | None = None
+    # Kept optional so the existing NPC prompt contract remains unchanged.
+    # Authoring consumers use ``character_draft`` to select their strict JSON
+    # transport/parser in the shared LiveLLMAdapter.
+    response_format: str = "grounded_response"
 
 
 @dataclass(frozen=True)
