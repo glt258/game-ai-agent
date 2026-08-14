@@ -46,6 +46,12 @@ def load_canon(data_dir: Path | None = None) -> dict[str, Any]:
         "authorizations": load_yaml(root / "knowledge" / "authorizations.yaml")
         if (root / "knowledge" / "authorizations.yaml").exists()
         else {"version": "0.1", "authorizations": []},
+        "story_canon": load_yaml(root / "stories" / "story_canon.yaml")
+        if (root / "stories" / "story_canon.yaml").exists()
+        else {"version": "0.1", "stories": []},
+        "story_definitions": load_yaml(root / "stories" / "story_definitions.yaml")
+        if (root / "stories" / "story_definitions.yaml").exists()
+        else {"version": "0.1", "story_definitions": []},
         "factions": _records(load_yaml(root / "factions" / "factions.yaml"), "factions"),
     }
 

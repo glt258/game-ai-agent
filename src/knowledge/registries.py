@@ -79,6 +79,7 @@ def validate_cases(
     lore_ids: set[str],
     incident_ids: set[str],
     project_ids: set[str],
+    story_ids: set[str] | None = None,
 ) -> dict[str, dict[str, Any]]:
     _, records = records_document(data, "cases")
     known_ids = registry_ids(data, "cases")
@@ -93,6 +94,7 @@ def validate_cases(
         lore_refs = record.get("lore_refs", [])
         _require_refs(case_id, "lore_refs", lore_refs)
         _validate_refs(case_id, "lore_refs", lore_refs, lore_ids, "lore")
+        _validate_story_refs(case_id, record.get("story_refs", []), story_ids)
         _validate_refs(
             case_id,
             "related_incident_ids",
@@ -120,6 +122,7 @@ def validate_incidents(
     faction_ids: set[str],
     lore_ids: set[str],
     case_ids: set[str],
+    story_ids: set[str] | None = None,
 ) -> dict[str, dict[str, Any]]:
     _, records = records_document(data, "incidents")
     known_ids = registry_ids(data, "incidents")
@@ -140,6 +143,7 @@ def validate_incidents(
         lore_refs = record.get("lore_refs", [])
         _require_refs(incident_id, "lore_refs", lore_refs)
         _validate_refs(incident_id, "lore_refs", lore_refs, lore_ids, "lore")
+        _validate_story_refs(incident_id, record.get("story_refs", []), story_ids)
         _validate_refs(
             incident_id,
             "related_case_ids",
@@ -242,6 +246,14 @@ def _validate_refs(
 def _require_refs(record_id: str, field_name: str, refs: Any) -> None:
     if not isinstance(refs, list) or not refs:
         raise KnowledgeConfigurationError(f"{record_id}: {field_name} must contain at least one ID")
+
+
+def _validate_story_refs(record_id: str, refs: Any, story_ids: set[str] | None) -> None:
+    if not refs:
+        return
+    if story_ids is None:
+        raise KnowledgeConfigurationError(f"{record_id}: story registry is unavailable")
+    _validate_refs(record_id, "story_refs", refs, story_ids, "story")
 
 
 def _validate_status(record_id: str, status: Any, label: str) -> None:

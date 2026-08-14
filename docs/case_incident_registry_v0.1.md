@@ -33,9 +33,12 @@ bidirectional consistency, preventing two drifting sources of truth.
 ## 5. Evidence criteria
 
 A record requires evidence that the entity exists or occurred, is distinguishable
-from other entities, has an organizational or business context, has explicit Lore
-support, and can be referenced by a stable future StoryState ID. `story_entry_points`
-are narrative hooks and are never sufficient evidence by themselves.
+from other entities, has an organizational or business context, and can be
+referenced by a stable StoryState ID. Established Story Canon may now provide
+instance-level evidence through validated `story_refs`. Generic `lore_refs`
+provide institutional context and must not be presented as if they already
+described the concrete instance. Character `story_entry_points` remain hooks and
+are never sufficient evidence by themselves.
 
 ## 6. Candidate inventory
 
@@ -54,14 +57,19 @@ Case/Incident instance.
 
 ## 7. Created Cases
 
-`data/cases/cases.yaml` is a valid empty v0.1 registry. No Case record was
-created because no candidate passed the instance-level evidence criteria.
+`data/cases/cases.yaml` now contains
+`case_nanzhan_postshow_coordination_001`, the concrete coordination work unit
+created by Story Canon `story_after_the_show_001`. It covers post-incident fact
+checking, procedure, costs, and remediation; it is not an ability-rating research
+sample or an artist-tracking legal matter.
 
 ## 8. Created Incidents
 
-`data/incidents/incidents.yaml` is a valid empty v0.1 registry. No Incident
-record was created because no candidate passed the instance-level evidence
-criteria.
+`data/incidents/incidents.yaml` now contains
+`incident_nanzhan_postshow_route_conflict_001`, the concrete post-show route
+conflict established by the same Story Canon. The optional Case/Incident links
+are bidirectional. The event is not Canonically identified as one of Lore 027's
+restricted risk-label review examples.
 
 ## 9. Rejected and deferred candidates
 
@@ -71,14 +79,19 @@ criteria.
 - Lore 032: DEFER — a collection of member disputes is not one jointly handled Case.
 - All launch-character `story_entry_points`: REJECT as registry evidence; hooks
   do not assert that the event currently exists or occurred.
+- 《散场之后》is accepted because a reviewed Story Canon record now asserts
+  concrete parties, event boundaries, consequences, and stable registry IDs;
+  it was not promoted from a character hook alone.
 
 ## 10. Knowledge Scope impact
 
-All three Case bindings and both Incident bindings remain unresolved. Their gap
-reasons now identify insufficient instance-level Canon rather than a missing
-registry implementation. Total coverage remains 9 of 32 resolved-valid
-bindings (28.125%, reported as 28.12% by the reporting script). No Knowledge
-Rule, subject, responsibility, project, or authorization was changed.
+All three Case bindings and both Incident bindings remain unresolved. A registry
+instance existing somewhere is not evidence that it is the specific object of a
+Lore condition. The new Story Case is unrelated to Lore 005, 022, and 032; the
+new Incident is unrelated to Lore 027. Total coverage remains 9 of 32
+resolved-valid bindings (28.125%, reported as 28.12% by the reporting script).
+No Knowledge Rule, subject, responsibility, project, or authorization was
+changed.
 
 ## 11. Runtime Context integration
 
@@ -92,9 +105,10 @@ Incident IDs, but the resolver remains the access-decision trust boundary.
 
 ## 12. Known gaps
 
-Current Canon still lacks uniquely identifiable Case and Incident instances
-for rules 005, 022, 027, and 032. Rule 022 may eventually require a Contract,
-Artist Team, or legal-matter model in addition to any Case. Rule 027 may need a
-separate Review assignment/authorization registry. Rule 032 also lacks a
-concrete Project and rotating-role assignment. These gaps must not be filled by
-theme matching or by wrapping Lore IDs as Case/Incident IDs.
+Current Canon now has one unrelated Case and Incident, but still lacks the
+specific instances required by rules 005, 022, 027, and 032. Rule 022 may
+eventually require a Contract, Artist Team, or legal-matter model in addition
+to any Case. Rule 027 may need a separate Review assignment/authorization
+registry. Rule 032 also lacks a concrete Project and rotating-role assignment.
+These gaps must not be filled by theme matching or by wrapping Lore IDs as
+Case/Incident IDs.

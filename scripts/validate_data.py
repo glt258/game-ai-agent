@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from knowledge import KnowledgeResolver
 from knowledge.loader import load_canon
 from knowledge.responsibility_validation import validate_knowledge_responsibilities
+from story import load_story_repository
 
 
 def main() -> int:
@@ -21,6 +22,7 @@ def main() -> int:
         factions_data=data["factions"],
         characters_data=data["characters"],
     )
+    load_story_repository()
     print("Knowledge data validation passed.")
     return 0
 

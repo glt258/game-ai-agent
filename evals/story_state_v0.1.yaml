@@ -1,0 +1,60 @@
+version: "0.1"
+
+transition_sequence:
+  - transition_start_route_conflict
+  - transition_record_incident
+  - transition_open_case
+  - transition_begin_joint_fact_check
+  - transition_complete_vertical_slice
+
+cases:
+  - id: story_final_state
+    type: final_state
+    expected_current_node_id: node_slice_complete
+    expected_active_cases: [case_nanzhan_postshow_coordination_001]
+    expected_active_incidents: [incident_nanzhan_postshow_route_conflict_001]
+    expected_flags: {joint_facts_confirmed: true, vertical_slice_complete: true}
+  - id: tang_case_context
+    type: context
+    character_id: char_launch_001
+    expected_active_cases: [case_nanzhan_postshow_coordination_001]
+    expected_active_incidents: []
+  - id: ji_incident_context
+    type: context
+    character_id: char_launch_007
+    expected_active_cases: []
+    expected_active_incidents: [incident_nanzhan_postshow_route_conflict_001]
+  - id: yu_witness_no_context
+    type: context
+    character_id: char_launch_004
+    expected_active_cases: []
+    expected_active_incidents: []
+  - id: lumi_unrelated_no_context
+    type: context
+    character_id: char_launch_002
+    expected_active_cases: []
+    expected_active_incidents: []
+  - id: lumi_public_allow
+    type: knowledge
+    character_id: char_launch_002
+    lore_id: lore_018
+    expected_decision: allow
+  - id: ren_secret_deny
+    type: knowledge
+    character_id: char_launch_006
+    lore_id: lore_secret_002
+    expected_decision: deny
+  - id: ji_incident_does_not_bypass_subject
+    type: knowledge
+    character_id: char_launch_007
+    lore_id: lore_027
+    expected_decision: deny
+  - id: tang_case_does_not_bypass_subject
+    type: knowledge
+    character_id: char_launch_001
+    lore_id: lore_005
+    expected_decision: deny
+  - id: wrong_node_transition_is_error
+    type: illegal_transition
+    transition_id: transition_open_case
+    expected_error: IllegalStoryTransitionError

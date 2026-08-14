@@ -1,3 +1,10 @@
 version: "0.1"
 
-cases: []
+cases:
+  - id: case_nanzhan_postshow_coordination_001
+    name: 南栈演出散场事故后续协调委托
+    faction_id: faction_001
+    lore_refs: [lore_001, lore_002]
+    story_refs: [story_after_the_show_001]
+    related_incident_ids: [incident_nanzhan_postshow_route_conflict_001]
+    related_project_ids: []

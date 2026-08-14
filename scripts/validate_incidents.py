@@ -27,18 +27,21 @@ def main() -> int:
         lore_ids=lore_ids,
         assignment_ids=set(raw["knowledge_rules"].get("vocabulary", {}).get("assignment_types", {})),
     )
+    story_ids = registry_ids(raw["story_canon"], "stories")
     cases = validate_cases(
         raw["cases"],
         faction_ids=faction_ids,
         lore_ids=lore_ids,
         incident_ids=registry_ids(raw["incidents"], "incidents"),
         project_ids=set(projects),
+        story_ids=story_ids,
     )
     incidents = validate_incidents(
         raw["incidents"],
         faction_ids=faction_ids,
         lore_ids=lore_ids,
         case_ids=set(cases),
+        story_ids=story_ids,
     )
     validate_case_incident_relationships(cases, incidents)
     print(f"Incident registry validation passed: {len(incidents)} records.")

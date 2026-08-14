@@ -1,0 +1,66 @@
+version: "0.1"
+
+story_definitions:
+  - story_id: story_after_the_show_001
+    initial_node_id: node_pre_close
+    nodes:
+      - id: node_pre_close
+        summary: 演出进行并进入散场前准备。
+      - id: node_route_conflict
+        summary: 观众离场与撤场动线冲突，具体 Incident 发生。
+      - id: node_incident_handling
+        summary: 公共安全完成正式记录、轻伤现场处置与交接。
+      - id: node_case_opened
+        summary: 后续协调 Case 经协理体系登记转介并建立。
+      - id: node_joint_fact_check
+        summary: 多方核对时间线、现场安排、费用与整改事项。
+      - id: node_slice_complete
+        summary: 形成共同事实清单和后续议程，Vertical Slice 结束。
+        terminal: true
+    transitions:
+      - id: transition_start_route_conflict
+        from_node_id: node_pre_close
+        to_node_id: node_route_conflict
+        effects:
+          - type: activate_incident
+            incident_id: incident_nanzhan_postshow_route_conflict_001
+          - type: assign_character_to_incident
+            character_id: char_launch_007
+            incident_id: incident_nanzhan_postshow_route_conflict_001
+          - type: complete_node
+            node_id: node_pre_close
+      - id: transition_record_incident
+        from_node_id: node_route_conflict
+        to_node_id: node_incident_handling
+        effects:
+          - type: complete_node
+            node_id: node_route_conflict
+      - id: transition_open_case
+        from_node_id: node_incident_handling
+        to_node_id: node_case_opened
+        effects:
+          - type: activate_case
+            case_id: case_nanzhan_postshow_coordination_001
+          - type: assign_character_to_case
+            character_id: char_launch_001
+            case_id: case_nanzhan_postshow_coordination_001
+          - type: complete_node
+            node_id: node_incident_handling
+      - id: transition_begin_joint_fact_check
+        from_node_id: node_case_opened
+        to_node_id: node_joint_fact_check
+        effects:
+          - type: complete_node
+            node_id: node_case_opened
+      - id: transition_complete_vertical_slice
+        from_node_id: node_joint_fact_check
+        to_node_id: node_slice_complete
+        effects:
+          - type: set_story_flag
+            flag: joint_facts_confirmed
+            value: true
+          - type: set_story_flag
+            flag: vertical_slice_complete
+            value: true
+          - type: complete_node
+            node_id: node_joint_fact_check

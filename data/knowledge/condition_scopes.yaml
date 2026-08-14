@@ -25,7 +25,7 @@ bindings:
     evaluator: case_assignment_match
     status: unresolved
     scope: {type: case, match: any, values: []}
-    unresolved_reason: Lore 005 describes a batch of cross-industry examples, but current Canon defines no uniquely identifiable canonical case instance.
+    unresolved_reason: The Story registry now contains the concrete post-show coordination Case, but there is no uniquely identifiable canonical Case for Lore 005's cross-industry ability-rating corpus because this ordinary accident follow-up is unrelated.
   - id: scope_knowledge_rule_005_authorized_for_related_review
     rule_id: knowledge_rule_005
     lore_id: lore_005
@@ -156,7 +156,7 @@ bindings:
     evaluator: case_assignment_match
     status: unresolved
     scope: {type: case, match: any, values: []}
-    unresolved_reason: Lore 022 describes ongoing tracking of several artists, but current Canon defines no uniquely identifiable canonical case instance for the legal-work scope.
+    unresolved_reason: The Story registry now contains a concrete Case, but there is no uniquely identifiable canonical Case for Lore 022's artist-tracking legal-work scope because the post-show accident matter is unrelated.
   - id: scope_knowledge_rule_025_relevant_professional_context
     rule_id: knowledge_rule_025
     lore_id: lore_025
@@ -178,7 +178,7 @@ bindings:
     evaluator: incident_assignment_match
     status: unresolved
     scope: {type: incident, match: any, values: []}
-    unresolved_reason: Lore 027 aggregates multiple internal review examples, but current Canon defines no uniquely identifiable canonical incident instance.
+    unresolved_reason: The Story registry now contains a concrete route-conflict Incident, but there is no uniquely identifiable canonical Incident for Lore 027's restricted risk-label internal-review scope because this event is unrelated.
   - id: scope_knowledge_rule_027_authorized_for_related_review
     rule_id: knowledge_rule_027
     lore_id: lore_027
@@ -194,7 +194,7 @@ bindings:
     evaluator: incident_assignment_match
     status: unresolved
     scope: {type: incident, match: any, values: []}
-    unresolved_reason: Lore 027 aggregates multiple internal review examples, but current Canon defines no uniquely identifiable canonical incident instance.
+    unresolved_reason: The Story registry now contains a concrete route-conflict Incident, but there is no uniquely identifiable canonical Incident for Lore 027's restricted risk-label findings or professional-lead scope because this event is unrelated.
   - id: scope_knowledge_rule_030_relevant_member_context
     rule_id: knowledge_rule_030
     lore_id: lore_030
@@ -234,7 +234,7 @@ bindings:
     evaluator: case_assignment_match
     status: unresolved
     scope: {type: case, match: any, values: []}
-    unresolved_reason: Lore 032 describes a collection of member disputes, but current Canon defines no uniquely identifiable canonical case instance.
+    unresolved_reason: The Story registry now contains a concrete post-show coordination Case, but there is no uniquely identifiable canonical Case for Lore 032's ability-rating dispute collection or appeal-standard initiative because this matter is unrelated.
   - id: scope_knowledge_rule_secret_001_assigned_to_related_project
     rule_id: knowledge_rule_secret_001
     lore_id: lore_secret_001

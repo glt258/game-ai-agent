@@ -1,0 +1,52 @@
+version: "0.1"
+
+stories:
+  - id: story_after_the_show_001
+    title: 散场之后
+    canon_status: established
+    setting:
+      city_id: city_linzhou
+      district_name: 南栈街区
+      venue_type: small_commercial_community_performance_venue
+      time_context: evening_performance_and_following_days
+    involved_faction_ids: [faction_001, faction_005, faction_006]
+    featured_character_ids: [char_launch_001, char_launch_004, char_launch_007]
+    premise: 一次小型商业与社区联合晚间演出正常结束后，观众离场动线与临时装卸、撤场动线在共享窄点发生冲突。
+    objective_facts:
+      - 演出本身正常结束，事故发生在散场与撤场交接阶段。
+      - 散场窗口与撤场启动时间交接不清，器材车在观众流完全结束前进入共享区域。
+      - 动线冲突造成短时间拥堵和现场流程暂停，没有升级为重大灾难。
+      - 一名撤场工作人员在避让时跌倒并轻度扭伤脚踝，接受正常现场处置与后续交接，无重伤或死亡。
+      - 事故原因是普通的时间交接和路线分离失败，不是任何人的能力暴走。
+      - 公共安全体系对事故完成正式记录，后续争议集中于事实表述、流程责任、轻伤处置费用、撤场安排与整改要求。
+      - 协理联合会登记并转介后续协调委托；协理工作不替代行政、医疗、保险或司法判断。
+    organization_facts:
+      incident_response_faction_id: faction_005
+      community_coordination_faction_id: faction_006
+      case_registration_faction_id: faction_001
+    character_facts:
+      - character_id: char_launch_001
+        participation: case_assignee
+        boundary: 仅为运行时协调委托，不形成静态 faction、role、responsibility 或 knowledge grant。
+      - character_id: char_launch_004
+        participation: stage_worker_and_witness
+        boundary: witness 不是 incident assignment，也不是内部复盘 assignment。
+      - character_id: char_launch_007
+        participation: onsite_incident_handler
+        boundary: 仅负责现场急救、活动安全处置和事实交接，不是 incident_professional_lead 或内部复盘成员。
+    ability_facts:
+      - 余弦在人员停止继续涌入后，以现实参照点帮助临时等候和引导；她没有强迫任何人移动。
+      - 纪衡只在伤员经现实处置进入可观察、相对稳定状态后配合持续观察和交接；他的偏置没有治疗或恢复损伤。
+    player_participation:
+      present: true
+      narrative_function: 新入职正式协理人随协调委托参与初步事实整理。
+      player_identity_integration: deferred
+      character_id: null
+    exclusions:
+      - ability_rampage
+      - terrorism
+      - secret_experiment
+      - hidden_conspiracy
+      - mysterious_agency
+      - government_coverup
+      - world_truth_reveal

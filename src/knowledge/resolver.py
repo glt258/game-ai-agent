@@ -43,6 +43,7 @@ class KnowledgeResolver:
         cases_data: Any | None = None,
         incidents_data: Any | None = None,
         authorizations_data: Any | None = None,
+        story_canon_data: Any | None = None,
     ) -> None:
         base_datasets = (characters_data, lore_data, knowledge_rules_data, factions_data)
         if any(value is not None for value in base_datasets):
@@ -58,6 +59,7 @@ class KnowledgeResolver:
                 "cases": cases_data or {"version": "0.1", "cases": []},
                 "incidents": incidents_data or {"version": "0.1", "incidents": []},
                 "authorizations": authorizations_data or {"version": "0.1", "authorizations": []},
+                "story_canon": story_canon_data or {"version": "0.1", "stories": []},
             }
         else:
             raw = load_canon(data_dir)
@@ -74,6 +76,8 @@ class KnowledgeResolver:
         case_document = raw.get("cases", {"version": "0.1", "cases": []})
         incident_document = raw.get("incidents", {"version": "0.1", "incidents": []})
         authorization_document = raw.get("authorizations", {"version": "0.1", "authorizations": []})
+        story_document = raw.get("story_canon", {"version": "0.1", "stories": []})
+        story_ids = registry_ids(story_document, "stories")
         self.projects = validate_projects(
             project_document,
             faction_ids=set(self.factions),
@@ -88,12 +92,14 @@ class KnowledgeResolver:
             lore_ids=set(self.lore),
             incident_ids=incident_ids,
             project_ids=set(self.projects),
+            story_ids=story_ids,
         )
         self.incidents = validate_incidents(
             incident_document,
             faction_ids=set(self.factions),
             lore_ids=set(self.lore),
             case_ids=case_ids,
+            story_ids=story_ids,
         )
         validate_case_incident_relationships(self.cases, self.incidents)
         self.authorizations = validate_authorizations(

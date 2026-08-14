@@ -1,3 +1,9 @@
 version: "0.1"
 
-incidents: []
+incidents:
+  - id: incident_nanzhan_postshow_route_conflict_001
+    name: 南栈演出散场与撤场动线冲突事故
+    faction_ids: [faction_005, faction_006]
+    lore_refs: [lore_023]
+    story_refs: [story_after_the_show_001]
+    related_case_ids: [case_nanzhan_postshow_coordination_001]
