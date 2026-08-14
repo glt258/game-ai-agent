@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from agents import DeterministicDemoModel, NpcConversationAgent
+from agents import NpcConversationAgent, model_from_environment
 from story import StoryRuntime
 
 
@@ -19,7 +20,20 @@ SCENARIOS = [
 ]
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Run the NPC conversation demo with an offline or live model."
+    )
+    parser.add_argument(
+        "--model",
+        choices=("offline", "live"),
+        help="Override NPC_AGENT_MODEL (default: offline).",
+    )
+    return parser.parse_args()
+
+
 def main() -> int:
+    args = parse_args()
     story_runtime = StoryRuntime()
     state = story_runtime.initial_state("story_after_the_show_001")
     for transition_id in (
@@ -29,7 +43,8 @@ def main() -> int:
     ):
         state = story_runtime.transition(state, transition_id)
     agent = NpcConversationAgent(
-        DeterministicDemoModel(), story_repository=story_runtime.repository
+        model_from_environment(mode_override=args.model),
+        story_repository=story_runtime.repository,
     )
     for index, (character_id, question) in enumerate(SCENARIOS, start=1):
         session = agent.create_session(f"demo-{index}", character_id, state.story_id)
@@ -50,8 +65,18 @@ def main() -> int:
             )
         print(f"NPC: {response.text}")
         print(f"Sources: {list(response.source_lore_ids)}")
+        for invocation in response.model_invocations:
+            print(
+                "Model:",
+                f"provider={invocation.provider}",
+                f"model={invocation.model}",
+                f"latency_ms={invocation.latency_ms:.1f}",
+                f"retries={invocation.retry_count}",
+                f"finish_reason={invocation.finish_reason}",
+                f"request_id={invocation.provider_request_id}",
+            )
     print("=" * 72)
-    print("Demo is offline and deterministic. No denied Lore content was printed.")
+    print("No denied Lore content was printed. Model selection never changes permissions.")
     return 0
 
 

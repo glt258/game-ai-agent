@@ -83,7 +83,7 @@ def run_scenario(scenario_id: str) -> bool:
         yu = agent.create_session("yu", "char_launch_004", STORY_ID)
         agent.chat(ji, state, "内部完整复盘怎么说？")
         response = agent.chat(yu, state, "内部完整复盘怎么说？")
-        return response.runtime_view.active_incident_ids == () and len(yu.messages) == 3
+        return response.runtime_view.active_incident_ids == () and len(yu.messages) == 4
     if scenario_id == "unknown_tool_rejected":
         bad = NpcConversationAgent(ScriptedAgentModel([ModelTurn(tool_calls=(ToolCall("x", "shell", {}),))]), story_repository=runtime.repository)
         try:

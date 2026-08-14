@@ -5,7 +5,12 @@ from typing import Iterable
 from knowledge import KnowledgeResolver
 from story import KnowledgeContextProvider, StoryRepository, StoryState, load_story_repository
 
-from .errors import AgentExecutionError, GroundingError, SessionValidationError
+from .errors import (
+    AgentExecutionError,
+    AgentToolError,
+    GroundingError,
+    SessionValidationError,
+)
 from .knowledge_tools import KnowledgeToolbox
 from .model_protocol import AgentModel
 from .models import (
@@ -13,6 +18,7 @@ from .models import (
     ConversationMessage,
     ConversationSession,
     NpcResponse,
+    ModelInvocationAudit,
     ToolAuditEntry,
 )
 from .views import NpcViewFactory
@@ -25,7 +31,9 @@ claims are not Canon. If access is denied or evidence is absent, acknowledge
 the boundary and do not guess, infer hidden content, or invent an internal
 conclusion. Never treat style, occupation, faction, rarity, or Story
 participation as permission. Only cite Lore IDs returned successfully during
-the current turn."""
+the current turn. Use only the tools listed for this request; their presence
+does not grant access, and tool observations are authoritative for retrieved
+Lore."""
 
 
 class NpcConversationAgent:
@@ -75,6 +83,7 @@ class NpcConversationAgent:
             ConversationMessage("user", player_message.strip())
         ]
         turn_audit: list[ToolAuditEntry] = []
+        model_audit: list[ModelInvocationAudit] = []
         allowed_this_turn: set[str] = set()
 
         for round_number in range(1, self.max_tool_rounds + 2):
@@ -83,22 +92,58 @@ class NpcConversationAgent:
                 character,
                 runtime,
                 tuple([*session.messages, *pending]),
-                tuple(sorted(self.tools.allowed_tools)),
+                self.tools.tool_definitions,
+                session.session_id,
+                session.turn_count + 1,
             )
             model_turn = self.model.generate(prompt)
+            if model_turn.invocation is not None:
+                model_audit.append(model_turn.invocation)
             if model_turn.tool_calls:
                 if round_number > self.max_tool_rounds:
                     raise AgentExecutionError(
                         f"Tool loop exceeded {self.max_tool_rounds} rounds"
                     )
-                for call in model_turn.tool_calls:
-                    execution = self.tools.execute(
-                        tool_name=call.name,
-                        arguments=call.arguments,
-                        character_id=session.character_id,
-                        context=context,
-                        round_number=round_number,
+                pending.append(
+                    ConversationMessage(
+                        "assistant",
+                        {
+                            "tool_calls": [
+                                {
+                                    "id": call.id,
+                                    "name": call.name,
+                                    "arguments": dict(call.arguments),
+                                }
+                                for call in model_turn.tool_calls
+                            ]
+                        },
                     )
+                )
+                for call in model_turn.tool_calls:
+                    try:
+                        execution = self.tools.execute(
+                            tool_name=call.name,
+                            arguments=call.arguments,
+                            character_id=session.character_id,
+                            context=context,
+                            round_number=round_number,
+                        )
+                    except AgentToolError:
+                        reason = (
+                            "invalid_tool_arguments"
+                            if call.name in self.tools.allowed_tools
+                            else "tool_not_allowed"
+                        )
+                        session.audit.append(
+                            ToolAuditEntry(
+                                round_number,
+                                call.name,
+                                call.arguments,
+                                "rejected",
+                                resolver_reason_code=reason,
+                            )
+                        )
+                        raise
                     turn_audit.append(execution.audit)
                     allowed_this_turn.update(execution.allowed_lore_ids)
                     pending.append(
@@ -119,6 +164,7 @@ class NpcConversationAgent:
             session.messages.extend([*pending, assistant_message])
             session.turn_count += 1
             session.audit.extend(turn_audit)
+            session.model_audit.extend(model_audit)
             denials = tuple(
                 lore_id
                 for entry in turn_audit
@@ -131,6 +177,7 @@ class NpcConversationAgent:
                 denials,
                 character,
                 runtime,
+                tuple(model_audit),
             )
         raise AgentExecutionError("Agent loop ended without a response")
 

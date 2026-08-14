@@ -220,9 +220,12 @@ Tests also use a synthetic authorized actor to prove that restricted Lore is gen
 - There is no semantic response critic, contradiction checker, or dialogue authoring system.
 - Search quality is lexical and aimed at boundary verification, not production retrieval relevance.
 
-## 16. Future live model adapter
+## 16. Live model adapter
 
-A future adapter may translate `AgentPrompt`, `ToolCall`, and `ModelTurn` to an online provider. It must not pass Canon stores directly to the model and must keep tool execution in `NpcConversationAgent`.
+v0.2 now translates `AgentPrompt`, `ToolCall`, and `ModelTurn` through a live,
+injected provider client while keeping Canon stores and tool execution inside
+the existing runtime boundary. See `docs/live_llm_adapter_v0.2.md` for
+configuration, retry behavior, audit metadata, and test commands.
 
 ## 17. Future RAG
 

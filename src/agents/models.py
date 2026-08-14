@@ -1,8 +1,23 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any, Mapping
+
+
+@dataclass(frozen=True)
+class ToolDefinition:
+    name: str
+    description: str
+    input_schema: Mapping[str, Any]
+
+    def __post_init__(self) -> None:
+        if not self.name or not self.description:
+            raise ValueError("ToolDefinition name and description must be non-empty")
+        object.__setattr__(
+            self, "input_schema", MappingProxyType(deepcopy(dict(self.input_schema)))
+        )
 
 
 @dataclass(frozen=True)
@@ -18,10 +33,36 @@ class ToolCall:
 
 
 @dataclass(frozen=True)
+class ModelUsage:
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    total_tokens: int | None = None
+
+
+@dataclass(frozen=True)
+class ModelInvocationAudit:
+    session_id: str
+    turn_number: int
+    provider: str
+    model: str
+    outcome: str
+    latency_ms: float
+    retry_count: int
+    finish_reason: str | None = None
+    tool_call_count: int = 0
+    usage: ModelUsage | None = None
+    provider_request_id: str | None = None
+
+
+@dataclass(frozen=True)
 class ModelTurn:
     text: str | None = None
     tool_calls: tuple[ToolCall, ...] = ()
     source_lore_ids: tuple[str, ...] = ()
+    finish_reason: str | None = None
+    usage: ModelUsage | None = None
+    provider_request_id: str | None = None
+    invocation: ModelInvocationAudit | None = None
 
 
 @dataclass(frozen=True)
@@ -30,7 +71,7 @@ class ConversationMessage:
     content: Any
 
     def __post_init__(self) -> None:
-        if self.role not in {"user", "assistant", "tool"}:
+        if self.role not in {"system", "user", "assistant", "tool"}:
             raise ValueError(f"Unsupported conversation role: {self.role}")
 
 
@@ -42,6 +83,7 @@ class ConversationSession:
     messages: list[ConversationMessage] = field(default_factory=list)
     turn_count: int = 0
     audit: list["ToolAuditEntry"] = field(default_factory=list)
+    model_audit: list[ModelInvocationAudit] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if not self.session_id or not self.character_id or not self.story_id:
@@ -77,7 +119,9 @@ class AgentPrompt:
     character: NpcCharacterView
     runtime: NpcRuntimeView
     messages: tuple[ConversationMessage, ...]
-    available_tools: tuple[str, ...]
+    available_tools: tuple[ToolDefinition, ...]
+    session_id: str
+    turn_number: int
 
 
 @dataclass(frozen=True)
@@ -102,6 +146,7 @@ class NpcResponse:
     access_denials: tuple[str, ...]
     character_view: NpcCharacterView
     runtime_view: NpcRuntimeView
+    model_invocations: tuple[ModelInvocationAudit, ...] = ()
 
 
 @dataclass(frozen=True)

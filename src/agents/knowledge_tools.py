@@ -8,7 +8,7 @@ from knowledge import KnowledgeContext, KnowledgeResolver
 from knowledge.errors import UnknownLoreError
 
 from .errors import AgentToolError
-from .models import LoreFact, ToolAuditEntry
+from .models import LoreFact, ToolAuditEntry, ToolDefinition
 
 
 @dataclass(frozen=True)
@@ -21,7 +21,37 @@ class ToolExecution:
 class KnowledgeToolbox:
     """The only Lore-content boundary exposed to NPC orchestration."""
 
-    allowed_tools = frozenset({"search_lore", "get_lore"})
+    tool_definitions = (
+        ToolDefinition(
+            "get_lore",
+            "Retrieve one Lore fact through the runtime permission boundary.",
+            {
+                "type": "object",
+                "properties": {
+                    "lore_id": {
+                        "type": "string",
+                        "pattern": r"^lore(?:_secret)?_[A-Za-z0-9]+$",
+                    }
+                },
+                "required": ["lore_id"],
+                "additionalProperties": False,
+            },
+        ),
+        ToolDefinition(
+            "search_lore",
+            "Search only Lore facts authorized for the current NPC.",
+            {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "minLength": 1},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": 10},
+                },
+                "required": ["query"],
+                "additionalProperties": False,
+            },
+        ),
+    )
+    allowed_tools = frozenset(definition.name for definition in tool_definitions)
 
     def __init__(self, resolver: KnowledgeResolver) -> None:
         self._resolver = resolver

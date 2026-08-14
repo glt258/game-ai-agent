@@ -4,14 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "along-street-knowledge-resolver"
-version = "0.1.0"
+version = "0.2.0"
 description = "Default-deny NPC knowledge boundary resolver for Along the Street"
 requires-python = ">=3.10"
-dependencies = ["PyYAML>=6.0"]
+dependencies = ["PyYAML>=6.0", "openai>=1.0,<3"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = ["live: optional test that may call a paid external LLM"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
