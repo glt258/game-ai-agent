@@ -7,10 +7,12 @@ from agents import (
     AgentToolError,
     DeterministicDemoModel,
     GroundingError,
+    GroundedResponseSegment,
     KnowledgeToolbox,
     ModelTurn,
     NpcConversationAgent,
     ScriptedAgentModel,
+    SegmentKind,
     ToolCall,
 )
 from knowledge import KnowledgeContext, KnowledgeResolver
@@ -95,7 +97,17 @@ def test_get_lore_denied_returns_no_content(agent, story_setup):
 
 def test_model_prompt_contains_views_not_canon_stores(story_setup):
     runtime, state = story_setup
-    model = ScriptedAgentModel([ModelTurn(text="我没有需要补充的事实。")])
+    model = ScriptedAgentModel(
+        [
+            ModelTurn(
+                segments=(
+                    GroundedResponseSegment(
+                        "safe", SegmentKind.NON_FACTUAL, "这件事值得继续核实。"
+                    ),
+                )
+            )
+        ]
+    )
     agent = NpcConversationAgent(model, story_repository=runtime.repository)
     session = agent.create_session("prompt-view", "char_launch_004", STORY_ID)
     agent.chat(session, state, "你怎么看？")

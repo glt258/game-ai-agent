@@ -65,6 +65,22 @@ def main() -> int:
             )
         print(f"NPC: {response.text}")
         print(f"Sources: {list(response.source_lore_ids)}")
+        if response.grounding is not None:
+            repair = (
+                "success"
+                if response.grounding.repair_succeeded
+                else "fallback"
+                if response.grounding.fallback_used
+                else "not-needed"
+            )
+            print(
+                "Grounding:",
+                f"claims={response.grounding.candidate_claim_count}",
+                f"supported={response.grounding.supported_claim_count}",
+                f"unsupported={response.grounding.unsupported_claim_count}",
+                f"uncertain={response.grounding.uncertain_claim_count}",
+                f"repair={repair}",
+            )
         for invocation in response.model_invocations:
             print(
                 "Model:",

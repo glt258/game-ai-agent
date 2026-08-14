@@ -18,6 +18,28 @@ from story import StoryRuntime
 
 
 STORY_ID = "story_after_the_show_001"
+PUBLIC_STATEMENT = "临洲公共安全联席体系是警务、消防、急救和大型活动安全之间的协作机制，不是独立的能力管理机关。"
+
+
+def grounded_json(
+    text: str = "我没有这部分可核实的资料。",
+    *,
+    kind: str = "uncertain",
+    evidence_ids: tuple[str, ...] = (),
+) -> str:
+    return json.dumps(
+        {
+            "segments": [
+                {
+                    "segment_id": "final_1",
+                    "kind": kind,
+                    "text": text,
+                    "evidence_ids": list(evidence_ids),
+                }
+            ]
+        },
+        ensure_ascii=False,
+    )
 
 
 class FakeDeepSeekClient:
@@ -75,7 +97,13 @@ def test_deepseek_tool_call_round_trip_reuses_runtime_and_retry(story_setup):
                 ),
                 finish_reason="tool_calls",
             ),
-            ProviderCompletion(text="这里只回答获准返回的公开资料。"),
+            ProviderCompletion(
+                text=grounded_json(
+                    PUBLIC_STATEMENT,
+                    kind="supported_claim",
+                    evidence_ids=("lore:lore_023:statement",),
+                )
+            ),
         ],
         story_setup,
         sleep=delays.append,
@@ -113,7 +141,7 @@ def test_deepseek_restricted_lore_still_uses_resolver(story_setup):
                     ),
                 )
             ),
-            ProviderCompletion(text="我没有可核实的内部结论。"),
+            ProviderCompletion(text=grounded_json()),
         ],
         story_setup,
     )
@@ -165,8 +193,14 @@ def test_deepseek_session_a_tool_result_is_not_sent_to_session_b(story_setup):
                     ),
                 )
             ),
-            ProviderCompletion(text="会话 A 获得了公开资料。"),
-            ProviderCompletion(text="会话 B 不继承其他会话。"),
+            ProviderCompletion(
+                text=grounded_json(
+                    PUBLIC_STATEMENT,
+                    kind="supported_claim",
+                    evidence_ids=("lore:lore_023:statement",),
+                )
+            ),
+            ProviderCompletion(text=grounded_json()),
         ],
         story_setup,
     )

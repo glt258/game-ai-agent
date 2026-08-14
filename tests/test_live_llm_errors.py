@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections import deque
 from typing import Any
 
@@ -20,6 +21,22 @@ from story import StoryRuntime
 
 
 STORY_ID = "story_after_the_show_001"
+
+
+def grounded_json() -> str:
+    return json.dumps(
+        {
+            "segments": [
+                {
+                    "segment_id": "safe",
+                    "kind": "uncertain",
+                    "text": "我没有这部分可核实的资料。",
+                    "evidence_ids": [],
+                }
+            ]
+        },
+        ensure_ascii=False,
+    )
 
 
 class ErrorFakeClient:
@@ -56,14 +73,14 @@ def test_timeout_retries_once_then_succeeds_with_audit():
     agent, client, session, state = run_live(
         [
             ProviderClientError("timeout", retryable=True),
-            ProviderCompletion(text="恢复成功", request_id="req_retry"),
+            ProviderCompletion(text=grounded_json(), request_id="req_retry"),
         ],
         sleep=delays.append,
     )
 
     response = agent.chat(session, state, "你好")
 
-    assert response.text == "恢复成功"
+    assert response.text == "我没有这部分可核实的资料。"
     assert client.call_count == 2 and delays == [0.5]
     assert response.model_invocations[0].retry_count == 1
 
@@ -135,7 +152,7 @@ def test_malformed_empty_provider_response_is_rejected(completion):
 
 def test_observability_log_excludes_prompt_and_secret(caplog):
     secret = "unit-test-prompt-secret"
-    agent, _, session, state = run_live([ProviderCompletion(text="正常回复")])
+    agent, _, session, state = run_live([ProviderCompletion(text=grounded_json())])
 
     with caplog.at_level("INFO", logger="agents.live_llm"):
         agent.chat(session, state, secret)

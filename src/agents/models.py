@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass, field
+from enum import Enum
 from types import MappingProxyType
 from typing import Any, Mapping
 
@@ -54,11 +55,84 @@ class ModelInvocationAudit:
     provider_request_id: str | None = None
 
 
+class SegmentKind(str, Enum):
+    SUPPORTED_CLAIM = "supported_claim"
+    UNCERTAIN = "uncertain"
+    NON_FACTUAL = "non_factual"
+
+
+class GroundingEvidenceType(str, Enum):
+    CHARACTER_FACT = "character_fact"
+    RUNTIME_FACT = "runtime_fact"
+    TOOL_LORE = "tool_lore"
+
+
+class ClaimGroundingStatus(str, Enum):
+    SUPPORTED = "supported"
+    UNSUPPORTED = "unsupported"
+    UNCERTAIN = "uncertain"
+    NON_FACTUAL = "non_factual"
+
+
+@dataclass(frozen=True)
+class GroundedResponseSegment:
+    segment_id: str
+    kind: SegmentKind
+    text: str
+    evidence_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class GroundingEvidence:
+    evidence_id: str
+    source_type: GroundingEvidenceType
+    text: str
+    source_lore_id: str | None = None
+
+
+@dataclass(frozen=True)
+class ClaimValidation:
+    segment_id: str
+    status: ClaimGroundingStatus
+    valid_evidence_ids: tuple[str, ...] = ()
+    invalid_evidence_ids: tuple[str, ...] = ()
+    reason: str = ""
+
+
+@dataclass(frozen=True)
+class GroundingReport:
+    claims: tuple[ClaimValidation, ...]
+    passed: bool
+    source_lore_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class GroundingRepairRequest:
+    candidate_segments: tuple[GroundedResponseSegment, ...]
+    rejected_segment_ids: tuple[str, ...]
+    reasons: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class GroundingAudit:
+    session_id: str
+    turn_number: int
+    candidate_claim_count: int
+    supported_claim_count: int
+    unsupported_claim_count: int
+    uncertain_claim_count: int
+    non_factual_count: int
+    repair_attempted: bool
+    repair_succeeded: bool
+    fallback_used: bool
+
+
 @dataclass(frozen=True)
 class ModelTurn:
     text: str | None = None
     tool_calls: tuple[ToolCall, ...] = ()
     source_lore_ids: tuple[str, ...] = ()
+    segments: tuple[GroundedResponseSegment, ...] = ()
     finish_reason: str | None = None
     usage: ModelUsage | None = None
     provider_request_id: str | None = None
@@ -84,6 +158,7 @@ class ConversationSession:
     turn_count: int = 0
     audit: list["ToolAuditEntry"] = field(default_factory=list)
     model_audit: list[ModelInvocationAudit] = field(default_factory=list)
+    grounding_audit: list[GroundingAudit] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if not self.session_id or not self.character_id or not self.story_id:
@@ -122,6 +197,8 @@ class AgentPrompt:
     available_tools: tuple[ToolDefinition, ...]
     session_id: str
     turn_number: int
+    evidence: tuple[GroundingEvidence, ...] = ()
+    repair_request: GroundingRepairRequest | None = None
 
 
 @dataclass(frozen=True)
@@ -147,6 +224,7 @@ class NpcResponse:
     character_view: NpcCharacterView
     runtime_view: NpcRuntimeView
     model_invocations: tuple[ModelInvocationAudit, ...] = ()
+    grounding: GroundingAudit | None = None
 
 
 @dataclass(frozen=True)

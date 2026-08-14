@@ -122,9 +122,10 @@ responses, and loop-limit failures do not leave partial conversation messages.
 Each `ConversationSession` owns its own messages and model audit; the adapter
 has no conversation cache.
 
-This preserves the v0.1 grounding limitation: the runtime validates Lore source
-provenance, but it is not a semantic contradiction or arbitrary-prose Canon
-checker.
+v0.3 retains this source-provenance check and adds a provider-neutral structured
+segment protocol plus deterministic claim-level validation. See
+`docs/grounded_response_validation_v0.3.md`. The validator remains deliberately
+conservative and is not a general natural-language truth checker.
 
 ## Error and retry policy
 

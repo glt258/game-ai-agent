@@ -1,4 +1,4 @@
-version: "0.1"
+version: "0.3"
 
 scenarios:
   - id: public_grounded_answer
@@ -12,3 +12,15 @@ scenarios:
   - id: grounding_unknown_source_rejected
   - id: tool_loop_limit
   - id: synthetic_authorized_positive
+  - id: supported_claim_valid_evidence
+  - id: unsupported_claim_missing_evidence
+  - id: fake_evidence_id_rejected
+  - id: unrelated_evidence_rejected
+  - id: uncertainty_segment_allowed
+  - id: non_factual_segment_allowed
+  - id: repair_succeeds_without_tools
+  - id: repair_failure_uses_fallback
+  - id: jiheng_hallucination_regression
+  - id: unauthorized_evidence_id_rejected
+  - id: pretend_tool_result_not_evidence
+  - id: grounding_session_evidence_isolation

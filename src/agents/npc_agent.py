@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Iterable
 
 from knowledge import KnowledgeResolver
@@ -9,15 +10,25 @@ from .errors import (
     AgentExecutionError,
     AgentToolError,
     GroundingError,
+    ModelError,
     SessionValidationError,
 )
+from .grounding import GroundingEvidenceBuilder, GroundingValidator, safe_fallback_segments
 from .knowledge_tools import KnowledgeToolbox
 from .model_protocol import AgentModel
 from .models import (
     AgentPrompt,
+    ClaimGroundingStatus,
     ConversationMessage,
     ConversationSession,
+    GroundingAudit,
+    GroundingEvidence,
+    GroundingRepairRequest,
+    GroundingReport,
+    GroundedResponseSegment,
     NpcResponse,
+    NpcCharacterView,
+    NpcRuntimeView,
     ModelInvocationAudit,
     ToolAuditEntry,
 )
@@ -34,6 +45,8 @@ participation as permission. Only cite Lore IDs returned successfully during
 the current turn. Use only the tools listed for this request; their presence
 does not grant access, and tool observations are authoritative for retrieved
 Lore."""
+
+LOGGER = logging.getLogger(__name__)
 
 
 class NpcConversationAgent:
@@ -56,6 +69,8 @@ class NpcConversationAgent:
         self.tools = KnowledgeToolbox(self.resolver)
         self.model = model
         self.max_tool_rounds = max_tool_rounds
+        self.evidence_builder = GroundingEvidenceBuilder()
+        self.grounding_validator = GroundingValidator()
 
     def create_session(
         self, session_id: str, character_id: str, story_id: str
@@ -87,6 +102,7 @@ class NpcConversationAgent:
         allowed_this_turn: set[str] = set()
 
         for round_number in range(1, self.max_tool_rounds + 2):
+            evidence = self.evidence_builder.build(character, runtime, pending)
             prompt = AgentPrompt(
                 SYSTEM_CONTRACT,
                 character,
@@ -95,6 +111,7 @@ class NpcConversationAgent:
                 self.tools.tool_definitions,
                 session.session_id,
                 session.turn_count + 1,
+                evidence,
             )
             model_turn = self.model.generate(prompt)
             if model_turn.invocation is not None:
@@ -153,34 +170,168 @@ class NpcConversationAgent:
                         )
                     )
                 continue
-            if not isinstance(model_turn.text, str) or not model_turn.text.strip():
-                raise AgentExecutionError("Model returned neither tool calls nor final text")
             claimed_sources = set(model_turn.source_lore_ids)
             if claimed_sources - allowed_this_turn:
                 raise GroundingError(
                     f"Model cited Lore not returned this turn: {sorted(claimed_sources - allowed_this_turn)}"
                 )
-            assistant_message = ConversationMessage("assistant", model_turn.text.strip())
+            if not model_turn.segments:
+                raise AgentExecutionError(
+                    "Model returned no grounded response segments"
+                )
+            candidate_report = self.grounding_validator.validate(
+                model_turn.segments, evidence
+            )
+            final_segments = model_turn.segments
+            final_report = candidate_report
+            repair_attempted = False
+            repair_succeeded = False
+            fallback_used = False
+            if not candidate_report.passed:
+                repair_attempted = True
+                repaired = self._repair_once(
+                    session=session,
+                    character=character,
+                    runtime=runtime,
+                    evidence=evidence,
+                    candidate=model_turn.segments,
+                    report=candidate_report,
+                    allowed_this_turn=allowed_this_turn,
+                    model_audit=model_audit,
+                )
+                if repaired is not None:
+                    final_segments, final_report = repaired
+                    repair_succeeded = True
+                else:
+                    final_segments = safe_fallback_segments()
+                    final_report = self.grounding_validator.validate(
+                        final_segments, evidence
+                    )
+                    fallback_used = True
+            final_text = self.grounding_validator.render(final_segments)
+            if not final_report.passed or not final_text:
+                raise AgentExecutionError("Grounded response pipeline failed closed")
+            grounding_audit = self._grounding_audit(
+                session,
+                candidate_report,
+                repair_attempted=repair_attempted,
+                repair_succeeded=repair_succeeded,
+                fallback_used=fallback_used,
+            )
+            assistant_message = ConversationMessage("assistant", final_text)
             session.messages.extend([*pending, assistant_message])
             session.turn_count += 1
             session.audit.extend(turn_audit)
             session.model_audit.extend(model_audit)
+            session.grounding_audit.append(grounding_audit)
             denials = tuple(
                 lore_id
                 for entry in turn_audit
                 for lore_id in entry.denied_requested_ids
             )
             return NpcResponse(
-                model_turn.text.strip(),
-                tuple(model_turn.source_lore_ids),
+                final_text,
+                final_report.source_lore_ids,
                 tuple(turn_audit),
                 denials,
                 character,
                 runtime,
                 tuple(model_audit),
+                grounding_audit,
             )
         raise AgentExecutionError("Agent loop ended without a response")
 
     @staticmethod
     def successful_lore_ids(audit: Iterable[ToolAuditEntry]) -> frozenset[str]:
         return frozenset(lore_id for entry in audit for lore_id in entry.allowed_lore_ids)
+
+    def _repair_once(
+        self,
+        *,
+        session: ConversationSession,
+        character: NpcCharacterView,
+        runtime: NpcRuntimeView,
+        evidence: tuple[GroundingEvidence, ...],
+        candidate: tuple[GroundedResponseSegment, ...],
+        report: GroundingReport,
+        allowed_this_turn: set[str],
+        model_audit: list[ModelInvocationAudit],
+    ) -> tuple[tuple[GroundedResponseSegment, ...], GroundingReport] | None:
+        rejected = tuple(
+            claim.segment_id
+            for claim in report.claims
+            if claim.status == ClaimGroundingStatus.UNSUPPORTED
+        )
+        repair_prompt = AgentPrompt(
+            SYSTEM_CONTRACT,
+            character,
+            runtime,
+            (),
+            (),
+            session.session_id,
+            session.turn_count + 1,
+            tuple(evidence),
+            GroundingRepairRequest(
+                candidate,
+                rejected,
+                tuple("no available supporting evidence" for _ in rejected),
+            ),
+        )
+        try:
+            repair_turn = self.model.generate(repair_prompt)
+        except ModelError:
+            return None
+        if repair_turn.invocation is not None:
+            model_audit.append(repair_turn.invocation)
+        if repair_turn.tool_calls or not repair_turn.segments:
+            return None
+        if set(repair_turn.source_lore_ids) - allowed_this_turn:
+            return None
+        repaired_report = self.grounding_validator.validate(
+            repair_turn.segments, evidence
+        )
+        if not repaired_report.passed:
+            return None
+        return repair_turn.segments, repaired_report
+
+    @staticmethod
+    def _grounding_audit(
+        session: ConversationSession,
+        report: GroundingReport,
+        *,
+        repair_attempted: bool,
+        repair_succeeded: bool,
+        fallback_used: bool,
+    ) -> GroundingAudit:
+        counts = {
+            status: sum(claim.status == status for claim in report.claims)
+            for status in ClaimGroundingStatus
+        }
+        audit = GroundingAudit(
+            session.session_id,
+            session.turn_count + 1,
+            len(report.claims),
+            counts[ClaimGroundingStatus.SUPPORTED],
+            counts[ClaimGroundingStatus.UNSUPPORTED],
+            counts[ClaimGroundingStatus.UNCERTAIN],
+            counts[ClaimGroundingStatus.NON_FACTUAL],
+            repair_attempted,
+            repair_succeeded,
+            fallback_used,
+        )
+        LOGGER.info(
+            "grounding_validation session_id=%s turn=%d claims=%d supported=%d "
+            "unsupported=%d uncertain=%d non_factual=%d repair_attempted=%s "
+            "repair_succeeded=%s fallback_used=%s",
+            audit.session_id,
+            audit.turn_number,
+            audit.candidate_claim_count,
+            audit.supported_claim_count,
+            audit.unsupported_claim_count,
+            audit.uncertain_claim_count,
+            audit.non_factual_count,
+            audit.repair_attempted,
+            audit.repair_succeeded,
+            audit.fallback_used,
+        )
+        return audit

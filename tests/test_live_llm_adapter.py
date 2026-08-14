@@ -20,6 +20,42 @@ from story import StoryRuntime
 
 
 STORY_ID = "story_after_the_show_001"
+PUBLIC_STATEMENT = "临洲公共安全联席体系是警务、消防、急救和大型活动安全之间的协作机制，不是独立的能力管理机关。"
+
+
+def grounded_json(
+    text: str = "我没有这部分可核实的资料。",
+    *,
+    kind: str = "uncertain",
+    evidence_ids: tuple[str, ...] = (),
+) -> str:
+    return json.dumps(
+        {
+            "segments": [
+                {
+                    "segment_id": "final_1",
+                    "kind": kind,
+                    "text": text,
+                    "evidence_ids": list(evidence_ids),
+                }
+            ]
+        },
+        ensure_ascii=False,
+    )
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "not-json",
+        "{}",
+        '{"segments":[]}',
+        '{"segments":[{"segment_id":"x","kind":null,"text":"x","evidence_ids":[]}]}',
+    ],
+)
+def test_malformed_grounded_response_json_is_rejected(payload):
+    with pytest.raises(ModelMalformedResponseError):
+        LiveLLMAdapter._parse_segments(payload)
 
 
 class FakeProviderClient:
@@ -69,7 +105,7 @@ def test_fake_live_text_response_is_normalized_and_audited(story_setup):
     agent, client = live_agent(
         [
             ProviderCompletion(
-                text="我只能确认公开范围内的信息。",
+                text=grounded_json("这件事值得继续核实。", kind="non_factual"),
                 finish_reason="stop",
                 usage=usage,
                 request_id="req_text",
@@ -82,7 +118,7 @@ def test_fake_live_text_response_is_normalized_and_audited(story_setup):
 
     response = agent.chat(session, state, "你怎么看？")
 
-    assert response.text == "我只能确认公开范围内的信息。"
+    assert response.text == "这件事值得继续核实。"
     assert response.tool_calls == ()
     assert response.source_lore_ids == ()
     assert len(response.model_invocations) == len(session.model_audit) == 1
@@ -91,6 +127,48 @@ def test_fake_live_text_response_is_normalized_and_audited(story_setup):
     assert audit.finish_reason == "stop" and audit.usage == usage
     assert audit.provider_request_id == "req_text" and audit.retry_count == 0
     assert client.requests[0]["timeout_seconds"] == 30.0
+
+
+def test_live_grounding_repair_uses_only_safe_evidence_and_no_tools(story_setup):
+    candidate = grounded_json(
+        "纪衡违反命令并对事故负全责。",
+        kind="supported_claim",
+        evidence_ids=("runtime:participation",),
+    )
+    repaired = json.dumps(
+        {
+            "segments": [
+                {
+                    "segment_id": "participation",
+                    "kind": "supported_claim",
+                    "text": "我参与的是现场处理。",
+                    "evidence_ids": ["runtime:participation"],
+                },
+                {
+                    "segment_id": "uncertain",
+                    "kind": "uncertain",
+                    "text": "我目前无法确认事故最终内部定性。",
+                    "evidence_ids": [],
+                },
+            ]
+        },
+        ensure_ascii=False,
+    )
+    agent, client = live_agent(
+        [ProviderCompletion(text=candidate), ProviderCompletion(text=repaired)],
+        story_setup,
+    )
+    _, state = story_setup
+    session = agent.create_session("live-repair", "char_launch_007", STORY_ID)
+
+    response = agent.chat(session, state, "纪衡是不是应该负全责？")
+
+    assert "负全责" not in response.text
+    assert response.grounding is not None and response.grounding.repair_succeeded
+    assert client.requests[1]["tools"] == []
+    repair_payload = json.dumps(client.requests[1], ensure_ascii=False)
+    assert "character_view" not in repair_payload
+    assert "纪衡是不是应该负全责" not in repair_payload
 
 
 def test_live_search_tool_call_round_trip_preserves_id_and_grounding(story_setup):
@@ -105,7 +183,11 @@ def test_live_search_tool_call_round_trip_preserves_id_and_grounding(story_setup
                 finish_reason="tool_calls",
             ),
             ProviderCompletion(
-                text="公开职责包括警务、消防、急救和大型活动安全协调。",
+                text=grounded_json(
+                    PUBLIC_STATEMENT,
+                    kind="supported_claim",
+                    evidence_ids=("lore:lore_023:statement",),
+                ),
                 finish_reason="stop",
             ),
         ],
@@ -150,7 +232,7 @@ def test_live_restricted_lore_is_denied_and_never_returned_to_provider(
                     ProviderToolCall("call_secret", "get_lore", {"lore_id": "lore_027"}),
                 )
             ),
-            ProviderCompletion(text="我没有可核实的内部结论。"),
+            ProviderCompletion(text=grounded_json()),
         ],
         story_setup,
     )
@@ -237,7 +319,7 @@ def test_live_provider_missing_call_id_gets_request_local_id(story_setup):
             ProviderCompletion(
                 tool_calls=(ProviderToolCall(None, "search_lore", {"query": "协理"}),)
             ),
-            ProviderCompletion(text="现有资料不足。"),
+            ProviderCompletion(text=grounded_json()),
         ],
         story_setup,
     )
@@ -291,7 +373,10 @@ def test_live_loop_limit_and_story_readonly_regressions(story_setup):
 
 
 def test_live_completed_turn_keeps_story_state_readonly(story_setup):
-    agent, _ = live_agent([ProviderCompletion(text="我不会修改剧情状态。")], story_setup)
+    agent, _ = live_agent(
+        [ProviderCompletion(text=grounded_json("这件事值得继续核实。", kind="non_factual"))],
+        story_setup,
+    )
     _, state = story_setup
     before = state.to_dict()
     session = agent.create_session("readonly", "char_launch_007", STORY_ID)
@@ -310,7 +395,13 @@ def test_live_multiple_tool_calls_are_all_runtime_validated(story_setup):
                     ProviderToolCall("search-public", "search_lore", {"query": "公共安全"}),
                 )
             ),
-            ProviderCompletion(text="这里只引用本轮获准返回的公开资料。"),
+            ProviderCompletion(
+                text=grounded_json(
+                    PUBLIC_STATEMENT,
+                    kind="supported_claim",
+                    evidence_ids=("lore:lore_023:statement",),
+                )
+            ),
         ],
         story_setup,
     )
@@ -342,8 +433,14 @@ def test_live_adapter_has_no_cross_session_message_cache(story_setup):
                     ProviderToolCall("a-get", "get_lore", {"lore_id": "lore_023"}),
                 )
             ),
-            ProviderCompletion(text="这是公开资料。"),
-            ProviderCompletion(text="我没有继承其他会话的资料。"),
+            ProviderCompletion(
+                text=grounded_json(
+                    PUBLIC_STATEMENT,
+                    kind="supported_claim",
+                    evidence_ids=("lore:lore_023:statement",),
+                )
+            ),
+            ProviderCompletion(text=grounded_json()),
         ],
         story_setup,
     )
@@ -420,8 +517,14 @@ def test_live_restricted_result_does_not_cross_sessions(story_setup):
                     ),
                 )
             ),
-            ProviderCompletion(text="会话 A 已获得正式授权资料。"),
-            ProviderCompletion(text="会话 B 没有继承其他会话的资料。"),
+            ProviderCompletion(
+                text=grounded_json(
+                    "这条受限内容只能留在会话 A。",
+                    kind="supported_claim",
+                    evidence_ids=("lore:lore_restricted:statement",),
+                )
+            ),
+            ProviderCompletion(text=grounded_json()),
         ]
     )
     agent = NpcConversationAgent(
@@ -445,7 +548,7 @@ def test_live_restricted_result_does_not_cross_sessions(story_setup):
 
 def test_live_request_contains_only_safe_views_not_canon_stores(story_setup):
     agent, client = live_agent(
-        [ProviderCompletion(text="我不能确认。")], story_setup
+        [ProviderCompletion(text=grounded_json())], story_setup
     )
     _, state = story_setup
     session = agent.create_session("safe-view", "char_launch_004", STORY_ID)

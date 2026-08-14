@@ -27,7 +27,7 @@ def test_optional_live_adapter_smoke():
     model = model_from_environment(mode_override="live")
     assert isinstance(model, LiveLLMAdapter)
     prompt = AgentPrompt(
-        "Reply with one short greeting. Do not claim any game-world facts.",
+        "Use the grounded response protocol and one approved non-factual safe form.",
         NpcCharacterView("smoke", "测试 NPC", "", (), (), "", "", (), "", "测试 NPC"),
         NpcRuntimeView("smoke-story", "Smoke", None, (), ()),
         (ConversationMessage("user", "你好"),),
@@ -39,5 +39,6 @@ def test_optional_live_adapter_smoke():
     turn = model.generate(prompt)
 
     assert isinstance(turn.text, str) and turn.text.strip()
+    assert turn.segments
     assert turn.invocation is not None
     assert turn.invocation.provider == os.getenv("NPC_LLM_PROVIDER", "openai").lower()
