@@ -1,8 +1,8 @@
 version: "0.1"
 
 # This registry binds conditions to machine-readable scopes.  Empty values on
-# unresolved bindings are intentional: the current Canon has not yet defined
-# a canonical project/case/incident registry for those conditions.
+# unresolved bindings are intentional: the current Canon has not defined
+# concrete canonical targets for those conditions.
 bindings:
   - id: scope_knowledge_rule_003_relevant_professional_context
     rule_id: knowledge_rule_003
@@ -25,7 +25,7 @@ bindings:
     evaluator: case_assignment_match
     status: unresolved
     scope: {type: case, match: any, values: []}
-    unresolved_reason: Missing canonical case registry.
+    unresolved_reason: Lore 005 describes a batch of cross-industry examples, but current Canon defines no uniquely identifiable canonical case instance.
   - id: scope_knowledge_rule_005_authorized_for_related_review
     rule_id: knowledge_rule_005
     lore_id: lore_005
@@ -156,7 +156,7 @@ bindings:
     evaluator: case_assignment_match
     status: unresolved
     scope: {type: case, match: any, values: []}
-    unresolved_reason: Missing canonical case registry.
+    unresolved_reason: Lore 022 describes ongoing tracking of several artists, but current Canon defines no uniquely identifiable canonical case instance for the legal-work scope.
   - id: scope_knowledge_rule_025_relevant_professional_context
     rule_id: knowledge_rule_025
     lore_id: lore_025
@@ -178,7 +178,7 @@ bindings:
     evaluator: incident_assignment_match
     status: unresolved
     scope: {type: incident, match: any, values: []}
-    unresolved_reason: Missing canonical incident registry.
+    unresolved_reason: Lore 027 aggregates multiple internal review examples, but current Canon defines no uniquely identifiable canonical incident instance.
   - id: scope_knowledge_rule_027_authorized_for_related_review
     rule_id: knowledge_rule_027
     lore_id: lore_027
@@ -194,7 +194,7 @@ bindings:
     evaluator: incident_assignment_match
     status: unresolved
     scope: {type: incident, match: any, values: []}
-    unresolved_reason: Missing canonical incident registry.
+    unresolved_reason: Lore 027 aggregates multiple internal review examples, but current Canon defines no uniquely identifiable canonical incident instance.
   - id: scope_knowledge_rule_030_relevant_member_context
     rule_id: knowledge_rule_030
     lore_id: lore_030
@@ -234,7 +234,7 @@ bindings:
     evaluator: case_assignment_match
     status: unresolved
     scope: {type: case, match: any, values: []}
-    unresolved_reason: Missing canonical case registry.
+    unresolved_reason: Lore 032 describes a collection of member disputes, but current Canon defines no uniquely identifiable canonical case instance.
   - id: scope_knowledge_rule_secret_001_assigned_to_related_project
     rule_id: knowledge_rule_secret_001
     lore_id: lore_secret_001

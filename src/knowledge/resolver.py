@@ -13,7 +13,14 @@ from .errors import (
     UnknownLoreError,
 )
 from .loader import index_by_id, load_canon
-from .registries import validate_authorizations, validate_projects
+from .registries import (
+    registry_ids,
+    validate_authorizations,
+    validate_case_incident_relationships,
+    validate_cases,
+    validate_incidents,
+    validate_projects,
+)
 from .models import KnowledgeDecision
 from .scope_registry import ConditionScopeRegistry
 
@@ -33,6 +40,8 @@ class KnowledgeResolver:
         factions_data: Any | None = None,
         condition_scopes_data: Any | None = None,
         projects_data: Any | None = None,
+        cases_data: Any | None = None,
+        incidents_data: Any | None = None,
         authorizations_data: Any | None = None,
     ) -> None:
         base_datasets = (characters_data, lore_data, knowledge_rules_data, factions_data)
@@ -46,6 +55,8 @@ class KnowledgeResolver:
                 "factions": factions_data,
                 "condition_scopes": condition_scopes_data or {"bindings": []},
                 "projects": projects_data or {"version": "0.1", "projects": []},
+                "cases": cases_data or {"version": "0.1", "cases": []},
+                "incidents": incidents_data or {"version": "0.1", "incidents": []},
                 "authorizations": authorizations_data or {"version": "0.1", "authorizations": []},
             }
         else:
@@ -60,6 +71,8 @@ class KnowledgeResolver:
         self.vocabulary = rules_document.get("vocabulary", {})
         self.validation = rules_document.get("validation", {})
         project_document = raw.get("projects", {"version": "0.1", "projects": []})
+        case_document = raw.get("cases", {"version": "0.1", "cases": []})
+        incident_document = raw.get("incidents", {"version": "0.1", "incidents": []})
         authorization_document = raw.get("authorizations", {"version": "0.1", "authorizations": []})
         self.projects = validate_projects(
             project_document,
@@ -67,18 +80,42 @@ class KnowledgeResolver:
             lore_ids=set(self.lore),
             assignment_ids=set(self.vocabulary.get("assignment_types", {})),
         )
+        case_ids = registry_ids(case_document, "cases")
+        incident_ids = registry_ids(incident_document, "incidents")
+        self.cases = validate_cases(
+            case_document,
+            faction_ids=set(self.factions),
+            lore_ids=set(self.lore),
+            incident_ids=incident_ids,
+            project_ids=set(self.projects),
+        )
+        self.incidents = validate_incidents(
+            incident_document,
+            faction_ids=set(self.factions),
+            lore_ids=set(self.lore),
+            case_ids=case_ids,
+        )
+        validate_case_incident_relationships(self.cases, self.incidents)
         self.authorizations = validate_authorizations(
             authorization_document,
             faction_ids=set(self.factions),
-            target_registries={"project": set(self.projects)},
+            target_registries={
+                "project": set(self.projects),
+                "case": set(self.cases),
+                "incident": set(self.incidents),
+            },
         )
         canonical_registries = {
             "project": sorted(self.projects),
+            "case": sorted(self.cases),
+            "incident": sorted(self.incidents),
             "authorization": sorted(self.authorizations),
         }
         self._validate_runtime_registry_ids = not (
             any(value is not None for value in base_datasets)
             and projects_data is None
+            and cases_data is None
+            and incidents_data is None
             and authorizations_data is None
         )
         # Preserve the old in-memory fixture convention when no registry data
@@ -201,6 +238,12 @@ class KnowledgeResolver:
             unknown_projects = set(context.active_projects) - set(self.projects)
             if unknown_projects:
                 raise KnowledgeContextValidationError("project", unknown_projects)
+            unknown_cases = set(context.active_cases) - set(self.cases)
+            if unknown_cases:
+                raise KnowledgeContextValidationError("case", unknown_cases)
+            unknown_incidents = set(context.active_incidents) - set(self.incidents)
+            if unknown_incidents:
+                raise KnowledgeContextValidationError("incident", unknown_incidents)
             unknown_authorizations = set(context.authorizations) - set(self.authorizations)
             if unknown_authorizations:
                 raise KnowledgeContextValidationError("authorization", unknown_authorizations)

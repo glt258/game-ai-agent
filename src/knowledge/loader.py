@@ -37,6 +37,12 @@ def load_canon(data_dir: Path | None = None) -> dict[str, Any]:
         "projects": load_yaml(root / "projects" / "projects.yaml")
         if (root / "projects" / "projects.yaml").exists()
         else {"version": "0.1", "projects": []},
+        "cases": load_yaml(root / "cases" / "cases.yaml")
+        if (root / "cases" / "cases.yaml").exists()
+        else {"version": "0.1", "cases": []},
+        "incidents": load_yaml(root / "incidents" / "incidents.yaml")
+        if (root / "incidents" / "incidents.yaml").exists()
+        else {"version": "0.1", "incidents": []},
         "authorizations": load_yaml(root / "knowledge" / "authorizations.yaml")
         if (root / "knowledge" / "authorizations.yaml").exists()
         else {"version": "0.1", "authorizations": []},

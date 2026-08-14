@@ -44,13 +44,12 @@ cases:
       active_responsibilities: [incident_professional_lead]
     expected_decision: deny
     expected_reason_code: default_deny
-  - id: canonical_scope_gap_does_not_expand_access
+  - id: canonical_unknown_incident_is_context_error
     character_id: char_launch_007
     lore_id: lore_027
     context:
       active_incidents: [incident_other]
-    expected_decision: deny
-    expected_reason_code: default_deny
+    expected_error: KnowledgeContextValidationError
   - id: kr_unknown_character_001
     character_id: does_not_exist
     lore_id: lore_001

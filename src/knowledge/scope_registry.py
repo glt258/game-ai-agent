@@ -236,6 +236,10 @@ def _gap_type(binding: ScopeBinding | None, evaluator: str, reason: str | None) 
         return "insufficient_responsibility_vocabulary"
     if reason and "context model" in reason.lower():
         return "insufficient_context_model"
+    if reason and "no uniquely identifiable canonical case" in reason.lower():
+        return "insufficient_case_instance_canon"
+    if reason and "no uniquely identifiable canonical incident" in reason.lower():
+        return "insufficient_incident_instance_canon"
     return {
         "project": "missing_project_registry",
         "case": "missing_case_registry",

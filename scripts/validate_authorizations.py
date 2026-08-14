@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from knowledge.loader import load_canon
-from knowledge.registries import validate_authorizations, validate_projects
+from knowledge.registries import registry_ids, validate_authorizations, validate_projects
 
 
 def main() -> int:
@@ -22,7 +22,11 @@ def main() -> int:
     authorizations = validate_authorizations(
         raw["authorizations"],
         faction_ids={record["id"] for record in raw["factions"]},
-        target_registries={"project": set(projects)},
+        target_registries={
+            "project": set(projects),
+            "case": registry_ids(raw["cases"], "cases"),
+            "incident": registry_ids(raw["incidents"], "incidents"),
+        },
     )
     print(f"Authorization registry validation passed: {len(authorizations)} records.")
     return 0

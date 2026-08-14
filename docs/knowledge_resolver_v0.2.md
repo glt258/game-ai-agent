@@ -62,6 +62,22 @@ Neither registry independently grants Lore access. A project or authorization
 must be referenced by a resolved binding in `condition_scopes.yaml`, and the
 subject plus concrete runtime context must still match.
 
+## Case Registry and Incident Registry
+
+`data/cases/cases.yaml` and `data/incidents/incidents.yaml` define separate
+instance registries. A Case is a concrete investigation, coordination, review,
+or handling work unit. An Incident is a concrete event that actually happened.
+Neither registry is a type taxonomy, and a Case ID can never double as an
+Incident ID.
+
+The v0.1 registries are intentionally empty because current Canon describes
+case collections, incident-review collections, trends, and policies rather
+than uniquely identifiable instances. Empty formal registries still establish
+the schema and runtime trust boundary without manufacturing StoryState facts.
+Optional Case/Incident cross-references must be bidirectional; validation
+rejects unknown references and relationship drift. `lore_refs` records Canon
+provenance only and never grants access.
+
 ## Scope integrity
 
 Resolved binding values must reference registered machine-readable vocabulary
@@ -89,6 +105,14 @@ it that a character currently holds `auth_x`. Neither upstream system can tell
 the resolver that the character can access `lore_x`; that decision remains
 resolver-owned.
 
+The same boundary applies to Case and Incident state. StoryState may provide a
+registered ID through `active_cases` or `active_incidents`; the resolver checks
+that ID against the corresponding registry and then performs the exact scope
+intersection. Unknown IDs raise `KnowledgeContextValidationError` instead of
+becoming ordinary denials. Case context never satisfies Incident scope, and
+Incident context never satisfies Case scope. There is no boolean evaluator
+bypass.
+
 ## Decision trace
 
 Every non-public candidate grant records its rule id, required and actual subject data, condition results, final outcome, and a reason code. The trace never includes the Lore statement or other private Lore content.
@@ -98,8 +122,8 @@ Every non-public candidate grant records its rule id, required and actual subjec
 ## Known limitation
 
 Some current Canon conditions remain explicitly `unresolved` because no
-canonical project, case, incident, dataset, review, or artist-team ID
-registry/target exists yet. This is reported as a scope gap rather than filled with guessed
+canonical project, case, incident, dataset, review, or artist-team target
+exists yet. This is reported as a scope gap rather than filled with guessed
 placeholder IDs. Titles, descriptions, faction names, LLM similarity,
 embeddings, RAG, network calls, and randomness are intentionally not used.
 
@@ -110,6 +134,8 @@ Run:
 ```text
 python -m pytest -q
 python scripts/validate_data.py
+python scripts/validate_cases.py
+python scripts/validate_incidents.py
 python scripts/validate_knowledge_scopes.py
 python scripts/run_knowledge_evals.py
 python scripts/report_knowledge_scopes.py
@@ -120,7 +146,8 @@ The eval dataset covers public access, default denial, faction-not-full-access, 
 
 ## Future work
 
-- Add canonical Case, Incident, Artist Team, and Role-assignment registries.
+- Add concrete Case and Incident records only when instance-level Canon exists;
+  add Artist Team and Role-assignment registries when their Canon exists.
 - Add Dataset or Review registries only if Canon evidence establishes that they
   are needed by currently unresolved conditions.
 - Design new responsibility vocabulary in a separate Knowledge Responsibility
