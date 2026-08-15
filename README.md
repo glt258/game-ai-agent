@@ -3,6 +3,14 @@
 This repository contains the read-only NPC knowledge boundary and authoring
 agents for *Along the Street*.
 
+## Current Status
+
+Character Authoring Pipeline v0.6.6
+Runtime Freeze: READY_FOR_DEMO
+
+See [docs/runtime_freeze_v0.6.6.md](docs/runtime_freeze_v0.6.6.md) for the
+frozen baseline, acceptance evidence, invariants, and post-freeze change policy.
+
 ## Character Generation Agent
 
 Generate a Canon-aware, reviewable draft without changing formal Canon:
