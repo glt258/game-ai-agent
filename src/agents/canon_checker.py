@@ -226,11 +226,18 @@ _ABSENCE_DENIAL_PATTERNS = (
     r"(?:无|没有)(?:任何|一个|此类|相关)?$",
     r"(?:不|未)(?:使用|包含|采用|涉及)(?:任何|一个|一项|此类|相关)?$",
 )
+_ABSENCE_PREDICATE_PATTERN = (
+    r"(?:不(?:使用|包含|采用|涉及)(?:任何|一个|一项|此类|相关)?"
+    r"|未(?:使用|包含|采用|涉及)(?:任何|一个|一项|此类|相关)?"
+    r"|无(?:任何|一个|此类|相关)?|没有(?:任何|一个|此类|相关)?)"
+)
+_ABSENCE_COORDINATOR_PATTERN = r"(?:或|或者|与|和|及|以及|、|/)"
+_NON_COORDINATE_TEXT = r"[^或与和及、/，,。！？；而]"
 _SECRET_ADMINISTRATIVE_ENTITY_PATTERNS = (
     r"(?:秘密|未公开|不公开|从不公开|从不对外公开|不对外公开|未对外披露|未向公众披露|隐藏|隐蔽|不为公众所知)"
-    r".{0,8}(?:政府|行政|监管|管理局|机构|部门|机关|组织)",
+    rf"{_NON_COORDINATE_TEXT}{{0,8}}(?:政府|行政|监管|管理局|机构|部门|机关|组织)",
     r"(?:政府|行政|监管|管理局|机构|部门|机关|组织)"
-    r".{0,8}(?:秘密|未公开|不公开|从不公开|从不对外公开|不对外公开|未对外披露|未向公众披露|隐藏|隐蔽|不为公众所知)",
+    rf"{_NON_COORDINATE_TEXT}{{0,8}}(?:秘密|未公开|不公开|从不公开|从不对外公开|不对外公开|未对外披露|未向公众披露|隐藏|隐蔽|不为公众所知)",
 )
 _ADMINISTRATIVE_ENTITIES = (
     "政府机构",
@@ -1327,11 +1334,20 @@ class CanonChecker:
 
     @classmethod
     def _forbidden_claim_is_negated(
-        cls, text: str, start: int, end: int | None = None
+        cls,
+        text: str,
+        start: int,
+        end: int | None = None,
+        pattern: str | None = None,
     ) -> bool:
         del end
         prefix = cls._local_claim_prefix(text, start)
-        if any(re.search(pattern, prefix) for pattern in _ABSENCE_DENIAL_PATTERNS):
+        if any(
+            re.search(denial_pattern, prefix)
+            for denial_pattern in _ABSENCE_DENIAL_PATTERNS
+        ):
+            return True
+        if cls._absence_scope_for_forbidden_match(text, start, pattern):
             return True
         return cls._forbidden_introduction_action_polarity(text, start) in {
             "NEGATIVE",
@@ -1339,9 +1355,73 @@ class CanonChecker:
         }
 
     @classmethod
+    def _absence_scope_for_forbidden_match(
+        cls, text: str, start: int, pattern: str | None
+    ) -> bool:
+        if not pattern:
+            return False
+        sentence_start = max(
+            (text.rfind(marker, 0, start) for marker in "。！？；，,!?\n"),
+            default=-1,
+        ) + 1
+        boundary_start = sentence_start
+        for match in re.finditer(
+            r"但|但是|然而|不过|而|实际(?:上)?",
+            text[sentence_start:start],
+        ):
+            boundary_start = sentence_start + match.end()
+        clause_end = len(text)
+        for match in re.finditer(r"[。！？；，,!?\n]", text[start:]):
+            clause_end = min(clause_end, start + match.start())
+        for match in re.finditer(
+            r"但|但是|然而|不过|而|实际(?:上)?",
+            text[start:],
+        ):
+            clause_end = min(clause_end, start + match.start())
+        clause = text[boundary_start:clause_end]
+        predicate_matches = tuple(
+            re.finditer(_ABSENCE_PREDICATE_PATTERN, clause)
+        )
+        if not predicate_matches:
+            return False
+        predicate = predicate_matches[-1]
+        target_matches = tuple(re.finditer(pattern, clause, re.IGNORECASE))
+        current_target_index = next(
+            (
+                index
+                for index, match in enumerate(target_matches)
+                if boundary_start + match.start() == start
+            ),
+            None,
+        )
+        if current_target_index is None:
+            return False
+        first_target = target_matches[0]
+        if first_target.start() < predicate.end():
+            return False
+        initial_gap = clause[predicate.end() : first_target.start()]
+        if initial_gap and not re.fullmatch(
+            r"\s*(?:任何|一个|一项|此类|相关|新的)?\s*", initial_gap
+        ):
+            return False
+        for previous, current in zip(
+            target_matches[:current_target_index],
+            target_matches[1 : current_target_index + 1],
+        ):
+            gap = clause[previous.end() : current.start()]
+            if not re.fullmatch(
+                rf"\s*(?:{_ABSENCE_COORDINATOR_PATTERN})\s*",
+                gap,
+            ):
+                return False
+        return current_target_index >= 1
+
+    @classmethod
     def _positive_forbidden_match(cls, text: str, pattern: str) -> bool:
         for match in re.finditer(pattern, text, re.IGNORECASE):
-            if not cls._forbidden_claim_is_negated(text, match.start(), match.end()):
+            if not cls._forbidden_claim_is_negated(
+                text, match.start(), match.end(), pattern
+            ):
                 return True
         return False
 
@@ -1460,7 +1540,10 @@ class CanonChecker:
             if len(normalized_pattern) >= 6 and normalized_pattern in normalized:
                 direct_match = re.search(re.escape(pattern), text, re.IGNORECASE)
                 if direct_match is None or not cls._forbidden_claim_is_negated(
-                    text, direct_match.start(), direct_match.end()
+                    text,
+                    direct_match.start(),
+                    direct_match.end(),
+                    re.escape(pattern),
                 ):
                     return field
             if secret_government_detector and (
@@ -1497,7 +1580,10 @@ class CanonChecker:
         if cls._normalize(forbidden) in cls._normalize(draft_text):
             direct_match = re.search(re.escape(forbidden), draft_text, re.IGNORECASE)
             if direct_match is None or not cls._forbidden_claim_is_negated(
-                draft_text, direct_match.start(), direct_match.end()
+                draft_text,
+                direct_match.start(),
+                direct_match.end(),
+                re.escape(forbidden),
             ):
                 return True
         if "秘密" in forbidden and any(

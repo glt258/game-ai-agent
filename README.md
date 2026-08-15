@@ -62,10 +62,10 @@ internal-material detection.
 
 See [docs/canon_checker_v0.1.md](docs/canon_checker_v0.1.md) for finding codes,
 implemented deterministic rules, examples, and known limitations. Canon Checker
-v0.1.4 adds action-local absence/non-use denial and proposal-head ordering for
-relations, interactions, memberships, and assignments to existing Canon targets.
-The offline Live-derived matrix contains 59 cases with zero false positives or
-false negatives.
+v0.1.5 adds bounded compound absence scope for coordinated forbidden targets;
+the v0.1.4 absence/non-use and proposal-ordering behavior remains covered. The
+offline Live-derived matrix contains 81 cases with zero false positives or false
+negatives.
 
 ## Live providers
 

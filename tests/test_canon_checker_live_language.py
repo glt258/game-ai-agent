@@ -136,6 +136,99 @@ def test_live_mixed_absence_clause_does_not_hide_positive_secret_entity():
 @pytest.mark.parametrize(
     "text",
     [
+        "无秘密政府机构或秘密行政机构要素。",
+        "无秘密政府组织、秘密监管机构或隐藏行政机关相关设定。",
+        "不包含秘密政府组织或秘密监管体系。",
+        "未使用秘密行政机关与隐藏监管部门设定。",
+        "未采用秘密监管机构、秘密行政组织以及全城统一监管机关作为角色背景。",
+        "不涉及秘密政府机构或秘密能力监管组织。",
+        "没有秘密政府组织、秘密行政机关等元素。",
+        "无任何秘密政府组织或秘密监管部门内容。",
+        "无秘密政府组织或者秘密行政机关要素。",
+        "无秘密政府组织和秘密监管部门内容。",
+        "无秘密政府组织及秘密行政机关设定。",
+        "无秘密政府组织/秘密行政机构要素。",
+    ],
+)
+def test_live_compound_absence_scope_covers_coordinated_targets(text: str):
+    report = CanonChecker().check(
+        replace(_good_draft(), constraint_notes=(text,)),
+        request=_good_request(),
+    )
+    codes = {item.code for item in report.findings}
+    assert not {
+        CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
+        CanonFindingCode.FORBIDDEN_PATTERN,
+        CanonFindingCode.WORLD_RULE_VIOLATION,
+    } & codes
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "包含秘密政府机构或秘密行政机构要素。",
+        "使用秘密政府组织和秘密监管部门作为角色背景。",
+        "采用秘密行政机关与全城监管机构设定。",
+        "角色隶属于秘密政府机构或秘密行政机关。",
+        "存在秘密政府组织与隐藏监管部门。",
+        "存在不对外公开的秘密政府机构或秘密行政机关。",
+    ],
+)
+def test_live_compound_positive_controls_still_fail(text: str):
+    report = CanonChecker().check(
+        replace(_good_draft(), constraint_notes=(text,)),
+        request=_good_request(),
+    )
+    codes = {item.code for item in report.findings}
+    assert codes & {
+        CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
+        CanonFindingCode.FORBIDDEN_PATTERN,
+        CanonFindingCode.WORLD_RULE_VIOLATION,
+    }
+
+
+def test_live_compound_negative_property_is_not_absence_scope():
+    report = CanonChecker().check(
+        replace(
+            _good_draft(),
+            constraint_notes=(
+                "无公开登记的秘密监管机构或秘密行政机关统一负责全城能力事务。",
+            ),
+        ),
+        request=_good_request(),
+    )
+    codes = {item.code for item in report.findings}
+    assert codes & {
+        CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
+        CanonFindingCode.FORBIDDEN_PATTERN,
+        CanonFindingCode.WORLD_RULE_VIOLATION,
+    }
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "无秘密政府组织或秘密行政机构元素，但角色真实身份隶属于一个不公开的监管机构。",
+        "不包含秘密监管机构设定，但设立一个未公开行政办公室统一管理全城能力者。",
+        "无秘密政府机构或秘密行政机构，但存在秘密监管机构。",
+    ],
+)
+def test_live_compound_absence_scope_stops_at_mixed_clause_boundary(text: str):
+    report = CanonChecker().check(
+        replace(_good_draft(), constraint_notes=(text,)),
+        request=_good_request(),
+    )
+    codes = {item.code for item in report.findings}
+    assert codes & {
+        CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
+        CanonFindingCode.FORBIDDEN_PATTERN,
+        CanonFindingCode.WORLD_RULE_VIOLATION,
+    }
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
         "她新增了一个秘密政府组织。",
         "她没有公开身份，实际上新增了秘密政府监管机构。",
         "不对外公开的行政机构统一监管全市能力者。",
