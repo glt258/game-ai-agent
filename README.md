@@ -35,6 +35,24 @@ CharacterDesignRequest
     -> CharacterDraft
     -> CanonChecker
     -> CanonCheckReport (PASS / WARN / FAIL)
+    -> CharacterRepairAgent (at most one bounded repair)
+    -> CanonChecker (full re-check)
+
+The repair loop never writes Canon and never approves a character.  It keeps
+the original `CharacterDesignRequest`, accepts only a complete `CharacterDraft`
+root object, validates the deterministic changed-field scope, and recommends
+the repaired draft only when the second check improves the result:
+
+```bash
+py scripts/demo_character_repair_v0_1.py --case subtle
+py scripts/demo_character_repair_v0_1.py --case bad
+py scripts/demo_character_repair_v0_1.py --case unrepairable
+py scripts/run_character_repair_evals.py
+```
+
+See [docs/character_repair_loop_v0.1.md](docs/character_repair_loop_v0.1.md)
+for the evidence boundary, one-attempt semantics, scope rules, and offline
+fixtures.
 ```
 
 See [docs/canon_checker_v0.1.md](docs/canon_checker_v0.1.md) for finding codes,

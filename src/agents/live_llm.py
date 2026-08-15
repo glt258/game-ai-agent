@@ -255,7 +255,9 @@ class LiveLLMAdapter:
                 "Available grounding evidence and approved safe forms:\n"
                 f"{cls._json({'evidence': safe_evidence, 'approved_uncertainty': cls._approved_uncertainty(), 'approved_non_factual': cls._approved_non_factual()})}"
             )
-        if prompt.repair_request is None:
+        if prompt.authoring_payload is not None:
+            system_content = protocol_content
+        elif prompt.repair_request is None:
             system_content = (
                 f"{protocol_content}\n\n"
                 "The following JSON contains the complete safe views available for this request. "
@@ -267,6 +269,14 @@ class LiveLLMAdapter:
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": system_content}
         ]
+        if prompt.authoring_payload is not None:
+            messages.append(
+                {
+                    "role": "user",
+                    "content": cls._json(dict(prompt.authoring_payload)),
+                }
+            )
+            return messages
         if prompt.repair_request is not None:
             repair = prompt.repair_request
             messages.append(

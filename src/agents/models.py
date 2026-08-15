@@ -212,6 +212,11 @@ class AgentPrompt:
     # Authoring consumers use ``character_draft`` to select their strict JSON
     # transport/parser in the shared LiveLLMAdapter.
     response_format: str = "grounded_response"
+    # Bounded, provider-neutral payload for authoring operations that do not
+    # use the NPC conversation message history (for example character repair).
+    # It is serialized as data by the live adapter, never interpolated into
+    # the system contract.
+    authoring_payload: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True)

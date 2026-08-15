@@ -1,0 +1,18 @@
+version: "0.1"
+cases:
+  - pass_draft_skips_repair
+  - shenzhao_warn_repairs_to_pass
+  - authority_overreach_repaired
+  - knowledge_overreach_repaired
+  - story_role_overreach_repaired
+  - proposal_smuggling_repaired
+  - canon_presented_as_proposal_repaired
+  - forbidden_secret_authority_repaired
+  - minor_frontline_repaired_when_brief_allows
+  - unrepairable_hard_constraint_stays_fail
+  - scope_violation_rejected
+  - repair_model_failure_preserves_original
+  - repair_regression_preserves_original
+  - fake_source_not_allowed
+  - tool_call_not_allowed
+  - wrong_wrapper_rejected
