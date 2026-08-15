@@ -113,7 +113,11 @@ class NpcConversationAgent:
                 session.turn_count + 1,
                 evidence,
             )
-            model_turn = self.model.generate(prompt)
+            try:
+                model_turn = self.model.generate(prompt)
+            except ModelError as error:
+                self._append_failure_audit(session.model_audit, error)
+                raise
             if model_turn.invocation is not None:
                 model_audit.append(model_turn.invocation)
             if model_turn.tool_calls:
@@ -245,6 +249,19 @@ class NpcConversationAgent:
     def successful_lore_ids(audit: Iterable[ToolAuditEntry]) -> frozenset[str]:
         return frozenset(lore_id for entry in audit for lore_id in entry.allowed_lore_ids)
 
+    @staticmethod
+    def _append_failure_audit(
+        target: list[ModelInvocationAudit], error: ModelError
+    ) -> None:
+        """Record sanitized metadata for a failed model call.
+
+        Appends only the failure audit attached by the adapter; never commits
+        model output or session content. Callers either re-raise (candidate
+        path) or continue to fallback (repair path).
+        """
+        if error.audit is not None:
+            target.append(error.audit)
+
     def _repair_once(
         self,
         *,
@@ -279,7 +296,11 @@ class NpcConversationAgent:
         )
         try:
             repair_turn = self.model.generate(repair_prompt)
-        except ModelError:
+        except ModelError as error:
+            # Record the failed repair call into the turn-local audit list so
+            # it is committed with the candidate success audit when the turn
+            # completes via fallback (order preserved: candidate, then repair).
+            self._append_failure_audit(model_audit, error)
             return None
         if repair_turn.invocation is not None:
             model_audit.append(repair_turn.invocation)

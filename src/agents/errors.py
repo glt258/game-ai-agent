@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from .models import ModelInvocationAudit
+
+
 class AgentError(Exception):
     """Base error for the deterministic NPC conversation runtime."""
 
@@ -20,6 +25,13 @@ class SessionValidationError(AgentError):
 
 class ModelError(AgentError):
     """Base error exposed by provider-neutral model adapters."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        # Optional provider-neutral failure audit attached by adapters that
+        # recorded a failed model call. Holds sanitized metadata only: never
+        # raw model output, prompts, tool results, or player input.
+        self.audit: ModelInvocationAudit | None = None
 
 
 class ModelConfigurationError(ModelError):

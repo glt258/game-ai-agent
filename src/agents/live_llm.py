@@ -31,6 +31,7 @@ from .provider_protocol import (
     ProviderClientError,
     ProviderCompletion,
     ProviderToolCall,
+    ResponseMode,
 )
 
 
@@ -100,6 +101,7 @@ class LiveLLMAdapter:
     def generate(self, prompt: AgentPrompt) -> ModelTurn:
         messages = self._provider_messages(prompt)
         tools = self._provider_tools(prompt)
+        response_mode = self._response_mode(prompt)
         started = self._monotonic()
         retry_count = 0
         while True:
@@ -109,6 +111,7 @@ class LiveLLMAdapter:
                     messages=messages,
                     tools=tools,
                     timeout_seconds=self.timeout_seconds,
+                    response_mode=response_mode,
                 )
                 turn = self._normalize(response, prompt, started, retry_count)
                 self._log_audit(turn.invocation)
@@ -120,10 +123,18 @@ class LiveLLMAdapter:
                     continue
                 latency_ms = (self._monotonic() - started) * 1000
                 self._log_failure(prompt, error.kind, latency_ms, retry_count)
-                self._raise_model_error(error)
-            except ModelMalformedResponseError:
+                self._raise_model_error(error, prompt, latency_ms, retry_count)
+            except ModelMalformedResponseError as error:
                 latency_ms = (self._monotonic() - started) * 1000
                 self._log_failure(prompt, "malformed_response", latency_ms, retry_count)
+                error.audit = self._failure_audit(
+                    prompt,
+                    "malformed_response",
+                    latency_ms,
+                    retry_count,
+                    response,
+                    str(error),
+                )
                 raise
 
     def _normalize(
@@ -335,6 +346,13 @@ class LiveLLMAdapter:
         ]
 
     @staticmethod
+    def _response_mode(prompt: AgentPrompt) -> ResponseMode:
+        """Map the runtime's output contract to a provider-neutral intent."""
+        if prompt.response_format in {"grounded_response", "character_draft"}:
+            return "structured_json"
+        return "text"
+
+    @staticmethod
     def _parse_segments(text: str) -> tuple[GroundedResponseSegment, ...]:
         try:
             document = json.loads(text)
@@ -502,16 +520,57 @@ class LiveLLMAdapter:
             prompt.turn_number,
         )
 
-    @staticmethod
-    def _raise_model_error(error: ProviderClientError) -> None:
+    def _raise_model_error(
+        self,
+        error: ProviderClientError,
+        prompt: AgentPrompt,
+        latency_ms: float,
+        retry_count: int,
+    ) -> None:
         if error.kind == "authentication":
-            raise ModelAuthenticationError(
+            raised = ModelAuthenticationError(
                 "Live LLM authentication failed; check configured credentials"
-            ) from None
-        if error.kind == "timeout":
-            raise ModelTimeoutError("Live LLM request timed out after bounded retries") from None
-        if error.kind == "rate_limit":
-            raise ModelRateLimitError(
+            )
+        elif error.kind == "timeout":
+            raised = ModelTimeoutError(
+                "Live LLM request timed out after bounded retries"
+            )
+        elif error.kind == "rate_limit":
+            raised = ModelRateLimitError(
                 "Live LLM rate limit persisted after bounded retries"
-            ) from None
-        raise ModelProviderError("Live LLM provider request failed") from None
+            )
+        else:
+            raised = ModelProviderError("Live LLM provider request failed")
+        raised.audit = self._failure_audit(
+            prompt, error.kind, latency_ms, retry_count, None, str(raised)
+        )
+        raise raised from None
+
+    def _failure_audit(
+        self,
+        prompt: AgentPrompt,
+        outcome: str,
+        latency_ms: float,
+        retry_count: int,
+        response: ProviderCompletion | None,
+        error_message: str,
+    ) -> ModelInvocationAudit:
+        """Build a provider-neutral failure audit from sanitized metadata only.
+
+        Never includes raw model output, prompts, tool results, restricted
+        lore, or player input; error_message carries only schema-shape or
+        normalized transport details already safe for logs.
+        """
+        return ModelInvocationAudit(
+            session_id=prompt.session_id,
+            turn_number=prompt.turn_number,
+            provider=self.provider,
+            model=self.model,
+            outcome=outcome,
+            latency_ms=latency_ms,
+            retry_count=retry_count,
+            finish_reason=response.finish_reason if response is not None else None,
+            usage=response.usage if response is not None else None,
+            provider_request_id=response.request_id if response is not None else None,
+            error_message=error_message,
+        )

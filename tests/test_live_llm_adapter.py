@@ -52,6 +52,7 @@ def grounded_json(
         '{"segments":[]}',
         '{"segments":[{"segment_id":"x","kind":null,"text":"x","evidence_ids":[]}]}',
         '{"segments":[{"segment_id":true,"kind":"non_factual","text":"这件事值得继续核实。","evidence_ids":[]}]}',
+        '{"segments":[{"segment_id":"1","type":"supported_claim","text":"你好","evidence_ids":[]}]}',
     ],
 )
 def test_malformed_grounded_response_json_is_rejected(payload):
@@ -200,6 +201,7 @@ def test_fake_live_text_response_is_normalized_and_audited(story_setup):
     assert audit.finish_reason == "stop" and audit.usage == usage
     assert audit.provider_request_id == "req_text" and audit.retry_count == 0
     assert client.requests[0]["timeout_seconds"] == 30.0
+    assert client.requests[0]["response_mode"] == "structured_json"
 
 
 def test_live_grounding_repair_uses_only_safe_evidence_and_no_tools(story_setup):
@@ -239,6 +241,7 @@ def test_live_grounding_repair_uses_only_safe_evidence_and_no_tools(story_setup)
     assert "负全责" not in response.text
     assert response.grounding is not None and response.grounding.repair_succeeded
     assert client.requests[1]["tools"] == []
+    assert client.requests[1]["response_mode"] == "structured_json"
     repair_payload = json.dumps(client.requests[1], ensure_ascii=False)
     assert "character_view" not in repair_payload
     assert "纪衡是不是应该负全责" not in repair_payload
@@ -268,6 +271,23 @@ def test_captured_deepseek_numeric_id_reaches_grounding_repair(story_setup):
     assert response.grounding.repair_succeeded
     assert len(client.requests) == 2
     assert client.requests[1]["tools"] == []
+
+
+def test_live_wrong_discriminator_key_is_schema_rejected_before_grounding(story_setup):
+    candidate = (
+        '{"segments":[{"segment_id":"1","type":"supported_claim",'
+        '"text":"你好","evidence_ids":[]}]}'
+    )
+    agent, client = live_agent([ProviderCompletion(text=candidate)], story_setup)
+    _, state = story_setup
+    session = agent.create_session("schema-reject", "char_launch_004", STORY_ID)
+
+    with pytest.raises(ModelMalformedResponseError, match="exact segment schema"):
+        agent.chat(session, state, "你好")
+
+    assert len(client.requests) == 1
+    assert session.messages == []
+    assert session.grounding_audit == []
 
 
 def test_live_search_tool_call_round_trip_preserves_id_and_grounding(story_setup):
@@ -304,6 +324,7 @@ def test_live_search_tool_call_round_trip_preserves_id_and_grounding(story_setup
         tool["function"]["name"] for tool in client.requests[0]["tools"]
     }
     assert tool_names == {"get_lore", "search_lore"}
+    assert client.requests[0]["response_mode"] == "structured_json"
     second_messages = client.requests[1]["messages"]
     assistant_call = next(
         item for item in second_messages if item["role"] == "assistant" and item.get("tool_calls")
@@ -311,6 +332,17 @@ def test_live_search_tool_call_round_trip_preserves_id_and_grounding(story_setup
     tool_result = next(item for item in second_messages if item["role"] == "tool")
     assert assistant_call["tool_calls"][0]["id"] == "call_search"
     assert tool_result["tool_call_id"] == "call_search"
+
+
+def test_grounded_parser_rejects_prose_prefixed_json():
+    payload = grounded_json("这件事值得继续核实。")
+    with pytest.raises(
+        ModelMalformedResponseError,
+        match="not valid grounded-response JSON",
+    ):
+        LiveLLMAdapter._parse_segments(
+            "你好。\n\n" + payload
+        )
 
 
 @pytest.mark.parametrize(

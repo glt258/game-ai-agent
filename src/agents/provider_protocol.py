@@ -13,6 +13,11 @@ ProviderErrorKind = Literal[
     "provider",
 ]
 
+# Provider-neutral request intent.  The transport translates this to the
+# provider SDK's response_format parameter; agents never pass SDK dictionaries
+# across this boundary.
+ResponseMode = Literal["text", "structured_json"]
+
 
 class ProviderClientError(Exception):
     """Sanitized failure emitted by a provider client implementation."""
@@ -56,4 +61,5 @@ class ProviderChatClient(Protocol):
         messages: Sequence[Mapping[str, Any]],
         tools: Sequence[Mapping[str, Any]],
         timeout_seconds: float,
+        response_mode: ResponseMode = "text",
     ) -> ProviderCompletion: ...

@@ -11,6 +11,7 @@ from .provider_protocol import (
     ProviderClientError,
     ProviderCompletion,
     ProviderToolCall,
+    ResponseMode,
 )
 
 
@@ -28,7 +29,7 @@ class OpenAIChatClient(ProviderChatClient):
     ) -> None:
         self.base_url = base_url
         self.request_options = deepcopy(dict(request_options or {}))
-        reserved = {"model", "messages", "tools", "timeout"}
+        reserved = {"model", "messages", "tools", "timeout", "response_format"}
         if reserved & set(self.request_options):
             raise ValueError(
                 "Provider request options cannot override core request fields"
@@ -52,6 +53,7 @@ class OpenAIChatClient(ProviderChatClient):
         messages: Sequence[Mapping[str, Any]],
         tools: Sequence[Mapping[str, Any]],
         timeout_seconds: float,
+        response_mode: ResponseMode = "text",
     ) -> ProviderCompletion:
         request: dict[str, Any] = deepcopy(self.request_options)
         request.update(
@@ -63,6 +65,13 @@ class OpenAIChatClient(ProviderChatClient):
         )
         if tools:
             request["tools"] = list(tools)
+        if response_mode == "structured_json":
+            # OpenAI Chat Completions and DeepSeek's compatible endpoint both
+            # use the official JSON mode parameter.  It is deliberately added
+            # only for calls whose model-neutral intent requires JSON content.
+            request["response_format"] = {"type": "json_object"}
+        elif response_mode != "text":
+            raise ValueError(f"Unsupported provider response mode: {response_mode}")
         try:
             completion = self._client.chat.completions.create(**request)
         except openai.AuthenticationError:

@@ -116,6 +116,62 @@ def test_openai_client_omits_tools_when_runtime_allows_none():
     assert "tools" not in completions.request
 
 
+def test_openai_client_translates_structured_json_intent_to_official_json_mode():
+    sdk_response = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                finish_reason="stop",
+                message=SimpleNamespace(content='{"segments":[]}', tool_calls=None),
+            )
+        ],
+        usage=None,
+        _request_id=None,
+    )
+    completions = FakeCompletions(sdk_response)
+    client = OpenAIChatClient(
+        api_key="placeholder-test-key",
+        sdk_client=SimpleNamespace(chat=SimpleNamespace(completions=completions)),
+    )
+
+    client.complete(
+        model="configured-model",
+        messages=[{"role": "system", "content": "Output JSON."}],
+        tools=[],
+        timeout_seconds=30,
+        response_mode="structured_json",
+    )
+
+    assert completions.request["response_format"] == {"type": "json_object"}
+
+
+def test_openai_client_keeps_text_tool_round_without_response_format():
+    sdk_response = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                finish_reason="tool_calls",
+                message=SimpleNamespace(content=None, tool_calls=[]),
+            )
+        ],
+        usage=None,
+        _request_id=None,
+    )
+    completions = FakeCompletions(sdk_response)
+    client = OpenAIChatClient(
+        api_key="placeholder-test-key",
+        sdk_client=SimpleNamespace(chat=SimpleNamespace(completions=completions)),
+    )
+
+    client.complete(
+        model="configured-model",
+        messages=[{"role": "user", "content": "查资料"}],
+        tools=[{"type": "function", "function": {"name": "search"}}],
+        timeout_seconds=30,
+        response_mode="text",
+    )
+
+    assert "response_format" not in completions.request
+
+
 def test_deepseek_compatible_request_disables_thinking_only_via_extra_body():
     sdk_response = SimpleNamespace(
         choices=[
@@ -162,6 +218,39 @@ def test_deepseek_compatible_request_disables_thinking_only_via_extra_body():
         "thinking": {"type": "disabled"}
     }
     assert client.base_url == "https://api.deepseek.com"
+
+
+def test_deepseek_structured_request_combines_json_mode_with_disabled_thinking():
+    sdk_response = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                finish_reason="stop",
+                message=SimpleNamespace(content='{"segments":[]}', tool_calls=None),
+            )
+        ],
+        usage=None,
+        _request_id="deepseek-json-request",
+    )
+    completions = FakeCompletions(sdk_response)
+    client = OpenAIChatClient(
+        api_key="placeholder-test-key",
+        base_url="https://api.deepseek.com",
+        request_options={"extra_body": {"thinking": {"type": "disabled"}}},
+        sdk_client=SimpleNamespace(chat=SimpleNamespace(completions=completions)),
+    )
+
+    client.complete(
+        model="configured-deepseek-model",
+        messages=[{"role": "system", "content": "Output JSON."}],
+        tools=[],
+        timeout_seconds=20,
+        response_mode="structured_json",
+    )
+
+    assert completions.request["response_format"] == {"type": "json_object"}
+    assert completions.request["extra_body"] == {
+        "thinking": {"type": "disabled"}
+    }
 
 
 def test_provider_request_options_cannot_override_core_fields():

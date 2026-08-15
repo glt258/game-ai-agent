@@ -53,6 +53,10 @@ class ModelInvocationAudit:
     tool_call_count: int = 0
     usage: ModelUsage | None = None
     provider_request_id: str | None = None
+    # Sanitized failure detail only (schema-shape or normalized transport
+    # messages). Must never contain raw model output, prompts, tool results,
+    # restricted lore, or player input.
+    error_message: str | None = None
 
 
 class SegmentKind(str, Enum):

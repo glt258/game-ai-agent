@@ -19,7 +19,12 @@ from knowledge import KnowledgeResolver
 from knowledge.loader import default_data_dir
 from story import StoryRepository, load_story_repository
 
-from .errors import AgentExecutionError, AgentToolError, ModelMalformedResponseError
+from .errors import (
+    AgentExecutionError,
+    AgentToolError,
+    ModelError,
+    ModelMalformedResponseError,
+)
 from .model_protocol import AgentModel
 from .models import (
     AgentPrompt,
@@ -708,52 +713,63 @@ class CharacterGenerationAgent:
         source_types: dict[str, str] = {}
         audits: list[ToolAuditEntry] = []
         invocations: list[ModelInvocationAudit] = []
-        for round_number in range(1, self.max_tool_rounds + 2):
-            evidence = tuple(
-                GroundingEvidence(f"canon:{source_id}", GroundingEvidenceType.TOOL_LORE, source_id, source_id if source_type == "lore" else None)
-                for source_id, source_type in sorted(source_types.items())
-            )
-            prompt = AgentPrompt(
-                CHARACTER_SYSTEM_CONTRACT,
-                authoring,
-                runtime,
-                tuple(messages),
-                self.tools.tool_definitions,
-                f"character_generation:{request.request_id}",
-                round_number,
-                evidence,
-                response_format="character_draft",
-            )
-            turn = self.model.generate(prompt)
-            if turn.invocation is not None:
-                invocations.append(turn.invocation)
-            if turn.tool_calls:
-                if round_number > self.max_tool_rounds:
-                    raise AgentExecutionError(f"Tool loop exceeded {self.max_tool_rounds} rounds")
-                messages.append(ConversationMessage("assistant", {"tool_calls": [{"id": call.id, "name": call.name, "arguments": dict(call.arguments)} for call in turn.tool_calls]}))
-                for call in turn.tool_calls:
+        try:
+            for round_number in range(1, self.max_tool_rounds + 2):
+                evidence = tuple(
+                    GroundingEvidence(f"canon:{source_id}", GroundingEvidenceType.TOOL_LORE, source_id, source_id if source_type == "lore" else None)
+                    for source_id, source_type in sorted(source_types.items())
+                )
+                prompt = AgentPrompt(
+                    CHARACTER_SYSTEM_CONTRACT,
+                    authoring,
+                    runtime,
+                    tuple(messages),
+                    self.tools.tool_definitions,
+                    f"character_generation:{request.request_id}",
+                    round_number,
+                    evidence,
+                    response_format="character_draft",
+                )
+                turn = self.model.generate(prompt)
+                if turn.invocation is not None:
+                    invocations.append(turn.invocation)
+                if turn.tool_calls:
+                    if round_number > self.max_tool_rounds:
+                        raise AgentExecutionError(f"Tool loop exceeded {self.max_tool_rounds} rounds")
+                    messages.append(ConversationMessage("assistant", {"tool_calls": [{"id": call.id, "name": call.name, "arguments": dict(call.arguments)} for call in turn.tool_calls]}))
+                    for call in turn.tool_calls:
+                        try:
+                            execution = self.tools.execute(tool_name=call.name, arguments=call.arguments, context=self.authoring_context, round_number=round_number)
+                        except AgentToolError:
+                            audits.append(ToolAuditEntry(round_number, call.name, call.arguments, "rejected", resolver_reason_code="tool_not_allowed" if call.name not in self.tools.allowed_tools else "invalid_tool_arguments"))
+                            raise
+                        audits.append(execution.audit)
+                        source_ids.update(execution.allowed_source_ids)
+                        source_types.update(execution.source_types)
+                        messages.append(ConversationMessage("tool", {"tool_call_id": call.id, **dict(execution.observation)}))
+                    continue
+                payload = turn.structured_output
+                if payload is None:
+                    if not isinstance(turn.text, str):
+                        raise AgentExecutionError("Model returned no CharacterDraft")
                     try:
-                        execution = self.tools.execute(tool_name=call.name, arguments=call.arguments, context=self.authoring_context, round_number=round_number)
-                    except AgentToolError:
-                        audits.append(ToolAuditEntry(round_number, call.name, call.arguments, "rejected", resolver_reason_code="tool_not_allowed" if call.name not in self.tools.allowed_tools else "invalid_tool_arguments"))
-                        raise
-                    audits.append(execution.audit)
-                    source_ids.update(execution.allowed_source_ids)
-                    source_types.update(execution.source_types)
-                    messages.append(ConversationMessage("tool", {"tool_call_id": call.id, **dict(execution.observation)}))
-                continue
-            payload = turn.structured_output
-            if payload is None:
-                if not isinstance(turn.text, str):
-                    raise AgentExecutionError("Model returned no CharacterDraft")
-                try:
-                    payload = json.loads(turn.text)
-                except json.JSONDecodeError:
-                    raise ModelMalformedResponseError("CharacterDraft response is not valid JSON") from None
-            draft = CharacterDraft.from_mapping(payload)
-            self._validate_draft(draft, request, source_ids, source_types)
-            audit = CharacterGenerationAudit(request.request_id, len(audits), tuple(audits), tuple(sorted(source_ids)), tuple(invocations))
-            return CharacterGenerationResult(draft, tuple(sorted(source_ids)), audit)
+                        payload = json.loads(turn.text)
+                    except json.JSONDecodeError:
+                        raise ModelMalformedResponseError("CharacterDraft response is not valid JSON") from None
+                draft = CharacterDraft.from_mapping(payload)
+                self._validate_draft(draft, request, source_ids, source_types)
+                audit = CharacterGenerationAudit(request.request_id, len(audits), tuple(audits), tuple(sorted(source_ids)), tuple(invocations))
+                return CharacterGenerationResult(draft, tuple(sorted(source_ids)), audit)
+        except Exception as error:
+            # CharacterGenerationAudit only exists on success, so the
+            # propagating exception is the failure-path audit carrier. Keep the
+            # invocation trail (including the adapter-attached failure audit)
+            # observable on any abort: a failed call stays distinguishable
+            # from a call that never happened. Metadata only, never raw output.
+            if isinstance(error, ModelError) and error.audit is not None:
+                invocations.append(error.audit)
+            error.model_invocations = tuple(invocations)
+            raise
         raise AgentExecutionError("Character generation ended without a draft")
 
     @staticmethod

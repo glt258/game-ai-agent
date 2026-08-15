@@ -74,6 +74,7 @@ from .provider_protocol import (
     ProviderClientError,
     ProviderCompletion,
     ProviderToolCall,
+    ResponseMode,
 )
 from .views import NpcViewFactory
 
@@ -137,6 +138,7 @@ __all__ = [
     "ProviderClientError",
     "ProviderCompletion",
     "ProviderToolCall",
+    "ResponseMode",
     "SYSTEM_CONTRACT",
     "ScriptedAgentModel",
     "SegmentKind",
