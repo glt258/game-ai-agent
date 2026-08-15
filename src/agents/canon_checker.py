@@ -217,6 +217,7 @@ _SECRECY_MARKERS = (
     "从不对外公开",
     "不对外公开",
     "未对外披露",
+    "未向公众披露",
     "隐藏",
     "隐蔽",
     "不为公众所知",
@@ -307,9 +308,32 @@ _KNOWLEDGE_ACCESS = (
     "读取",
     "掌握",
     "知道",
+    "了解",
     "清楚",
     "查看",
     "检索",
+)
+_KNOWLEDGE_NEGATION_PATTERNS = (
+    r"(?:不|并不|不了解|不知道|不掌握)",
+    r"(?:不能|无法|无权|没有|并未|未)\s*(?:默认)?(?:访问|读取|调阅|查阅|调取|查看|检索|掌握|知道|了解)",
+    r"(?:无访问权|没有访问权限|无权访问|不具备(?:对.{0,24})?访问权限)",
+)
+_PROPOSAL_ENTITY_INTRODUCTION = (
+    "新增",
+    "新建",
+    "新设",
+    "新设计",
+    "新角色",
+    "新组织",
+    "新事件",
+    "新机构",
+    "新部门",
+    "新项目",
+    "设立",
+    "成立",
+    "创建",
+    "添加",
+    "设计一个",
 )
 _HEDGE_MARKERS = (
     "可能",
@@ -539,7 +563,8 @@ class CanonChecker:
             (*draft.new_design_elements, *draft.proposed_new_content)
         ):
             existing_entities = self._existing_canon_entities(item)
-            if existing_entities and not self._is_new_relation_claim(item):
+            usage = self._classify_proposal_entity_usage(item, existing_entities)
+            if existing_entities and usage in {"ENTITY_ITSELF_AS_NEW", "AMBIGUOUS"}:
                 yield self._finding(
                     CanonFindingCode.CANON_PRESENTED_AS_PROPOSAL,
                     FindingSeverity.ERROR,
@@ -666,7 +691,7 @@ class CanonChecker:
                 "Draft claims organization-wide or city-wide authority not established by Canon.",
                 evidence,
             )
-        if self._positive_match(
+        if self._positive_forbidden_match(
             text,
             r"独立行政机关|独立监管机关|秘密监管(?:部门|机构)|秘密行政机构|神秘管理局",
         ):
@@ -725,8 +750,10 @@ class CanonChecker:
                 continue
             if lore.get("sensitivity") == "public":
                 continue
-            position = scope.find(lore_id)
-            if self._match_is_negated(scope, position):
+            claim = self._knowledge_claim_clause(scope, lore_id)
+            if not self._contains_any(claim, _KNOWLEDGE_ACCESS):
+                continue
+            if self._has_local_negation(claim):
                 continue
             yield self._finding(
                 CanonFindingCode.KNOWLEDGE_SCOPE_OVERREACH,
@@ -1035,6 +1062,46 @@ class CanonChecker:
         # later positive command is not cancelled by the title disclaimer.
         return tuple(item.strip() for item in re.split(r"[。！？；!?\n]+", text) if item.strip())
 
+    @staticmethod
+    def _sentence_clauses(text: str) -> tuple[str, ...]:
+        return tuple(
+            item.strip()
+            for item in re.split(r"[。！？；!?\n]+", text)
+            if item.strip()
+        )
+
+    @classmethod
+    def _knowledge_claim_clause(cls, text: str, lore_id: str) -> str:
+        """Return the smallest useful claim context for one Lore reference.
+
+        A comma-separated positive and negative claim must remain independent,
+        while a postposed clause such as ``lore_025 ... 无访问权`` needs the
+        surrounding sentence to connect the target and its access predicate.
+        """
+
+        for sentence in cls._sentence_clauses(text):
+            if lore_id not in sentence:
+                continue
+            candidates = tuple(
+                item.strip()
+                for item in re.split(r"[，,、]|但|但是|而|不过|同时", sentence)
+                if item.strip()
+            )
+            for candidate in candidates:
+                if lore_id in candidate and cls._contains_any(
+                    candidate, _KNOWLEDGE_ACCESS
+                ):
+                    return candidate
+            return sentence
+        return text
+
+    @classmethod
+    def _has_local_negation(cls, text: str) -> bool:
+        return any(
+            re.search(pattern, text, re.IGNORECASE)
+            for pattern in _KNOWLEDGE_NEGATION_PATTERNS
+        )
+
     @classmethod
     def _positive_command_match(cls, text: str, pattern: str) -> bool:
         for match in re.finditer(pattern, text, re.IGNORECASE):
@@ -1063,11 +1130,25 @@ class CanonChecker:
 
     @classmethod
     def _has_secret_central_authority_claim(cls, text: str) -> bool:
-        return (
+        if not (
             cls._contains_any(text, _SECRECY_MARKERS)
             and cls._contains_any(text, _ADMINISTRATIVE_ENTITIES)
             and cls._contains_any(text, _CENTRALIZED_AUTHORITY)
-        )
+        ):
+            return False
+        for sentence in cls._sentence_clauses(text):
+            if not (
+                cls._contains_any(sentence, _SECRECY_MARKERS)
+                and cls._contains_any(sentence, _ADMINISTRATIVE_ENTITIES)
+                and cls._contains_any(sentence, _CENTRALIZED_AUTHORITY)
+            ):
+                continue
+            for secrecy in _SECRECY_MARKERS:
+                for entity in _ADMINISTRATIVE_ENTITIES:
+                    pattern = re.escape(secrecy) + r".{0,8}" + re.escape(entity)
+                    if cls._positive_forbidden_match(sentence, pattern):
+                        return True
+        return False
 
     @classmethod
     def _has_universal_sensitive_access(cls, text: str) -> bool:
@@ -1076,7 +1157,7 @@ class CanonChecker:
                 cls._contains_any(clause, _UNIVERSAL_SCOPE)
                 and cls._contains_any(clause, _SENSITIVE_OBJECTS)
                 and cls._contains_any(clause, _KNOWLEDGE_ACCESS)
-                and not cls._is_negated_claim(clause)
+                and not cls._has_local_negation(clause)
             ):
                 return True
         return False
@@ -1098,7 +1179,7 @@ class CanonChecker:
 
     @classmethod
     def _is_negated_claim(cls, text: str) -> bool:
-        return bool(re.search(r"(?:不|并非|没有|未|无).{0,8}(?:访问|调取|查阅|读取|掌握|知道|查看|检索)", text))
+        return cls._has_local_negation(text)
 
     def _iter_canon_entities(self) -> Iterable[tuple[str, str, str]]:
         resolver = self.context.resolver
@@ -1135,9 +1216,58 @@ class CanonChecker:
                 matches.append((source_id, name))
         return tuple(sorted(set(matches)))
 
-    @staticmethod
-    def _is_new_relation_claim(text: str) -> bool:
-        return bool(re.search(r"(?:与|和).{0,30}(?:关系|联系|关联|合作|连接|参与|旁听|复盘)", text))
+    @classmethod
+    def _local_claim_prefix(cls, text: str, start: int) -> str:
+        sentence_start = max(
+            (text.rfind(marker, 0, start) for marker in "。！？；!?\n"),
+            default=-1,
+        ) + 1
+        local_start = sentence_start
+        for match in re.finditer(r"[，,、]|但|但是|而|不过|同时", text[sentence_start:start]):
+            local_start = sentence_start + match.end()
+        return text[local_start:start]
+
+    @classmethod
+    def _forbidden_claim_is_negated(
+        cls, text: str, start: int, end: int | None = None
+    ) -> bool:
+        del end
+        prefix = cls._local_claim_prefix(text, start)
+        return bool(
+            re.search(
+                r"(?:未|并未|没有|并非|不是|不|不得|不能)\s*"
+                r"(?:任何|一个|一项)?\s*"
+                r"(?:新增|引入|建立|设立|创建|成立|形成|加入|引进|拥有|负责|存在|出现)?\s*"
+                r"(?:任何|一个|一项)?$",
+                prefix,
+            )
+        )
+
+    @classmethod
+    def _positive_forbidden_match(cls, text: str, pattern: str) -> bool:
+        for match in re.finditer(pattern, text, re.IGNORECASE):
+            if not cls._forbidden_claim_is_negated(text, match.start(), match.end()):
+                return True
+        return False
+
+    @classmethod
+    def _classify_proposal_entity_usage(
+        cls,
+        text: str,
+        existing_entities: Sequence[tuple[str, str]],
+    ) -> str:
+        if not existing_entities:
+            return "AMBIGUOUS"
+        if any(marker in text for marker in _PROPOSAL_ENTITY_INTRODUCTION):
+            return "ENTITY_ITSELF_AS_NEW"
+
+        for _source_id, name in existing_entities:
+            target = re.escape(name)
+            if re.search(rf"(?:与|和|向).{{0,30}}{target}", text):
+                return "RELATION_TO_EXISTING"
+            if re.search(rf"(?:在|进入|加入|作为).{{0,30}}{target}", text):
+                return "MEMBERSHIP_OR_ASSIGNMENT_TO_EXISTING"
+        return "AMBIGUOUS"
 
     def _resolve_story_targets_from_text(
         self,
@@ -1200,7 +1330,7 @@ class CanonChecker:
         for field in (*_TEXT_FIELDS, "proposed_new_content", "new_design_elements"):
             value = getattr(draft, field)
             text = " ".join(value) if isinstance(value, tuple) else value
-            if cls._positive_match(text, legacy_pattern) or cls._has_secret_central_authority_claim(text):
+            if cls._positive_forbidden_match(text, legacy_pattern) or cls._has_secret_central_authority_claim(text):
                 return field
         return None
 
@@ -1218,9 +1348,15 @@ class CanonChecker:
             text = " ".join(value) if isinstance(value, tuple) else value
             normalized = cls._normalize(text)
             if len(normalized_pattern) >= 6 and normalized_pattern in normalized:
-                return field
+                direct_match = re.search(re.escape(pattern), text, re.IGNORECASE)
+                if direct_match is None or not cls._forbidden_claim_is_negated(
+                    text, direct_match.start(), direct_match.end()
+                ):
+                    return field
             if secret_government_detector and (
-                cls._positive_match(text, r"秘密.{0,8}(?:政府|行政|监管|管理局|机构|部门|机关)")
+                cls._positive_forbidden_match(
+                    text, r"秘密.{0,8}(?:政府|行政|监管|管理局|机构|部门|机关|组织)"
+                )
                 or cls._has_secret_central_authority_claim(text)
             ):
                 return field
@@ -1248,11 +1384,15 @@ class CanonChecker:
     @classmethod
     def _forbidden_request_matches(cls, forbidden: str, draft_text: str) -> bool:
         if cls._normalize(forbidden) in cls._normalize(draft_text):
-            return True
+            direct_match = re.search(re.escape(forbidden), draft_text, re.IGNORECASE)
+            if direct_match is None or not cls._forbidden_claim_is_negated(
+                draft_text, direct_match.start(), direct_match.end()
+            ):
+                return True
         if "秘密" in forbidden and any(
             marker in forbidden for marker in ("政府", "行政", "监管", "机构", "组织")
         ):
-            return cls._positive_match(
+            return cls._positive_forbidden_match(
                 draft_text, r"秘密.{0,8}(?:政府|行政|监管|管理局|机构|部门|机关|组织)"
             )
         return False

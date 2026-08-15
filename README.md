@@ -25,6 +25,7 @@ py scripts/demo_canon_checker_v0_1.py --case good
 py scripts/demo_canon_checker_v0_1.py --case subtle
 py scripts/demo_canon_checker_v0_1.py --case bad
 py scripts/run_canon_checker_evals.py
+py scripts/run_canon_checker_live_language_evals.py
 ```
 
 The authoring flow is now:
@@ -60,7 +61,9 @@ relationship serialization, clause-local authority detection, and sensitive
 internal-material detection.
 
 See [docs/canon_checker_v0.1.md](docs/canon_checker_v0.1.md) for finding codes,
-implemented deterministic rules, examples, and known limitations.
+implemented deterministic rules, examples, and known limitations. Canon Checker
+v0.1.2 adds deterministic live-language hardening for clause-local negation,
+Lore access polarity, and proposed relations to existing Canon targets.
 
 ## Live providers
 
