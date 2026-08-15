@@ -166,6 +166,68 @@ def test_live_compound_absence_scope_covers_coordinated_targets(text: str):
 @pytest.mark.parametrize(
     "text",
     [
+        "无秘密政府机构或秘密行政机构要素",
+        "未使用秘密政府组织或秘密行政机构",
+        "未采用秘密监管机构与秘密政府组织作为背景",
+        "不涉及秘密政府机构或秘密行政机构",
+    ],
+)
+def test_hermes_v065_exact_compound_absence_strings_are_safe(text: str):
+    request = replace(_good_request(), forbidden_elements=("秘密行政机构",))
+    report = CanonChecker().check(
+        replace(_good_draft(), constraint_notes=(text,)),
+        request=request,
+    )
+    codes = {item.code for item in report.findings}
+    assert report.status == "pass"
+    assert not codes & {
+        CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
+        CanonFindingCode.FORBIDDEN_PATTERN,
+        CanonFindingCode.WORLD_RULE_VIOLATION,
+    }
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "无秘密政府机构或秘密行政机构要素",
+        "存在秘密政府机构或秘密行政机构",
+    ],
+)
+def test_compound_absence_polarity_is_consistent_for_literal_and_generic_paths(
+    text: str,
+):
+    def result(forbidden: str):
+        request = replace(_good_request(), forbidden_elements=(forbidden,))
+        report = CanonChecker().check(
+            replace(_good_draft(), constraint_notes=(text,)),
+            request=request,
+        )
+        return report.status, {
+            item.code
+            for item in report.findings
+            if item.code
+            in {
+                CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
+                CanonFindingCode.FORBIDDEN_PATTERN,
+                CanonFindingCode.WORLD_RULE_VIOLATION,
+            }
+        }
+
+    literal_result = result("秘密行政机构")
+    generic_result = result("秘密政府组织")
+    assert literal_result == generic_result
+
+    if text.startswith("无"):
+        assert literal_result == ("pass", set())
+    else:
+        assert literal_result[0] == "fail"
+        assert literal_result[1]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
         "包含秘密政府机构或秘密行政机构要素。",
         "使用秘密政府组织和秘密监管部门作为角色背景。",
         "采用秘密行政机关与全城监管机构设定。",

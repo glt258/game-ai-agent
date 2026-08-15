@@ -36,6 +36,8 @@ def live_language_cases() -> tuple[LiveLanguageCase, ...]:
     hard_fail = frozenset({CanonFindingCode.HARD_CONSTRAINT_VIOLATION})
     knowledge_fail = frozenset({CanonFindingCode.KNOWLEDGE_SCOPE_OVERREACH})
     proposal_fail = frozenset({CanonFindingCode.CANON_PRESENTED_AS_PROPOSAL})
+    literal_request = replace(request, forbidden_elements=("秘密行政机构",))
+    generic_request = replace(request, forbidden_elements=("秘密政府组织",))
 
     cases = [
         ("negated_forbidden_added", "background", "未新增秘密政府组织。", CanonCheckStatus.PASS, frozenset(), fail_codes),
@@ -120,7 +122,7 @@ def live_language_cases() -> tuple[LiveLanguageCase, ...]:
         ("compound_mixed_creation", "background", "不包含秘密监管机构设定，但设立一个未公开行政办公室统一管理全城能力者。", CanonCheckStatus.FAIL, hard_fail, frozenset()),
         ("compound_mixed_positive", "background", "无秘密政府机构或秘密行政机构，但存在秘密监管机构。", CanonCheckStatus.FAIL, hard_fail, frozenset()),
     ]
-    return tuple(
+    base_cases = tuple(
         LiveLanguageCase(
             case_id,
             replace(
@@ -138,3 +140,76 @@ def live_language_cases() -> tuple[LiveLanguageCase, ...]:
         )
         for case_id, field, text, expected_status, expected_codes, forbidden_codes in cases
     )
+    path_consistency_cases = (
+        LiveLanguageCase(
+            "hermes_exact_absence_1",
+            replace(base, constraint_notes=("无秘密政府机构或秘密行政机构要素",)),
+            literal_request,
+            CanonCheckStatus.PASS,
+            forbidden_codes=hard_fail | fail_codes | frozenset({CanonFindingCode.WORLD_RULE_VIOLATION}),
+        ),
+        LiveLanguageCase(
+            "hermes_exact_absence_2",
+            replace(base, constraint_notes=("未使用秘密政府组织或秘密行政机构",)),
+            literal_request,
+            CanonCheckStatus.PASS,
+            forbidden_codes=hard_fail | fail_codes | frozenset({CanonFindingCode.WORLD_RULE_VIOLATION}),
+        ),
+        LiveLanguageCase(
+            "hermes_exact_absence_3",
+            replace(base, constraint_notes=("未采用秘密监管机构与秘密政府组织作为背景",)),
+            literal_request,
+            CanonCheckStatus.PASS,
+            forbidden_codes=hard_fail | fail_codes | frozenset({CanonFindingCode.WORLD_RULE_VIOLATION}),
+        ),
+        LiveLanguageCase(
+            "hermes_exact_absence_4",
+            replace(base, constraint_notes=("不涉及秘密政府机构或秘密行政机构",)),
+            literal_request,
+            CanonCheckStatus.PASS,
+            forbidden_codes=hard_fail | fail_codes | frozenset({CanonFindingCode.WORLD_RULE_VIOLATION}),
+        ),
+        LiveLanguageCase(
+            "literal_path_negative",
+            replace(base, constraint_notes=("无秘密政府机构或秘密行政机构要素",)),
+            literal_request,
+            CanonCheckStatus.PASS,
+            forbidden_codes=hard_fail | fail_codes | frozenset({CanonFindingCode.WORLD_RULE_VIOLATION}),
+        ),
+        LiveLanguageCase(
+            "generic_path_negative",
+            replace(base, constraint_notes=("无秘密政府机构或秘密行政机构要素",)),
+            generic_request,
+            CanonCheckStatus.PASS,
+            forbidden_codes=hard_fail | fail_codes | frozenset({CanonFindingCode.WORLD_RULE_VIOLATION}),
+        ),
+        LiveLanguageCase(
+            "literal_path_positive",
+            replace(base, background="存在秘密政府机构或秘密行政机构"),
+            literal_request,
+            CanonCheckStatus.FAIL,
+            expected_codes=hard_fail,
+        ),
+        LiveLanguageCase(
+            "generic_path_positive",
+            replace(base, background="存在秘密政府机构或秘密行政机构"),
+            generic_request,
+            CanonCheckStatus.FAIL,
+            expected_codes=hard_fail,
+        ),
+        LiveLanguageCase(
+            "three_target_negative_shared_scope",
+            replace(base, constraint_notes=("无秘密政府组织、秘密行政机构或隐藏监管部门相关设定",)),
+            literal_request,
+            CanonCheckStatus.PASS,
+            forbidden_codes=hard_fail | fail_codes | frozenset({CanonFindingCode.WORLD_RULE_VIOLATION}),
+        ),
+        LiveLanguageCase(
+            "mixed_clause_shared_scope_boundary",
+            replace(base, constraint_notes=("无秘密政府机构或秘密行政机构，但存在秘密监管机构",)),
+            literal_request,
+            CanonCheckStatus.FAIL,
+            expected_codes=hard_fail,
+        ),
+    )
+    return base_cases + path_consistency_cases

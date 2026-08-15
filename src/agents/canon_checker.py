@@ -113,6 +113,15 @@ class CanonCheckContext:
     world_rules: Mapping[str, Any]
 
 
+@dataclass(frozen=True)
+class _ForbiddenTargetSpan:
+    """A deterministic, clause-local forbidden target occurrence."""
+
+    start: int
+    end: int
+    normalized_text: str
+
+
 _GENERIC_SUPPORTS: Mapping[str, frozenset[str]] = {
     "world_rules": frozenset(
         {"world_rules", "world_context", "ability_concept", "setting"}
@@ -1360,61 +1369,150 @@ class CanonChecker:
     ) -> bool:
         if not pattern:
             return False
+        polarities = cls._resolve_forbidden_target_polarities(text, start, pattern)
+        return polarities.get(start) == "NEGATIVE"
+
+    @classmethod
+    def _forbidden_clause_bounds(cls, text: str, position: int) -> tuple[int, int]:
         sentence_start = max(
-            (text.rfind(marker, 0, start) for marker in "。！？；，,!?\n"),
+            (text.rfind(marker, 0, position) for marker in "。！？；，,!?\n"),
             default=-1,
         ) + 1
-        boundary_start = sentence_start
+        clause_start = sentence_start
         for match in re.finditer(
             r"但|但是|然而|不过|而|实际(?:上)?",
-            text[sentence_start:start],
+            text[sentence_start:position],
         ):
-            boundary_start = sentence_start + match.end()
+            clause_start = sentence_start + match.end()
+
         clause_end = len(text)
-        for match in re.finditer(r"[。！？；，,!?\n]", text[start:]):
-            clause_end = min(clause_end, start + match.start())
+        for match in re.finditer(r"[。！？；，,!?\n]", text[position:]):
+            clause_end = min(clause_end, position + match.start())
         for match in re.finditer(
             r"但|但是|然而|不过|而|实际(?:上)?",
-            text[start:],
+            text[position:],
         ):
-            clause_end = min(clause_end, start + match.start())
-        clause = text[boundary_start:clause_end]
-        predicate_matches = tuple(
-            re.finditer(_ABSENCE_PREDICATE_PATTERN, clause)
-        )
-        if not predicate_matches:
-            return False
-        predicate = predicate_matches[-1]
-        target_matches = tuple(re.finditer(pattern, clause, re.IGNORECASE))
-        current_target_index = next(
-            (
+            clause_end = min(clause_end, position + match.start())
+        return clause_start, clause_end
+
+    @classmethod
+    def _forbidden_target_patterns(cls, pattern: str) -> tuple[str, ...]:
+        """Return the existing detector patterns relevant to one match path."""
+
+        return tuple(dict.fromkeys((
+            pattern,
+            *_SECRET_ADMINISTRATIVE_ENTITY_PATTERNS,
+            r"秘密.{0,8}(?:政府|行政|监管|管理局|机构|部门|机关)",
+        )))
+
+    @classmethod
+    def _collect_forbidden_target_spans(
+        cls,
+        text: str,
+        clause_start: int,
+        clause_end: int,
+        pattern: str,
+    ) -> tuple[_ForbiddenTargetSpan, ...]:
+        candidates: list[_ForbiddenTargetSpan] = []
+        clause = text[clause_start:clause_end]
+        for target_pattern in cls._forbidden_target_patterns(pattern):
+            for match in re.finditer(target_pattern, clause, re.IGNORECASE):
+                matched_text = match.group(0)
+                if re.search(
+                    rf"(?:{_ABSENCE_COORDINATOR_PATTERN})|[，,。！？；!?\n]",
+                    matched_text,
+                ):
+                    continue
+                candidates.append(
+                    _ForbiddenTargetSpan(
+                        clause_start + match.start(),
+                        clause_start + match.end(),
+                        cls._normalize(matched_text),
+                    )
+                )
+
+        # Deterministically collapse exact and overlapping detector hits.  A
+        # longer occurrence wins so a generic and literal hit cannot create two
+        # coordinate items for the same target.
+        normalized: list[_ForbiddenTargetSpan] = []
+        for candidate in sorted(
+            candidates,
+            key=lambda item: (item.start, -(item.end - item.start), item.end),
+        ):
+            overlaps = [
                 index
-                for index, match in enumerate(target_matches)
-                if boundary_start + match.start() == start
-            ),
+                for index, existing in enumerate(normalized)
+                if candidate.start < existing.end and existing.start < candidate.end
+            ]
+            if not overlaps:
+                normalized.append(candidate)
+                continue
+            longest = max(
+                (normalized[index] for index in overlaps),
+                key=lambda item: (item.end - item.start, -item.start),
+            )
+            if candidate.end - candidate.start > longest.end - longest.start:
+                normalized = [
+                    existing
+                    for existing in normalized
+                    if existing not in {normalized[index] for index in overlaps}
+                ]
+                normalized.append(candidate)
+        return tuple(sorted(normalized, key=lambda item: (item.start, item.end)))
+
+    @classmethod
+    def _resolve_forbidden_target_polarities(
+        cls, text: str, start: int, pattern: str
+    ) -> dict[int, str]:
+        """Resolve all forbidden targets in the containing clause together."""
+
+        clause_start, clause_end = cls._forbidden_clause_bounds(text, start)
+        targets = cls._collect_forbidden_target_spans(
+            text, clause_start, clause_end, pattern
+        )
+        current = next(
+            (target for target in targets if target.start <= start < target.end),
             None,
         )
-        if current_target_index is None:
-            return False
-        first_target = target_matches[0]
-        if first_target.start() < predicate.end():
-            return False
-        initial_gap = clause[predicate.end() : first_target.start()]
-        if initial_gap and not re.fullmatch(
-            r"\s*(?:任何|一个|一项|此类|相关|新的)?\s*", initial_gap
-        ):
-            return False
-        for previous, current in zip(
-            target_matches[:current_target_index],
-            target_matches[1 : current_target_index + 1],
-        ):
-            gap = clause[previous.end() : current.start()]
-            if not re.fullmatch(
-                rf"\s*(?:{_ABSENCE_COORDINATOR_PATTERN})\s*",
-                gap,
+        if current is None:
+            return {}
+
+        clause = text[clause_start:clause_end]
+        relative_targets = tuple(
+            (target.start - clause_start, target.end - clause_start)
+            for target in targets
+        )
+        predicate_matches = tuple(re.finditer(_ABSENCE_PREDICATE_PATTERN, clause))
+        absence_scope = False
+        if predicate_matches and relative_targets:
+            predicate = predicate_matches[-1]
+            first_start, _first_end = relative_targets[0]
+            initial_gap = clause[predicate.end() : first_start]
+            if not initial_gap or re.fullmatch(
+                r"\s*(?:任何|一个|一项|此类|相关|新的)?\s*", initial_gap
             ):
-                return False
-        return current_target_index >= 1
+                absence_scope = all(
+                    re.fullmatch(
+                        rf"\s*(?:{_ABSENCE_COORDINATOR_PATTERN})\s*",
+                        clause[previous_end:current_start],
+                    )
+                    for (_previous_start, previous_end), (current_start, _current_end)
+                    in zip(relative_targets, relative_targets[1:])
+                )
+                if first_start < predicate.end():
+                    absence_scope = False
+
+        polarities = {
+            target.start: "NEGATIVE" if absence_scope else "UNKNOWN"
+            for target in targets
+        }
+        for target in targets:
+            action_polarity = cls._forbidden_introduction_action_polarity(
+                text, target.start
+            )
+            if action_polarity in {"NEGATIVE", "HEDGED"}:
+                polarities[target.start] = "NEGATIVE"
+        return polarities
 
     @classmethod
     def _positive_forbidden_match(cls, text: str, pattern: str) -> bool:
