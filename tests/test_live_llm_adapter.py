@@ -201,7 +201,7 @@ def test_fake_live_text_response_is_normalized_and_audited(story_setup):
     assert audit.finish_reason == "stop" and audit.usage == usage
     assert audit.provider_request_id == "req_text" and audit.retry_count == 0
     assert client.requests[0]["timeout_seconds"] == 30.0
-    assert client.requests[0]["response_mode"] == "structured_json"
+    assert client.requests[0]["response_contract"]["mode"] == "json_object"
 
 
 def test_live_grounding_repair_uses_only_safe_evidence_and_no_tools(story_setup):
@@ -241,7 +241,7 @@ def test_live_grounding_repair_uses_only_safe_evidence_and_no_tools(story_setup)
     assert "负全责" not in response.text
     assert response.grounding is not None and response.grounding.repair_succeeded
     assert client.requests[1]["tools"] == []
-    assert client.requests[1]["response_mode"] == "structured_json"
+    assert client.requests[1]["response_contract"]["mode"] == "json_object"
     repair_payload = json.dumps(client.requests[1], ensure_ascii=False)
     assert "character_view" not in repair_payload
     assert "纪衡是不是应该负全责" not in repair_payload
@@ -324,7 +324,7 @@ def test_live_search_tool_call_round_trip_preserves_id_and_grounding(story_setup
         tool["function"]["name"] for tool in client.requests[0]["tools"]
     }
     assert tool_names == {"get_lore", "search_lore"}
-    assert client.requests[0]["response_mode"] == "structured_json"
+    assert client.requests[0]["response_contract"]["mode"] == "json_object"
     second_messages = client.requests[1]["messages"]
     assistant_call = next(
         item for item in second_messages if item["role"] == "assistant" and item.get("tool_calls")

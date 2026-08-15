@@ -194,8 +194,39 @@ def test_live_character_draft_request_uses_structured_json_mode():
     result = agent.generate("设计一个角色")
 
     assert result.draft.status == "draft"
-    assert client.requests[0]["response_mode"] == "structured_json"
-    assert client.requests[1]["response_mode"] == "structured_json"
+    assert client.requests[0]["response_contract"]["mode"] == "json_object"
+    assert client.requests[1]["response_contract"]["mode"] == "json_object"
+
+
+@pytest.mark.parametrize(
+    "wrapper", ["character_draft", "draft", "result", "data", "response", "payload"]
+)
+def test_live_character_draft_envelopes_are_rejected(wrapper):
+    agent, client = live_agent(
+        [ProviderCompletion(text=json.dumps({wrapper: _payload()}, ensure_ascii=False))]
+    )
+
+    with pytest.raises(ModelMalformedResponseError, match="unknown field") as captured:
+        agent.generate("设计一个角色")
+
+    assert wrapper in str(captured.value)
+    assert client.call_count == 1
+
+
+def test_live_character_prompt_requires_direct_root_and_forbids_wrappers():
+    agent, client = live_agent(
+        [ProviderCompletion(text=json.dumps(_payload(canon_basis=[]), ensure_ascii=False))]
+    )
+
+    result = agent.generate("设计一个角色")
+
+    system_prompt = client.requests[0]["messages"][0]["content"]
+    assert result.draft.draft_id == "draft_test_001"
+    assert "root JSON object itself is the CharacterDraft" in system_prompt
+    assert "Do not wrap it" in system_prompt
+    for wrapper in ("character_draft", "draft", "result", "data", "response", "payload"):
+        assert wrapper in system_prompt
+    assert '"draft_id":"draft_request_001"' in system_prompt
 
 
 def test_live_timeout_exhaustion_records_single_failure_invocation():

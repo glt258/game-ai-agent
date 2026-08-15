@@ -6,6 +6,9 @@ v0.2 lets the existing NPC conversation runtime select either its deterministic
 offline model or one live OpenAI-compatible Chat Completions endpoint. v0.2.1
 adds `deepseek` as a first-class provider configuration without adding another
 Agent adapter.
+The current Provider Capability Layer also recognizes `opencode_go` and
+`openai_compatible`, separates model routing from transport routing, and
+negotiates strict response formats. See `docs/provider_capability_layer.md`.
 It does not give the model new authority. The external model remains an
 untrusted planner and renderer inside the existing read-only runtime.
 
@@ -68,10 +71,12 @@ minimal request.
 | Variable | Required | Default | Meaning |
 |---|---:|---:|---|
 | `NPC_AGENT_MODEL` | no | `offline` | `offline` or `live` |
-| `NPC_LLM_PROVIDER` | live | `openai` | `openai` or `deepseek` |
+| `NPC_LLM_PROVIDER` | live | `openai` | `openai`, `deepseek`, `opencode_go`, or `openai_compatible` |
 | `NPC_LLM_MODEL` | live | none | Provider model ID; non-empty |
 | `NPC_LLM_API_KEY` | live | none | Secret read from process environment |
 | `NPC_LLM_BASE_URL` | no | provider default | Absolute HTTP(S) compatible endpoint |
+| `NPC_LLM_TRANSPORT` | no | profile/model routing | Explicit transport override |
+| `NPC_LLM_STRUCTURED_OUTPUT` | no | profile capability | Explicit `json_schema`, `json_object`, or `none` capability |
 | `NPC_LLM_TIMEOUT_SECONDS` | no | `30` | Request timeout, from 1 to 300 seconds |
 | `NPC_LLM_MAX_RETRIES` | no | `2` | Additional retries, from 0 to 3 |
 

@@ -7,11 +7,13 @@ import openai
 
 from .models import ModelUsage
 from .provider_protocol import (
+    NegotiatedResponseContract,
     ProviderChatClient,
     ProviderClientError,
     ProviderCompletion,
     ProviderToolCall,
     ResponseMode,
+    TEXT_NEGOTIATED_RESPONSE,
 )
 
 
@@ -53,8 +55,24 @@ class OpenAIChatClient(ProviderChatClient):
         messages: Sequence[Mapping[str, Any]],
         tools: Sequence[Mapping[str, Any]],
         timeout_seconds: float,
-        response_mode: ResponseMode = "text",
+        response_contract: NegotiatedResponseContract = TEXT_NEGOTIATED_RESPONSE,
+        response_mode: str | None = None,
     ) -> ProviderCompletion:
+        # Preserve the v0.2 client API for direct callers while the runtime now
+        # uses the richer negotiated contract.
+        if response_mode is not None:
+            legacy_modes = {
+                "text": TEXT_NEGOTIATED_RESPONSE,
+                "structured_json": NegotiatedResponseContract(
+                    "structured_json", ResponseMode.JSON_OBJECT
+                ),
+            }
+            try:
+                response_contract = legacy_modes[response_mode]
+            except KeyError:
+                raise ValueError(
+                    f"Unsupported provider response mode: {response_mode}"
+                ) from None
         request: dict[str, Any] = deepcopy(self.request_options)
         request.update(
             {
@@ -65,13 +83,23 @@ class OpenAIChatClient(ProviderChatClient):
         )
         if tools:
             request["tools"] = list(tools)
-        if response_mode == "structured_json":
-            # OpenAI Chat Completions and DeepSeek's compatible endpoint both
-            # use the official JSON mode parameter.  It is deliberately added
-            # only for calls whose model-neutral intent requires JSON content.
+        if response_contract.mode is ResponseMode.JSON_OBJECT:
             request["response_format"] = {"type": "json_object"}
-        elif response_mode != "text":
-            raise ValueError(f"Unsupported provider response mode: {response_mode}")
+        elif response_contract.mode is ResponseMode.JSON_SCHEMA:
+            if response_contract.json_schema is None:
+                raise ValueError("JSON Schema response contract requires a schema")
+            request["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": response_contract.name,
+                    "strict": True,
+                    "schema": deepcopy(dict(response_contract.json_schema)),
+                },
+            }
+        elif response_contract.mode is not ResponseMode.TEXT:
+            raise ValueError(
+                f"Unsupported provider response mode: {response_contract.mode}"
+            )
         try:
             completion = self._client.chat.completions.create(**request)
         except openai.AuthenticationError:

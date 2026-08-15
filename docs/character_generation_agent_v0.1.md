@@ -46,6 +46,12 @@ high-level combat role, `canon_basis`, `new_design_elements`,
 `story_link`. Canon IDs are strict strings and are never allocated from the
 formal character namespace.
 
+The final protocol requires the JSON root itself to be `CharacterDraft`; it
+explicitly forbids `character_draft`, `draft`, `result`, `data`, `response`,
+`payload`, or any other envelope. The prompt's root example and provider JSON
+Schema come from centralized schema metadata. Runtime parsing remains strict:
+there is no envelope unwrap, JSON repair, Markdown extraction, or ID coercion.
+
 ## Canon vs proposal and grounding
 
 Existing faction, Lore, character, story, case, incident and world-rule facts
@@ -68,6 +74,8 @@ py -m pytest -q
 Live mode reuses `LiveLLMAdapter`, OpenAI-compatible transport and the existing
 `NPC_LLM_PROVIDER`, `NPC_LLM_MODEL`, `NPC_LLM_API_KEY` and related settings.
 DeepSeek keeps thinking disabled through the existing provider configuration.
+OpenCode Go should be configured as the logical provider rather than disguised
+as direct DeepSeek. See `docs/provider_capability_layer.md`.
 
 ## Known limitations
 

@@ -37,6 +37,10 @@ from .models import (
     ToolCall,
     ToolDefinition,
 )
+from .response_contracts import (
+    CHARACTER_DRAFT_JSON_SCHEMA,
+    character_draft_prompt_contract,
+)
 
 
 @dataclass(frozen=True)
@@ -162,34 +166,7 @@ class CharacterDraft:
     story_link: StoryLink | None = None
     proposed_new_content: tuple[str, ...] = ()
 
-    _KNOWN_FIELDS = frozenset(
-        {
-            "draft_id",
-            "status",
-            "name",
-            "canonical_character_id",
-            "age",
-            "age_range",
-            "gender",
-            "faction_id",
-            "occupation",
-            "social_role",
-            "combat_role",
-            "design_pitch",
-            "personality",
-            "background",
-            "story_hook",
-            "relationships",
-            "ability_concept",
-            "knowledge_scope",
-            "canon_basis",
-            "new_design_elements",
-            "open_questions",
-            "constraint_notes",
-            "story_link",
-            "proposed_new_content",
-        }
-    )
+    _KNOWN_FIELDS = frozenset(CHARACTER_DRAFT_JSON_SCHEMA["properties"])
 
     @classmethod
     def from_mapping(cls, payload: Mapping[str, Any]) -> "CharacterDraft":
@@ -652,7 +629,7 @@ class CharacterAuthoringToolbox:
         return {"status": "ok", "result": {"source_id": "world_rules", "source_type": "world_rules", "rules": [{"id": item[0], "statement": item[1].strip()} for item in rules], "forbidden_patterns": forbidden, "scope_summary": "World rules and forbidden patterns are read-only Canon constraints."}}
 
 
-CHARACTER_SYSTEM_CONTRACT = """You are a read-only game character authoring agent. Generate a candidate CharacterDraft for a planner, not an in-world NPC and not approved Canon. Use only facts returned by the listed authoring tools. Existing faction, lore, character, story, case, incident and world-rule assertions require canon_basis source IDs from successful tool observations. New personal details must be placed in new_design_elements or proposed_new_content and must never be presented as existing Canon. Never create organizations, IDs, files or Canon records. Respect hard constraints; if a requirement cannot be established, use open_questions and constraint_notes. Keep combat_role high-level and do not invent numeric balance values."""
+CHARACTER_SYSTEM_CONTRACT = """You are a read-only game character authoring agent. Generate a candidate CharacterDraft for a planner, not an in-world NPC and not approved Canon. Use only facts returned by the listed authoring tools. Existing faction, lore, character, story, case, incident and world-rule assertions require canon_basis source IDs from successful tool observations. New personal details must be placed in new_design_elements or proposed_new_content and must never be presented as existing Canon. Never create organizations, IDs, files or Canon records. Respect hard constraints; if a requirement cannot be established, use open_questions and constraint_notes. Keep combat_role high-level and do not invent numeric balance values.""" + "\n\n" + character_draft_prompt_contract()
 
 
 @dataclass(frozen=True)

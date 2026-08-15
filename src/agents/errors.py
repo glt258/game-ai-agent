@@ -38,6 +38,10 @@ class ModelConfigurationError(ModelError):
     """Raised before a request when live model configuration is invalid."""
 
 
+class ModelCapabilityError(ModelConfigurationError):
+    """Raised before a request when a profile cannot satisfy an Agent contract."""
+
+
 class ModelAuthenticationError(ModelError):
     """Raised when the provider rejects configured credentials."""
 

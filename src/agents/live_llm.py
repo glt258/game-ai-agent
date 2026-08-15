@@ -10,6 +10,7 @@ from typing import Any, Callable, Mapping, Sequence
 
 from .errors import (
     ModelAuthenticationError,
+    ModelCapabilityError,
     ModelConfigurationError,
     ModelMalformedResponseError,
     ModelProviderError,
@@ -27,11 +28,16 @@ from .models import (
     ToolCall,
 )
 from .provider_protocol import (
+    NegotiatedResponseContract,
     ProviderChatClient,
     ProviderClientError,
     ProviderCompletion,
     ProviderToolCall,
-    ResponseMode,
+    negotiate_response_contract,
+)
+from .provider_profiles import ProviderProfile, resolve_provider_profile
+from .response_contracts import (
+    response_contract_for,
 )
 
 
@@ -59,6 +65,7 @@ class LiveLLMAdapter:
         *,
         provider: str,
         model: str,
+        profile: ProviderProfile | None = None,
         timeout_seconds: float = 30.0,
         max_retries: int = 2,
         backoff_seconds: float = 0.5,
@@ -89,8 +96,14 @@ class LiveLLMAdapter:
         ):
             raise ModelConfigurationError("Live LLM backoff must not be negative")
         self._client = client
-        self.provider = provider.strip()
+        self.profile = profile or resolve_provider_profile(provider, model)
+        if self.profile.logical_provider != provider.strip().lower():
+            raise ModelConfigurationError(
+                "Live LLM provider must match the resolved provider profile"
+            )
+        self.provider = self.profile.logical_provider
         self.model = model.strip()
+        self.transport = self.profile.transport_family.value
         self.timeout_seconds = float(timeout_seconds)
         self.max_retries = max_retries
         self.backoff_seconds = backoff_seconds
@@ -101,7 +114,11 @@ class LiveLLMAdapter:
     def generate(self, prompt: AgentPrompt) -> ModelTurn:
         messages = self._provider_messages(prompt)
         tools = self._provider_tools(prompt)
-        response_mode = self._response_mode(prompt)
+        if tools and not self.profile.capabilities.supports_tools:
+            raise ModelCapabilityError(
+                f"Provider profile '{self.provider}' does not support tool calls"
+            )
+        response_contract = self._response_contract(prompt)
         started = self._monotonic()
         retry_count = 0
         while True:
@@ -111,7 +128,7 @@ class LiveLLMAdapter:
                     messages=messages,
                     tools=tools,
                     timeout_seconds=self.timeout_seconds,
-                    response_mode=response_mode,
+                    response_contract=response_contract,
                 )
                 turn = self._normalize(response, prompt, started, retry_count)
                 self._log_audit(turn.invocation)
@@ -166,6 +183,8 @@ class LiveLLMAdapter:
             tool_call_count=len(calls),
             usage=response.usage,
             provider_request_id=response.request_id,
+            transport=self.transport,
+            response_contract=self._response_contract(prompt).mode.value,
         )
         if calls:
             segments = ()
@@ -227,8 +246,7 @@ class LiveLLMAdapter:
         if prompt.response_format == "character_draft":
             protocol_content = (
                 f"{prompt.system_contract}\n\n"
-                "Return exactly one JSON object matching the requested CharacterDraft schema. "
-                "Do not return markdown, prose, or additional keys."
+                "Return only the requested CharacterDraft root JSON object."
             )
         else:
             protocol_content = (
@@ -345,12 +363,13 @@ class LiveLLMAdapter:
             for definition in prompt.available_tools
         ]
 
-    @staticmethod
-    def _response_mode(prompt: AgentPrompt) -> ResponseMode:
-        """Map the runtime's output contract to a provider-neutral intent."""
-        if prompt.response_format in {"grounded_response", "character_draft"}:
-            return "structured_json"
-        return "text"
+    def _response_contract(self, prompt: AgentPrompt) -> NegotiatedResponseContract:
+        """Negotiate an Agent requirement against the selected profile."""
+
+        return negotiate_response_contract(
+            response_contract_for(prompt.response_format),
+            self.profile.capabilities,
+        )
 
     @staticmethod
     def _parse_segments(text: str) -> tuple[GroundedResponseSegment, ...]:
@@ -483,11 +502,14 @@ class LiveLLMAdapter:
         if audit is None:
             return
         self._logger.info(
-            "live_llm_request provider=%s model=%s outcome=%s latency_ms=%.3f "
+            "live_llm_request provider=%s model=%s transport=%s response_contract=%s "
+            "outcome=%s latency_ms=%.3f "
             "retries=%d finish_reason=%s tool_calls=%d input_tokens=%s "
             "output_tokens=%s total_tokens=%s request_id=%s session_id=%s turn=%d",
             audit.provider,
             audit.model,
+            audit.transport,
+            audit.response_contract,
             audit.outcome,
             audit.latency_ms,
             audit.retry_count,
@@ -509,10 +531,11 @@ class LiveLLMAdapter:
         retry_count: int,
     ) -> None:
         self._logger.warning(
-            "live_llm_request provider=%s model=%s outcome=%s latency_ms=%.3f "
+            "live_llm_request provider=%s model=%s transport=%s outcome=%s latency_ms=%.3f "
             "retries=%d session_id=%s turn=%d",
             self.provider,
             self.model,
+            self.transport,
             outcome,
             latency_ms,
             retry_count,
@@ -572,5 +595,7 @@ class LiveLLMAdapter:
             finish_reason=response.finish_reason if response is not None else None,
             usage=response.usage if response is not None else None,
             provider_request_id=response.request_id if response is not None else None,
+            transport=self.transport,
+            response_contract=self._response_contract(prompt).mode.value,
             error_message=error_message,
         )

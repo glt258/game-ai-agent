@@ -5,6 +5,7 @@ from .errors import (
     AgentToolError,
     GroundingError,
     ModelAuthenticationError,
+    ModelCapabilityError,
     ModelConfigurationError,
     ModelError,
     ModelMalformedResponseError,
@@ -70,11 +71,32 @@ from .character_generation import (
 )
 from .openai_provider import OpenAIChatClient
 from .provider_protocol import (
+    NegotiatedResponseContract,
     ProviderChatClient,
     ProviderClientError,
     ProviderCompletion,
     ProviderToolCall,
     ResponseMode,
+    negotiate_response_contract,
+)
+from .provider_profiles import (
+    DEEPSEEK_BASE_URL,
+    KNOWN_OPENCODE_GO_MODEL_PROFILES,
+    OPENCODE_GO_BASE_URL,
+    PROVIDER_PROFILES,
+    ProviderCapabilities,
+    ProviderProfile,
+    ThinkingModeBehavior,
+    TransportFamily,
+    apply_structured_output_override,
+    resolve_provider_profile,
+)
+from .response_contracts import (
+    CHARACTER_DRAFT_JSON_SCHEMA,
+    CHARACTER_DRAFT_RESPONSE_CONTRACT,
+    GROUNDED_RESPONSE_CONTRACT,
+    GROUNDED_RESPONSE_JSON_SCHEMA,
+    ResponseContract,
 )
 from .views import NpcViewFactory
 
@@ -103,6 +125,7 @@ __all__ = [
     "LiveLLMAdapter",
     "LiveLLMSettings",
     "ModelAuthenticationError",
+    "ModelCapabilityError",
     "ModelConfigurationError",
     "ModelError",
     "ModelInvocationAudit",
@@ -138,7 +161,24 @@ __all__ = [
     "ProviderClientError",
     "ProviderCompletion",
     "ProviderToolCall",
+    "ProviderCapabilities",
+    "ProviderProfile",
+    "NegotiatedResponseContract",
     "ResponseMode",
+    "ResponseContract",
+    "TransportFamily",
+    "ThinkingModeBehavior",
+    "PROVIDER_PROFILES",
+    "KNOWN_OPENCODE_GO_MODEL_PROFILES",
+    "OPENCODE_GO_BASE_URL",
+    "DEEPSEEK_BASE_URL",
+    "CHARACTER_DRAFT_JSON_SCHEMA",
+    "CHARACTER_DRAFT_RESPONSE_CONTRACT",
+    "GROUNDED_RESPONSE_CONTRACT",
+    "GROUNDED_RESPONSE_JSON_SCHEMA",
+    "negotiate_response_contract",
+    "resolve_provider_profile",
+    "apply_structured_output_override",
     "SYSTEM_CONTRACT",
     "ScriptedAgentModel",
     "SegmentKind",

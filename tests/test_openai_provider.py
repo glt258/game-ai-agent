@@ -6,7 +6,12 @@ import httpx
 import openai
 import pytest
 
-from agents import OpenAIChatClient, ProviderClientError
+from agents import (
+    NegotiatedResponseContract,
+    OpenAIChatClient,
+    ProviderClientError,
+    ResponseMode,
+)
 
 
 class FakeCompletions:
@@ -142,6 +147,49 @@ def test_openai_client_translates_structured_json_intent_to_official_json_mode()
     )
 
     assert completions.request["response_format"] == {"type": "json_object"}
+
+
+def test_openai_client_translates_negotiated_strict_json_schema():
+    sdk_response = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                finish_reason="stop",
+                message=SimpleNamespace(content='{"value":"ok"}', tool_calls=None),
+            )
+        ],
+        usage=None,
+        _request_id=None,
+    )
+    completions = FakeCompletions(sdk_response)
+    client = OpenAIChatClient(
+        api_key="placeholder-test-key",
+        sdk_client=SimpleNamespace(chat=SimpleNamespace(completions=completions)),
+    )
+    schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {"value": {"type": "string"}},
+        "required": ["value"],
+    }
+
+    client.complete(
+        model="configured-model",
+        messages=[{"role": "system", "content": "Output JSON."}],
+        tools=[],
+        timeout_seconds=30,
+        response_contract=NegotiatedResponseContract(
+            "test_contract", ResponseMode.JSON_SCHEMA, schema
+        ),
+    )
+
+    assert completions.request["response_format"] == {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "test_contract",
+            "strict": True,
+            "schema": schema,
+        },
+    }
 
 
 def test_openai_client_keeps_text_tool_round_without_response_format():

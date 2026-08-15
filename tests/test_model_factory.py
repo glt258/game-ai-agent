@@ -8,6 +8,7 @@ from agents import (
     LiveLLMAdapter,
     LiveLLMSettings,
     ModelConfigurationError,
+    OPENCODE_GO_BASE_URL,
     ProviderCompletion,
     model_from_environment,
 )
@@ -59,6 +60,54 @@ def test_deepseek_explicit_base_url_overrides_provider_default():
     assert settings.base_url == "https://example.test/v1"
 
 
+def test_opencode_go_known_model_uses_gateway_default_and_logical_provider():
+    settings = LiveLLMSettings.from_environment(
+        live_environment(
+            NPC_LLM_PROVIDER="opencode_go",
+            NPC_LLM_MODEL="deepseek-v4-flash",
+        )
+    )
+
+    assert settings.provider == "opencode_go"
+    assert settings.base_url == OPENCODE_GO_BASE_URL
+    assert settings.profile.provider_options == {}
+
+
+def test_opencode_go_unknown_model_requires_explicit_transport():
+    environment = live_environment(
+        NPC_LLM_PROVIDER="opencode_go", NPC_LLM_MODEL="future-model"
+    )
+    with pytest.raises(ModelConfigurationError, match="Unknown OpenCode Go model"):
+        LiveLLMSettings.from_environment(environment)
+
+    environment["NPC_LLM_TRANSPORT"] = "chat_completions"
+    settings = LiveLLMSettings.from_environment(environment)
+    assert settings.base_url == OPENCODE_GO_BASE_URL
+
+
+def test_generic_openai_compatible_requires_explicit_base_url():
+    environment = live_environment(NPC_LLM_PROVIDER="openai_compatible")
+    with pytest.raises(ModelConfigurationError, match="NPC_LLM_BASE_URL is required"):
+        LiveLLMSettings.from_environment(environment)
+
+    environment["NPC_LLM_BASE_URL"] = "https://gateway.example.test/v1"
+    settings = LiveLLMSettings.from_environment(environment)
+    assert settings.provider == "openai_compatible"
+    assert settings.base_url == "https://gateway.example.test/v1"
+
+
+def test_explicit_structured_output_capability_override_is_validated():
+    settings = LiveLLMSettings.from_environment(
+        live_environment(NPC_LLM_STRUCTURED_OUTPUT="json_schema")
+    )
+    assert settings.profile.capabilities.supports_json_schema
+
+    with pytest.raises(ModelConfigurationError, match="NPC_LLM_STRUCTURED_OUTPUT"):
+        LiveLLMSettings.from_environment(
+            live_environment(NPC_LLM_STRUCTURED_OUTPUT="wishful_thinking")
+        )
+
+
 def test_deepseek_factory_configures_shared_openai_compatible_transport(monkeypatch):
     captured = {}
 
@@ -97,6 +146,28 @@ def test_openai_factory_path_keeps_provider_defaults_unchanged(monkeypatch):
     assert captured["request_options"] == {}
 
 
+def test_opencode_go_does_not_inherit_direct_deepseek_request_options(monkeypatch):
+    captured = {}
+
+    class CapturingClient(NeverCalledClient):
+        def __init__(self, **options):
+            captured.update(options)
+
+    monkeypatch.setattr(model_factory_module, "OpenAIChatClient", CapturingClient)
+
+    model = model_factory_module.model_from_environment(
+        live_environment(
+            NPC_LLM_PROVIDER="opencode_go",
+            NPC_LLM_MODEL="deepseek-v4-flash",
+        )
+    )
+
+    assert isinstance(model, LiveLLMAdapter)
+    assert model.provider == "opencode_go"
+    assert captured["base_url"] == OPENCODE_GO_BASE_URL
+    assert captured["request_options"] == {}
+
+
 @pytest.mark.parametrize(
     ("environment", "message"),
     [
@@ -117,6 +188,7 @@ def test_openai_factory_path_keeps_provider_defaults_unchanged(monkeypatch):
         (live_environment(NPC_LLM_TIMEOUT_SECONDS="forever"), "must be a number"),
         (live_environment(NPC_LLM_MAX_RETRIES="4"), "from 0 to 3"),
         (live_environment(NPC_LLM_MAX_RETRIES="many"), "must be an integer"),
+        (live_environment(NPC_LLM_TRANSPORT="banana"), "NPC_LLM_TRANSPORT"),
     ],
 )
 def test_invalid_model_configuration_fails_fast(environment, message):
