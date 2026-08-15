@@ -168,6 +168,7 @@ _TEXT_FIELDS = (
 # These small lexicons describe invariants, rather than individual red-team
 # sentences.  They intentionally stay local to the deterministic checker.
 _COMMAND_ACTIONS = (
+    "指挥",
     "统一指挥",
     "统一调度",
     "统一安排",
@@ -183,6 +184,18 @@ _COMMAND_ACTIONS = (
     "全部由其决定",
     "全部听她安排",
     "全部听他安排",
+    "最终决定",
+    "按她的决定行动",
+    "按其决定行动",
+    "行动听她安排",
+    "行动听其安排",
+    "必须经过她确认",
+    "必须经过其确认",
+    "均须经过",
+    "都要经过",
+    "都必须经过",
+    "最终由她确认",
+    "最终由其确认",
 )
 _PUBLIC_SAFETY_DOMAINS = (
     "警察",
@@ -248,6 +261,16 @@ _STORY_DECISION_DOMINANCE = (
     "现场处置围绕她的决定展开",
     "最终解决方案由她给出",
     "所有决定必须经她同意",
+    "所有关键决定均须经过她确认",
+    "所有关键决定都必须经过她确认",
+    "任何关键行动都必须经过她确认",
+    "任何关键行动均须经过她确认",
+    "关键行动必须取得她同意",
+    "各部门关键行动必须取得她同意",
+    "警察消防急救最终按她决定行动",
+    "警察、消防、急救最终按她决定行动",
+    "各部门按她的决定行动",
+    "各部门按其决定行动",
 )
 _UNIVERSAL_SCOPE = (
     "所有",
@@ -262,7 +285,12 @@ _UNIVERSAL_SCOPE = (
 )
 _SENSITIVE_OBJECTS = (
     "能力者档案",
+    "能力档案",
+    "内部资料",
+    "内部数据",
+    "受限资料",
     "内部档案",
+    "个人档案",
     "受限数据",
     "内部结论",
     "事故内部结论",
@@ -657,6 +685,14 @@ class CanonChecker:
                 "Draft claims unified command authority over independent public-safety domains.",
                 evidence,
             )
+        if self._has_story_decision_dominance(text):
+            yield self._finding(
+                CanonFindingCode.AUTHORITY_OVERREACH,
+                FindingSeverity.ERROR,
+                "background",
+                "Draft claims hidden authority over consequential decisions.",
+                evidence,
+            )
         if draft.faction_id and self._faction_role_conflict(draft, draft.faction_id):
             yield self._finding(
                 CanonFindingCode.INVALID_FACTION_ROLE,
@@ -976,14 +1012,54 @@ class CanonChecker:
 
     @classmethod
     def _has_cross_domain_command_claim(cls, text: str) -> bool:
-        if not any(cls._positive_match(text, re.escape(action)) for action in _COMMAND_ACTIONS):
-            return False
-        domains = {domain for domain in _PUBLIC_SAFETY_DOMAINS if domain in text}
-        if len(domains) < 2:
-            return False
-        # Explicitly denying command authority is a control case, not a
-        # claim.  Narrative authorization words are deliberately ignored.
-        return not bool(re.search(r"(?:不|并非|没有|未).{0,6}(?:指挥|调度|部署|决定|安排)", text))
+        # Evaluate each clause independently.  A negated title in one clause
+        # must not suppress a positive command claim in the next clause.
+        for clause in cls._authority_clauses(text):
+            if not clause.strip():
+                continue
+            if not any(cls._positive_command_match(clause, re.escape(action)) for action in _COMMAND_ACTIONS):
+                continue
+            domains = {domain for domain in _PUBLIC_SAFETY_DOMAINS if domain in clause}
+            if len(domains) >= 2:
+                return True
+        return False
+
+    @staticmethod
+    def _clauses(text: str) -> tuple[str, ...]:
+        return tuple(item.strip() for item in re.split(r"[。！？；，,;!?\n]+", text) if item.strip())
+
+    @staticmethod
+    def _authority_clauses(text: str) -> tuple[str, ...]:
+        # Keep comma-separated domain lists in one command clause.  A comma
+        # after a negated title still remains local to this sentence, so a
+        # later positive command is not cancelled by the title disclaimer.
+        return tuple(item.strip() for item in re.split(r"[。！？；!?\n]+", text) if item.strip())
+
+    @classmethod
+    def _positive_command_match(cls, text: str, pattern: str) -> bool:
+        for match in re.finditer(pattern, text, re.IGNORECASE):
+            prefix = text[max(0, match.start() - 10) : match.start()]
+            # Keep this negation local to the command phrase.  This catches
+            # “没有正式指挥头衔” but does not let that title disclaimer cancel
+            # “但随后统一调度警察、消防和急救” later in the sentence.
+            if re.search(r"(?:不|没有|并非|未|无)(?:正式|实际|明确)?$", prefix):
+                continue
+            return True
+        return False
+
+    @classmethod
+    def _has_story_decision_dominance(cls, text: str) -> bool:
+        patterns = (
+            r"(?:所有|任何|各|每个|关键).{0,8}(?:决定|行动|方案).{0,8}(?:必须|均须|都要|都必须|需要|需).{0,8}(?:经过|取得|获得).{0,8}(?:她|其)",
+            r"(?:警察|消防|急救|各部门).{0,12}(?:按|听).{0,5}(?:她|其).{0,5}(?:决定|安排|方案)",
+            r"(?:最终|全部).{0,8}(?:由她|由其).{0,8}(?:确认|决定|安排|拍板)",
+        )
+        for clause in cls._clauses(text):
+            if any(cls._positive_match(clause, pattern) for pattern in patterns):
+                return True
+            if any(cls._positive_match(clause, re.escape(marker)) for marker in _STORY_DECISION_DOMINANCE):
+                return True
+        return False
 
     @classmethod
     def _has_secret_central_authority_claim(cls, text: str) -> bool:
@@ -1208,10 +1284,7 @@ class CanonChecker:
         pattern = r"领导.{0,10}(?:事故|事件|应急处置)|全权指挥|最终解决|真正的?(?:负责人|幕后真凶)|唯一关键证人|核心负责人|主导.{0,8}(?:事故|事件)"
         for field in ("background", "story_hook", "design_pitch"):
             text = getattr(draft, field)
-            if cls._positive_match(text, pattern) or any(
-                cls._positive_match(text, re.escape(marker))
-                for marker in _STORY_DECISION_DOMINANCE
-            ):
+            if cls._positive_match(text, pattern) or cls._has_story_decision_dominance(text):
                 return field
         return None
 

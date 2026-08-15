@@ -16,3 +16,7 @@ cases:
   - fake_source_not_allowed
   - tool_call_not_allowed
   - wrong_wrapper_rejected
+  - hard_constraint_knowledge_conflict_unresolved
+  - relationship_draft_repair
+  - hidden_authority_repaired
+  - internal_materials_scope_repaired

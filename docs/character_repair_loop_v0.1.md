@@ -28,6 +28,26 @@ reports, `changed_fields`, the recommendation, model audit metadata, and a
 stable status such as `REPAIRED_PASS`, `IMPROVED_BUT_FAILED`,
 `REPAIR_SCOPE_VIOLATION`, or `REPAIR_MODEL_FAILED`.
 
+## v0.1.1 red-team hardening
+
+The patch hardening keeps the v0.1 architecture and adds four deterministic
+guards:
+
+- Hard constraints are classified into small domains such as knowledge scope,
+  authority, story role, relationship, and ability. A candidate cannot drop a
+  requirement that the original draft already satisfied, even if its Canon
+  error count becomes smaller. Negative constraints remain repairable and are
+  checked by the full CanonChecker.
+- `CharacterDraft.to_dict()` explicitly serializes fields and converts the
+  immutable relationship mappings into JSON-safe values without mutating the
+  Draft.
+- Authority detection is clause-local. A disclaimer such as “没有正式指挥
+  头衔” cannot cancel a later positive command claim in the same sentence.
+- Knowledge scope now treats internal materials, internal data, restricted
+  materials, personal files, and ability files as sensitive objects only when
+  combined with a broad quantifier and an access verb. Public materials remain
+  a legal near-neighbor.
+
 ## Minimum-change policy
 
 The provider must return the complete CharacterDraft root object. Runtime then

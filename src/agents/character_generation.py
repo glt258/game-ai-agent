@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Mapping, Sequence
@@ -330,11 +330,50 @@ class CharacterDraft:
         return cls.from_mapping(payload)
 
     def to_dict(self) -> dict[str, Any]:
-        result = asdict(self)
-        result["canon_basis"] = [entry.to_dict() for entry in self.canon_basis]
-        result["relationships"] = [dict(item) for item in self.relationships]
-        result["story_link"] = self.story_link.to_dict() if self.story_link else None
-        return result
+        # Do not use dataclasses.asdict here: it deep-copies every field and
+        # cannot copy the MappingProxyType used to make relationships
+        # immutable.  Build the current JSON contract explicitly instead.
+        return {
+            "draft_id": self.draft_id,
+            "status": self.status,
+            "name": self.name,
+            "canonical_character_id": self.canonical_character_id,
+            "age": self.age,
+            "age_range": self.age_range,
+            "gender": self.gender,
+            "faction_id": self.faction_id,
+            "occupation": self.occupation,
+            "social_role": self.social_role,
+            "combat_role": self.combat_role,
+            "design_pitch": self.design_pitch,
+            "personality": list(self.personality),
+            "background": self.background,
+            "story_hook": self.story_hook,
+            "relationships": [
+                {key: _json_safe_relationship_value(value) for key, value in relationship.items()}
+                for relationship in self.relationships
+            ],
+            "ability_concept": self.ability_concept,
+            "knowledge_scope": self.knowledge_scope,
+            "canon_basis": [entry.to_dict() for entry in self.canon_basis],
+            "new_design_elements": list(self.new_design_elements),
+            "open_questions": list(self.open_questions),
+            "constraint_notes": list(self.constraint_notes),
+            "story_link": self.story_link.to_dict() if self.story_link else None,
+            "proposed_new_content": list(self.proposed_new_content),
+        }
+
+
+def _json_safe_relationship_value(value: Any) -> Any:
+    """Serialize the small relationship value schema without mutating it."""
+
+    if isinstance(value, Mapping):
+        return {str(key): _json_safe_relationship_value(item) for key, item in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [_json_safe_relationship_value(item) for item in value]
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    raise TypeError(f"Unsupported relationship value for JSON serialization: {type(value).__name__}")
 
 
 @dataclass(frozen=True)

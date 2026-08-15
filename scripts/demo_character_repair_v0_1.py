@@ -27,10 +27,15 @@ FIXTURES = ROOT / "evals" / "fixtures"
 
 
 def _load(case: str):
-    filename = {"pass": "good", "subtle": "shenzhao", "bad": "bad", "unrepairable": "bad"}[case]
+    filename = {"pass": "good", "subtle": "shenzhao", "bad": "bad", "unrepairable": "bad", "relationship": "shenzhao"}[case]
     payload = json.loads((FIXTURES / f"canon_checker_{filename}.json").read_text(encoding="utf-8"))
     draft = CharacterDraft.from_mapping(payload["draft"])
     request = CharacterDesignRequest(**payload["request"])
+    if case == "relationship":
+        draft = replace(
+            draft,
+            relationships=({"target_id": "char_launch_001", "description": "拟议协作关系", "status": "proposed"},),
+        )
     if case == "unrepairable":
         request = replace(
             request,
@@ -50,7 +55,7 @@ class _FixtureGenerationAgent:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Character Repair Loop v0.1 demo")
-    parser.add_argument("--case", choices=("pass", "subtle", "bad", "unrepairable"), default="subtle")
+    parser.add_argument("--case", choices=("pass", "subtle", "bad", "unrepairable", "relationship"), default="subtle")
     parser.add_argument("--model", choices=("offline", "live"), default="offline")
     parser.add_argument("--json", action="store_true", dest="as_json")
     args = parser.parse_args()

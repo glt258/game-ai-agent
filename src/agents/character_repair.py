@@ -57,6 +57,43 @@ class RepairResultStatus(str, Enum):
     REGRESSION = "REGRESSION"
     REPAIR_MODEL_FAILED = "REPAIR_MODEL_FAILED"
     REPAIR_SCOPE_VIOLATION = "REPAIR_SCOPE_VIOLATION"
+    REPAIR_HARD_CONSTRAINT_VIOLATION = "REPAIR_HARD_CONSTRAINT_VIOLATION"
+
+
+class HardConstraintDomain(str, Enum):
+    AGE = "age"
+    FACTION = "faction"
+    OCCUPATION = "occupation"
+    SOCIAL_ROLE = "social_role"
+    COMBAT_ROLE = "combat_role"
+    KNOWLEDGE_SCOPE = "knowledge_scope"
+    AUTHORITY = "authority"
+    STORY_ROLE = "story_role"
+    RELATIONSHIP = "relationship"
+    STORY_CONNECTION = "story_connection"
+    ABILITY = "ability"
+
+
+HARD_CONSTRAINT_DOMAIN_FIELDS: Mapping[HardConstraintDomain, tuple[str, ...]] = {
+    HardConstraintDomain.AGE: ("age", "age_range"),
+    HardConstraintDomain.FACTION: ("faction_id",),
+    HardConstraintDomain.OCCUPATION: ("occupation", "social_role"),
+    HardConstraintDomain.SOCIAL_ROLE: ("social_role",),
+    HardConstraintDomain.COMBAT_ROLE: ("combat_role",),
+    HardConstraintDomain.KNOWLEDGE_SCOPE: ("knowledge_scope",),
+    HardConstraintDomain.AUTHORITY: ("occupation", "social_role", "knowledge_scope", "background", "story_hook"),
+    HardConstraintDomain.STORY_ROLE: ("background", "story_hook", "story_link"),
+    HardConstraintDomain.RELATIONSHIP: ("relationships",),
+    HardConstraintDomain.STORY_CONNECTION: ("story_link", "background", "story_hook"),
+    HardConstraintDomain.ABILITY: ("ability_concept",),
+}
+
+
+@dataclass(frozen=True)
+class HardConstraintRequirement:
+    domain: HardConstraintDomain
+    text: str
+    fields: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -234,18 +271,146 @@ _DEPENDENCIES: Mapping[str, tuple[str, ...]] = {
 }
 
 
+def _hard_constraint_texts(request: CharacterDesignRequest) -> tuple[str, ...]:
+    texts = list(request.hard_constraints)
+    # Only explicit requirement clauses in the freeform brief are treated as
+    # hard constraints.  Ordinary creative prose and desired connections must
+    # not freeze the subtle repair fields.
+    texts.extend(
+        clause.strip()
+        for clause in re.split(r"[。！？;；\n]+", request.brief)
+        if re.search(r"(?:必须|不得|不能|不可|要求|must|must not|required)", clause, re.IGNORECASE)
+    )
+    return tuple(item for item in texts if item.strip())
+
+
+def classify_hard_constraints(request: CharacterDesignRequest) -> tuple[HardConstraintRequirement, ...]:
+    requirements: list[HardConstraintRequirement] = []
+    for text in _hard_constraint_texts(request):
+        lowered = text.lower()
+        domains: list[HardConstraintDomain] = []
+        if re.search(r"(?:\d+\s*岁|age|年龄)", lowered):
+            domains.append(HardConstraintDomain.AGE)
+        if "faction_" in lowered or "阵营" in text or "派系" in text:
+            domains.append(HardConstraintDomain.FACTION)
+        if re.search(r"(?:职业|担任|必须当|occupation|消防员|警察|军人|急救员)", text, re.IGNORECASE):
+            domains.append(HardConstraintDomain.OCCUPATION)
+        if re.search(r"(?:战斗定位|combat_role|必须.*(?:辅助|支援|控制|防御|爆发|持续))", text, re.IGNORECASE):
+            domains.append(HardConstraintDomain.COMBAT_ROLE)
+        if re.search(r"(?:档案|内部资料|内部数据|内部记录|受限数据|受限资料|事故内部|访问|调阅|读取|掌握|调取|查阅)", text):
+            domains.append(HardConstraintDomain.KNOWLEDGE_SCOPE)
+        if re.search(r"(?:负责人|指挥|调度|决策|决定|管理|监管|权限|授权|确认|同意)", text):
+            domains.append(HardConstraintDomain.AUTHORITY)
+        if re.search(r"(?:核心负责人|主要负责人|主导|解决(?:事件|事故)|关键决策|指挥事件|拍板)", text):
+            domains.append(HardConstraintDomain.STORY_ROLE)
+        if re.search(r"(?:好友|导师|师徒|亲属|同事|上下级|关系|认识)", text):
+            domains.append(HardConstraintDomain.RELATIONSHIP)
+        if re.search(r"(?:与|和).{0,20}(?:联系|关联|连接|参与|事件|事故|故事|支线)", text):
+            domains.append(HardConstraintDomain.STORY_CONNECTION)
+        if re.search(r"(?:能力概念|能力|技能|ability)", text, re.IGNORECASE):
+            domains.append(HardConstraintDomain.ABILITY)
+        for domain in dict.fromkeys(domains):
+            requirements.append(HardConstraintRequirement(domain, text, HARD_CONSTRAINT_DOMAIN_FIELDS[domain]))
+    return tuple(requirements)
+
+
 def _hard_constraint_fields(request: CharacterDesignRequest) -> frozenset[str]:
-    text = " ".join(request.hard_constraints).lower()
-    fields: set[str] = set()
-    if re.search(r"(?:\d+\s*岁|age|年龄)", text):
-        fields.update({"age", "age_range"})
-    if "faction_" in text or "阵营" in text or "派系" in text:
-        fields.add("faction_id")
-    if re.search(r"(?:职业|担任|必须当|occupation|消防员|警察|军人|急救员)", text):
-        fields.update({"occupation", "social_role"})
-    if re.search(r"(?:必须.*(?:辅助|支援|控制|防御|爆发|持续)|combat_role|战斗定位)", text):
-        fields.add("combat_role")
-    return frozenset(fields)
+    # Primitive identity/assignment requirements are frozen at the field
+    # boundary.  Textual domains remain editable only under the second-layer
+    # preservation check below; this lets “must be non-core” repair a prose
+    # overreach without allowing the model to silently drop the requirement.
+    frozen_domains = {
+        HardConstraintDomain.AGE,
+        HardConstraintDomain.FACTION,
+        HardConstraintDomain.OCCUPATION,
+        HardConstraintDomain.SOCIAL_ROLE,
+        HardConstraintDomain.COMBAT_ROLE,
+        HardConstraintDomain.RELATIONSHIP,
+        HardConstraintDomain.ABILITY,
+    }
+    return frozenset(
+        field
+        for requirement in classify_hard_constraints(request)
+        if requirement.domain in frozen_domains
+        for field in requirement.fields
+    )
+
+
+_CONSTRAINT_QUANTIFIERS = ("所有", "全部", "全城", "全市", "每位", "每个", "任一", "任何")
+_CONSTRAINT_SENSITIVE_OBJECTS = (
+    "能力者档案", "能力档案", "内部资料", "内部数据", "内部记录", "事故内部结论", "内部结论", "受限资料", "受限数据", "个人档案", "历史记录", "档案"
+)
+_CONSTRAINT_ACCESS = ("访问", "调取", "调阅", "查阅", "读取", "掌握", "知道", "查看", "检索")
+_CONSTRAINT_COMMAND = ("指挥", "调度", "部署", "决定", "管理", "监管", "负责人", "权限", "授权", "确认", "同意")
+_CONSTRAINT_STORY_ROLE = ("核心负责人", "主要负责人", "主导", "解决", "关键决策", "指挥事件", "拍板")
+
+
+def _domain_text(draft: CharacterDraft, fields: Sequence[str]) -> str:
+    values: list[str] = []
+    for field_name in fields:
+        value = getattr(draft, field_name)
+        if isinstance(value, tuple):
+            values.extend(str(item) for item in value)
+        elif value is not None:
+            values.append(str(value))
+    return " ".join(values)
+
+
+def _groups_required(constraint: str, groups: Sequence[Sequence[str]]) -> tuple[tuple[str, ...], ...]:
+    return tuple(tuple(item for item in group if item in constraint) for group in groups if any(item in constraint for item in group))
+
+
+def _semantic_groups_required(constraint: str, groups: Sequence[Sequence[str]]) -> tuple[tuple[str, ...], ...]:
+    """Select semantic categories from a constraint, keeping all synonyms."""
+
+    return tuple(tuple(group) for group in groups if any(item in constraint for item in group))
+
+
+def _contains_positive_marker(text: str, marker: str) -> bool:
+    for clause in re.split(r"[。！？；!?\n]+", text):
+        for match in re.finditer(re.escape(marker), clause):
+            prefix = clause[max(0, match.start() - 12) : match.start()]
+            if re.search(r"(?:不|没有|并非|未|无).{0,10}$", prefix):
+                continue
+            return True
+    return False
+
+
+def _requirement_satisfied(requirement: HardConstraintRequirement, draft: CharacterDraft) -> bool:
+    text = _domain_text(draft, requirement.fields)
+    if requirement.domain == HardConstraintDomain.KNOWLEDGE_SCOPE:
+        groups = _semantic_groups_required(requirement.text, (_CONSTRAINT_QUANTIFIERS, _CONSTRAINT_SENSITIVE_OBJECTS, _CONSTRAINT_ACCESS))
+        return all(any(_contains_positive_marker(text, item) for item in group) for group in groups)
+    if requirement.domain == HardConstraintDomain.AUTHORITY:
+        groups = _semantic_groups_required(requirement.text, (_CONSTRAINT_COMMAND, _CONSTRAINT_QUANTIFIERS))
+        return all(any(_contains_positive_marker(text, item) for item in group) for group in groups)
+    if requirement.domain == HardConstraintDomain.STORY_ROLE:
+        return any(_contains_positive_marker(text, item) for item in _CONSTRAINT_STORY_ROLE if item in requirement.text)
+    if requirement.domain in {HardConstraintDomain.RELATIONSHIP, HardConstraintDomain.STORY_CONNECTION}:
+        return bool(text.strip())
+    # Primitive domains are frozen separately; this fallback protects a
+    # textual requirement when it spans multiple DTO fields.
+    distinctive = [item for item in re.findall(r"[A-Za-z_0-9]+|[\u4e00-\u9fff]{2,}", requirement.text) if item not in {"必须", "不得", "不能", "要求"}]
+    return bool(distinctive) and any(item in text for item in distinctive)
+
+
+def validate_hard_constraints_preserved(
+    request: CharacterDesignRequest,
+    original: CharacterDraft,
+    candidate: CharacterDraft,
+) -> tuple[str, ...]:
+    """Return domains whose already-satisfied hard requirement was dropped."""
+
+    violations: list[str] = []
+    for requirement in classify_hard_constraints(request):
+        # Negative requirements describe a prohibition (for example “不得
+        # 成为核心负责人”). Repair is allowed to remove the prohibited claim;
+        # the full CanonChecker validates that the prohibition still holds.
+        if re.search(r"(?:不得|不能|不可|禁止|not allowed|must not)", requirement.text, re.IGNORECASE):
+            continue
+        if _requirement_satisfied(requirement, original) and not _requirement_satisfied(requirement, candidate):
+            violations.append(f"{requirement.domain.value}: {requirement.text}")
+    return tuple(dict.fromkeys(violations))
 
 
 def build_repair_scope(request: CharacterDesignRequest, report: CanonCheckReport) -> RepairScope:
@@ -270,6 +435,10 @@ def changed_fields(before: CharacterDraft, after: CharacterDraft) -> tuple[str, 
 
 
 class RepairScopeViolation(AgentExecutionError):
+    pass
+
+
+class HardConstraintPreservationError(RepairScopeViolation):
     pass
 
 
@@ -323,6 +492,21 @@ class CharacterRepairAgent:
             fields = changed_fields(original, repaired)
             try:
                 self._validate_candidate(repair_request, repaired, fields)
+            except HardConstraintPreservationError as error:
+                return CharacterRepairResult(
+                    original,
+                    repaired,
+                    original,
+                    initial,
+                    initial,
+                    True,
+                    False,
+                    fields,
+                    tuple(audits),
+                    status=RepairResultStatus.REPAIR_HARD_CONSTRAINT_VIOLATION,
+                    repair_attempt=1,
+                    error=str(error),
+                )
             except RepairScopeViolation as error:
                 return CharacterRepairResult(
                     original,
@@ -393,6 +577,16 @@ class CharacterRepairAgent:
     @staticmethod
     def _validate_candidate(request: CharacterRepairRequest, candidate: CharacterDraft, fields: tuple[str, ...]) -> None:
         assert request.scope is not None
+        hard_violations = validate_hard_constraints_preserved(
+            request.original_request,
+            request.current_draft,
+            candidate,
+        )
+        if hard_violations:
+            raise HardConstraintPreservationError(
+                "Repair dropped already-satisfied hard constraint(s): "
+                + "; ".join(hard_violations)
+            )
         illegal = sorted(set(fields) - set(request.scope.editable_fields))
         if illegal:
             raise RepairScopeViolation(f"Repair changed fields outside scope: {illegal}")
@@ -501,7 +695,7 @@ class DeterministicCharacterRepairModel:
         if "PROPOSAL_PRESENTED_AS_CANON" in codes:
             draft["background"] = "她计划参与南栈观察项目，并整理不涉及内部权限的现场时间线。"
             draft["story_hook"] = "她可能在后续复盘中提供公开时间线整理，保持与南栈事件的间接联系。"
-        if "AUTHORITY_OVERREACH" in codes or "INVALID_FACTION_ROLE" in codes:
+        if ("AUTHORITY_OVERREACH" in codes or "INVALID_FACTION_ROLE" in codes) and ("occupation" in fields or "social_role" in fields):
             draft["occupation"] = "公共安全联席体系现场信息协调助理"
             draft["social_role"] = "负责跨机构事实整理与信息传递，不拥有各专业部门指挥权。"
         if "KNOWLEDGE_SCOPE_OVERREACH" in codes:
@@ -533,6 +727,12 @@ __all__ = [
     "RepairEvidenceBuilder",
     "RepairScope",
     "RepairScopeViolation",
+    "HardConstraintDomain",
+    "HardConstraintRequirement",
+    "HardConstraintPreservationError",
+    "HARD_CONSTRAINT_DOMAIN_FIELDS",
+    "classify_hard_constraints",
+    "validate_hard_constraints_preserved",
     "RepairResultStatus",
     "CharacterRepairRequest",
     "CharacterRepairResult",
