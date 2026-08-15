@@ -226,6 +226,7 @@ _ADMINISTRATIVE_ENTITIES = (
     "政府机构",
     "行政机构",
     "行政机关",
+    "机构",
     "监管机构",
     "管理局",
     "监管部门",
@@ -333,7 +334,22 @@ _PROPOSAL_ENTITY_INTRODUCTION = (
     "成立",
     "创建",
     "添加",
+    "组建",
+    "搭建",
+    "设置",
     "设计一个",
+)
+_INTRODUCTION_ACTIONS = (
+    "新增",
+    "引入",
+    "建立",
+    "设立",
+    "成立",
+    "创建",
+    "组建",
+    "搭建",
+    "设置",
+    "新设",
 )
 _HEDGE_MARKERS = (
     "可能",
@@ -1015,11 +1031,21 @@ class CanonChecker:
             if len(cls._normalize(part)) >= 5
         )
 
-    @classmethod
-    def _proposal_asserted_in_narrative(cls, proposal: str, narrative: str) -> bool:
+    def _proposal_asserted_in_narrative(self, proposal: str, narrative: str) -> bool:
+        cls = type(self)
         fragments = tuple(cls._normalize(item) for item in cls._proposal_fragments(proposal))
         if not fragments:
             return False
+        existing_target_names = tuple(
+            cls._normalize(name)
+            for _source_id, name in self._existing_canon_entities(proposal)
+        )
+        proposal_has_interaction = bool(
+            re.search(
+                r"(?:与|和|向|采访|接触|往来|交接|工作|提交|参与|旁听|会面|拜访|合作|协作)",
+                proposal,
+            )
+        )
         # Modality is local to the clause containing the proposal phrase.  A
         # hedge in a later clause must not erase an earlier accomplished fact.
         clauses = re.split(r"[。！？；，,;!?\n]", narrative)
@@ -1030,6 +1056,13 @@ class CanonChecker:
             if any(fragment in normalized_clause for fragment in fragments):
                 if any(marker in clause for marker in _HEDGE_MARKERS):
                     continue
+                return True
+            if proposal_has_interaction and any(
+                target in normalized_clause for target in existing_target_names
+            ) and any(
+                marker in clause
+                for marker in ("已经", "已", "曾经", "曾", "长期", "多年", "共同", "持续", "有过")
+            ):
                 return True
         return False
 
@@ -1145,9 +1178,12 @@ class CanonChecker:
                 continue
             for secrecy in _SECRECY_MARKERS:
                 for entity in _ADMINISTRATIVE_ENTITIES:
-                    pattern = re.escape(secrecy) + r".{0,8}" + re.escape(entity)
-                    if cls._positive_forbidden_match(sentence, pattern):
-                        return True
+                    for pattern in (
+                        re.escape(secrecy) + r".{0,8}" + re.escape(entity),
+                        re.escape(entity) + r".{0,8}" + re.escape(secrecy),
+                    ):
+                        if cls._positive_forbidden_match(sentence, pattern):
+                            return True
         return False
 
     @classmethod
@@ -1198,6 +1234,24 @@ class CanonChecker:
                     value = record.get("name", record.get("title", "")) if isinstance(record, Mapping) else ""
                 if isinstance(value, str) and value.strip():
                     yield source_id, source_type, value.strip()
+                if source_type == "faction" and isinstance(record, Mapping):
+                    internal_structure = record.get("internal_structure")
+                    divisions = (
+                        internal_structure.get("divisions", [])
+                        if isinstance(internal_structure, Mapping)
+                        else []
+                    )
+                    for division in divisions:
+                        if not isinstance(division, Mapping):
+                            continue
+                        division_name = division.get("name")
+                        division_id = division.get("id", division_name)
+                        if isinstance(division_name, str) and division_name.strip():
+                            yield (
+                                f"{source_id}:{division_id}",
+                                "faction_division",
+                                division_name.strip(),
+                            )
         for source_id, record in self.context.story_repository.canon.items():
             value = record.get("title", record.get("name", ""))
             if isinstance(value, str) and value.strip():
@@ -1228,20 +1282,37 @@ class CanonChecker:
         return text[local_start:start]
 
     @classmethod
+    def _forbidden_introduction_action_polarity(
+        cls, text: str, entity_start: int
+    ) -> str:
+        prefix = cls._local_claim_prefix(text, entity_start)
+        action_pattern = "|".join(
+            sorted((re.escape(action) for action in _INTRODUCTION_ACTIONS), key=len, reverse=True)
+        )
+        actions = tuple(re.finditer(action_pattern, prefix))
+        if not actions:
+            return "UNKNOWN"
+        action_prefix = prefix[: actions[-1].start()]
+        if re.search(
+            r"(?:最终|但|却|只是|不过|同时)?\s*"
+            r"(?:从未|未曾|不曾|并未|没有|未|不得|不能|不)\s*"
+            r"(?:任何|一个|一项|新的|再)?$",
+            action_prefix,
+        ):
+            return "NEGATIVE"
+        if re.search(r"(?:考虑|可能|计划|打算|拟议|准备)\s*$", action_prefix):
+            return "HEDGED"
+        return "POSITIVE"
+
+    @classmethod
     def _forbidden_claim_is_negated(
         cls, text: str, start: int, end: int | None = None
     ) -> bool:
         del end
-        prefix = cls._local_claim_prefix(text, start)
-        return bool(
-            re.search(
-                r"(?:未|并未|没有|并非|不是|不|不得|不能)\s*"
-                r"(?:任何|一个|一项)?\s*"
-                r"(?:新增|引入|建立|设立|创建|成立|形成|加入|引进|拥有|负责|存在|出现)?\s*"
-                r"(?:任何|一个|一项)?$",
-                prefix,
-            )
-        )
+        return cls._forbidden_introduction_action_polarity(text, start) in {
+            "NEGATIVE",
+            "HEDGED",
+        }
 
     @classmethod
     def _positive_forbidden_match(cls, text: str, pattern: str) -> bool:
@@ -1267,6 +1338,13 @@ class CanonChecker:
                 return "RELATION_TO_EXISTING"
             if re.search(rf"(?:在|进入|加入|作为).{{0,30}}{target}", text):
                 return "MEMBERSHIP_OR_ASSIGNMENT_TO_EXISTING"
+
+        normalized = cls._normalize(text)
+        for _source_id, name in existing_entities:
+            normalized = normalized.replace(cls._normalize(name), "")
+        context = re.sub(r"拟议|提案|待确认|建议|proposed|proposal", "", normalized, flags=re.IGNORECASE)
+        if len(context) >= 4:
+            return "RELATION_TO_EXISTING"
         return "AMBIGUOUS"
 
     def _resolve_story_targets_from_text(

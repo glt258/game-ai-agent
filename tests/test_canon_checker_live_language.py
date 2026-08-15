@@ -24,6 +24,13 @@ def _good_draft() -> CharacterDraft:
     return CharacterDraft.from_mapping(payload["draft"])
 
 
+def _good_request() -> CharacterDesignRequest:
+    payload = json.loads(
+        (FIXTURES / "canon_checker_good.json").read_text(encoding="utf-8")
+    )
+    return CharacterDesignRequest(**payload["request"])
+
+
 def _codes(draft: CharacterDraft):
     return {finding.code for finding in CanonChecker().check(draft).findings}
 
@@ -144,3 +151,107 @@ def test_live_existing_canon_targets_can_be_relation_or_assignment(text: str):
 def test_live_existing_canon_entities_still_cannot_be_proposed_as_new(text: str):
     draft = replace(_good_draft(), new_design_elements=(text,))
     assert CanonFindingCode.CANON_PRESENTED_AS_PROPOSAL in _codes(draft)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "未新增任何不对外公开的秘密监管机构。",
+        "并未建立新的秘密行政机关。",
+        "没有创建任何统一管理全市能力者的秘密行政部门。",
+        "从未设立过一个负责全城能力事务的秘密机构。",
+        "她曾考虑创建秘密监管机构，但最终并未建立任何此类组织。",
+    ],
+)
+def test_live_complex_forbidden_denial_is_action_local(text: str):
+    report = CanonChecker().check(
+        replace(_good_draft(), background=text),
+        request=_good_request(),
+    )
+    codes = {item.code for item in report.findings}
+    assert not {
+        CanonFindingCode.FORBIDDEN_PATTERN,
+        CanonFindingCode.WORLD_RULE_VIOLATION,
+        CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
+    } & codes
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "新增了一个不对外公开的秘密监管机构。",
+        "创建未向公众披露的监管机构统一管理全城能力者。",
+        "设立一个秘密管理局统一负责全市能力事务。",
+        "她没有公开头衔，但创建了秘密监管机构。",
+        "她所在的机构不对外公开，并统一监管全市能力者。",
+    ],
+)
+def test_live_complex_forbidden_creation_still_fails(text: str):
+    report = CanonChecker().check(
+        replace(_good_draft(), background=text),
+        request=_good_request(),
+    )
+    codes = {item.code for item in report.findings}
+    assert codes & {
+        CanonFindingCode.FORBIDDEN_PATTERN,
+        CanonFindingCode.WORLD_RULE_VIOLATION,
+        CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
+    }
+
+
+def test_live_mixed_forbidden_clauses_do_not_share_negation():
+    report = CanonChecker().check(
+        replace(
+            _good_draft(),
+            background="她没有新增普通行政部门，但创建了一个秘密监管机构。",
+        ),
+        request=_good_request(),
+    )
+    assert report.status == "fail"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "拟议：与余弦形成一次资料层面的工作往来。",
+        "拟议：和纪衡进行一次工作交接。",
+        "拟议：未来可能与唐栖在公开活动中产生一次短暂接触。",
+        "拟议：负责向余弦提交一次去标识化记录。",
+        "拟议：在回写与社会认知组承担一项新的资料校对工作。",
+        "拟议：在临洲大学行为与能力研究中心参与新的非受限材料整理工作。",
+        "未来可能采访余弦。",
+    ],
+)
+def test_live_natural_existing_target_interactions_are_not_new_entities(text: str):
+    draft = replace(_good_draft(), proposed_new_content=(text,))
+    assert CanonFindingCode.CANON_PRESENTED_AS_PROPOSAL not in _codes(draft)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "新增角色：余弦。",
+        "新设计：余弦。",
+        "新增组织：临洲大学行为与能力研究中心。",
+        "新部门：回写与社会认知组。",
+        "新事件：南栈演出散场事故后续协调委托。",
+    ],
+)
+def test_live_introduction_marker_keeps_existing_entity_blocked(text: str):
+    draft = replace(_good_draft(), proposed_new_content=(text,))
+    assert CanonFindingCode.CANON_PRESENTED_AS_PROPOSAL in _codes(draft)
+
+
+def test_live_relation_proposal_still_checks_proposal_presented_as_canon():
+    draft = replace(
+        _good_draft(),
+        proposed_new_content=("拟议：未来可能与余弦产生一次工作接触。",),
+        background="她长期与余弦共同工作多年。",
+    )
+    report = CanonChecker().check(draft)
+    assert CanonFindingCode.CANON_PRESENTED_AS_PROPOSAL not in {
+        item.code for item in report.findings
+    }
+    assert CanonFindingCode.PROPOSAL_PRESENTED_AS_CANON in {
+        item.code for item in report.findings
+    }

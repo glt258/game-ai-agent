@@ -62,8 +62,8 @@ internal-material detection.
 
 See [docs/canon_checker_v0.1.md](docs/canon_checker_v0.1.md) for finding codes,
 implemented deterministic rules, examples, and known limitations. Canon Checker
-v0.1.2 adds deterministic live-language hardening for clause-local negation,
-Lore access polarity, and proposed relations to existing Canon targets.
+v0.1.3 adds live-variant hardening for action-local forbidden denial and natural
+relations, interactions, memberships, and assignments to existing Canon targets.
 
 ## Live providers
 
