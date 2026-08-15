@@ -1,0 +1,63 @@
+schema_version: "character-facts/0.1"
+reference_id: "genshin-impact:keqing"
+identity:
+  game_id: genshin-impact
+  native_character_id: null
+  names:
+    canonical: "Keqing"
+    localized:
+      en-US: "Keqing"
+      zh-CN: "刻晴"
+      zh-TW: "刻晴"
+  release: null
+  rarity:
+    native_value: 5
+    normalized_tier: null
+combat:
+  native_taxonomy:
+    labels:
+      weapon_type: "Sword"
+      element: "Electro"
+      rarity: "5-star"
+  abilities:
+    - ability_id: normal_attack
+      native_name: "Yunlai Swordsmanship"
+      native_category: "Normal Attack"
+      normalized_category: null
+      description_summary: "Performs up to five rapid strikes, with charged and plunging attacks also available."
+    - ability_id: elemental_skill
+      native_name: "Stellar Restoration"
+      native_category: "Elemental Skill"
+      normalized_category: null
+      description_summary: "Throws a Lightning Stiletto that deals Electro damage and places a Stiletto Mark; recasting can slash or teleport to the marked location."
+    - ability_id: elemental_burst
+      native_name: "Starward Sword"
+      native_category: "Elemental Burst"
+      normalized_category: null
+      description_summary: "Deals area-of-effect Electro damage, followed by multiple thunderclap strikes and a final area attack."
+    - ability_id: passive_thundering_penance
+      native_name: "Thundering Penance"
+      native_category: "1st Ascension Passive"
+      normalized_category: null
+      description_summary: "After recasting Stellar Restoration while a Lightning Stiletto is present, grants the weapon Electro infusion for 5 seconds."
+    - ability_id: passive_aristocratic_dignity
+      native_name: "Aristocratic Dignity"
+      native_category: "4th Ascension Passive"
+      normalized_category: null
+      description_summary: "Casting Starward Sword increases CRIT Rate and Energy Recharge by 15% for 8 seconds."
+    - ability_id: passive_lands_overseer
+      native_name: "Land's Overseer"
+      native_category: "Utility Passive"
+      normalized_category: null
+      description_summary: "Reduces the time consumed by Liyue expeditions by 25%."
+  mechanics: {}
+  team_mechanics: {}
+narrative:
+  faction: "Liyue Qixing"
+  occupation: "Yuheng"
+  affiliations:
+    - "Liyue Qixing"
+  public_identity: "Yuheng of the Liyue Qixing"
+presentation:
+  official_visual_tags: []
+  official_character_keywords: []

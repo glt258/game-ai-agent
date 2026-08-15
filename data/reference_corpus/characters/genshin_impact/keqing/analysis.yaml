@@ -1,0 +1,122 @@
+schema_version: "character-analysis/0.1"
+reference_id: "genshin-impact:keqing"
+analysis_metadata:
+  analyzer: "hermes"
+  model: "deepseek-v4-flash"
+  prompt_version: "keqing-golden-analysis/0.1"
+  analyzed_at: "2026-08-15T16:15:00Z"
+combat_design:
+  normalized_roles:
+    - "on_field_dps"
+  attack_range: "melee"
+  field_time: "high"
+  mechanical_complexity: "medium"
+  execution_difficulty: "medium"
+  mobility: "high"
+  survivability: "low"
+  team_dependency: "low"
+  primary_loop:
+    summary: >-
+      The loop is characterized by mark placement, repositioning and state
+      entry, temporary attack conversion, sustained melee pressure, and a
+      burst_cycle_node that provides area damage and self-amplification within
+      the broader cycle.
+    steps:
+      - "skill_setup"
+      - "reposition_and_state_entry"
+      - "sustained_attack"
+      - "burst_cycle_node"
+      - "reset"
+  resource_loop: null
+  burst_pattern: >-
+    Burst is a burst_cycle_node that deals area damage and also grants a
+    self-amplification window (CRIT Rate and Energy Recharge) within the
+    broader combat cycle.
+  archetypes:
+    - "sustained_on_field_dps"
+    - "mobility_attacker"
+    - "infusion_attacker"
+  core_mechanics:
+    - "mark_and_recast_skill"
+    - "reposition_teleport"
+    - "temporary_attack_conversion"
+character_design:
+  character_fantasy: >-
+    Playing Keqing is a mobility-driven melee combat experience: the
+    player places a mark at range, teleports straight into the fight,
+    converts the blade into a briefly enhanced weapon, and floods the target
+    with rapid strikes before bursting and resetting — a fantasy of precise,
+    aggressive, self-directed mobility rather than slow buildup.
+  personality_archetypes: []
+  identity_hooks:
+    - "yuheng_of_the_liyue_qixing"
+    - "high_ranking_city_state_governing_official"
+    - "electro_sword_combatant"
+  narrative_hooks:
+    - "governing_official_with_personal_combat_presence"
+    - "member_of_a_city_state_governing_council"
+  visual_motifs: []
+  gameplay_identity_alignment:
+    score: 0.55
+    reasoning: >-
+      The verified public identity is a high-ranking governing official of
+      the Liyue Qixing. The combat kit expresses decisive, direct, agile
+      action (instant teleport, rapid strikes, burst self-empowerment), which
+      reads as consistent with a leader acting personally and decisively;
+      however, the facts contain no explicit design statement linking the
+      identity and the combat language, so the alignment is plausible but
+      only moderately evidenced.
+product_design:
+  primary_selling_points:
+    - "skill_based_teleport_reposition"
+    - "rapid_melee_with_temporary_attack_conversion"
+    - "decisive_high_tempo_melee_combat"
+  gameplay_hooks:
+    - "mark_then_teleport_reposition"
+    - "temporary_infusion_attack_window"
+    - "fast_melee_sequence"
+  visual_hooks: []
+  narrative_hooks:
+    - "governing_official_who_fights_in_person"
+    - "city_state_governing_council_identity"
+  novelty_dimensions:
+    - "two_stage_skill_with_recast_choice"
+    - "skill_recast_gates_temporary_attack_conversion"
+    - "burst_that_also_serves_as_self_buff_window"
+differentiation:
+  strongest_differentiators:
+    - "mark_and_recast_skill_with_teleport_reposition"
+    - "skill_recast_gates_temporary_attack_conversion"
+    - "burst_that_amplifies_follow_up_attacks"
+  common_patterns:
+    - "rapid_melee_normal_attack_chain"
+    - "elemental_infusion_from_skill"
+    - "gap_closing_mobility"
+    - "area_burst_with_self_buff"
+  unusual_patterns:
+    - "recast_choice_between_attack_and_reposition"
+    - "teleport_as_recast_behavior_of_a_mark_skill"
+design_patterns:
+  extracted_patterns:
+    - "skill_to_infused_attack"
+    - "skill_as_reposition"
+    - "mark_and_recast"
+    - "short_cycle_burst"
+    - "mobility_driven_melee"
+similarity_features:
+  combat_signature:
+    - "mark_then_recast_skill"
+    - "skill_based_reposition"
+    - "temporary_attack_conversion"
+    - "fast_melee_sequence"
+    - "short_cycle_burst"
+  narrative_signature:
+    - "high_ranking_city_state_governor"
+    - "governing_council_member"
+    - "official_with_personal_combat_presence"
+  presentation_signature: []
+confidence:
+  overall: 0.6
+  combat_design: 0.75
+  character_design: 0.4
+  product_design: 0.45
