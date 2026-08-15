@@ -1,7 +1,8 @@
-# Along the Street — Knowledge Resolver
+# Along the Street — Game AI Agent System
 
-This repository contains the read-only NPC knowledge boundary and authoring
-agents for *Along the Street*.
+This repository contains a production-oriented Game AI Agent system for
+*Along the Street*, including NPC runtime, knowledge boundaries, character
+authoring, Canon validation, bounded repair, and auditable LLM provider integration.
 
 ## Current Status
 
