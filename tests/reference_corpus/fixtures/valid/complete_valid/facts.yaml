@@ -1,4 +1,4 @@
-schema_version: "character-facts/0.1"
+schema_version: "character-facts/0.2"
 reference_id: "test-game-alpha:test-character-complete"
 identity:
   game_id: test-game-alpha
@@ -31,8 +31,15 @@ combat:
       normalized_category: burst
       description_summary: "A short synthetic burst."
   mechanics:
-    resources: [focus]
-    states: [empowered]
+    resources:
+      - resource_id: focus
+        native_name: null
+        description_summary: "A synthetic combat resource."
+        cap: null
+    states:
+      - state_id: empowered
+        native_name: null
+        description_summary: "A synthetic empowered combat state."
     transformations: []
     summons: []
     mobility_mechanics: [dash_attack]
@@ -44,6 +51,7 @@ combat:
     shielding: []
     grouping: []
     off_field_effects: [team_buff]
+  relations: []
 narrative:
   faction: synthetic-faction
   occupation: synthetic performer

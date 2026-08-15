@@ -16,3 +16,13 @@ cases:
   - conflicted_without_conflict
   - empty_canonical_name
   - extra_unknown_field
+  - duplicate_resource_id
+  - duplicate_state_id
+  - duplicate_team_interaction_id
+  - duplicate_relation_id
+  - relation_unknown_source_ability
+  - relation_unknown_target_state
+  - relation_unknown_resource
+  - relation_unknown_team_interaction
+  - empty_relation_type
+  - invalid_relation_type_format

@@ -50,3 +50,14 @@ def test_corpus_validator_reports_warnings_and_errors_deterministically() -> Non
     invalid_report = validate_corpus([invalid], CATALOG)
     assert invalid_report.valid is False
     assert invalid_report.errors[0].code == "unknown_game"
+
+
+def test_corpus_validator_reports_mechanic_integrity_issue_codes() -> None:
+    reference = CharacterReferenceLoader(CATALOG).load(
+        FIXTURE_ROOT / "valid" / "mechanic_graph"
+    )
+    relation = reference.facts.combat.relations[0]
+    relation.target.id = "missing-state"
+    report = validate_corpus([reference], CATALOG)
+    assert report.valid is False
+    assert any(issue.code == "UNKNOWN_MECHANIC_REFERENCE" for issue in report.errors)

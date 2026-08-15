@@ -65,6 +65,8 @@ field_evidence:
   combat.native_taxonomy.labels.element: [official-version-1-3-keqing, official-version-5-6-update, secondary-wiki-keqing]
   combat.native_taxonomy.labels.rarity: [official-version-1-3-keqing, secondary-wiki-keqing]
   combat.abilities: [official-version-1-2-update, secondary-wiki-keqing]
+  combat.mechanics.states: [official-version-1-2-update, secondary-wiki-keqing]
+  combat.relations: [official-version-1-2-update, secondary-wiki-keqing]
   narrative.faction: [official-version-1-3-keqing, official-character-page, official-character-demo]
   narrative.occupation: [official-version-1-3-keqing, official-character-page, official-character-demo]
   narrative.affiliations: [official-character-page]

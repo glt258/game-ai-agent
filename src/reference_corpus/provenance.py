@@ -15,14 +15,14 @@ def resolve_fact_field_path(facts: CharacterFacts, field_path: str) -> object:
         raise ProvenanceValidationError(f"invalid field evidence path: {field_path!r}")
     if any(part.isdigit() for part in parts):
         raise ProvenanceValidationError(
-            f"indexed field evidence paths are unsupported in v0.1: {field_path}"
+            f"indexed field evidence paths are unsupported: {field_path}"
         )
 
     current: object = facts
     for part in parts:
         if isinstance(current, list):
             raise ProvenanceValidationError(
-                f"field evidence path enters a list, unsupported in v0.1: {field_path}"
+                f"field evidence path enters a list, unsupported: {field_path}"
             )
         if isinstance(current, dict):
             if part not in current:

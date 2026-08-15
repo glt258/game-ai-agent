@@ -9,6 +9,7 @@ from .models import (
     CharacterReference,
     CorpusValidationReport,
     GameCatalog,
+    RELATION_TYPE_RE,
     ValidationIssue,
 )
 from .provenance import validate_provenance
@@ -43,6 +44,82 @@ def _sort_issues(issues: list[ValidationIssue]) -> list[ValidationIssue]:
     )
 
 
+def _mechanic_integrity_issues(reference: CharacterReference) -> list[ValidationIssue]:
+    """Return explicit report issues for graph mutations after model construction."""
+    facts = reference.facts.combat
+    issues: list[ValidationIssue] = []
+
+    def duplicate_ids(items, attribute: str, code: str, path: str) -> None:
+        ids = [getattr(item, attribute, None) for item in items]
+        seen: set[object] = set()
+        for item_id in ids:
+            if item_id in seen:
+                issues.append(
+                    _issue("error", code, f"duplicate {attribute}: {item_id}", reference.reference_id, path)
+                )
+            seen.add(item_id)
+
+    duplicate_ids(facts.mechanics.resources, "resource_id", "DUPLICATE_RESOURCE_ID", "combat.mechanics.resources")
+    duplicate_ids(facts.mechanics.states, "state_id", "DUPLICATE_STATE_ID", "combat.mechanics.states")
+    duplicate_ids(
+        facts.team_mechanics.interactions,
+        "interaction_id",
+        "DUPLICATE_TEAM_INTERACTION_ID",
+        "combat.team_mechanics.interactions",
+    )
+    duplicate_ids(facts.relations, "relation_id", "DUPLICATE_RELATION_ID", "combat.relations")
+
+    nodes = {
+        "ability": {item.ability_id for item in facts.abilities},
+        "state": {item.state_id for item in facts.mechanics.states},
+        "resource": {item.resource_id for item in facts.mechanics.resources},
+        "team_interaction": {item.interaction_id for item in facts.team_mechanics.interactions},
+    }
+    seen_edges: set[tuple[str, str, str, str, str]] = set()
+    for relation in facts.relations:
+        relation_path = f"combat.relations.{relation.relation_id}"
+        if not RELATION_TYPE_RE.fullmatch(relation.relation_type):
+            issues.append(
+                _issue(
+                    "error",
+                    "INVALID_RELATION_TYPE",
+                    f"relation_type must be non-empty snake_case: {relation.relation_type!r}",
+                    reference.reference_id,
+                    relation_path,
+                )
+            )
+        for endpoint_name, endpoint in (("source", relation.source), ("target", relation.target)):
+            if endpoint.id not in nodes[endpoint.kind]:
+                issues.append(
+                    _issue(
+                        "error",
+                        "UNKNOWN_MECHANIC_REFERENCE",
+                        f"unknown {endpoint_name} {endpoint.kind} reference: {endpoint.id}",
+                        reference.reference_id,
+                        relation_path,
+                    )
+                )
+        edge = (
+            relation.source.kind,
+            relation.source.id,
+            relation.relation_type,
+            relation.target.kind,
+            relation.target.id,
+        )
+        if edge in seen_edges:
+            issues.append(
+                _issue(
+                    "error",
+                    "DUPLICATE_MECHANIC_RELATION",
+                    "source/relation_type/target must be unique",
+                    reference.reference_id,
+                    relation_path,
+                )
+            )
+        seen_edges.add(edge)
+    return issues
+
+
 def validate_character_reference(
     reference: CharacterReference,
     catalog: GameCatalog | None = None,
@@ -60,6 +137,7 @@ def validate_character_reference(
                 "identity.game_id",
             )
         )
+    errors.extend(_mechanic_integrity_issues(reference))
     try:
         validate_provenance(reference.provenance, reference.facts)
     except Exception as exc:

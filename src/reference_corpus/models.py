@@ -19,8 +19,9 @@ from .enums import (
 
 
 REFERENCE_ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*(?::[a-z0-9]+(?:-[a-z0-9]+)*)?$")
+RELATION_TYPE_RE = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
 SUPPORTED_SCHEMA_VERSIONS = {
-    "character-facts/0.1",
+    "character-facts/0.2",
     "character-analysis/0.1",
     "character-sources/0.1",
     "game-catalog/0.1",
@@ -142,17 +143,105 @@ class AbilityFact(ReferenceModel):
     )
 
 
+class ResourceFact(ReferenceModel):
+    resource_id: str
+    native_name: str | None = None
+    description_summary: str | None = None
+    cap: int | float | None = None
+
+    _resource_id = field_validator("resource_id")(lambda value: _text(value, "resource_id"))
+    _native_name = field_validator("native_name")(lambda value: _optional_text(value))
+    _description_summary = field_validator("description_summary")(
+        lambda value: _optional_text(value)
+    )
+
+    @field_validator("cap")
+    @classmethod
+    def valid_cap(cls, value: int | float | None) -> int | float | None:
+        if isinstance(value, bool):
+            raise ValueError("cap must be numeric or null")
+        return value
+
+
+class StateFact(ReferenceModel):
+    state_id: str
+    native_name: str | None = None
+    description_summary: str | None = None
+
+    _state_id = field_validator("state_id")(lambda value: _text(value, "state_id"))
+    _native_name = field_validator("native_name")(lambda value: _optional_text(value))
+    _description_summary = field_validator("description_summary")(
+        lambda value: _optional_text(value)
+    )
+
+
+class TeamInteractionFact(ReferenceModel):
+    interaction_id: str
+    native_name: str | None = None
+    description_summary: str
+
+    _interaction_id = field_validator("interaction_id")(
+        lambda value: _text(value, "interaction_id")
+    )
+    _native_name = field_validator("native_name")(lambda value: _optional_text(value))
+    _description_summary = field_validator("description_summary")(
+        lambda value: _text(value, "description_summary")
+    )
+
+
+class MechanicRef(ReferenceModel):
+    kind: Literal["ability", "state", "resource", "team_interaction"]
+    id: str
+
+    _id = field_validator("id")(lambda value: _text(value, "mechanic reference id"))
+
+
+class MechanicRelation(ReferenceModel):
+    relation_id: str
+    source: MechanicRef
+    relation_type: str
+    target: MechanicRef
+    description_summary: str | None = None
+
+    _relation_id = field_validator("relation_id")(
+        lambda value: _text(value, "relation_id")
+    )
+    _description_summary = field_validator("description_summary")(
+        lambda value: _optional_text(value)
+    )
+
+    @field_validator("relation_type")
+    @classmethod
+    def valid_relation_type(cls, value: str) -> str:
+        value = _text(value, "relation_type")
+        if not RELATION_TYPE_RE.fullmatch(value):
+            raise ValueError("relation_type must be non-empty snake_case")
+        return value
+
+
+def _ensure_unique_node_ids(items: list[object], field_name: str, id_attribute: str) -> None:
+    ids = [getattr(item, id_attribute) for item in items]
+    if len(ids) != len(set(ids)):
+        raise ValueError(f"DUPLICATE_{field_name.upper()}_ID: {id_attribute} must be unique")
+
+
 class CombatMechanics(ReferenceModel):
-    resources: list[str] = Field(default_factory=list)
-    states: list[str] = Field(default_factory=list)
+    resources: list[ResourceFact] = Field(default_factory=list)
+    states: list[StateFact] = Field(default_factory=list)
     transformations: list[str] = Field(default_factory=list)
     summons: list[str] = Field(default_factory=list)
     mobility_mechanics: list[str] = Field(default_factory=list)
     targeting_mechanics: list[str] = Field(default_factory=list)
 
-    _resources = field_validator(
-        "resources", "states", "transformations", "summons", "mobility_mechanics", "targeting_mechanics"
+    _mechanic_lists = field_validator(
+        "transformations", "summons", "mobility_mechanics", "targeting_mechanics"
     )(_string_list)
+
+    @model_validator(mode="after")
+    def unique_mechanic_nodes(self) -> "CombatMechanics":
+        _ensure_unique_node_ids(self.resources, "resource", "resource_id")
+        _ensure_unique_node_ids(self.states, "state", "state_id")
+        return self
 
 
 class TeamMechanics(ReferenceModel):
@@ -162,10 +251,16 @@ class TeamMechanics(ReferenceModel):
     shielding: list[str] = Field(default_factory=list)
     grouping: list[str] = Field(default_factory=list)
     off_field_effects: list[str] = Field(default_factory=list)
+    interactions: list[TeamInteractionFact] = Field(default_factory=list)
 
     _team_lists = field_validator(
         "buffs", "debuffs", "healing", "shielding", "grouping", "off_field_effects"
     )(_string_list)
+
+    @model_validator(mode="after")
+    def unique_interactions(self) -> "TeamMechanics":
+        _ensure_unique_node_ids(self.interactions, "team_interaction", "interaction_id")
+        return self
 
 
 class CombatFacts(ReferenceModel):
@@ -173,6 +268,7 @@ class CombatFacts(ReferenceModel):
     abilities: list[AbilityFact] = Field(default_factory=list)
     mechanics: CombatMechanics = Field(default_factory=CombatMechanics)
     team_mechanics: TeamMechanics = Field(default_factory=TeamMechanics)
+    relations: list[MechanicRelation] = Field(default_factory=list)
 
     @field_validator("abilities")
     @classmethod
@@ -181,6 +277,37 @@ class CombatFacts(ReferenceModel):
         if len(ids) != len(set(ids)):
             raise ValueError("ability_id must be unique within a character")
         return value
+
+    @model_validator(mode="after")
+    def validate_relations(self) -> "CombatFacts":
+        _ensure_unique_node_ids(self.relations, "relation", "relation_id")
+
+        nodes = {
+            "ability": {item.ability_id for item in self.abilities},
+            "state": {item.state_id for item in self.mechanics.states},
+            "resource": {item.resource_id for item in self.mechanics.resources},
+            "team_interaction": {
+                item.interaction_id for item in self.team_mechanics.interactions
+            },
+        }
+        seen_edges: set[tuple[str, str, str, str, str]] = set()
+        for relation in self.relations:
+            for endpoint_name, endpoint in (("source", relation.source), ("target", relation.target)):
+                if endpoint.id not in nodes[endpoint.kind]:
+                    raise ValueError(
+                        f"UNKNOWN_MECHANIC_REFERENCE: {endpoint_name} {endpoint.kind} {endpoint.id!r}"
+                    )
+            edge = (
+                relation.source.kind,
+                relation.source.id,
+                relation.relation_type,
+                relation.target.kind,
+                relation.target.id,
+            )
+            if edge in seen_edges:
+                raise ValueError("DUPLICATE_MECHANIC_RELATION: source/relation_type/target must be unique")
+            seen_edges.add(edge)
+        return self
 
 
 class NarrativeFacts(ReferenceModel):

@@ -1,4 +1,4 @@
-schema_version: "character-facts/0.1"
+schema_version: "character-facts/0.2"
 reference_id: "genshin-impact:keqing"
 identity:
   game_id: genshin-impact
@@ -50,8 +50,27 @@ combat:
       native_category: "Utility Passive"
       normalized_category: null
       description_summary: "Reduces the time consumed by Liyue expeditions by 25%."
-  mechanics: {}
+  mechanics:
+    resources: []
+    states:
+      - state_id: electro-infusion
+        native_name: null
+        description_summary: "After recasting Stellar Restoration while a Lightning Stiletto is present, the weapon gains Electro infusion for 5 seconds."
+    transformations: []
+    summons: []
+    mobility_mechanics: []
+    targeting_mechanics: []
   team_mechanics: {}
+  relations:
+    - relation_id: thundering-penance-grants-electro-infusion
+      source:
+        kind: ability
+        id: passive_thundering_penance
+      relation_type: grants
+      target:
+        kind: state
+        id: electro-infusion
+      description_summary: "Thundering Penance grants the weapon Electro infusion after the qualifying Stellar Restoration recast."
 narrative:
   faction: "Liyue Qixing"
   occupation: "Yuheng"

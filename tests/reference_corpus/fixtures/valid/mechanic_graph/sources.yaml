@@ -1,0 +1,21 @@
+schema_version: "character-sources/0.1"
+reference_id: "test-game-alpha:test-character-mechanic-graph"
+sources:
+  - source_id: synthetic-mechanics
+    source_type: official
+    publisher: Synthetic Studio
+    title: Synthetic mechanic graph
+    url: "https://example.com/synthetic/mechanic-graph"
+    language: en
+    reliability: primary
+field_evidence:
+  identity.names.canonical: [synthetic-mechanics]
+  combat.abilities: [synthetic-mechanics]
+  combat.mechanics.resources: [synthetic-mechanics]
+  combat.mechanics.states: [synthetic-mechanics]
+  combat.team_mechanics.interactions: [synthetic-mechanics]
+  combat.relations: [synthetic-mechanics]
+verification:
+  status: verified
+  conflicts: []
+  notes: []

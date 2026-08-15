@@ -58,7 +58,7 @@ def test_unsupported_schema_version_and_cross_file_mismatch(tmp_path: Path) -> N
     shutil.copytree(source, target)
     facts = (target / "facts.yaml").read_text(encoding="utf-8")
     (target / "facts.yaml").write_text(
-        facts.replace('"character-facts/0.1"', '"character-facts/9.0"'), encoding="utf-8"
+        facts.replace('"character-facts/0.2"', '"character-facts/9.0"'), encoding="utf-8"
     )
     with pytest.raises(UnsupportedSchemaVersionError):
         CharacterReferenceLoader(CATALOG).load(target)
@@ -85,3 +85,21 @@ def test_unknown_game_is_rejected_by_loader(tmp_path: Path) -> None:
     )
     with pytest.raises(ReferenceValidationError, match="unknown game_id"):
         CharacterReferenceLoader(CATALOG).load(target)
+
+
+def test_v02_graph_fixture_and_golden_records_load() -> None:
+    graph = CharacterReferenceLoader(CATALOG).load(ROOT / "valid" / "mechanic_graph")
+    assert graph.facts.schema_version == "character-facts/0.2"
+    assert len(graph.facts.combat.relations) == 4
+
+    data_root = Path("data/reference_corpus/characters")
+    keqing = CharacterReferenceLoader().load(data_root / "genshin_impact" / "keqing")
+    jinhsi = CharacterReferenceLoader().load(data_root / "wuthering_waves" / "jinhsi")
+    assert keqing.analysis is not None
+    assert keqing.quality.analysis_status.value == "completed"
+    assert jinhsi.analysis is None
+    assert jinhsi.quality.analysis_status.value == "missing"
+    assert any(
+        relation.relation_type == "generates"
+        for relation in jinhsi.facts.combat.relations
+    )
