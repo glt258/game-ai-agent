@@ -1,0 +1,53 @@
+schema_version: "character-analysis/0.1"
+reference_id: "test-game-alpha:test-character-complete"
+analysis_metadata:
+  analyzer: manual
+  model: null
+  prompt_version: null
+  analyzed_at: "2026-01-02T00:00:00Z"
+combat_design:
+  normalized_roles: [on_field_dps, burst_dps]
+  attack_range: melee
+  field_time: high
+  mechanical_complexity: medium
+  execution_difficulty: medium
+  mobility: medium
+  survivability: low
+  team_dependency: medium
+  primary_loop:
+    summary: "Build focus, enter an empowered state, then burst and reset."
+    steps: [setup, enter_empowered_state, sustained_attack, burst, reset]
+  resource_loop: "Build and spend focus."
+  burst_pattern: "Short high-output window."
+  archetypes: [resource_builder_spender]
+  core_mechanics: [focus, empowered_state]
+character_design:
+  character_fantasy: "A fast synthetic performer."
+  personality_archetypes: [showperson]
+  identity_hooks: [bright_armor]
+  narrative_hooks: [public_performer]
+  visual_motifs: [light, motion]
+  gameplay_identity_alignment:
+    score: 0.9
+    reasoning: "The public performer fantasy is reflected in visible burst windows."
+product_design:
+  primary_selling_points: [readable_burst]
+  gameplay_hooks: [focus_loop]
+  visual_hooks: [bright_armor]
+  narrative_hooks: [public_performer]
+  novelty_dimensions: [resource_timing]
+differentiation:
+  strongest_differentiators: [focus_burst_loop]
+  common_patterns: [melee_burst]
+  unusual_patterns: [public_performer_identity]
+design_patterns:
+  extracted_patterns: [visible_resource_payoff]
+similarity_features:
+  combat_signature: [melee, burst_window]
+  narrative_signature: [public_performer]
+  presentation_signature: [bright_armor]
+confidence:
+  overall: 0.8
+  combat_design: 0.85
+  character_design: 0.75
+  product_design: 0.7

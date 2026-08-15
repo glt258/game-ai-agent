@@ -1,0 +1,9 @@
+corpus_version: "character-reference-corpus/0.1"
+schema_versions:
+  facts: "character-facts/0.1"
+  analysis: "character-analysis/0.1"
+  sources: "character-sources/0.1"
+games:
+  - test-game-alpha
+  - test-game-beta
+status: development

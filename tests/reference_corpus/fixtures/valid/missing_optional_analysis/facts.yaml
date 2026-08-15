@@ -1,0 +1,24 @@
+schema_version: "character-facts/0.1"
+reference_id: "test-game-alpha:test-character-b"
+identity:
+  game_id: test-game-alpha
+  native_character_id: native-b
+  names:
+    canonical: "测试角色乙"
+    localized: {}
+  release: null
+  rarity: null
+combat:
+  native_taxonomy:
+    labels:
+      weapon_type: "synthetic staff"
+  abilities:
+    - ability_id: basic
+      native_name: null
+      native_category: "basic"
+      normalized_category: null
+      description_summary: null
+  mechanics: {}
+  team_mechanics: {}
+narrative: {}
+presentation: {}

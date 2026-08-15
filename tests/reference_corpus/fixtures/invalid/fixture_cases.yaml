@@ -1,0 +1,18 @@
+cases:
+  - missing_facts
+  - missing_sources
+  - invalid_yaml
+  - unknown_schema_version
+  - reference_id_mismatch
+  - unknown_game
+  - duplicate_ability_id
+  - duplicate_source_id
+  - invalid_source_url
+  - unknown_evidence_source
+  - invalid_confidence_low
+  - invalid_confidence_high
+  - invalid_alignment_score
+  - verified_with_conflict
+  - conflicted_without_conflict
+  - empty_canonical_name
+  - extra_unknown_field

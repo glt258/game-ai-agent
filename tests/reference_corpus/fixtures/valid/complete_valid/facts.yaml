@@ -1,0 +1,54 @@
+schema_version: "character-facts/0.1"
+reference_id: "test-game-alpha:test-character-complete"
+identity:
+  game_id: test-game-alpha
+  native_character_id: native-complete
+  names:
+    canonical: "测试完整角色"
+    localized:
+      zh-CN: "测试完整角色"
+      en-US: "Test Complete Character"
+  release:
+    version: "1.0"
+    date: "2026-01-01"
+  rarity:
+    native_value: 5
+    normalized_tier: high
+combat:
+  native_taxonomy:
+    labels:
+      weapon_type: "synthetic blade"
+      attribute: "synthetic light"
+  abilities:
+    - ability_id: basic
+      native_name: "基础攻击"
+      native_category: "basic"
+      normalized_category: basic
+      description_summary: "A short synthetic basic attack."
+    - ability_id: burst
+      native_name: "爆发"
+      native_category: "ultimate"
+      normalized_category: burst
+      description_summary: "A short synthetic burst."
+  mechanics:
+    resources: [focus]
+    states: [empowered]
+    transformations: []
+    summons: []
+    mobility_mechanics: [dash_attack]
+    targeting_mechanics: []
+  team_mechanics:
+    buffs: [attack_up]
+    debuffs: []
+    healing: []
+    shielding: []
+    grouping: []
+    off_field_effects: [team_buff]
+narrative:
+  faction: synthetic-faction
+  occupation: synthetic performer
+  affiliations: [synthetic-faction]
+  public_identity: "Public synthetic performer"
+presentation:
+  official_visual_tags: [bright, armored]
+  official_character_keywords: [focus, speed]

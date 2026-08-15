@@ -1,0 +1,26 @@
+schema_version: "character-sources/0.1"
+reference_id: "test-game-alpha:test-character-complete"
+sources:
+  - source_id: synthetic-official
+    source_type: official
+    publisher: Synthetic Studio
+    title: Synthetic complete character page
+    url: "https://example.com/synthetic/test-character-complete"
+    language: en
+    reliability: primary
+  - source_id: synthetic-database
+    source_type: database
+    publisher: Synthetic Database
+    title: Synthetic combat record
+    url: "https://example.com/synthetic/test-character-complete-combat"
+    language: en
+    reliability: secondary
+field_evidence:
+  identity.names.canonical: [synthetic-official]
+  combat.native_taxonomy: [synthetic-official]
+  combat.native_taxonomy.labels.weapon_type: [synthetic-official]
+  combat.abilities: [synthetic-official, synthetic-database]
+verification:
+  status: verified
+  conflicts: []
+  notes: []

@@ -1,0 +1,26 @@
+schema_version: "character-sources/0.1"
+reference_id: "test-game-alpha:test-character-conflict"
+sources:
+  - source_id: source-a
+    source_type: official
+    publisher: Synthetic Studio
+    title: Official synthetic record
+    url: "https://example.com/synthetic/conflict-a"
+    reliability: primary
+  - source_id: source-b
+    source_type: database
+    publisher: Synthetic Database
+    title: Conflicting synthetic record
+    url: "https://example.com/synthetic/conflict-b"
+    reliability: secondary
+field_evidence:
+  identity.names.canonical: [source-a, source-b]
+  combat.native_taxonomy.labels.weapon_type: [source-a, source-b]
+verification:
+  status: conflicted
+  conflicts:
+    - field_path: combat.native_taxonomy.labels.weapon_type
+      source_ids: [source-a, source-b]
+      description: "Synthetic sources disagree about the native weapon label."
+  notes:
+    - "Conflict is intentional for validator coverage."

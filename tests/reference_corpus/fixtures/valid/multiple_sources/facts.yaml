@@ -1,0 +1,19 @@
+schema_version: "character-facts/0.1"
+reference_id: "test-game-alpha:test-character-multi"
+identity:
+  game_id: test-game-alpha
+  native_character_id: null
+  names:
+    canonical: "测试多来源角色"
+    localized: {}
+  release: null
+  rarity: null
+combat:
+  native_taxonomy:
+    labels:
+      weapon_type: "synthetic bow"
+  abilities: []
+  mechanics: {}
+  team_mechanics: {}
+narrative: {}
+presentation: {}

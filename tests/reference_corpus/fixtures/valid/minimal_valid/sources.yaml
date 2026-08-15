@@ -1,0 +1,21 @@
+schema_version: "character-sources/0.1"
+reference_id: "test-game-alpha:test-character-a"
+sources:
+  - source_id: synthetic-source
+    source_type: official
+    publisher: Synthetic Studio
+    title: Synthetic character page
+    url: "https://example.com/synthetic/test-character-a"
+    language: en
+    retrieved_at: null
+    content_hash: null
+    reliability: primary
+field_evidence:
+  identity.names.canonical:
+    - synthetic-source
+  combat.native_taxonomy.labels.weapon_type:
+    - synthetic-source
+verification:
+  status: verified
+  conflicts: []
+  notes: []

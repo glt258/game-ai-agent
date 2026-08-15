@@ -1,0 +1,30 @@
+corpus_version: "character-reference-corpus/0.1"
+target_count: 20
+games:
+  genshin-impact:
+    - "on_field_dps"
+    - "off_field_or_quick_swap"
+    - "support_or_sustain"
+    - "special_core_mechanic"
+    - "distinct_design_space"
+  wuthering-waves:
+    - "on_field_dps"
+    - "off_field_or_quick_swap"
+    - "support_or_sustain"
+    - "special_core_mechanic"
+    - "distinct_design_space"
+  zenless-zone-zero:
+    - "on_field_dps"
+    - "off_field_or_quick_swap"
+    - "support_or_sustain"
+    - "special_core_mechanic"
+    - "distinct_design_space"
+  neverness-to-everness:
+    - "on_field_dps"
+    - "off_field_or_quick_swap"
+    - "support_or_sustain"
+    - "special_core_mechanic"
+    - "distinct_design_space"
+notes:
+  - "This is a coverage plan, not a set of commercial character records."
+  - "Populate only after source collection and human review."
