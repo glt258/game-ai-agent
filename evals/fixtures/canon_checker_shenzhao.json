@@ -1,0 +1,48 @@
+{
+  "draft": {
+    "draft_id": "draft_shenzhao_regression_001",
+    "status": "draft",
+    "name": "沈昭",
+    "canonical_character_id": null,
+    "age": 23,
+    "age_range": "20-25",
+    "gender": "女性",
+    "faction_id": "faction_002",
+    "occupation": "临洲大学研究助理",
+    "social_role": "校园与社区活动志愿协作者",
+    "combat_role": "support",
+    "design_pitch": "擅长整理现场观察、但不替代专业处置的辅助角色。",
+    "personality": ["冷静", "克制", "先观察后行动"],
+    "background": "她参与了一次南栈观察项目，并负责整理不涉及内部权限的现场时间线。",
+    "story_hook": "事后她整理的时间线记录被复盘引用，这让她开始关注公共叙述如何影响个人判断。",
+    "relationships": [],
+    "ability_concept": "对自己连续观察并亲手标记的行动节点提供短暂节奏提示；不能替代急救、调查或专业判断。",
+    "knowledge_scope": "仅凭学生与志愿协作者身份接触公开信息和被明确交付的现场事项。",
+    "canon_basis": [
+      {"source_id": "world_rules", "supports": ["world_rules"]},
+      {"source_id": "faction_002", "supports": ["faction_id", "occupation"]},
+      {"source_id": "lore_006", "supports": ["world_context"]},
+      {"source_id": "incident_nanzhan_postshow_route_conflict_001", "supports": ["story_hook"]}
+    ],
+    "new_design_elements": [
+      "南栈观察项目",
+      "时间线记录被复盘引用"
+    ],
+    "open_questions": ["南栈观察项目是否会被正式纳入后续 Story Canon？"],
+    "constraint_notes": ["与南栈事故保持间接、非核心联系。"],
+    "story_link": {
+      "target_id": "incident_nanzhan_postshow_route_conflict_001",
+      "relation": "indirect_proposed_connection",
+      "status": "proposed"
+    },
+    "proposed_new_content": []
+  },
+  "request": {
+    "brief": "设计一个与临洲大学有关的年轻女性角色，与南栈事件保持间接联系。",
+    "hard_constraints": ["20～25岁", "不得成为事件核心负责人"],
+    "soft_preferences": ["偏辅助", "性格冷静克制"],
+    "forbidden_elements": ["秘密政府组织", "秘密行政机构"],
+    "desired_connections": ["南栈演出散场事故", "临洲大学"],
+    "request_id": "request_shenzhao_001"
+  }
+}

@@ -1,0 +1,966 @@
+"""Deterministic, read-only validation for generated character drafts.
+
+The generator is allowed to be creative.  This checker is intentionally not:
+it reads structured Canon, applies stable rules, and returns machine-readable
+findings.  It never calls a model and never mutates the draft or repositories.
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Iterable, Mapping, Sequence
+
+from knowledge import KnowledgeResolver
+from story import StoryRepository, load_story_repository
+
+from .character_generation import (
+    CharacterAuthoringToolbox,
+    CharacterDesignRequest,
+    CharacterDraft,
+)
+from .grounding import GroundingValidator
+
+
+class CanonCheckStatus(str, Enum):
+    PASS = "pass"
+    WARN = "warn"
+    FAIL = "fail"
+
+
+class FindingSeverity(str, Enum):
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+
+
+class CanonFindingCode(str, Enum):
+    INVALID_CANON_REFERENCE = "INVALID_CANON_REFERENCE"
+    UNSUPPORTED_CANON_CLAIM = "UNSUPPORTED_CANON_CLAIM"
+    PROPOSAL_PRESENTED_AS_CANON = "PROPOSAL_PRESENTED_AS_CANON"
+    CANON_PRESENTED_AS_PROPOSAL = "CANON_PRESENTED_AS_PROPOSAL"
+    WORLD_RULE_VIOLATION = "WORLD_RULE_VIOLATION"
+    FORBIDDEN_PATTERN = "FORBIDDEN_PATTERN"
+    AUTHORITY_OVERREACH = "AUTHORITY_OVERREACH"
+    KNOWLEDGE_SCOPE_OVERREACH = "KNOWLEDGE_SCOPE_OVERREACH"
+    STORY_ROLE_OVERREACH = "STORY_ROLE_OVERREACH"
+    EXISTING_CHARACTER_CONFLICT = "EXISTING_CHARACTER_CONFLICT"
+    DUPLICATE_CHARACTER_CONCEPT = "DUPLICATE_CHARACTER_CONCEPT"
+    HARD_CONSTRAINT_VIOLATION = "HARD_CONSTRAINT_VIOLATION"
+    AMBIGUOUS_NEW_CANON = "AMBIGUOUS_NEW_CANON"
+    INVALID_STORY_LINK = "INVALID_STORY_LINK"
+    INVALID_FACTION_ROLE = "INVALID_FACTION_ROLE"
+    INVALID_DRAFT_STATUS = "INVALID_DRAFT_STATUS"
+
+
+@dataclass(frozen=True)
+class CanonFinding:
+    code: CanonFindingCode
+    severity: FindingSeverity
+    field_path: str
+    message: str
+    evidence_ids: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "code": self.code.value,
+            "severity": self.severity.value,
+            "field_path": self.field_path,
+            "message": self.message,
+            "evidence_ids": list(self.evidence_ids),
+        }
+
+
+@dataclass(frozen=True)
+class CanonCheckSummary:
+    errors: int
+    warnings: int
+    infos: int
+
+    def to_dict(self) -> dict[str, int]:
+        return {
+            "errors": self.errors,
+            "warnings": self.warnings,
+            "infos": self.infos,
+        }
+
+
+@dataclass(frozen=True)
+class CanonCheckReport:
+    draft_id: str
+    status: CanonCheckStatus
+    findings: tuple[CanonFinding, ...]
+    checked_source_ids: tuple[str, ...]
+    summary: CanonCheckSummary
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "draft_id": self.draft_id,
+            "status": self.status.value,
+            "findings": [finding.to_dict() for finding in self.findings],
+            "checked_source_ids": list(self.checked_source_ids),
+            "summary": self.summary.to_dict(),
+        }
+
+
+@dataclass(frozen=True)
+class CanonCheckContext:
+    """Small read-only dependency bundle used by Canon check rules."""
+
+    resolver: KnowledgeResolver
+    story_repository: StoryRepository
+    world_rules: Mapping[str, Any]
+
+
+_GENERIC_SUPPORTS: Mapping[str, frozenset[str]] = {
+    "world_rules": frozenset(
+        {"world_rules", "world_context", "ability_concept", "setting"}
+    ),
+    "faction": frozenset(
+        {"faction_id", "faction_context", "occupation", "social_role"}
+    ),
+    "lore": frozenset(
+        {"world_context", "background", "ability_concept", "knowledge_scope"}
+    ),
+    "character": frozenset(
+        {"character_context", "relationship", "existing_character_awareness"}
+    ),
+    "story": frozenset({"story_context", "story_hook", "story_link"}),
+    "case": frozenset({"story_context", "story_hook", "story_link", "case_context"}),
+    "incident": frozenset(
+        {"story_context", "story_hook", "story_link", "incident_context"}
+    ),
+    "project": frozenset({"project_context", "background", "knowledge_scope"}),
+}
+
+_SEVERITY_ORDER = {
+    FindingSeverity.ERROR: 0,
+    FindingSeverity.WARNING: 1,
+    FindingSeverity.INFO: 2,
+}
+
+_NEGATION_PREFIXES = (
+    "不得",
+    "不能",
+    "不会",
+    "并非",
+    "不是",
+    "没有",
+    "不可",
+    "不承担",
+    "非核心",
+    "不",
+    "未",
+    "无",
+)
+
+_TEXT_FIELDS = (
+    "occupation",
+    "social_role",
+    "design_pitch",
+    "background",
+    "story_hook",
+    "ability_concept",
+    "knowledge_scope",
+)
+
+
+class CanonChecker:
+    """Run deterministic Canon checks over a ``CharacterDraft``."""
+
+    def __init__(
+        self,
+        *,
+        resolver: KnowledgeResolver | None = None,
+        story_repository: StoryRepository | None = None,
+    ) -> None:
+        actual_resolver = resolver or KnowledgeResolver()
+        actual_story_repository = story_repository or load_story_repository()
+        toolbox = CharacterAuthoringToolbox(
+            actual_resolver, actual_story_repository
+        )
+        world_rules = toolbox.world_rules_view()["result"]
+        self.context = CanonCheckContext(
+            actual_resolver,
+            actual_story_repository,
+            world_rules,
+        )
+        self._toolbox = toolbox
+        self._rules = (
+            self._check_references,
+            self._check_canon_support,
+            self._check_proposal_separation,
+            self._check_world_rules,
+            self._check_authority,
+            self._check_knowledge_scope,
+            self._check_story_and_relationships,
+            self._check_hard_constraints,
+            self._check_existing_character_collision,
+        )
+
+    def check(
+        self,
+        draft: CharacterDraft,
+        *,
+        request: CharacterDesignRequest | None = None,
+    ) -> CanonCheckReport:
+        if not isinstance(draft, CharacterDraft):
+            raise TypeError("draft must be a CharacterDraft")
+        if request is not None and not isinstance(request, CharacterDesignRequest):
+            raise TypeError("request must be a CharacterDesignRequest or None")
+
+        findings: list[CanonFinding] = []
+        for rule in self._rules:
+            findings.extend(rule(draft, request))
+        ordered = self._deduplicate_and_sort(findings)
+        summary = CanonCheckSummary(
+            errors=sum(item.severity == FindingSeverity.ERROR for item in ordered),
+            warnings=sum(
+                item.severity == FindingSeverity.WARNING for item in ordered
+            ),
+            infos=sum(item.severity == FindingSeverity.INFO for item in ordered),
+        )
+        status = (
+            CanonCheckStatus.FAIL
+            if summary.errors
+            else CanonCheckStatus.WARN
+            if summary.warnings
+            else CanonCheckStatus.PASS
+        )
+        return CanonCheckReport(
+            draft.draft_id,
+            status,
+            ordered,
+            self._checked_source_ids(draft),
+            summary,
+        )
+
+    def _check_references(
+        self,
+        draft: CharacterDraft,
+        request: CharacterDesignRequest | None,
+    ) -> Iterable[CanonFinding]:
+        del request
+        if draft.status != "draft":
+            yield self._finding(
+                CanonFindingCode.INVALID_DRAFT_STATUS,
+                FindingSeverity.ERROR,
+                "status",
+                f"CharacterDraft status must be 'draft', not {draft.status!r}.",
+            )
+        if draft.canonical_character_id is not None:
+            yield self._finding(
+                CanonFindingCode.INVALID_DRAFT_STATUS,
+                FindingSeverity.ERROR,
+                "canonical_character_id",
+                "A draft must not claim a canonical character ID.",
+                (draft.canonical_character_id,)
+                if draft.canonical_character_id in self.context.resolver.characters
+                else (),
+            )
+        if draft.faction_id and self._source_type(draft.faction_id) != "faction":
+            yield self._invalid_reference("faction_id", draft.faction_id)
+        for index, entry in enumerate(draft.canon_basis):
+            actual_type = self._source_type(entry.source_id)
+            if actual_type is None:
+                yield self._invalid_reference(
+                    f"canon_basis[{index}].source_id", entry.source_id
+                )
+            elif entry.source_type and entry.source_type != actual_type:
+                yield self._finding(
+                    CanonFindingCode.INVALID_CANON_REFERENCE,
+                    FindingSeverity.ERROR,
+                    f"canon_basis[{index}].source_type",
+                    f"Canon source {entry.source_id!r} is {actual_type!r}, not {entry.source_type!r}.",
+                    (entry.source_id,),
+                )
+        if draft.story_link and self._source_type(
+            draft.story_link.target_id
+        ) not in {"story", "case", "incident"}:
+            yield self._invalid_reference(
+                "story_link.target_id", draft.story_link.target_id
+            )
+        for index, relationship in enumerate(draft.relationships):
+            target_id = relationship.get("target_id")
+            if target_id and self._source_type(str(target_id)) not in {
+                "character",
+                "faction",
+            }:
+                yield self._invalid_reference(
+                    f"relationships[{index}].target_id", str(target_id)
+                )
+
+    def _check_canon_support(
+        self,
+        draft: CharacterDraft,
+        request: CharacterDesignRequest | None,
+    ) -> Iterable[CanonFinding]:
+        del request
+        for index, entry in enumerate(draft.canon_basis):
+            source_type = self._source_type(entry.source_id)
+            if source_type is None:
+                continue
+            evidence_text = self._source_text(entry.source_id)
+            generic = _GENERIC_SUPPORTS.get(source_type, frozenset())
+            for support_index, support in enumerate(entry.supports):
+                if support in generic:
+                    continue
+                if GroundingValidator.extractively_supported(support, evidence_text):
+                    continue
+                yield self._finding(
+                    CanonFindingCode.UNSUPPORTED_CANON_CLAIM,
+                    FindingSeverity.ERROR,
+                    f"canon_basis[{index}].supports[{support_index}]",
+                    f"Canon source {entry.source_id!r} does not support claim {support!r}.",
+                    (entry.source_id,),
+                )
+
+            if (
+                source_type == "faction"
+                and entry.source_id == draft.faction_id
+                and any(
+                    support in {"occupation", "social_role", "faction_id"}
+                    for support in entry.supports
+                )
+                and self._faction_role_conflict(draft, entry.source_id)
+            ):
+                yield self._finding(
+                    CanonFindingCode.UNSUPPORTED_CANON_CLAIM,
+                    FindingSeverity.ERROR,
+                    f"canon_basis[{index}].supports",
+                    f"Faction {entry.source_id!r} does not support the draft's claimed role or authority.",
+                    (entry.source_id,),
+                )
+
+    def _check_proposal_separation(
+        self,
+        draft: CharacterDraft,
+        request: CharacterDesignRequest | None,
+    ) -> Iterable[CanonFinding]:
+        del request
+        proposals = tuple(
+            item
+            for item in (*draft.new_design_elements, *draft.proposed_new_content)
+            if self._proposal_fragments(item)
+        )
+        if not proposals:
+            return
+        evidence = (
+            (draft.story_link.target_id,)
+            if draft.story_link
+            and self._source_type(draft.story_link.target_id) is not None
+            else ()
+        )
+        for field_path in ("background", "story_hook", "design_pitch"):
+            narrative = getattr(draft, field_path)
+            matching = [
+                proposal
+                for proposal in proposals
+                if self._proposal_asserted_in_narrative(proposal, narrative)
+            ]
+            if not matching:
+                continue
+            yield self._finding(
+                CanonFindingCode.PROPOSAL_PRESENTED_AS_CANON,
+                FindingSeverity.WARNING,
+                field_path,
+                f"Narrative presents proposed element {matching[0]!r} as an established event.",
+                evidence,
+            )
+
+    def _check_world_rules(
+        self,
+        draft: CharacterDraft,
+        request: CharacterDesignRequest | None,
+    ) -> Iterable[CanonFinding]:
+        del request
+        rules = {
+            str(item.get("id")): str(item.get("statement", ""))
+            for item in self.context.world_rules.get("rules", [])
+            if isinstance(item, Mapping)
+        }
+        ability = draft.ability_concept
+        if "RULE-006" in rules and self._ability_replaces_expertise(ability):
+            yield self._finding(
+                CanonFindingCode.WORLD_RULE_VIOLATION,
+                FindingSeverity.ERROR,
+                "ability_concept",
+                "Ability claims to replace professional knowledge, training, or real resources.",
+                ("world_rules",),
+            )
+        if (
+            ("RULE-003" in rules or "RULE-004" in rules)
+            and self._unbounded_control_ability(ability)
+        ):
+            yield self._finding(
+                CanonFindingCode.WORLD_RULE_VIOLATION,
+                FindingSeverity.ERROR,
+                "ability_concept",
+                "Ability is unbounded control rather than a limited personal bias rule.",
+                ("world_rules",),
+            )
+
+        secret_field = self._first_secret_institution_field(draft)
+        if "RULE-008" in rules and secret_field:
+            yield self._finding(
+                CanonFindingCode.WORLD_RULE_VIOLATION,
+                FindingSeverity.ERROR,
+                secret_field,
+                "Draft creates a secret centralized ability-governance institution forbidden by RULE-008.",
+                ("world_rules",),
+            )
+
+        for pattern in self.context.world_rules.get("forbidden_patterns", []):
+            if not isinstance(pattern, str):
+                continue
+            field_path = self._forbidden_pattern_field(pattern, draft)
+            if field_path:
+                yield self._finding(
+                    CanonFindingCode.FORBIDDEN_PATTERN,
+                    FindingSeverity.ERROR,
+                    field_path,
+                    f"Draft matches formal Forbidden Pattern: {pattern}",
+                    ("world_rules",),
+                )
+
+    def _check_authority(
+        self,
+        draft: CharacterDraft,
+        request: CharacterDesignRequest | None,
+    ) -> Iterable[CanonFinding]:
+        del request
+        if draft.faction_id and self._source_type(draft.faction_id) != "faction":
+            return
+        text = " ".join(
+            (draft.occupation, draft.social_role, draft.background, draft.story_hook)
+        )
+        evidence = (draft.faction_id,) if draft.faction_id else ("world_rules",)
+        if self._positive_match(
+            text,
+            r"最高负责人|最高领导|全权负责人|统领全市|全权指挥|行政执法权|(?:全市|城市)警务总指挥|消防总指挥",
+        ):
+            yield self._finding(
+                CanonFindingCode.AUTHORITY_OVERREACH,
+                FindingSeverity.ERROR,
+                "occupation",
+                "Draft claims organization-wide or city-wide authority not established by Canon.",
+                evidence,
+            )
+        if self._positive_match(
+            text,
+            r"独立行政机关|独立监管机关|秘密监管(?:部门|机构)|秘密行政机构|神秘管理局",
+        ):
+            yield self._finding(
+                CanonFindingCode.AUTHORITY_OVERREACH,
+                FindingSeverity.ERROR,
+                "background",
+                "Draft turns a role or faction into an independent authority that Canon does not define.",
+                evidence,
+            )
+        if draft.faction_id and self._faction_role_conflict(draft, draft.faction_id):
+            yield self._finding(
+                CanonFindingCode.INVALID_FACTION_ROLE,
+                FindingSeverity.ERROR,
+                "occupation",
+                f"Occupation is outside the deterministic function boundary of faction {draft.faction_id!r}.",
+                (draft.faction_id,),
+            )
+
+    def _check_knowledge_scope(
+        self,
+        draft: CharacterDraft,
+        request: CharacterDesignRequest | None,
+    ) -> Iterable[CanonFinding]:
+        del request
+        scope = draft.knowledge_scope
+        broad_access = re.search(
+            r"(?:可|能够|有权)?(?:访问|调取|查阅|知道|掌握).{0,12}(?:全城|所有|全部|完整|无限|无边界).{0,16}(?:档案|资料|数据|内部结论|记录|restricted|secret)|(?:全城|所有|全部|完整|无限|无边界).{0,16}(?:档案|资料|数据|内部结论|记录).{0,8}(?:访问|调取|查阅|权限)",
+            scope,
+            re.IGNORECASE,
+        )
+        evidence = (draft.faction_id,) if draft.faction_id else ("world_rules",)
+        if broad_access and not self._match_is_negated(scope, broad_access.start()):
+            yield self._finding(
+                CanonFindingCode.KNOWLEDGE_SCOPE_OVERREACH,
+                FindingSeverity.ERROR,
+                "knowledge_scope",
+                "Draft claims blanket access to city-wide, internal, or complete records without a Canon authorization.",
+                evidence,
+            )
+        for lore_id in sorted(set(re.findall(r"lore(?:_secret)?_[A-Za-z0-9]+", scope))):
+            lore = self.context.resolver.lore.get(lore_id)
+            if lore is None:
+                continue
+            if lore.get("sensitivity") == "public":
+                continue
+            position = scope.find(lore_id)
+            if self._match_is_negated(scope, position):
+                continue
+            yield self._finding(
+                CanonFindingCode.KNOWLEDGE_SCOPE_OVERREACH,
+                FindingSeverity.ERROR,
+                "knowledge_scope",
+                f"Draft claims non-public Lore {lore_id!r} without a Canon authorization.",
+                (lore_id,),
+            )
+
+    def _check_story_and_relationships(
+        self,
+        draft: CharacterDraft,
+        request: CharacterDesignRequest | None,
+    ) -> Iterable[CanonFinding]:
+        del request
+        if draft.story_link and self._source_type(
+            draft.story_link.target_id
+        ) in {"story", "case", "incident"}:
+            if draft.story_link.status == "canon_backed":
+                yield self._finding(
+                    CanonFindingCode.INVALID_STORY_LINK,
+                    FindingSeverity.ERROR,
+                    "story_link.status",
+                    "The target exists, but Canon does not establish this new draft's relationship to it; use a proposed status.",
+                    (draft.story_link.target_id,),
+                )
+            role_field = self._story_overreach_field(draft)
+            if role_field:
+                yield self._finding(
+                    CanonFindingCode.STORY_ROLE_OVERREACH,
+                    FindingSeverity.ERROR,
+                    role_field,
+                    "Draft takes a core, sole, or resolving role in an existing story position not assigned by Canon.",
+                    (draft.story_link.target_id,),
+                )
+        for index, relationship in enumerate(draft.relationships):
+            target_id = relationship.get("target_id")
+            if not target_id or self._source_type(str(target_id)) not in {
+                "character",
+                "faction",
+            }:
+                continue
+            status = str(relationship.get("status", "proposed"))
+            if status == "canon_backed":
+                yield self._finding(
+                    CanonFindingCode.UNSUPPORTED_CANON_CLAIM,
+                    FindingSeverity.ERROR,
+                    f"relationships[{index}].status",
+                    "Existing target does not make a relationship with a new draft established Canon.",
+                    (str(target_id),),
+                )
+
+    def _check_hard_constraints(
+        self,
+        draft: CharacterDraft,
+        request: CharacterDesignRequest | None,
+    ) -> Iterable[CanonFinding]:
+        if request is None:
+            return
+        hard_text = " ".join((*request.hard_constraints, request.brief))
+        bounds = self._age_bounds(hard_text)
+        if bounds and draft.age is not None and not bounds[0] <= draft.age <= bounds[1]:
+            yield self._finding(
+                CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
+                FindingSeverity.ERROR,
+                "age",
+                f"Draft age {draft.age} violates required range {bounds[0]}-{bounds[1]}.",
+                (request.request_id,),
+            )
+
+        role_field = self._story_overreach_field(draft)
+        if role_field and self._positive_match(
+            hard_text,
+            r"不得.{0,8}(?:核心负责人|主要负责人|主导者)|非核心(?:联系|角色)|不能.{0,8}(?:负责|主导|解决)",
+        ):
+            yield self._finding(
+                CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
+                FindingSeverity.ERROR,
+                role_field,
+                "Draft violates the request's non-core story-role constraint.",
+                (request.request_id,),
+            )
+
+        draft_text = self._all_draft_text(draft)
+        for forbidden in request.forbidden_elements:
+            if self._forbidden_request_matches(forbidden, draft_text):
+                yield self._finding(
+                    CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
+                    FindingSeverity.ERROR,
+                    "forbidden_elements",
+                    f"Draft includes request-forbidden element {forbidden!r}.",
+                    (request.request_id,),
+                )
+
+        required_factions = re.findall(
+            r"(?:必须|需要|应当).{0,8}(faction_[A-Za-z0-9_]+)", hard_text
+        )
+        forbidden_factions = re.findall(
+            r"(?:不得|禁止|不能).{0,8}(faction_[A-Za-z0-9_]+)", hard_text
+        )
+        if required_factions and draft.faction_id not in required_factions:
+            yield self._finding(
+                CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
+                FindingSeverity.ERROR,
+                "faction_id",
+                f"Draft faction {draft.faction_id!r} does not satisfy required faction {required_factions[0]!r}.",
+                (request.request_id,),
+            )
+        if draft.faction_id in forbidden_factions:
+            yield self._finding(
+                CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
+                FindingSeverity.ERROR,
+                "faction_id",
+                f"Draft uses forbidden faction {draft.faction_id!r}.",
+                (request.request_id,),
+            )
+
+        combat_requirements = {
+            "support": ("辅助", "支援", "support"),
+            "control": ("控制", "control"),
+            "defense": ("防御", "defense"),
+            "burst": ("爆发", "burst"),
+            "sustain": ("持续", "sustain"),
+        }
+        for role, markers in combat_requirements.items():
+            if any(f"必须{marker}" in hard_text or f"要求{marker}" in hard_text for marker in markers):
+                if draft.combat_role != role:
+                    yield self._finding(
+                        CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
+                        FindingSeverity.ERROR,
+                        "combat_role",
+                        f"Draft combat role {draft.combat_role!r} does not satisfy required role {role!r}.",
+                        (request.request_id,),
+                    )
+                break
+
+    def _check_existing_character_collision(
+        self,
+        draft: CharacterDraft,
+        request: CharacterDesignRequest | None,
+    ) -> Iterable[CanonFinding]:
+        del request
+        if draft.canonical_character_id in self.context.resolver.characters:
+            yield self._finding(
+                CanonFindingCode.EXISTING_CHARACTER_CONFLICT,
+                FindingSeverity.ERROR,
+                "canonical_character_id",
+                f"New draft reuses existing character ID {draft.canonical_character_id!r}.",
+                (str(draft.canonical_character_id),),
+            )
+        draft_name = self._normalize(draft.name)
+        draft_occupation = self._normalize(draft.occupation)
+        for character_id, character in self.context.resolver.characters.items():
+            name = character.get("name", {})
+            display_name = name.get("display_name", "") if isinstance(name, Mapping) else ""
+            profile = character.get("basic_profile", {})
+            occupation = profile.get("occupation", "") if isinstance(profile, Mapping) else ""
+            if (
+                draft_name
+                and draft_name == self._normalize(str(display_name))
+                and draft_occupation
+                and draft_occupation == self._normalize(str(occupation))
+            ):
+                yield self._finding(
+                    CanonFindingCode.DUPLICATE_CHARACTER_CONCEPT,
+                    FindingSeverity.ERROR,
+                    "name",
+                    "Draft duplicates both the exact name and occupation of an existing character.",
+                    (character_id,),
+                )
+
+    def _source_type(self, source_id: str) -> str | None:
+        if source_id == "world_rules":
+            return "world_rules"
+        resolver = self.context.resolver
+        for source_type, registry in (
+            ("faction", resolver.factions),
+            ("lore", resolver.lore),
+            ("character", resolver.characters),
+            ("project", resolver.projects),
+            ("case", resolver.cases),
+            ("incident", resolver.incidents),
+            ("story", self.context.story_repository.canon),
+        ):
+            if source_id in registry:
+                return source_type
+        return None
+
+    def _source_record(self, source_id: str) -> Mapping[str, Any] | None:
+        source_type = self._source_type(source_id)
+        resolver = self.context.resolver
+        if source_type == "world_rules":
+            return self.context.world_rules
+        if source_type == "faction":
+            return self._toolbox._faction_view(resolver.factions[source_id])
+        if source_type == "lore":
+            return self._toolbox._lore_view(resolver.lore[source_id])
+        if source_type == "character":
+            return self._toolbox._character_view(resolver.characters[source_id])
+        if source_type == "story":
+            return self.context.story_repository.canon[source_id]
+        if source_type == "case":
+            return resolver.cases[source_id]
+        if source_type == "incident":
+            return resolver.incidents[source_id]
+        if source_type == "project":
+            return resolver.projects[source_id]
+        return None
+
+    def _source_text(self, source_id: str) -> str:
+        record = self._source_record(source_id)
+        return " ".join(self._string_values(record)) if record else ""
+
+    @classmethod
+    def _string_values(cls, value: Any) -> Iterable[str]:
+        if isinstance(value, str):
+            yield value
+        elif isinstance(value, Mapping):
+            for key in sorted(value):
+                if key in {"rumors", "misconceptions"}:
+                    continue
+                yield from cls._string_values(value[key])
+        elif isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+            for item in value:
+                yield from cls._string_values(item)
+
+    def _checked_source_ids(self, draft: CharacterDraft) -> tuple[str, ...]:
+        candidates = {"world_rules"}
+        if draft.faction_id:
+            candidates.add(draft.faction_id)
+        candidates.update(item.source_id for item in draft.canon_basis)
+        if draft.story_link:
+            candidates.add(draft.story_link.target_id)
+        candidates.update(
+            str(item.get("target_id"))
+            for item in draft.relationships
+            if item.get("target_id")
+        )
+        return tuple(sorted(item for item in candidates if self._source_type(item)))
+
+    @staticmethod
+    def _normalize(text: str) -> str:
+        return "".join(re.findall(r"[A-Za-z0-9\u4e00-\u9fff]+", text)).lower()
+
+    @classmethod
+    def _proposal_fragments(cls, proposal: str) -> tuple[str, ...]:
+        clean = re.sub(
+            r"拟议|提案|待确认|建议|新增|新设计|新角色设计|proposed|proposal",
+            "",
+            proposal,
+            flags=re.IGNORECASE,
+        )
+        return tuple(
+            part.strip(" ：:()（）[]【】.-")
+            for part in re.split(r"[；;。！？!?\n]|(?:：|:)", clean)
+            if len(cls._normalize(part)) >= 5
+        )
+
+    @classmethod
+    def _proposal_asserted_in_narrative(cls, proposal: str, narrative: str) -> bool:
+        narrative_normalized = cls._normalize(narrative)
+        if not narrative_normalized:
+            return False
+        return any(
+            cls._normalize(fragment) in narrative_normalized
+            or (
+                len(narrative_normalized) >= 8
+                and narrative_normalized in cls._normalize(fragment)
+            )
+            for fragment in cls._proposal_fragments(proposal)
+        )
+
+    @classmethod
+    def _match_is_negated(cls, text: str, start: int) -> bool:
+        prefix = text[max(0, start - 8) : start]
+        return any(prefix.endswith(marker) for marker in _NEGATION_PREFIXES)
+
+    @classmethod
+    def _positive_match(cls, text: str, pattern: str) -> bool:
+        for match in re.finditer(pattern, text, re.IGNORECASE):
+            if not cls._match_is_negated(text, match.start()):
+                return True
+        return False
+
+    @classmethod
+    def _ability_replaces_expertise(cls, text: str) -> bool:
+        profession = r"急救|医疗|诊断|犯罪调查|侦查|专业知识|专业训练|身体训练|现实资源"
+        replacement = r"无需|不需要|直接完成|完全替代|取代|自动完成"
+        return bool(
+            re.search(rf"(?:{replacement}).{{0,12}}(?:{profession})", text)
+            or re.search(rf"(?:{profession}).{{0,12}}(?:{replacement})", text)
+        )
+
+    @staticmethod
+    def _unbounded_control_ability(text: str) -> bool:
+        return bool(
+            re.search(
+                r"(?:永久|无条件|随时|一眼).{0,8}(?:控制|支配|改写).{0,8}(?:任何人|所有人|思想|意志)",
+                text,
+            )
+        )
+
+    @classmethod
+    def _first_secret_institution_field(cls, draft: CharacterDraft) -> str | None:
+        pattern = r"秘密.{0,8}(?:政府|行政|监管|管理局|机构|部门|机关)"
+        for field in (*_TEXT_FIELDS, "proposed_new_content", "new_design_elements"):
+            value = getattr(draft, field)
+            text = " ".join(value) if isinstance(value, tuple) else value
+            if cls._positive_match(text, pattern):
+                return field
+        return None
+
+    @classmethod
+    def _forbidden_pattern_field(
+        cls, pattern: str, draft: CharacterDraft
+    ) -> str | None:
+        normalized_pattern = cls._normalize(pattern)
+        secret_government_detector = "政府" in pattern and "管理局" in pattern
+        secret_facility_detector = "秘密机构" in pattern and "实验室" in pattern
+        conspiracy_detector = "幕后" in pattern and "组织" in pattern
+        elemental_detector = all(marker in pattern for marker in ("火", "水", "雷"))
+        for field in (*_TEXT_FIELDS, "proposed_new_content", "new_design_elements"):
+            value = getattr(draft, field)
+            text = " ".join(value) if isinstance(value, tuple) else value
+            normalized = cls._normalize(text)
+            if len(normalized_pattern) >= 6 and normalized_pattern in normalized:
+                return field
+            if secret_government_detector and cls._positive_match(
+                text, r"秘密.{0,8}(?:政府|行政|监管|管理局|机构|部门|机关)"
+            ):
+                return field
+            if secret_facility_detector and cls._positive_match(
+                text, r"(?:互不相干|不断增加|新增).{0,12}(?:秘密机构|实验室|收容设施)|秘密(?:实验室|收容设施)"
+            ):
+                return field
+            if conspiracy_detector and cls._positive_match(
+                text, r"(?:所有|一切|每个).{0,12}(?:事件|事故).{0,12}(?:幕后|邪恶).{0,8}组织"
+            ):
+                return field
+            if elemental_detector and re.search(
+                r"(?:火|水|雷|风|光|暗)(?:系|属性|元素)", text
+            ):
+                return field
+        return None
+
+    @classmethod
+    def _all_draft_text(cls, draft: CharacterDraft) -> str:
+        values = [str(getattr(draft, field)) for field in _TEXT_FIELDS]
+        values.extend(draft.personality)
+        values.extend(draft.new_design_elements)
+        values.extend(draft.proposed_new_content)
+        values.extend(draft.constraint_notes)
+        return " ".join(values)
+
+    @classmethod
+    def _forbidden_request_matches(cls, forbidden: str, draft_text: str) -> bool:
+        if cls._normalize(forbidden) in cls._normalize(draft_text):
+            return True
+        if "秘密" in forbidden and any(
+            marker in forbidden for marker in ("政府", "行政", "监管", "机构", "组织")
+        ):
+            return cls._positive_match(
+                draft_text, r"秘密.{0,8}(?:政府|行政|监管|管理局|机构|部门|机关|组织)"
+            )
+        return False
+
+    def _faction_role_conflict(self, draft: CharacterDraft, faction_id: str) -> bool:
+        faction = self.context.resolver.factions.get(faction_id)
+        if faction is None:
+            return False
+        faction_type = str(faction.get("type", ""))
+        role_text = " ".join((draft.occupation, draft.social_role))
+        if self._positive_match(
+            role_text,
+            r"独立行政机关|行政执法权|秘密监管|全市警务总指挥|城市警务总指挥",
+        ):
+            return True
+        domain_patterns = {
+            "academic": r"警务总指挥|消防总指挥|行政执法|城市监管负责人",
+            "community": r"警务总指挥|消防总指挥|行政执法|城市监管负责人",
+            "professional_association": r"警务总指挥|消防总指挥|行政执法",
+            "corporation": r"警务总指挥|消防总指挥|行政执法",
+            "media": r"警务总指挥|消防总指挥|行政执法",
+            "public_service": r"全城能力监管最高负责人|公共安全联席体系最高负责人|统领全市",
+        }
+        pattern = domain_patterns.get(faction_type)
+        return bool(pattern and self._positive_match(role_text, pattern))
+
+    @classmethod
+    def _story_overreach_field(cls, draft: CharacterDraft) -> str | None:
+        pattern = (
+            r"领导.{0,10}(?:事故|事件|应急处置)|全权指挥|最终解决|"
+            r"真正的?(?:负责人|幕后真凶)|唯一关键证人|核心负责人|主导.{0,8}(?:事故|事件)"
+        )
+        for field in ("background", "story_hook", "design_pitch"):
+            if cls._positive_match(getattr(draft, field), pattern):
+                return field
+        return None
+
+    @staticmethod
+    def _age_bounds(text: str) -> tuple[int, int] | None:
+        match = re.search(r"(\d+)\s*[～至到\-]\s*(\d+)\s*岁?", text)
+        if match:
+            return int(match.group(1)), int(match.group(2))
+        match = re.search(r"(\d+)\s*岁左右", text)
+        if match:
+            value = int(match.group(1))
+            return value - 2, value + 2
+        return None
+
+    @staticmethod
+    def _finding(
+        code: CanonFindingCode,
+        severity: FindingSeverity,
+        field_path: str,
+        message: str,
+        evidence_ids: tuple[str, ...] = (),
+    ) -> CanonFinding:
+        return CanonFinding(
+            code,
+            severity,
+            field_path,
+            message,
+            tuple(sorted(set(evidence_ids))),
+        )
+
+    def _invalid_reference(self, field_path: str, source_id: str) -> CanonFinding:
+        return self._finding(
+            CanonFindingCode.INVALID_CANON_REFERENCE,
+            FindingSeverity.ERROR,
+            field_path,
+            f"Canon reference {source_id!r} does not exist or has the wrong source type.",
+        )
+
+    @staticmethod
+    def _deduplicate_and_sort(
+        findings: Iterable[CanonFinding],
+    ) -> tuple[CanonFinding, ...]:
+        unique: dict[
+            tuple[CanonFindingCode, str, tuple[str, ...]], CanonFinding
+        ] = {}
+        for finding in findings:
+            key = (finding.code, finding.field_path, finding.evidence_ids)
+            unique.setdefault(key, finding)
+        return tuple(
+            sorted(
+                unique.values(),
+                key=lambda item: (
+                    _SEVERITY_ORDER[item.severity],
+                    item.field_path,
+                    item.code.value,
+                    item.evidence_ids,
+                    item.message,
+                ),
+            )
+        )
+
+
+__all__ = [
+    "CanonCheckContext",
+    "CanonCheckReport",
+    "CanonCheckStatus",
+    "CanonCheckSummary",
+    "CanonChecker",
+    "CanonFinding",
+    "CanonFindingCode",
+    "FindingSeverity",
+]

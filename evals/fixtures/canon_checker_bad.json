@@ -1,0 +1,44 @@
+{
+  "draft": {
+    "draft_id": "draft_bad_authority_001",
+    "status": "draft",
+    "name": "X",
+    "canonical_character_id": null,
+    "age": 17,
+    "age_range": "17",
+    "gender": "女性",
+    "faction_id": "faction_005",
+    "occupation": "公共安全联席体系最高负责人",
+    "social_role": "全城能力监管总负责人",
+    "combat_role": "support",
+    "design_pitch": "掌握全城能力者信息并统一处理所有能力事件。",
+    "personality": ["强势"],
+    "background": "她秘密领导未公开能力监管部门，并全权指挥警察、消防和急救体系。",
+    "story_hook": "她领导了整个南栈事故应急处置并最终解决事件。",
+    "relationships": [],
+    "ability_concept": "无需专业训练即可直接完成急救、犯罪调查和专业诊断。",
+    "knowledge_scope": "可访问全城所有能力者档案、全部事故内部结论和完整组织资料。",
+    "canon_basis": [
+      {"source_id": "world_rules", "supports": ["world_rules"]},
+      {"source_id": "faction_005", "supports": ["faction_id", "occupation"]},
+      {"source_id": "incident_nanzhan_postshow_route_conflict_001", "supports": ["story_hook"]}
+    ],
+    "new_design_elements": ["秘密能力监管部门", "全城能力者集中档案"],
+    "open_questions": [],
+    "constraint_notes": [],
+    "story_link": {
+      "target_id": "incident_nanzhan_postshow_route_conflict_001",
+      "relation": "incident_commander",
+      "status": "proposed"
+    },
+    "proposed_new_content": ["秘密监管部门"]
+  },
+  "request": {
+    "brief": "设计一个与南栈事故存在非核心联系的年轻辅助角色，不新增秘密政府组织。",
+    "hard_constraints": ["20～25岁", "不得成为事件核心负责人"],
+    "soft_preferences": ["性格冷静"],
+    "forbidden_elements": ["秘密政府组织", "秘密行政机构", "秘密监管部门"],
+    "desired_connections": ["南栈演出散场事故"],
+    "request_id": "request_bad_001"
+  }
+}

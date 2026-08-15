@@ -625,8 +625,14 @@ class CharacterAuthoringToolbox:
         forbidden_section = text.split("## 13. Forbidden Patterns", 1)
         forbidden: list[str] = []
         if len(forbidden_section) == 2:
-            forbidden = [line[2:].strip() for line in forbidden_section[1].splitlines() if line.startswith("- ")]
+            forbidden_body = forbidden_section[1].split("\n## ", 1)[0]
+            forbidden = [line[2:].strip() for line in forbidden_body.splitlines() if line.startswith("- ")]
         return {"status": "ok", "result": {"source_id": "world_rules", "source_type": "world_rules", "rules": [{"id": item[0], "statement": item[1].strip()} for item in rules], "forbidden_patterns": forbidden, "scope_summary": "World rules and forbidden patterns are read-only Canon constraints."}}
+
+    @staticmethod
+    def world_rules_view() -> dict[str, Any]:
+        """Return the same read-only rules view exposed to authoring tools."""
+        return CharacterAuthoringToolbox._world_rules()
 
 
 CHARACTER_SYSTEM_CONTRACT = """You are a read-only game character authoring agent. Generate a candidate CharacterDraft for a planner, not an in-world NPC and not approved Canon. Use only facts returned by the listed authoring tools. Existing faction, lore, character, story, case, incident and world-rule assertions require canon_basis source IDs from successful tool observations. New personal details must be placed in new_design_elements or proposed_new_content and must never be presented as existing Canon. Never create organizations, IDs, files or Canon records. Respect hard constraints; if a requirement cannot be established, use open_questions and constraint_notes. Keep combat_role high-level and do not invent numeric balance values.""" + "\n\n" + character_draft_prompt_contract()

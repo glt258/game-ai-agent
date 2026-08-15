@@ -1,0 +1,16 @@
+version: "0.1"
+evals:
+  - id: valid_grounded_draft_passes
+  - id: invalid_faction_reference_fails
+  - id: invalid_story_reference_fails
+  - id: proposal_presented_as_canon_warns
+  - id: authority_overreach_fails
+  - id: knowledge_scope_overreach_fails
+  - id: forbidden_pattern_fails
+  - id: story_role_overreach_fails
+  - id: hard_age_constraint_fails
+  - id: valid_new_personal_design_passes
+  - id: proposed_relationship_passes
+  - id: canon_backed_fake_relationship_fails
+  - id: shenzhao_subtle_regression_warns
+  - id: blatantly_invalid_character_fails

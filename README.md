@@ -15,6 +15,31 @@ py scripts/run_character_generation_evals.py
 See [docs/character_generation_agent_v0.1.md](docs/character_generation_agent_v0.1.md)
 for the request, tool, grounding and limitation details.
 
+## Canon Checker
+
+Validate a `CharacterDraft` against structured Canon and the original design
+request without an LLM judge or Canon writes:
+
+```bash
+py scripts/demo_canon_checker_v0_1.py --case good
+py scripts/demo_canon_checker_v0_1.py --case subtle
+py scripts/demo_canon_checker_v0_1.py --case bad
+py scripts/run_canon_checker_evals.py
+```
+
+The authoring flow is now:
+
+```text
+CharacterDesignRequest
+    -> CharacterGenerationAgent
+    -> CharacterDraft
+    -> CanonChecker
+    -> CanonCheckReport (PASS / WARN / FAIL)
+```
+
+See [docs/canon_checker_v0.1.md](docs/canon_checker_v0.1.md) for finding codes,
+implemented deterministic rules, examples, and known limitations.
+
 ## Live providers
 
 The shared OpenAI Chat Completions transport supports the logical providers

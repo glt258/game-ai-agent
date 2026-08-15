@@ -304,6 +304,17 @@ class GroundingValidator:
             start = evidence_normalized.find(claim_normalized, start + 1)
         return False
 
+    @classmethod
+    def extractively_supported(cls, claim: str, evidence: str) -> bool:
+        """Public, polarity-aware extractive support check for validators.
+
+        Grounding v0.3 originally kept this operation private because only NPC
+        response validation used it.  Authoring validators also need the same
+        negative-polarity protection, so this small wrapper makes the existing
+        deterministic primitive reusable without duplicating its semantics.
+        """
+        return cls._extractively_supported(claim, evidence)
+
     @staticmethod
     def _normalize(text: str) -> str:
         return "".join(re.findall(r"[A-Za-z0-9\u4e00-\u9fff]+", text)).lower()

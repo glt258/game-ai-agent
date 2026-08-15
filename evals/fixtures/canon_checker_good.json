@@ -1,0 +1,39 @@
+{
+  "draft": {
+    "draft_id": "draft_good_001",
+    "status": "draft",
+    "name": "林澈",
+    "canonical_character_id": null,
+    "age": 23,
+    "age_range": "20-25",
+    "gender": "女性",
+    "faction_id": "faction_002",
+    "occupation": "研究生助理",
+    "social_role": "校园公开活动志愿者",
+    "combat_role": "support",
+    "design_pitch": "以观察和现场提示帮助同伴的年轻辅助角色。",
+    "personality": ["冷静", "谨慎"],
+    "background": "她在研究中心协助公开活动，个人经历仍待后续设计。",
+    "story_hook": "她会在未来参与一项新的校园志愿活动。",
+    "relationships": [],
+    "ability_concept": "在亲手标记的有限范围内短暂稳定物品位置，不能替代专业训练。",
+    "knowledge_scope": "仅接触公开信息和被明确交付的现场事项。",
+    "canon_basis": [
+      {"source_id": "world_rules", "supports": ["world_rules"]},
+      {"source_id": "faction_002", "supports": ["faction_id", "occupation"]}
+    ],
+    "new_design_elements": ["姓名、性格和个人经历均为新角色设计。"],
+    "open_questions": ["是否参与后续校园支线？"],
+    "constraint_notes": ["不承担既有事件核心职位。"],
+    "story_link": null,
+    "proposed_new_content": []
+  },
+  "request": {
+    "brief": "设计一名与临洲大学有关的年轻辅助角色。",
+    "hard_constraints": ["20～25岁"],
+    "soft_preferences": ["性格最好冷静一点"],
+    "forbidden_elements": ["秘密政府组织"],
+    "desired_connections": ["临洲大学"],
+    "request_id": "request_good_001"
+  }
+}

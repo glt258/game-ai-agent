@@ -69,6 +69,16 @@ from .character_generation import (
     DeterministicCharacterGenerationModel,
     StoryLink,
 )
+from .canon_checker import (
+    CanonCheckContext,
+    CanonCheckReport,
+    CanonCheckStatus,
+    CanonCheckSummary,
+    CanonChecker,
+    CanonFinding,
+    CanonFindingCode,
+    FindingSeverity,
+)
 from .openai_provider import OpenAIChatClient
 from .provider_protocol import (
     NegotiatedResponseContract,
@@ -140,6 +150,14 @@ __all__ = [
     "NpcResponse",
     "NpcRuntimeView",
     "CanonBasisEntry",
+    "CanonCheckContext",
+    "CanonCheckReport",
+    "CanonCheckStatus",
+    "CanonCheckSummary",
+    "CanonChecker",
+    "CanonFinding",
+    "CanonFindingCode",
+    "FindingSeverity",
     "CharacterAuthoringKnowledgeContext",
     "CharacterAuthoringToolbox",
     "CharacterGenerationToolbox",
