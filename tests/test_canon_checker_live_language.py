@@ -71,6 +71,71 @@ def test_live_negated_forbidden_claim_is_safe_with_request_constraints():
 @pytest.mark.parametrize(
     "text",
     [
+        "无秘密政府组织元素。",
+        "未使用任何秘密政府组织。",
+        "不包含秘密监管机构。",
+        "未采用秘密行政机关作为角色背景。",
+        "不涉及秘密政府监管体系。",
+        "没有秘密监管机构相关设定。",
+    ],
+)
+def test_live_absence_and_non_use_denials_are_safe(text: str):
+    report = CanonChecker().check(
+        replace(_good_draft(), constraint_notes=(text,)),
+        request=_good_request(),
+    )
+    codes = {item.code for item in report.findings}
+    assert not {
+        CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
+        CanonFindingCode.FORBIDDEN_PATTERN,
+        CanonFindingCode.WORLD_RULE_VIOLATION,
+    } & codes
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "包含秘密政府组织元素。",
+        "使用秘密监管机构统一管理全城能力者。",
+        "采用不公开行政机关作为角色背景。",
+        "存在一个秘密政府监管机构。",
+        "无公开登记的秘密监管机构。",
+    ],
+)
+def test_live_positive_forbidden_absence_near_neighbors_still_fail(text: str):
+    report = CanonChecker().check(
+        replace(_good_draft(), constraint_notes=(text,)),
+        request=_good_request(),
+    )
+    codes = {item.code for item in report.findings}
+    assert codes & {
+        CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
+        CanonFindingCode.FORBIDDEN_PATTERN,
+        CanonFindingCode.WORLD_RULE_VIOLATION,
+    }
+
+
+def test_live_mixed_absence_clause_does_not_hide_positive_secret_entity():
+    report = CanonChecker().check(
+        replace(
+            _good_draft(),
+            constraint_notes=(
+                "角色不使用秘密政府组织设定，但其真实身份隶属于一个不公开的监管机构。",
+            ),
+        ),
+        request=_good_request(),
+    )
+    codes = {item.code for item in report.findings}
+    assert codes & {
+        CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
+        CanonFindingCode.FORBIDDEN_PATTERN,
+        CanonFindingCode.WORLD_RULE_VIOLATION,
+    }
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
         "她新增了一个秘密政府组织。",
         "她没有公开身份，实际上新增了秘密政府监管机构。",
         "不对外公开的行政机构统一监管全市能力者。",
@@ -225,6 +290,35 @@ def test_live_mixed_forbidden_clauses_do_not_share_negation():
 def test_live_natural_existing_target_interactions_are_not_new_entities(text: str):
     draft = replace(_good_draft(), proposed_new_content=(text,))
     assert CanonFindingCode.CANON_PRESENTED_AS_PROPOSAL not in _codes(draft)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "与余弦的关系为新增设计。",
+        "与纪衡的一次工作交接为新增设计。",
+        "与唐栖的短暂接触为拟议设计。",
+        "与余弦的纵向随访关系为新增角色内容。",
+        "在回写与社会认知组中的资料整理任务为新增设计。",
+        "在临洲大学行为与能力研究中心中的个人工作安排为拟议内容。",
+    ],
+)
+def test_live_proposal_head_ordering_allows_relations_and_assignments(text: str):
+    draft = replace(_good_draft(), proposed_new_content=(text,))
+    assert CanonFindingCode.CANON_PRESENTED_AS_PROPOSAL not in _codes(draft)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "余弦为新增角色设计。",
+        "回写与社会认知组为新增部门设计。",
+        "南栈演出散场事故为新事件设计。",
+    ],
+)
+def test_live_proposal_head_ordering_blocks_existing_entity_itself(text: str):
+    draft = replace(_good_draft(), proposed_new_content=(text,))
+    assert CanonFindingCode.CANON_PRESENTED_AS_PROPOSAL in _codes(draft)
 
 
 @pytest.mark.parametrize(

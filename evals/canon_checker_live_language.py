@@ -33,6 +33,7 @@ def live_language_cases() -> tuple[LiveLanguageCase, ...]:
     base = CharacterDraft.from_mapping(payload["draft"])
     request = CharacterDesignRequest(**payload["request"])
     fail_codes = frozenset({CanonFindingCode.FORBIDDEN_PATTERN})
+    hard_fail = frozenset({CanonFindingCode.HARD_CONSTRAINT_VIOLATION})
     knowledge_fail = frozenset({CanonFindingCode.KNOWLEDGE_SCOPE_OVERREACH})
     proposal_fail = frozenset({CanonFindingCode.CANON_PRESENTED_AS_PROPOSAL})
 
@@ -75,6 +76,27 @@ def live_language_cases() -> tuple[LiveLanguageCase, ...]:
         ("natural_interview_without_preposition", "proposed_new_content", "未来可能采访余弦。", CanonCheckStatus.PASS, frozenset(), proposal_fail),
         ("marker_existing_character", "proposed_new_content", "新设计：余弦。", CanonCheckStatus.FAIL, proposal_fail, frozenset()),
         ("marker_existing_division", "proposed_new_content", "新部门：回写与社会认知组。", CanonCheckStatus.FAIL, proposal_fail, frozenset()),
+        ("absence_element", "constraint_notes", "无秘密政府组织元素。", CanonCheckStatus.PASS, frozenset(), hard_fail | fail_codes | frozenset({CanonFindingCode.WORLD_RULE_VIOLATION})),
+        ("absence_non_use", "constraint_notes", "未使用任何秘密政府组织。", CanonCheckStatus.PASS, frozenset(), hard_fail | fail_codes | frozenset({CanonFindingCode.WORLD_RULE_VIOLATION})),
+        ("absence_contains", "constraint_notes", "不包含秘密监管机构。", CanonCheckStatus.PASS, frozenset(), hard_fail | fail_codes | frozenset({CanonFindingCode.WORLD_RULE_VIOLATION})),
+        ("absence_adoption", "constraint_notes", "未采用秘密行政机关作为角色背景。", CanonCheckStatus.PASS, frozenset(), hard_fail | fail_codes | frozenset({CanonFindingCode.WORLD_RULE_VIOLATION})),
+        ("absence_scope", "constraint_notes", "不涉及秘密政府监管体系。", CanonCheckStatus.PASS, frozenset(), hard_fail | fail_codes | frozenset({CanonFindingCode.WORLD_RULE_VIOLATION})),
+        ("absence_related_setting", "constraint_notes", "没有秘密监管机构相关设定。", CanonCheckStatus.PASS, frozenset(), hard_fail | fail_codes | frozenset({CanonFindingCode.WORLD_RULE_VIOLATION})),
+        ("positive_absence_neighbor", "background", "包含秘密政府组织元素。", CanonCheckStatus.FAIL, hard_fail, frozenset()),
+        ("positive_usage_neighbor", "background", "使用秘密监管机构统一管理全城能力者。", CanonCheckStatus.FAIL, hard_fail, frozenset()),
+        ("positive_publicity_neighbor", "background", "采用不公开行政机关作为角色背景。", CanonCheckStatus.FAIL, hard_fail, frozenset()),
+        ("positive_existing_secret_entity", "background", "存在一个秘密政府监管机构。", CanonCheckStatus.FAIL, hard_fail, frozenset()),
+        ("positive_negative_property", "background", "无公开登记的秘密监管机构。", CanonCheckStatus.FAIL, hard_fail, frozenset()),
+        ("mixed_absence_positive_entity", "background", "角色不使用秘密政府组织设定，但其真实身份隶属于一个不公开的监管机构。", CanonCheckStatus.FAIL, hard_fail, frozenset()),
+        ("ordered_relation_design", "proposed_new_content", "与余弦的关系为新增设计。", CanonCheckStatus.PASS, frozenset(), proposal_fail),
+        ("ordered_handoff_design", "proposed_new_content", "与纪衡的一次工作交接为新增设计。", CanonCheckStatus.PASS, frozenset(), proposal_fail),
+        ("ordered_contact_proposal", "proposed_new_content", "与唐栖的短暂接触为拟议设计。", CanonCheckStatus.PASS, frozenset(), proposal_fail),
+        ("ordered_followup_content", "proposed_new_content", "与余弦的纵向随访关系为新增角色内容。", CanonCheckStatus.PASS, frozenset(), proposal_fail),
+        ("ordered_division_assignment", "proposed_new_content", "在回写与社会认知组中的资料整理任务为新增设计。", CanonCheckStatus.PASS, frozenset(), proposal_fail),
+        ("ordered_faction_assignment", "proposed_new_content", "在临洲大学行为与能力研究中心中的个人工作安排为拟议内容。", CanonCheckStatus.PASS, frozenset(), proposal_fail),
+        ("ordered_existing_character_block", "proposed_new_content", "余弦为新增角色设计。", CanonCheckStatus.FAIL, proposal_fail, frozenset()),
+        ("ordered_existing_division_block", "proposed_new_content", "回写与社会认知组为新增部门设计。", CanonCheckStatus.FAIL, proposal_fail, frozenset()),
+        ("ordered_existing_event_block", "proposed_new_content", "南栈演出散场事故为新事件设计。", CanonCheckStatus.FAIL, proposal_fail, frozenset()),
     ]
     return tuple(
         LiveLanguageCase(

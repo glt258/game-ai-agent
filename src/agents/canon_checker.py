@@ -222,6 +222,16 @@ _SECRECY_MARKERS = (
     "隐蔽",
     "不为公众所知",
 )
+_ABSENCE_DENIAL_PATTERNS = (
+    r"(?:无|没有)(?:任何|一个|此类|相关)?$",
+    r"(?:不|未)(?:使用|包含|采用|涉及)(?:任何|一个|一项|此类|相关)?$",
+)
+_SECRET_ADMINISTRATIVE_ENTITY_PATTERNS = (
+    r"(?:秘密|未公开|不公开|从不公开|从不对外公开|不对外公开|未对外披露|未向公众披露|隐藏|隐蔽|不为公众所知)"
+    r".{0,8}(?:政府|行政|监管|管理局|机构|部门|机关|组织)",
+    r"(?:政府|行政|监管|管理局|机构|部门|机关|组织)"
+    r".{0,8}(?:秘密|未公开|不公开|从不公开|从不对外公开|不对外公开|未对外披露|未向公众披露|隐藏|隐蔽|不为公众所知)",
+)
 _ADMINISTRATIVE_ENTITIES = (
     "政府机构",
     "行政机构",
@@ -1268,6 +1278,17 @@ class CanonChecker:
                 len(normalized) >= 6 and normalized in name_normalized
             ):
                 matches.append((source_id, name))
+                continue
+            common_prefix = 0
+            for left, right in zip(normalized, name_normalized):
+                if left != right:
+                    break
+                common_prefix += 1
+            if (
+                common_prefix >= 6
+                and normalized[common_prefix : common_prefix + 1] in {"为", "是", "的", "与", "和"}
+            ):
+                matches.append((source_id, name))
         return tuple(sorted(set(matches)))
 
     @classmethod
@@ -1309,6 +1330,9 @@ class CanonChecker:
         cls, text: str, start: int, end: int | None = None
     ) -> bool:
         del end
+        prefix = cls._local_claim_prefix(text, start)
+        if any(re.search(pattern, prefix) for pattern in _ABSENCE_DENIAL_PATTERNS):
+            return True
         return cls._forbidden_introduction_action_polarity(text, start) in {
             "NEGATIVE",
             "HEDGED",
@@ -1329,8 +1353,6 @@ class CanonChecker:
     ) -> str:
         if not existing_entities:
             return "AMBIGUOUS"
-        if any(marker in text for marker in _PROPOSAL_ENTITY_INTRODUCTION):
-            return "ENTITY_ITSELF_AS_NEW"
 
         for _source_id, name in existing_entities:
             target = re.escape(name)
@@ -1338,6 +1360,9 @@ class CanonChecker:
                 return "RELATION_TO_EXISTING"
             if re.search(rf"(?:在|进入|加入|作为).{{0,30}}{target}", text):
                 return "MEMBERSHIP_OR_ASSIGNMENT_TO_EXISTING"
+
+        if any(marker in text for marker in _PROPOSAL_ENTITY_INTRODUCTION):
+            return "ENTITY_ITSELF_AS_NEW"
 
         normalized = cls._normalize(text)
         for _source_id, name in existing_entities:
@@ -1408,7 +1433,14 @@ class CanonChecker:
         for field in (*_TEXT_FIELDS, "proposed_new_content", "new_design_elements"):
             value = getattr(draft, field)
             text = " ".join(value) if isinstance(value, tuple) else value
-            if cls._positive_forbidden_match(text, legacy_pattern) or cls._has_secret_central_authority_claim(text):
+            if (
+                any(
+                    cls._positive_forbidden_match(text, pattern)
+                    for pattern in _SECRET_ADMINISTRATIVE_ENTITY_PATTERNS
+                )
+                or cls._positive_forbidden_match(text, legacy_pattern)
+                or cls._has_secret_central_authority_claim(text)
+            ):
                 return field
         return None
 
@@ -1432,8 +1464,9 @@ class CanonChecker:
                 ):
                     return field
             if secret_government_detector and (
-                cls._positive_forbidden_match(
-                    text, r"秘密.{0,8}(?:政府|行政|监管|管理局|机构|部门|机关|组织)"
+                any(
+                    cls._positive_forbidden_match(text, pattern)
+                    for pattern in _SECRET_ADMINISTRATIVE_ENTITY_PATTERNS
                 )
                 or cls._has_secret_central_authority_claim(text)
             ):
@@ -1470,8 +1503,9 @@ class CanonChecker:
         if "秘密" in forbidden and any(
             marker in forbidden for marker in ("政府", "行政", "监管", "机构", "组织")
         ):
-            return cls._positive_forbidden_match(
-                draft_text, r"秘密.{0,8}(?:政府|行政|监管|管理局|机构|部门|机关|组织)"
+            return any(
+                cls._positive_forbidden_match(draft_text, pattern)
+                for pattern in _SECRET_ADMINISTRATIVE_ENTITY_PATTERNS
             )
         return False
 

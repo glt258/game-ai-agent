@@ -62,8 +62,10 @@ internal-material detection.
 
 See [docs/canon_checker_v0.1.md](docs/canon_checker_v0.1.md) for finding codes,
 implemented deterministic rules, examples, and known limitations. Canon Checker
-v0.1.3 adds live-variant hardening for action-local forbidden denial and natural
+v0.1.4 adds action-local absence/non-use denial and proposal-head ordering for
 relations, interactions, memberships, and assignments to existing Canon targets.
+The offline Live-derived matrix contains 59 cases with zero false positives or
+false negatives.
 
 ## Live providers
 
