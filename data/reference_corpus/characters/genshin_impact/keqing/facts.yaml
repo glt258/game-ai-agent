@@ -1,4 +1,4 @@
-schema_version: "character-facts/0.2"
+schema_version: "character-facts/0.3"
 reference_id: "genshin-impact:keqing"
 identity:
   game_id: genshin-impact
@@ -55,6 +55,7 @@ combat:
     states:
       - state_id: electro-infusion
         native_name: null
+        subject_scope: self
         description_summary: "After recasting Stellar Restoration while a Lightning Stiletto is present, the weapon gains Electro infusion for 5 seconds."
     transformations: []
     summons: []

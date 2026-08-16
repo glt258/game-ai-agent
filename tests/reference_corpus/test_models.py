@@ -72,7 +72,7 @@ def test_normalized_roles_are_enum_values() -> None:
 
 def test_structured_mechanic_nodes_and_relation_types() -> None:
     assert ResourceFact(resource_id="focus", cap=None).cap is None
-    assert StateFact(state_id="empowered").state_id == "empowered"
+    assert StateFact(state_id="empowered", subject_scope="self").state_id == "empowered"
     assert TeamInteractionFact(
         interaction_id="team-charge", description_summary="Generates focus."
     ).interaction_id == "team-charge"
@@ -97,7 +97,10 @@ def test_structured_mechanic_nodes_and_relation_types() -> None:
         ),
         (
             lambda: CombatMechanics(
-                states=[StateFact(state_id="empowered"), StateFact(state_id="empowered")]
+                states=[
+                    StateFact(state_id="empowered", subject_scope="self"),
+                    StateFact(state_id="empowered", subject_scope="self"),
+                ]
             ),
             "DUPLICATE_STATE_ID",
         ),
@@ -198,3 +201,20 @@ def test_empty_or_non_snake_relation_types_are_rejected(relation_type: str) -> N
             relation_type=relation_type,
             target={"kind": "state", "id": "s"},
         )
+
+
+@pytest.mark.parametrize("subject_scope", ["self", "target", "unknown"])
+def test_state_subject_scope_accepts_provisional_values(subject_scope: str) -> None:
+    state = StateFact(state_id="state", subject_scope=subject_scope)
+    assert state.subject_scope == subject_scope
+
+
+@pytest.mark.parametrize("subject_scope", ["", "enemy", "player", "ally", "self_state"])
+def test_state_subject_scope_rejects_missing_or_uncontrolled_values(subject_scope: str) -> None:
+    with pytest.raises(ValidationError, match="subject_scope"):
+        StateFact(state_id="state", subject_scope=subject_scope)
+
+
+def test_state_subject_scope_is_required() -> None:
+    with pytest.raises(ValidationError, match="subject_scope"):
+        StateFact(state_id="state")

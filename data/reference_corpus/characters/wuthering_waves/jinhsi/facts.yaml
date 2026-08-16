@@ -1,4 +1,4 @@
-schema_version: "character-facts/0.2"
+schema_version: "character-facts/0.3"
 reference_id: "wuthering-waves:jinhsi"
 identity:
   game_id: wuthering-waves
@@ -82,12 +82,15 @@ combat:
     states:
       - state_id: incarnation
         native_name: "Incarnation"
+        subject_scope: self
         description_summary: "Incarnation enables Jinhsi's alternate mid-air attack set and ends after the fourth Basic Attack in Luminal Synthesis."
       - state_id: ordination-glow
         native_name: "Ordination Glow"
+        subject_scope: self
         description_summary: "After Incarnation ends following the fourth Basic Attack in Luminal Synthesis, Ordination Glow is gained."
       - state_id: unison
         native_name: "Unison"
+        subject_scope: self
         description_summary: "Illuminous Epiphany grants Unison; switching to another Resonator while Unison is active removes it."
     transformations: []
     summons: []

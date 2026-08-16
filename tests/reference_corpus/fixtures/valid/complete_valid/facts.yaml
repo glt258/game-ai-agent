@@ -1,4 +1,4 @@
-schema_version: "character-facts/0.2"
+schema_version: "character-facts/0.3"
 reference_id: "test-game-alpha:test-character-complete"
 identity:
   game_id: test-game-alpha
@@ -39,6 +39,7 @@ combat:
     states:
       - state_id: empowered
         native_name: null
+        subject_scope: self
         description_summary: "A synthetic empowered combat state."
     transformations: []
     summons: []

@@ -21,7 +21,7 @@ from .enums import (
 REFERENCE_ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*(?::[a-z0-9]+(?:-[a-z0-9]+)*)?$")
 RELATION_TYPE_RE = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
 SUPPORTED_SCHEMA_VERSIONS = {
-    "character-facts/0.2",
+    "character-facts/0.3",
     "character-analysis/0.1",
     "character-sources/0.2",
     "game-catalog/0.1",
@@ -166,10 +166,21 @@ class ResourceFact(ReferenceModel):
 class StateFact(ReferenceModel):
     state_id: str
     native_name: str | None = None
+    subject_scope: str
     description_summary: str | None = None
 
     _state_id = field_validator("state_id")(lambda value: _text(value, "state_id"))
     _native_name = field_validator("native_name")(lambda value: _optional_text(value))
+    @field_validator("subject_scope")
+    @classmethod
+    def valid_subject_scope(cls, value: str) -> str:
+        value = _text(value, "subject_scope")
+        if value not in {"self", "target", "unknown"}:
+            raise ValueError(
+                "subject_scope must be one of: self, target, unknown"
+            )
+        return value
+
     _description_summary = field_validator("description_summary")(
         lambda value: _optional_text(value)
     )

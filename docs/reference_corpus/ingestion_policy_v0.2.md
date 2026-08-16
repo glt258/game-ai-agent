@@ -7,6 +7,13 @@
   `MechanicRelation` instead of hiding it in `description_summary`.
 - Mechanic relations are facts, not analysis. Claims about role, dependency,
   optimal rotation, or playstyle belong in `analysis.yaml`.
+- `StateFact.subject_scope` records the subject that carries or is affected by a
+  state; it is not the entity that created or applied the state.
+- Do not infer state scope from who applies the state. When a character applies
+  a status to an enemy, use `target`; when evidence does not establish the
+  subject, use `unknown`.
+- The provisional state subject vocabulary is `self`, `target`, and `unknown`.
+  Do not add broader taxonomy values without a Golden Record review.
 - `PrimaryLoop` describes the observed mechanic flow; it is not an optimal rotation.
 - Official-hosted does not automatically mean primary; evaluate who produced the
   content and what it establishes.

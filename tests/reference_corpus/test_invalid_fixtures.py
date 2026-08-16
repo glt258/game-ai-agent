@@ -12,6 +12,7 @@ from reference_corpus.models import (
     AlignmentAssessment,
     CharacterAnalysis,
     CharacterProvenance,
+    StateFact,
 )
 
 
@@ -68,6 +69,17 @@ def test_invalid_confidence_is_rejected(value: float) -> None:
 def test_invalid_alignment_score_is_rejected() -> None:
     with pytest.raises(ValidationError):
         AlignmentAssessment(score=-0.1, reasoning="invalid")
+
+
+@pytest.mark.parametrize("subject_scope", ["", "enemy", "player", "ally"])
+def test_invalid_state_subject_scope_is_rejected(subject_scope: str) -> None:
+    with pytest.raises(ValidationError, match="subject_scope"):
+        StateFact(state_id="state", subject_scope=subject_scope)
+
+
+def test_missing_state_subject_scope_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="subject_scope"):
+        StateFact(state_id="state")
 
 
 @pytest.mark.parametrize(

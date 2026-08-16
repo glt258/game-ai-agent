@@ -1,4 +1,4 @@
-schema_version: "character-facts/0.2"
+schema_version: "character-facts/0.3"
 reference_id: "test-game-alpha:test-character-mechanic-graph"
 identity:
   game_id: test-game-alpha
@@ -32,7 +32,12 @@ combat:
     states:
       - state_id: empowered
         native_name: null
+        subject_scope: self
         description_summary: "A synthetic empowered state."
+      - state_id: marked-target
+        native_name: null
+        subject_scope: target
+        description_summary: "A synthetic condition applied to an ability target."
     transformations: []
     summons: []
     mobility_mechanics: []
@@ -53,6 +58,10 @@ combat:
       source: {kind: ability, id: empowered_skill}
       relation_type: enters_state
       target: {kind: state, id: empowered}
+    - relation_id: skill-applies-marked-target
+      source: {kind: ability, id: empowered_skill}
+      relation_type: applies
+      target: {kind: state, id: marked-target}
     - relation_id: team-generates-focus
       source: {kind: team_interaction, id: team-charge}
       relation_type: generates

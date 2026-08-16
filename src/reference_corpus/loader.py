@@ -94,7 +94,7 @@ class CharacterReferenceLoader:
             raise ReferenceNotFoundError(f"missing required file: {sources_path}")
 
         facts = _model(facts_path, CharacterFacts)
-        _require_schema_version(facts.schema_version, "character-facts/0.2", facts_path)
+        _require_schema_version(facts.schema_version, "character-facts/0.3", facts_path)
         if self.catalog is not None and facts.identity.game_id not in self.catalog.games:
             raise ReferenceValidationError(
                 f"unknown game_id in {facts_path}: {facts.identity.game_id}"

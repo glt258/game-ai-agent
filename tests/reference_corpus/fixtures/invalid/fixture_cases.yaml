@@ -18,6 +18,9 @@ cases:
   - extra_unknown_field
   - duplicate_resource_id
   - duplicate_state_id
+  - missing_state_subject_scope
+  - empty_state_subject_scope
+  - invalid_state_subject_scope
   - duplicate_team_interaction_id
   - duplicate_relation_id
   - relation_unknown_source_ability
