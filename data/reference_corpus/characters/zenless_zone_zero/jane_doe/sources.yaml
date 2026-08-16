@@ -1,0 +1,131 @@
+schema_version: "character-sources/0.2"
+reference_id: "zenless-zone-zero:jane-doe"
+sources:
+  - source_id: official-zzz-roster-current-en
+    source_type: official
+    publisher: "Zenless Zone Zero / HoYoverse"
+    title: "Official Site Characters roster — current roster context"
+    url: "https://zenless.hoyoverse.com/en-us/main?catchSpider=1&page=news"
+    language: en-US
+    retrieved_at: "2026-08-16T03:17:58Z"
+    published_at: null
+    version_context: "current roster"
+    content_hash: null
+    reliability: primary
+  - source_id: official-zzz-roster-current-zh
+    source_type: official
+    publisher: "Zenless Zone Zero / HoYoverse"
+    title: "《绝区零》官方网站角色名录 — current localized roster context"
+    url: "https://zenless.hoyoverse.com/zh-cn/main?catchSpider=1"
+    language: zh-CN
+    retrieved_at: "2026-08-16T03:17:58Z"
+    published_at: null
+    version_context: "current roster"
+    content_hash: null
+    reliability: primary
+  - source_id: official-version-1-1-undercover-rb
+    source_type: official
+    publisher: "Zenless Zone Zero / HoYoverse"
+    title: "Version 1.1 Undercover R&B Update Details — Jane initial release and mechanic summary"
+    url: "https://www.hoyolab.com/article/32091544"
+    language: en-US
+    retrieved_at: "2026-08-16T03:17:58Z"
+    published_at: "2024-08-13"
+    version_context: "1.1"
+    content_hash: null
+    reliability: primary
+  - source_id: official-agent-mechanics-intro-jane
+    source_type: official
+    publisher: "Zenless Zone Zero / HoYoverse"
+    title: "Agent Mechanics Intro: Jane — initial official mechanics description, 2024-08-31"
+    url: "https://www.hoyolab.com/article/32689771"
+    language: en-US
+    retrieved_at: "2026-08-16T03:17:58Z"
+    published_at: "2024-08-31"
+    version_context: "1.1"
+    content_hash: null
+    reliability: primary
+  - source_id: official-version-1-7-bury-your-tears
+    source_type: official
+    publisher: "Zenless Zone Zero / HoYoverse"
+    title: "Version 1.7 Bury Your Tears With the Past Update Details — superseding wording for Jane Core Passive: Insight"
+    url: "https://www.hoyolab.com/article/38380449"
+    language: en-US
+    retrieved_at: "2026-08-16T03:17:58Z"
+    published_at: "2025-04-22"
+    version_context: "1.7"
+    content_hash: null
+    reliability: primary
+  - source_id: official-version-2-7-update-details
+    source_type: official
+    publisher: "Zenless Zone Zero / HoYoverse"
+    title: "Version 2.7 Update Details — superseding current faction taxonomy and team-activation labels"
+    url: "https://www.hoyolab.com/article_pre/18014398241024010"
+    language: en-US
+    retrieved_at: "2026-08-16T03:17:58Z"
+    published_at: "2026-03-23"
+    version_context: "2.7"
+    content_hash: null
+    reliability: primary
+  - source_id: official-version-3-1-anniversary-context
+    source_type: official
+    publisher: "Zenless Zone Zero / HoYoverse"
+    title: "Version 3.1 2nd Anniversary Celebration Rewards Overview — current live version context"
+    url: "https://zenless.hoyoverse.com/en-us/news/165249?catchSpider=1"
+    language: en-US
+    retrieved_at: "2026-08-16T03:17:58Z"
+    published_at: null
+    version_context: "3.1"
+    content_hash: null
+    reliability: primary
+  - source_id: official-version-3-1-content-overview
+    source_type: official
+    publisher: "Zenless Zone Zero / HoYoverse"
+    title: "The Long Goodbye — Version 3.1 Content Overview"
+    url: "https://zenless.hoyoverse.com/en-us/news/165410?catchSpider=1&lang=en-us&page=news"
+    language: en-US
+    retrieved_at: "2026-08-16T03:17:58Z"
+    published_at: "2026-07-29"
+    version_context: "3.1"
+    content_hash: null
+    reliability: primary
+source_relations:
+  - relation_id: version-1-7-clarifies-insight-wording
+    source_id: official-version-1-7-bury-your-tears
+    relation_type: clarifies
+    target_source_id: official-agent-mechanics-intro-jane
+    field_paths: [combat.abilities]
+    description_summary: "Version 1.7 clarifies the earlier Insight wording without changing actual skill functionality."
+  - relation_id: version-2-7-supersedes-faction-label
+    source_id: official-version-2-7-update-details
+    relation_type: supersedes
+    target_source_id: official-version-1-1-undercover-rb
+    field_paths: [combat.native_taxonomy.labels.faction]
+    description_summary: "Version 2.7 replaces the earlier faction label with the current Public Security taxonomy."
+field_evidence:
+  identity.names.canonical: [official-zzz-roster-current-en, official-version-1-1-undercover-rb]
+  identity.names.localized: [official-zzz-roster-current-zh]
+  identity.game_id: [official-version-1-1-undercover-rb, official-zzz-roster-current-en]
+  identity.release: [official-version-1-1-undercover-rb]
+  identity.rarity: [official-version-1-1-undercover-rb]
+  combat.native_taxonomy: [official-version-1-1-undercover-rb, official-zzz-roster-current-en]
+  combat.native_taxonomy.labels.attribute: [official-version-1-1-undercover-rb]
+  combat.native_taxonomy.labels.specialty: [official-version-1-1-undercover-rb]
+  combat.native_taxonomy.labels.rank: [official-version-1-1-undercover-rb]
+  combat.native_taxonomy.labels.faction: [official-version-2-7-update-details]
+  combat.abilities: [official-agent-mechanics-intro-jane, official-version-1-1-undercover-rb, official-version-1-7-bury-your-tears]
+  combat.mechanics.resources: [official-agent-mechanics-intro-jane, official-version-1-1-undercover-rb]
+  combat.mechanics.states: [official-agent-mechanics-intro-jane, official-version-1-7-bury-your-tears]
+  combat.relations: [official-agent-mechanics-intro-jane, official-version-1-7-bury-your-tears]
+  narrative.faction: [official-version-2-7-update-details]
+verification:
+  status: partially_verified
+  conflicts: []
+  notes:
+    - "facts.yaml records the current live interpretation. Version 1.1 is retained as the initial official mechanic source; Version 1.7 clarifies the earlier Core Passive: Insight wording."
+    - "Version 1.7 explicitly says the Jane wording adjustment is textual and does not change actual skill functionality. The clarification therefore does not invalidate the earlier source or create a fact conflict."
+    - "Version 2.7 supersedes the Version 1.1 faction label with Public Security - Criminal Investigation Special Response Team; the current fact uses the newer label."
+    - "The current official roster and Version 3.1 anniversary material provide current first-party identity context; neither is treated as a detailed current skill database."
+    - "Version 3.1 official materials confirm the current live version and a Jane combat-database update, but do not expose a complete text transcript of the changed skill cards; unsupported 3.1-specific values are not inferred."
+    - "No native character ID, occupation, public identity, official visual tags, or official character keywords were located in the consulted first-party material; those fields remain null or empty."
+    - "No beta values, test-server data, leaks, datamines, private-server data, or community speculation were used."

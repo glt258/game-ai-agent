@@ -1,0 +1,144 @@
+schema_version: "character-analysis/0.1"
+reference_id: "zenless-zone-zero:jane-doe"
+analysis_metadata:
+  analyzer: "hermes"
+  model: "deepseek-v4-flash"
+  prompt_version: "jane-doe-golden-analysis/0.1"
+  analyzed_at: "2026-08-16T04:24:42Z"
+combat_design:
+  normalized_roles:
+    - "on_field_dps"
+  attack_range: "melee"
+  field_time: "high"
+  mechanical_complexity: "high"
+  execution_difficulty: "medium"
+  mobility: "medium"
+  survivability: "low"
+  team_dependency: "low"
+  primary_loop:
+    summary: >-
+      The loop is a self-contained escalation cycle driven by the mechanic
+      graph: qualifying on-field actions (Basic Attack, a qualifying Perfect
+      Dodge, or a qualifying Defensive Assist) accumulate Passion Stream;
+      reaching its maximum enters the Passion empowered state, which
+      increases Anomaly Buildup Rate and ATK and enhances some Basic and
+      Special Attacks (which can also consume or restore Passion Stream
+      while Passion is active); throughout, the Core Passive Insight applies
+      Gnawed to enemies, so Assaults against a Gnawed enemy can critically
+      hit and Flinch-causing Assaults last longer; the resource then
+      re-accumulates through the same qualifying moves.
+    steps:
+      - "accumulate_character_resource"
+      - "reach_resource_threshold"
+      - "enter_empowered_state"
+      - "exploit_state_modified_attacks"
+      - "apply_target_state"
+      - "trigger_anomaly_payoff"
+      - "rebuild_resource"
+  resource_loop: >-
+    Passion Stream is a genuine build-to-state resource: it accumulates
+    through Jane's own qualifying moves (Basic Attack, a qualifying Perfect
+    Dodge, or a qualifying Defensive Assist) and, at its maximum, enters the
+    Passion empowered state. While Passion is active, damage-dealing Special
+    Attack moves can consume or restore Passion Stream, so the gauge is
+    manipulated inside the state window rather than being a passive
+    accumulator; after the window the same qualifying moves rebuild it.
+    No explicit depletion-to-exit condition or numeric cap is recorded in
+    the facts (cap is null), so the loop is documented as
+    accumulation -> threshold -> empowered state -> in-state consume/restore
+    -> rebuild, without asserting a spend-to-empty exit.
+  burst_pattern: >-
+    Ultimate and Chain Attack have no description summaries and no mechanic
+    relations connecting them to Passion Stream, Passion, or Gnawed; they
+    are parallel damage nodes outside the resource/state loop rather than
+    cycle payoffs, state extensions, or resource accelerators.
+  archetypes:
+    - "evasion_fueled_attacker"
+    - "resource_state_attacker"
+    - "target_condition_exploiter"
+  core_mechanics:
+    - "evasion_to_resource_generation"
+    - "resource_threshold_state_entry"
+    - "self_state_attack_modification"
+    - "target_state_application"
+    - "target_state_anomaly_payoff"
+character_design:
+  character_fantasy: >-
+    Playing Jane Doe is an evasion-fueled escalation experience: the player
+    dodges and defends to build Passion Stream, crosses a threshold into the
+    Passion empowered state with enhanced attacks, marks enemies with Gnawed
+    through every attack, and cashes the marks out through Anomaly payoffs
+    (Assaults that can critically hit and extend Flinch) before rebuilding
+    the gauge — a fantasy of resource-driven escalation built on evasive
+    movement and target pressure rather than raw button-mashing aggression.
+  personality_archetypes: []
+  identity_hooks:
+    - "public_security_criminal_investigation_special_response_team_member"
+  narrative_hooks:
+    - "law_enforcement_faction_member_with_personal_combat_presence"
+  visual_motifs: []
+  gameplay_identity_alignment:
+    score: 0.3
+    reasoning: >-
+      The only verified narrative element is the current faction label
+      (Public Security - Criminal Investigation Special Response Team). The
+      combat kit expresses an evasion-fueled, self-contained escalation
+      style (dodge-driven resource, empowered state, anomaly target
+      payoff), but the facts contain no explicit design statement linking
+      the faction identity to the combat language, and occupation, public
+      identity, and affiliations are all unrecorded, so the alignment is
+      plausible but only weakly evidenced.
+product_design:
+  primary_selling_points:
+    - "evasion_fueled_empowered_state"
+    - "self_contained_gauge_to_state_loop"
+    - "target_condition_anomaly_critical_payoff"
+  gameplay_hooks:
+    - "perfect_dodge_and_defensive_assist_feed_character_resource"
+    - "gauge_fill_empowered_state_window"
+    - "enhanced_attacks_during_empowered_state"
+    - "self_applied_target_condition_on_enemies"
+    - "team_conditioned_buildup_amplification"
+  visual_hooks: []
+  narrative_hooks:
+    - "criminal_investigation_special_response_team_member"
+  novelty_dimensions:
+    - "evasive_actions_as_direct_resource_generation"
+    - "dual_state_structure_self_and_target"
+    - "critical_payoff_tied_to_applied_target_condition"
+differentiation:
+  strongest_differentiators:
+    - "evasive_actions_fuel_the_empowered_state_gauge"
+    - "self_empowerment_state_and_enemy_target_state_coexist_in_one_kit"
+    - "anomaly_critical_payoff_gated_by_self_applied_target_condition"
+  common_patterns:
+    - "resource_buildup_to_empowered_state"
+    - "empowered_state_attack_enhancement"
+    - "dodge_interaction_in_combat"
+    - "burst_damage_node"
+  unusual_patterns:
+    - "dodge_and_assist_are_primary_resource_channels"
+    - "one_self_state_plus_one_target_state_in_the_same_kit"
+    - "assault_crit_and_flinch_extension_depend_on_an_applied_mark"
+design_patterns:
+  extracted_patterns:
+    - "evasion_to_resource_generation"
+    - "resource_threshold_state_entry"
+    - "self_state_attack_modification"
+    - "target_state_application"
+    - "target_state_damage_payoff"
+similarity_features:
+  combat_signature:
+    - "evasion_fueled_resource"
+    - "gauge_threshold_empowered_state"
+    - "self_state_attack_modification"
+    - "self_applied_target_condition"
+    - "target_condition_anomaly_critical_payoff"
+  narrative_signature:
+    - "public_security_criminal_investigation_special_response_team_member"
+  presentation_signature: []
+confidence:
+  overall: 0.6
+  combat_design: 0.8
+  character_design: 0.3
+  product_design: 0.45
