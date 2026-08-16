@@ -1,0 +1,74 @@
+schema_version: "character-sources/0.2"
+reference_id: "neverness-to-everness:shinku"
+sources:
+  - source_id: official-nte-v1-2-patch-notes
+    source_type: official
+    publisher: "Hotta Studio / NTE Official Website"
+    title: "Version 1.2 \"999 Nights\" Patch Notes"
+    url: "https://nte.perfectworld.com/en/article/news/gamenews/20260706/263029.html"
+    language: en-US
+    retrieved_at: "2026-08-16T05:19:18Z"
+    published_at: "2026-07-06"
+    version_context: "1.2"
+    content_hash: null
+    reliability: primary
+  - source_id: official-nte-character-page
+    source_type: official
+    publisher: "Hotta Studio / NTE Official Website"
+    title: "NTE Official Website character roster"
+    url: "https://nte.perfectworld.com/en/main.html?nav=2"
+    language: en-US
+    retrieved_at: "2026-08-16T05:19:18Z"
+    published_at: null
+    version_context: "current character roster"
+    content_hash: null
+    reliability: primary
+  - source_id: official-appstore-shinku-event
+    source_type: official
+    publisher: "N2E Entertainment PTE. LTD. / Apple App Store"
+    title: "Shinku arrives, new S-Class"
+    url: "https://apps.apple.com/es/app/nte-neverness-to-everness/id6754593077?eventid=6785443566"
+    language: es-ES
+    retrieved_at: "2026-08-16T05:19:18Z"
+    published_at: null
+    version_context: "Shinku character event"
+    content_hash: null
+    reliability: primary
+  - source_id: secondary-prydwen-shinku
+    source_type: guide
+    publisher: "Prydwen.gg"
+    title: "Shinku Best Build Guide"
+    url: "https://www.prydwen.gg/neverness-to-everness/characters/shinku"
+    language: en
+    retrieved_at: "2026-08-16T05:19:18Z"
+    published_at: "2026-07-13"
+    version_context: "1.2"
+    content_hash: null
+    reliability: secondary
+source_relations: []
+field_evidence:
+  identity.game_id: [official-nte-v1-2-patch-notes]
+  identity.names.canonical: [official-nte-v1-2-patch-notes, official-nte-character-page, official-appstore-shinku-event]
+  identity.release: [official-nte-v1-2-patch-notes]
+  identity.rarity.native_value: [official-nte-v1-2-patch-notes, official-appstore-shinku-event]
+  combat.native_taxonomy.labels.rank: [official-nte-v1-2-patch-notes, official-appstore-shinku-event]
+  combat.native_taxonomy.labels.esper_type: [secondary-prydwen-shinku]
+  combat.native_taxonomy.labels.arc_type: [secondary-prydwen-shinku]
+  combat.native_taxonomy.labels.signature_arc: [official-nte-v1-2-patch-notes]
+  combat.abilities: [secondary-prydwen-shinku]
+  combat.mechanics.resources: [secondary-prydwen-shinku]
+  combat.mechanics.states: [secondary-prydwen-shinku]
+  combat.team_mechanics.interactions: [secondary-prydwen-shinku]
+  combat.relations: [secondary-prydwen-shinku]
+  narrative.faction: [official-appstore-shinku-event]
+  narrative.affiliations: [official-appstore-shinku-event]
+verification:
+  status: partially_verified
+  conflicts: []
+  notes:
+    - "Official Version 1.2 material supports Shinku's name, S-Class rank, release window beginning July 8, 2026, and the associated limited Arc Blushing Mirage."
+    - "The official App Store character event records the affiliation using the localized wording UAC-2 de la ACA; that wording is retained without expanding or translating the acronyms."
+    - "Cosmos, Synthesis, ability names, Defiant Spirit, Menacing Gaze, Surging Crimson, Charge Enhancement, and mechanic relations are supported only by the consulted secondary guide."
+    - "No native character ID, confirmed localized character name, occupation, objective public identity, official visual tags, or official character keywords were established from the accepted sources; those fields remain null or empty."
+    - "Official marketing wording such as awkward dragon girl was not promoted into narrative identity or presentation facts."
+    - "No leaks, beta values, datamines, private-server data, Reddit, forum speculation, search snippets, or model memory were used."

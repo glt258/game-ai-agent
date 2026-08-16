@@ -1,0 +1,138 @@
+schema_version: "character-analysis/0.1"
+reference_id: "neverness-to-everness:shinku"
+analysis_metadata:
+  analyzer: "hermes"
+  model: "deepseek-v4-flash"
+  prompt_version: "shinku-golden-analysis/0.1"
+  analyzed_at: "2026-08-16T06:15:33Z"
+combat_design:
+  normalized_roles:
+    - "on_field_dps"
+  attack_range: "melee"
+  field_time: "high"
+  mechanical_complexity: "high"
+  execution_difficulty: "unknown"
+  mobility: "unknown"
+  survivability: "unknown"
+  team_dependency: "low"
+  primary_loop:
+    summary: >-
+      The loop has two parallel mechanic channels. The main channel is a
+      build-to-state cycle: Shinku's qualifying attacks (Special Combat Arts
+      chain, the High-Speed Breach charge, and the Breaching Tactics knee
+      strike) generate the character-specific Defiant Spirit gauge; the
+      Crimson Fury ultimate consumes Defiant Spirit and enters the
+      limited-duration Surging Crimson self-state, which replaces Special
+      Combat Arts with Tidal Assault; after the state window the same
+      qualifying attacks rebuild the gauge. A parallel stance channel is the
+      Menacing Gaze self-state, which stacks while Shinku stays active
+      without attacking and ends on a hit, triggering Instant Strike and
+      granting combat resources (the target resource is not specified in the
+      facts). Separately, Lone Stride provides Charge Enhancement: when the
+      active character gains Ultimate Energy, off-field characters receive
+      the same Charge, and Shinku gains ATK while she is the active character
+      during Charge — an outgoing team utility that does not gate her
+      personal loop.
+    steps:
+      - "accumulate_character_resource"
+      - "spend_resource_to_enter_state"
+      - "exploit_state_modified_attacks"
+      - "rebuild_resource"
+      - "hold_active_stance"
+      - "release_stance_on_hit"
+  resource_loop: >-
+    Defiant Spirit is a genuine build-and-spend gauge: it accumulates from
+    three of Shinku's own qualifying attacks and is consumed by the Crimson
+    Fury ultimate to enter the Surging Crimson state. The facts do not record
+    a numeric cap (cap is null), the consumption amount per use, or any
+    depletion-to-exit rule, so the loop is documented as accumulation ->
+    spend at the ultimate -> empowered state -> rebuild through the same
+    qualifying attacks, without asserting a spend-to-empty reset or a
+    threshold condition.
+  burst_pattern: >-
+    The Crimson Fury ultimate is the burst node: it consumes Defiant Spirit
+    and launches multiple attacks while entering Surging Crimson, so the
+    burst is delivered at the resource-to-state conversion point and
+    continues through the state-modified attack window (Tidal Assault).
+    There is no evidence of the burst acting as a cycle-closing finisher or
+    as a separate resource reset.
+  archetypes:
+    - "resource_fueled_state_attacker"
+    - "stance_charge_release_striker"
+    - "empowered_attack_converter"
+  core_mechanics:
+    - "qualifying_attack_resource_generation"
+    - "resource_spend_state_entry"
+    - "state_gated_ability_modification"
+    - "active_stance_release_payoff"
+    - "team_charge_sharing_conduit"
+character_design:
+  character_fantasy: >-
+    Playing Shinku is an escalation-through-conversion experience: aggressive
+    qualifying attacks build a personal gauge, the ultimate converts that
+    gauge into a limited empowered attack mode that rewrites her basic
+    attacks, and a patient stance rewards staying active without attacking by
+    releasing a decisive strike on the next hit. The kit also routes the
+    active character's Ultimate Energy gains to off-field allies, so the
+    fantasy combines self-contained resource escalation with a
+    restraint-for-payoff stance and a team energy conduit.
+  personality_archetypes: []
+  identity_hooks:
+    - "uac_2_de_la_aca_faction_member"
+  narrative_hooks:
+    - "affiliated_with_uac_2_de_la_aca_faction"
+  visual_motifs: []
+  gameplay_identity_alignment: null
+product_design:
+  primary_selling_points:
+    - "gauge_to_empowered_state_ultimate"
+    - "stance_charged_release_strike"
+    - "team_wide_charge_sharing"
+  gameplay_hooks:
+    - "qualifying_attacks_feed_character_gauge"
+    - "ultimate_converts_gauge_into_empowered_attack_mode"
+    - "empowered_state_rewrites_basic_attacks"
+    - "patience_stance_charges_a_release_strike"
+    - "active_character_energy_shared_to_off_field_allies"
+  visual_hooks: []
+  narrative_hooks:
+    - "uac_2_de_la_aca_faction_member"
+  novelty_dimensions:
+    - "stance_that_rewards_active_presence_without_attacking"
+    - "ultimate_as_resource_to_state_conversion"
+    - "attacker_kit_with_team_energy_conduit"
+differentiation:
+  strongest_differentiators:
+    - "resource_spend_ultimate_that_opens_an_empowered_attack_mode"
+    - "patience_stance_charging_a_release_strike"
+    - "team_wide_energy_share_conduit_on_a_self_sustaining_attacker"
+  common_patterns:
+    - "resource_buildup_to_empowered_state"
+    - "ultimate_burst_node"
+    - "team_energy_sharing"
+  unusual_patterns:
+    - "stance_requires_active_presence_without_attacking"
+    - "ultimate_doubles_as_state_entry_and_damage_window"
+    - "energy_share_applies_off_field_allies_when_active_character_gains_energy"
+design_patterns:
+  extracted_patterns:
+    - "qualifying_attack_resource_generation"
+    - "resource_spend_state_entry"
+    - "state_gated_ability_modification"
+    - "stance_charge_release_payoff"
+    - "active_character_energy_sharing"
+similarity_features:
+  combat_signature:
+    - "self_generated_gauge_from_qualifying_attacks"
+    - "ultimate_spend_to_empowered_state"
+    - "empowered_state_rewrites_basic_attacks"
+    - "patience_stance_release_strike"
+    - "team_wide_energy_share_conduit"
+  narrative_signature:
+    - "uac_2_de_la_aca_faction_member"
+  presentation_signature: []
+confidence:
+  overall: 0.55
+  combat_design: 0.6
+  character_design: 0.3
+  product_design: 0.4

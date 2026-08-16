@@ -1,0 +1,164 @@
+schema_version: "character-facts/0.3"
+reference_id: "neverness-to-everness:shinku"
+identity:
+  game_id: neverness-to-everness
+  native_character_id: null
+  names:
+    canonical: "Shinku"
+    localized: {}
+  release:
+    version: "1.2"
+    date: "2026-07-08"
+  rarity:
+    native_value: "S-Class"
+    normalized_tier: null
+combat:
+  native_taxonomy:
+    labels:
+      rank: "S-Class"
+      esper_type: "Cosmos"
+      arc_type: "Synthesis"
+      signature_arc: "Blushing Mirage"
+  abilities:
+    - ability_id: special_combat_arts
+      native_name: "Special Combat Arts"
+      native_category: "Basic Attack"
+      normalized_category: null
+      description_summary: "Performs up to five consecutive attacks and grants Defiant Spirit on hit."
+    - ability_id: high_speed_breach
+      native_name: "High-Speed Breach"
+      native_category: "Redirect Skill"
+      normalized_category: null
+      description_summary: "Charges toward the target, deals multiple instances of Cosmos damage, and gains Defiant Spirit."
+    - ability_id: crimson_fury
+      native_name: "Crimson Fury"
+      native_category: "Ultimate"
+      normalized_category: null
+      description_summary: "Consumes Defiant Spirit to enter Surging Crimson and launches multiple attacks."
+    - ability_id: breaching_tactics
+      native_name: "Breaching Tactics"
+      native_category: "Support Skill"
+      normalized_category: null
+      description_summary: "Delivers a forceful knee strike and gains Defiant Spirit."
+    - ability_id: lone_stride
+      native_name: "Lone Stride"
+      native_category: "Passive"
+      normalized_category: null
+      description_summary: "Provides Charge Enhancement and increases Shinku's ATK when she is active during Charge."
+    - ability_id: menacing_gaze
+      native_name: "Menacing Gaze"
+      native_category: "Special Trait"
+      normalized_category: null
+      description_summary: "Builds stacks while Shinku is active without attacking; a subsequent hit triggers Instant Strike and grants combat resources."
+  mechanics:
+    resources:
+      - resource_id: defiant_spirit
+        native_name: "Defiant Spirit"
+        description_summary: "A character-specific gauge gained by qualifying attacks and spent by Crimson Fury."
+        cap: null
+    states:
+      - state_id: menacing_gaze
+        native_name: "Menacing Gaze"
+        subject_scope: self
+        description_summary: "While active without initiating an attack, Shinku gains stacks over time; a hit ends the state and triggers Instant Strike."
+      - state_id: surging_crimson
+        native_name: "Surging Crimson"
+        subject_scope: self
+        description_summary: "A state entered by Crimson Fury that replaces selected attacks and lasts for a limited duration."
+    transformations: []
+    summons: []
+    mobility_mechanics: []
+    targeting_mechanics: []
+  team_mechanics:
+    buffs: []
+    debuffs: []
+    healing: []
+    shielding: []
+    grouping: []
+    off_field_effects: []
+    interactions:
+      - interaction_id: charge_enhancement
+        native_name: "Charge Enhancement"
+        description_summary: "When the active character gains Ultimate Energy, off-field characters receive the same amount of Charge."
+  relations:
+    - relation_id: special-combat-arts-generates-defiant-spirit
+      source:
+        kind: ability
+        id: special_combat_arts
+      relation_type: generates
+      target:
+        kind: resource
+        id: defiant_spirit
+      description_summary: "Special Combat Arts grants Defiant Spirit on hit."
+    - relation_id: high-speed-breach-generates-defiant-spirit
+      source:
+        kind: ability
+        id: high_speed_breach
+      relation_type: generates
+      target:
+        kind: resource
+        id: defiant_spirit
+      description_summary: "High-Speed Breach gains Defiant Spirit."
+    - relation_id: breaching-tactics-generates-defiant-spirit
+      source:
+        kind: ability
+        id: breaching_tactics
+      relation_type: generates
+      target:
+        kind: resource
+        id: defiant_spirit
+      description_summary: "Breaching Tactics gains Defiant Spirit."
+    - relation_id: crimson-fury-enables-surging-crimson
+      source:
+        kind: ability
+        id: crimson_fury
+      relation_type: enables
+      target:
+        kind: state
+        id: surging_crimson
+      description_summary: "Crimson Fury consumes Defiant Spirit and enters Surging Crimson."
+    - relation_id: defiant-spirit-consumed-by-crimson-fury
+      source:
+        kind: resource
+        id: defiant_spirit
+      relation_type: consumed_by
+      target:
+        kind: ability
+        id: crimson_fury
+      description_summary: "Crimson Fury consumes Defiant Spirit."
+    - relation_id: menacing-gaze-enters-menacing-gaze
+      source:
+        kind: ability
+        id: menacing_gaze
+      relation_type: enters_state
+      target:
+        kind: state
+        id: menacing_gaze
+      description_summary: "Menacing Gaze enters the Menacing Gaze state when Shinku remains active without initiating an attack."
+    - relation_id: surging-crimson-modifies-special-combat-arts
+      source:
+        kind: state
+        id: surging_crimson
+      relation_type: modifies
+      target:
+        kind: ability
+        id: special_combat_arts
+      description_summary: "Surging Crimson replaces Special Combat Arts with Tidal Assault."
+    - relation_id: lone-stride-provides-charge-enhancement
+      source:
+        kind: ability
+        id: lone_stride
+      relation_type: provides
+      target:
+        kind: team_interaction
+        id: charge_enhancement
+      description_summary: "Lone Stride provides Charge Enhancement."
+narrative:
+  faction: "UAC-2 de la ACA"
+  occupation: null
+  affiliations:
+    - "UAC-2 de la ACA"
+  public_identity: null
+presentation:
+  official_visual_tags: []
+  official_character_keywords: []
