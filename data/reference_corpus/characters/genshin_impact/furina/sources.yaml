@@ -1,0 +1,82 @@
+schema_version: "character-sources/0.2"
+reference_id: "genshin-impact:furina"
+sources:
+  - source_id: official-4-2-update-notes
+    source_type: official
+    publisher: "miHoYo / HoYoverse"
+    title: "「罪人舞步旋」4.2版本更新说明"
+    url: "https://ys.mihoyo.com/main/news/detail/118617"
+    language: zh-CN
+    published_at: 2023-11-08
+    version_context: "Genshin Impact Version 4.2"
+    retrieved_at: "2026-08-16T14:32:47Z"
+    content_hash: "sha256:ec5b676774583429ad6bca688e5ecb9dff553f8e5877a47b0c480c094b397e70"
+    reliability: primary
+  - source_id: official-character-page-cn
+    source_type: official
+    publisher: "miHoYo / HoYoverse"
+    title: "《原神》芙宁娜 角色介绍（枫丹角色合集）"
+    url: "https://ys.mihoyo.com/main/m/character/fontaine"
+    language: zh-CN
+    retrieved_at: "2026-08-16T14:32:47Z"
+    content_hash: "sha256:4ab19557e4282f01288d52ca143eb488f03f280fbb3664de7699b2552be82cae"
+    reliability: primary
+  - source_id: official-furina-intro
+    source_type: official
+    publisher: "Genshin Impact / HoYoverse"
+    title: "「不休独舞」·芙宁娜——「好无聊啊，没有什么更有趣的事吗？」"
+    url: "https://ys.mihoyo.com/main/news/detail/118587"
+    language: zh-CN
+    published_at: 2023-11-05
+    version_context: "Genshin Impact Version 4.2"
+    retrieved_at: "2026-08-16T14:32:47Z"
+    content_hash: "sha256:4ab19557e4282f01288d52ca143eb488f03f280fbb3664de7699b2552be82cae"
+    reliability: primary
+  - source_id: secondary-moegirl
+    source_type: wiki
+    publisher: "Moegirlpedia (萌娘百科)"
+    title: "芙宁娜·德·枫丹"
+    url: "https://zh.moegirl.org.cn/%E8%8A%99%E5%AE%81%E5%A8%9C%C2%B7%E5%BE%B7%C2%B7%E6%9E%AB%E4%B8%B9"
+    language: zh-CN
+    retrieved_at: "2026-08-16T14:32:47Z"
+    content_hash: "sha256:91fa0a6b1087555c4c3c0f21996bf4737159b065eff28eafa967c282081fdb04"
+    reliability: secondary
+  - source_id: secondary-genshin-center
+    source_type: database
+    publisher: "Genshin Center"
+    title: "Furina"
+    url: "https://genshin-center.com/characters/furina"
+    language: en
+    retrieved_at: "2026-08-16T14:32:47Z"
+    content_hash: "sha256:a156736d747455aee10e3ad94f2e37291f4015af31cc5081afd7f494d719b943"
+    reliability: secondary
+source_relations: []
+field_evidence:
+  identity.game_id: [official-4-2-update-notes, official-character-page-cn]
+  identity.names.canonical: [official-4-2-update-notes, official-furina-intro, secondary-genshin-center]
+  identity.names.localized: [official-4-2-update-notes, official-character-page-cn, secondary-moegirl]
+  identity.release: [official-4-2-update-notes]
+  identity.rarity: [official-4-2-update-notes, secondary-genshin-center]
+  combat.native_taxonomy: [official-4-2-update-notes, secondary-moegirl, secondary-genshin-center]
+  combat.native_taxonomy.labels.weapon_type: [official-4-2-update-notes, secondary-genshin-center]
+  combat.native_taxonomy.labels.element: [official-4-2-update-notes, secondary-moegirl]
+  combat.native_taxonomy.labels.rarity: [official-4-2-update-notes, secondary-genshin-center]
+  combat.abilities: [official-4-2-update-notes, secondary-moegirl, secondary-genshin-center]
+  combat.mechanics.resources: [official-4-2-update-notes, secondary-moegirl, secondary-genshin-center]
+  combat.mechanics.states: [official-4-2-update-notes, secondary-moegirl, secondary-genshin-center]
+  combat.mechanics.summons: [official-4-2-update-notes, secondary-moegirl, secondary-genshin-center]
+  combat.team_mechanics.buffs: [official-4-2-update-notes, secondary-moegirl, secondary-genshin-center]
+  combat.team_mechanics.healing: [official-4-2-update-notes, secondary-moegirl, secondary-genshin-center]
+  combat.team_mechanics.off_field_effects: [secondary-moegirl, secondary-genshin-center]
+  combat.team_mechanics.interactions: [official-4-2-update-notes, secondary-moegirl, secondary-genshin-center]
+  combat.relations: [official-4-2-update-notes, secondary-moegirl, secondary-genshin-center]
+  narrative.faction: [official-character-page-cn, official-4-2-update-notes, secondary-moegirl]
+  narrative.affiliations: [secondary-genshin-center, secondary-moegirl]
+verification:
+  status: partially_verified
+  conflicts: []
+  notes:
+    - "Identity (Furina, Hydro, Sword, 5-star, released in Version 4.2 on 2023-11-08), the native taxonomy, and the core combat mechanics — Charged-Attack Arkhe alignment switch, Elemental Skill Salon Solitaire (Salon Members / Singer of Many Waters), and Elemental Burst Let the People Rejoice (Universal Revelry + Fanfare, including the 300 cap and reset at Burst end) — are directly supported by the official Version 4.2 Update Notes (primary)."
+    - "Full talent-level details beyond the patch-notes summaries (Normal Attack meter and 'Arkhe: Seats Sacred and Profane', and the 1st/4th Ascension and Utility passives) are supported by two independent secondary sources (Moegirlpedia and Genshin Center) that carry the verbatim in-game kit text; per the ingestion rules these secondary-only sub-facts keep the record at partially_verified."
+    - "The official ys.mihoyo character page and news-detail pages are JavaScript-rendered; their source records carry the official URLs with hashes of the fetched app shell / the official content API payload that backs the page."
+    - "Narrative: official 4.2 marketing frames Furina as the 'absolute focus of the stage of judgment' and 'Queen of All Waters, All Peoples, and All Laws'. The 'former Hydro Archon (God of Justice)' phrase reflects Furina's post-4.2 in-game status but is secondary-lore-only and mixes a historical role with the current identity; it is therefore deliberately excluded from facts (narrative.public_identity kept null under conservative fact semantics), and the temporal-identity question remains a human-review watch item."
