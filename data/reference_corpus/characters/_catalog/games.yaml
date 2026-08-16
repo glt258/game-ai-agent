@@ -15,3 +15,11 @@ games:
     taxonomy:
       weapon_system: false
       attribute_system: true
+  genshin-impact:
+    display_name: "Genshin Impact"
+  wuthering-waves:
+    display_name: "Wuthering Waves"
+  zenless-zone-zero:
+    display_name: "Zenless Zone Zero"
+  neverness-to-everness:
+    display_name: "Neverness to Everness"

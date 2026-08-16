@@ -1,7 +1,7 @@
 # Character Sources Schema v0.2
 
 `character-sources/0.2` adds field-aware temporal provenance to the persisted
-source package. Facts remain `character-facts/0.2`; analysis remains
+source package. Facts use `character-facts/0.3`; analysis remains
 `character-analysis/0.1`.
 
 ## Source time context
