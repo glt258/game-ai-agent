@@ -1,4 +1,4 @@
-schema_version: "character-sources/0.1"
+schema_version: "character-sources/0.2"
 reference_id: "test-game-alpha:test-character-b"
 sources:
   - source_id: synthetic-source
@@ -8,6 +8,7 @@ sources:
     url: "https://example.com/synthetic/test-character-b"
     language: en
     reliability: secondary
+source_relations: []
 field_evidence:
   identity.names.canonical: [synthetic-source]
   combat.native_taxonomy.labels.weapon_type: [synthetic-source]

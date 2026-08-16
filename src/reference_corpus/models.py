@@ -23,7 +23,7 @@ RELATION_TYPE_RE = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
 SUPPORTED_SCHEMA_VERSIONS = {
     "character-facts/0.2",
     "character-analysis/0.1",
-    "character-sources/0.1",
+    "character-sources/0.2",
     "game-catalog/0.1",
     "character-reference-corpus/0.1",
 }
@@ -495,11 +495,15 @@ class SourceRecord(ReferenceModel):
     url: str
     language: str | None = None
     retrieved_at: datetime | None = None
+    published_at: date_type | None = None
+    version_context: str | None = None
     content_hash: str | None = None
     reliability: SourceReliability
 
     _source_id = field_validator("source_id")(lambda value: _text(value, "source_id"))
-    _optional_fields = field_validator("publisher", "title", "language", "content_hash")(
+    _optional_fields = field_validator(
+        "publisher", "title", "language", "version_context", "content_hash"
+    )(
         lambda value: _optional_text(value)
     )
 
@@ -511,6 +515,45 @@ class SourceRecord(ReferenceModel):
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise ValueError("url must be an absolute http:// or https:// URL")
         return value
+
+
+class SourceRelation(ReferenceModel):
+    relation_id: str
+    source_id: str
+    relation_type: str
+    target_source_id: str
+    field_paths: list[str]
+    description_summary: str | None = None
+
+    _relation_id = field_validator("relation_id")(lambda value: _text(value, "relation_id"))
+    _source_id = field_validator("source_id")(lambda value: _text(value, "source_id"))
+    _target_source_id = field_validator("target_source_id")(
+        lambda value: _text(value, "target_source_id")
+    )
+    _description_summary = field_validator("description_summary")(
+        lambda value: _optional_text(value)
+    )
+
+    @field_validator("relation_type")
+    @classmethod
+    def valid_relation_type(cls, value: str) -> str:
+        value = _text(value, "relation_type")
+        if not RELATION_TYPE_RE.fullmatch(value):
+            raise ValueError("INVALID_SOURCE_RELATION_TYPE: relation_type must be non-empty snake_case")
+        return value
+
+    @field_validator("field_paths")
+    @classmethod
+    def valid_field_paths(cls, value: list[str]) -> list[str]:
+        if not value:
+            raise ValueError("EMPTY_SOURCE_RELATION_FIELDS: field_paths must not be empty")
+        return _string_list(value, "source relation field paths")
+
+    @model_validator(mode="after")
+    def reject_self_relation(self) -> "SourceRelation":
+        if self.source_id == self.target_source_id:
+            raise ValueError("SELF_SOURCE_RELATION: source relation cannot target itself")
+        return self
 
 
 class SourceConflict(ReferenceModel):
@@ -543,6 +586,7 @@ class CharacterProvenance(ReferenceModel):
     schema_version: str
     reference_id: str
     sources: list[SourceRecord]
+    source_relations: list[SourceRelation] = Field(default_factory=list)
     field_evidence: dict[str, list[str]] = Field(default_factory=dict)
     verification: VerificationRecord
 
@@ -562,6 +606,14 @@ class CharacterProvenance(ReferenceModel):
         ids = [item.source_id for item in value]
         if len(ids) != len(set(ids)):
             raise ValueError("source_id must be unique within a character")
+        return value
+
+    @field_validator("source_relations")
+    @classmethod
+    def unique_source_relations(cls, value: list[SourceRelation]) -> list[SourceRelation]:
+        ids = [item.relation_id for item in value]
+        if len(ids) != len(set(ids)):
+            raise ValueError("DUPLICATE_SOURCE_RELATION_ID: relation_id must be unique within a character")
         return value
 
     @field_validator("field_evidence")

@@ -44,6 +44,14 @@ def _sort_issues(issues: list[ValidationIssue]) -> list[ValidationIssue]:
     )
 
 
+def _provenance_issue_code(exc: Exception) -> str:
+    """Use explicit provenance invariant codes when the validator supplied one."""
+    candidate, separator, _ = str(exc).partition(":")
+    if separator and candidate and candidate.replace("_", "").isalnum() and candidate.isupper():
+        return candidate
+    return "provenance_invalid"
+
+
 def _mechanic_integrity_issues(reference: CharacterReference) -> list[ValidationIssue]:
     """Return explicit report issues for graph mutations after model construction."""
     facts = reference.facts.combat
@@ -141,7 +149,7 @@ def validate_character_reference(
     try:
         validate_provenance(reference.provenance, reference.facts)
     except Exception as exc:
-        errors.append(_issue("error", "provenance_invalid", str(exc), reference_id))
+        errors.append(_issue("error", _provenance_issue_code(exc), str(exc), reference_id))
     if reference.analysis is None:
         warnings.append(
             _issue(

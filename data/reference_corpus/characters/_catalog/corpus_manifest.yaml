@@ -2,7 +2,7 @@ corpus_version: "character-reference-corpus/0.1"
 schema_versions:
   facts: "character-facts/0.2"
   analysis: "character-analysis/0.1"
-  sources: "character-sources/0.1"
+  sources: "character-sources/0.2"
 games:
   - test-game-alpha
   - test-game-beta

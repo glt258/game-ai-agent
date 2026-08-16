@@ -1,4 +1,4 @@
-schema_version: "character-sources/0.1"
+schema_version: "character-sources/0.2"
 reference_id: "test-game-alpha:test-character-complete"
 sources:
   - source_id: synthetic-official
@@ -15,6 +15,7 @@ sources:
     url: "https://example.com/synthetic/test-character-complete-combat"
     language: en
     reliability: secondary
+source_relations: []
 field_evidence:
   identity.names.canonical: [synthetic-official]
   combat.native_taxonomy: [synthetic-official]

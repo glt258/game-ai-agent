@@ -14,3 +14,11 @@
 The existing v0.1 source and corpus-boundary policies continue to apply. Facts stay
 outside Canon and this phase does not add crawler, RAG, PatternExtractor, or agent
 integration work.
+
+Temporal provenance policy:
+
+- `field_evidence` records evidence for the current `CharacterFacts` value, not every historical mention of a field.
+- Do not infer `supersedes` solely from a later publication date. Use it only when the later source explicitly changes, replaces, or is incompatible with the earlier current fact.
+- Use `clarifies` for official wording clarification that does not change the underlying gameplay behavior.
+- `superseded` is not `conflicted`, and a clarified source does not automatically invalidate the source it clarifies.
+- Historical official sources may remain in `sources` and `source_relations`, but a source superseded for a field must not remain in current `field_evidence` for that field.

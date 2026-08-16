@@ -77,7 +77,7 @@ def test_invalid_alignment_score_is_rejected() -> None:
 def test_verification_conflict_invariants_are_rejected(status: str, conflicts: list[dict]) -> None:
     with pytest.raises(ValidationError):
         CharacterProvenance(
-            schema_version="character-sources/0.1",
+            schema_version="character-sources/0.2",
             reference_id="test-game-alpha:test-character-complete",
             sources=[
                 {

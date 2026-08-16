@@ -1,4 +1,4 @@
-schema_version: "character-sources/0.1"
+schema_version: "character-sources/0.2"
 reference_id: "test-game-alpha:test-character-mechanic-graph"
 sources:
   - source_id: synthetic-mechanics
@@ -8,6 +8,7 @@ sources:
     url: "https://example.com/synthetic/mechanic-graph"
     language: en
     reliability: primary
+source_relations: []
 field_evidence:
   identity.names.canonical: [synthetic-mechanics]
   combat.abilities: [synthetic-mechanics]

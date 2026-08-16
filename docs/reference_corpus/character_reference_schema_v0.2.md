@@ -2,8 +2,9 @@
 
 v0.2 is a persisted Facts schema change from `character-facts/0.1`. Existing
 records are explicitly migrated; the loader does not silently accept v0.1 facts.
-Analysis and source schemas remain `character-analysis/0.1` and
-`character-sources/0.1`.
+Analysis remains `character-analysis/0.1`; source provenance is now
+`character-sources/0.2` and is documented separately in
+`character_sources_schema_v0.2.md`.
 
 ## Fact graph
 

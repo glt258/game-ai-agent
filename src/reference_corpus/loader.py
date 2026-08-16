@@ -101,7 +101,7 @@ class CharacterReferenceLoader:
             )
 
         provenance = _model(sources_path, CharacterProvenance)
-        _require_schema_version(provenance.schema_version, "character-sources/0.1", sources_path)
+        _require_schema_version(provenance.schema_version, "character-sources/0.2", sources_path)
         analysis = None
         if analysis_path.exists():
             analysis = _model(analysis_path, CharacterAnalysis)

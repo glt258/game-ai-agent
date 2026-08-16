@@ -26,3 +26,12 @@ cases:
   - relation_unknown_team_interaction
   - empty_relation_type
   - invalid_relation_type_format
+  - unknown_source_relation_source
+  - unknown_source_relation_target
+  - duplicate_source_relation_id
+  - source_relation_self_reference
+  - source_relation_empty_field_paths
+  - source_relation_invalid_type_format
+  - source_relation_unknown_field_path
+  - superseded_source_still_current_evidence
+  - reverse_chronology_relation

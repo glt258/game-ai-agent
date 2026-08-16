@@ -1,4 +1,4 @@
-schema_version: "character-sources/0.1"
+schema_version: "character-sources/0.2"
 reference_id: "test-game-alpha:test-character-multi"
 sources:
   - source_id: source-a
@@ -13,6 +13,7 @@ sources:
     title: Secondary synthetic record
     url: "https://example.com/synthetic/multi-b"
     reliability: secondary
+source_relations: []
 field_evidence:
   identity.names.canonical: [source-a, source-b]
   combat.native_taxonomy.labels.weapon_type: [source-a]

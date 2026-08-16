@@ -1,0 +1,21 @@
+schema_version: "character-facts/0.2"
+reference_id: "test-game-alpha:test-character-a"
+identity:
+  game_id: test-game-alpha
+  native_character_id: null
+  names:
+    canonical: "测试角色甲"
+    localized:
+      zh-CN: "测试角色甲"
+      en-US: "Test Character A"
+  release: null
+  rarity: null
+combat:
+  native_taxonomy:
+    labels:
+      weapon_type: "current synthetic bow"
+  abilities: []
+  mechanics: {}
+  team_mechanics: {}
+narrative: {}
+presentation: {}

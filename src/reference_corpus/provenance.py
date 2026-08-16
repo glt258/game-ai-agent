@@ -47,6 +47,39 @@ def validate_provenance(
     if not provenance.sources:
         raise ProvenanceValidationError("at least one source is required")
 
+    for relation in provenance.source_relations:
+        if relation.source_id not in known_source_ids:
+            raise ProvenanceValidationError(
+                "UNKNOWN_SOURCE_RELATION_SOURCE: "
+                f"unknown source relation source_id: {relation.source_id}"
+            )
+        if relation.target_source_id not in known_source_ids:
+            raise ProvenanceValidationError(
+                "UNKNOWN_SOURCE_RELATION_TARGET: "
+                f"unknown source relation target_source_id: {relation.target_source_id}"
+            )
+        for field_path in relation.field_paths:
+            try:
+                resolve_fact_field_path(facts, field_path)
+            except ProvenanceValidationError as exc:
+                raise ProvenanceValidationError(
+                    "UNKNOWN_SOURCE_RELATION_FIELD: "
+                    f"{field_path}: {exc}"
+                ) from exc
+
+        if relation.relation_type in {"supersedes", "clarifies"}:
+            source = next(item for item in provenance.sources if item.source_id == relation.source_id)
+            target = next(item for item in provenance.sources if item.source_id == relation.target_source_id)
+            if (
+                source.published_at is not None
+                and target.published_at is not None
+                and source.published_at < target.published_at
+            ):
+                raise ProvenanceValidationError(
+                    "INVALID_SOURCE_RELATION_CHRONOLOGY: "
+                    f"{relation.source_id} is earlier than {relation.target_source_id}"
+                )
+
     for field_path, evidence_ids in provenance.field_evidence.items():
         if not field_path.strip():
             raise ProvenanceValidationError("field evidence path must be non-empty")
@@ -60,6 +93,21 @@ def validate_provenance(
                 f"unknown evidence source ID(s) for {field_path}: {sorted(unknown)}"
             )
         resolve_fact_field_path(facts, field_path)
+
+    superseded_fields: dict[str, set[str]] = {}
+    for relation in provenance.source_relations:
+        if relation.relation_type != "supersedes":
+            continue
+        for field_path in relation.field_paths:
+            superseded_fields.setdefault(field_path, set()).add(relation.target_source_id)
+    for field_path, superseded_source_ids in superseded_fields.items():
+        current_evidence = set(provenance.field_evidence.get(field_path, []))
+        invalid = current_evidence & superseded_source_ids
+        if invalid:
+            raise ProvenanceValidationError(
+                "SUPERSEDED_SOURCE_IN_CURRENT_EVIDENCE: "
+                f"{sorted(invalid)} remain current evidence for {field_path}"
+            )
 
     for conflict in provenance.verification.conflicts:
         unknown = set(conflict.source_ids) - known_source_ids

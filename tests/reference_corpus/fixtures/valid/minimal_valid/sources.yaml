@@ -1,4 +1,4 @@
-schema_version: "character-sources/0.1"
+schema_version: "character-sources/0.2"
 reference_id: "test-game-alpha:test-character-a"
 sources:
   - source_id: synthetic-source
@@ -10,6 +10,7 @@ sources:
     retrieved_at: null
     content_hash: null
     reliability: primary
+source_relations: []
 field_evidence:
   identity.names.canonical:
     - synthetic-source
