@@ -1,0 +1,94 @@
+schema_version: "character-sources/0.1"
+reference_id: "wuthering-waves:jinhsi"
+sources:
+  - source_id: official-introduction
+    source_type: official
+    publisher: "Wuthering Waves / Kuro Games"
+    title: "Introduction"
+    url: "https://wutheringwaves.notion.site/Introduction-44410d081a894e8092e19eeb9eb5f71b"
+    language: en-US
+    retrieved_at: "2026-08-15T16:39:50Z"
+    content_hash: "sha256:fb27fe7a599d7e0d88e3fb5dabd33aac632bb286a7fab19b95245fa21ea9f622"
+    reliability: primary
+  - source_id: official-developer-notes-jinhsi
+    source_type: official
+    publisher: "Wuthering Waves / Kuro Games"
+    title: "Developer's Notes - Jinhsi"
+    url: "https://wutheringwaves.notion.site/Developer-s-Notes-Jinhsi-8b04a4e10fd644599fdd8a3422c2b276"
+    language: en-US
+    retrieved_at: "2026-08-15T16:39:50Z"
+    content_hash: "sha256:069df85ca43ee493b5ab5fce4409b231bfe81f306f20af76c226000e9715d05b"
+    reliability: primary
+  - source_id: official-resonator-showcase-jinhsi
+    source_type: video
+    publisher: "Wuthering Waves / Kuro Games"
+    title: "Wuthering Waves | Resonator Showcase | Jinhsi - HEED MY CALLING"
+    url: "https://www.youtube.com/watch?v=0caRWqAQFMc"
+    language: en-US
+    retrieved_at: "2026-08-15T16:39:50Z"
+    content_hash: "sha256:d67bcc83838a9d391ab061b3598c5211256ccf8ef1631653c3dbbee4fca257ec"
+    reliability: primary
+  - source_id: official-chinese-convene-animation-jinhsi
+    source_type: video
+    publisher: "Wuthering Waves / Kuro Games"
+    title: "《鳴潮》喚取角色動畫 1.1－今汐｜JINHSI"
+    url: "https://www.youtube.com/watch?v=Sazlw05C5j8"
+    language: zh-CN
+    retrieved_at: "2026-08-15T16:39:50Z"
+    content_hash: "sha256:79c9aaa02cfd42388a66711b807012928ca006803ff64f1eb7c25f60c78e44d1"
+    reliability: primary
+  - source_id: current-jinhsi-database
+    source_type: database
+    publisher: "Wuthering Waves DB"
+    title: "Jinhsi"
+    url: "https://wuwa.incin.net/resonators/1304"
+    language: en-US
+    retrieved_at: "2026-08-15T16:39:50Z"
+    content_hash: "sha256:ed736fe727fe6540295be8c8899afabe4b9a2213609f731e3f92d3e890218107"
+    reliability: secondary
+  - source_id: current-jinhsi-guide
+    source_type: guide
+    publisher: "Prydwen Institute"
+    title: "Jinhsi Best Build Guide"
+    url: "https://www.prydwen.gg/wuthering-waves/characters/jinhsi"
+    language: en-US
+    retrieved_at: "2026-08-15T16:39:50Z"
+    content_hash: null
+    reliability: secondary
+  - source_id: secondary-version-1-1-patch-notes
+    source_type: other
+    publisher: "WutheringWaves.gg (unofficial mirror)"
+    title: "Version 1.1: Thaw of Eons Patch Notes"
+    url: "https://wutheringwaves.gg/version-1-1-thaw-of-eons-patch-notes/"
+    language: en-US
+    retrieved_at: "2026-08-15T16:39:50Z"
+    content_hash: "sha256:c1f362961aa9093239e985fdb10aa7e694bb959b30d1276c3038816f873aa59f"
+    reliability: secondary
+field_evidence:
+  identity.game_id: [official-introduction, current-jinhsi-database]
+  identity.names.canonical: [official-introduction, official-resonator-showcase-jinhsi]
+  identity.names.localized: [official-chinese-convene-animation-jinhsi]
+  identity.release: [official-chinese-convene-animation-jinhsi, secondary-version-1-1-patch-notes]
+  identity.rarity: [secondary-version-1-1-patch-notes]
+  combat.native_taxonomy: [official-introduction, current-jinhsi-database, secondary-version-1-1-patch-notes]
+  combat.native_taxonomy.labels.attribute: [official-introduction, current-jinhsi-database]
+  combat.native_taxonomy.labels.weapon_type: [official-introduction, current-jinhsi-database]
+  combat.native_taxonomy.labels.rarity: [secondary-version-1-1-patch-notes]
+  combat.abilities: [current-jinhsi-database]
+  combat.mechanics.resources: [current-jinhsi-database, current-jinhsi-guide]
+  combat.mechanics.states: [current-jinhsi-database, current-jinhsi-guide]
+  combat.mechanics.mobility_mechanics: [current-jinhsi-database]
+  combat.team_mechanics: [current-jinhsi-database, current-jinhsi-guide]
+  combat.team_mechanics.interactions: [current-jinhsi-database, current-jinhsi-guide]
+  combat.relations: [current-jinhsi-database, current-jinhsi-guide]
+  narrative.occupation: [official-introduction, official-developer-notes-jinhsi, current-jinhsi-database]
+  narrative.affiliations: [official-introduction, current-jinhsi-database]
+  narrative.public_identity: [official-introduction, official-developer-notes-jinhsi, current-jinhsi-database]
+verification:
+  status: partially_verified
+  conflicts: []
+  notes:
+    - "Official first-party sources support Jinhsi's canonical identity, localized Chinese name, Spectro attribute, Broadblade weapon, Magistrate of Jinzhou occupation, and official character context."
+    - "The current secondary database and current guide supply the detailed live ability, state, resource, mobility, and team-interaction descriptions; official web character material available in this collection does not expose the full skill text."
+    - "Current live references use an Incandescence cap of 50 and the current Eras in Unity timing. Earlier 1.1-era descriptions with a lower cap are treated as superseded rather than recorded as a conflict."
+    - "No native character ID, official visual tags, or official character keywords were located in the consulted first-party material; those fields remain null or empty."

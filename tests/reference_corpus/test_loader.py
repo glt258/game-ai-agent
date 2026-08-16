@@ -97,8 +97,8 @@ def test_v02_graph_fixture_and_golden_records_load() -> None:
     jinhsi = CharacterReferenceLoader().load(data_root / "wuthering_waves" / "jinhsi")
     assert keqing.analysis is not None
     assert keqing.quality.analysis_status.value == "completed"
-    assert jinhsi.analysis is None
-    assert jinhsi.quality.analysis_status.value == "missing"
+    assert jinhsi.analysis is not None
+    assert jinhsi.quality.analysis_status.value == "completed"
     assert any(
         relation.relation_type == "generates"
         for relation in jinhsi.facts.combat.relations
