@@ -1,0 +1,88 @@
+schema_version: "character-sources/0.2"
+reference_id: "wuthering-waves:mortefi"
+sources:
+  - source_id: official-profile-reveal-dragons-breath
+    source_type: official
+    publisher: "Kuro Games"
+    title: "Profile Reveal: Dragon's Breath — Mortefi"
+    url: "https://wutheringwaves.kurogames.com/en/main/news/detail/512"
+    language: en-US
+    retrieved_at: "2026-08-17T00:00:00Z"
+    published_at: 2023-10-18
+    version_context: "Wuthering Waves pre-release / Version 1.0 era"
+    content_hash: null
+    reliability: primary
+  - source_id: official-developer-note-mortefi
+    source_type: official
+    publisher: "Kuro Games"
+    title: "Developer's Note — Mortefi"
+    url: "https://wutheringwaves.kurogames.com/en/main/news/detail/526"
+    language: en-US
+    retrieved_at: "2026-08-17T00:00:00Z"
+    published_at: 2023-10-23
+    version_context: "Wuthering Waves pre-release / Version 1.0 era"
+    content_hash: null
+    reliability: primary
+  - source_id: official-launch-convene-mortefi
+    source_type: official
+    publisher: "Kuro Games"
+    title: "Convene Details"
+    url: "https://wutheringwaves.kurogames.com/en/main/news/detail/758"
+    language: en-US
+    retrieved_at: "2026-08-17T00:00:00Z"
+    published_at: 2024-05-23
+    version_context: "Wuthering Waves Version 1.0 launch"
+    content_hash: null
+    reliability: primary
+  - source_id: secondary-wuthering-wiki
+    source_type: wiki
+    publisher: "Wuthering Wiki"
+    title: "Mortefi (1204)"
+    url: "https://wuthering.wiki/character_1204.html"
+    language: en-US
+    retrieved_at: "2026-08-17T00:00:00Z"
+    published_at: null
+    version_context: null
+    content_hash: null
+    reliability: secondary
+  - source_id: secondary-moegirl
+    source_type: wiki
+    publisher: "Moegirlpedia (萌娘百科)"
+    title: "莫特斐"
+    url: "https://zh.moegirl.org.cn/%E8%8E%AB%E7%89%B9%E6%96%90(%E9%B8%A3%E6%BD%AE)"
+    language: zh-CN
+    retrieved_at: "2026-08-17T00:00:00Z"
+    published_at: null
+    version_context: null
+    content_hash: null
+    reliability: secondary
+source_relations: []
+field_evidence:
+  identity.game_id: [official-profile-reveal-dragons-breath, official-developer-note-mortefi, official-launch-convene-mortefi]
+  identity.names.canonical: [official-profile-reveal-dragons-breath, official-developer-note-mortefi, official-launch-convene-mortefi]
+  identity.names.localized: [secondary-moegirl]
+  identity.release: [official-launch-convene-mortefi]
+  identity.rarity: [official-launch-convene-mortefi, secondary-wuthering-wiki, secondary-moegirl]
+  combat.native_taxonomy.labels.attribute: [secondary-wuthering-wiki, secondary-moegirl]
+  combat.native_taxonomy.labels.weapon_type: [official-developer-note-mortefi, secondary-wuthering-wiki, secondary-moegirl]
+  combat.native_taxonomy.labels.rarity: [official-launch-convene-mortefi, secondary-wuthering-wiki, secondary-moegirl]
+  combat.abilities: [secondary-wuthering-wiki, secondary-moegirl]
+  combat.mechanics.resources: [official-developer-note-mortefi, secondary-wuthering-wiki, secondary-moegirl]
+  combat.mechanics.targeting_mechanics: [secondary-wuthering-wiki, secondary-moegirl]
+  combat.team_mechanics.buffs: [secondary-wuthering-wiki, secondary-moegirl]
+  combat.team_mechanics.off_field_effects: [secondary-wuthering-wiki, secondary-moegirl]
+  combat.team_mechanics.interactions: [official-developer-note-mortefi, secondary-wuthering-wiki, secondary-moegirl]
+  combat.relations: [official-developer-note-mortefi, secondary-wuthering-wiki, secondary-moegirl]
+  narrative.faction: [secondary-wuthering-wiki, secondary-moegirl]
+  narrative.occupation: [official-profile-reveal-dragons-breath, official-developer-note-mortefi]
+  narrative.affiliations: [official-profile-reveal-dragons-breath, official-developer-note-mortefi, secondary-wuthering-wiki, secondary-moegirl]
+  narrative.public_identity: [official-profile-reveal-dragons-breath, official-developer-note-mortefi]
+verification:
+  status: partially_verified
+  conflicts: []
+  notes:
+    - "Identity core facts (Mortefi, Fusion, 4-star, released in Version 1.0 on 2024-05-23, expert in Applied Tacetite Study at Huaxu Academy's Department of Safety, 'Dragon's Breath' Resonator) are directly supported by three official Kuro Games sources: the Profile Reveal (article 512, 2023-10-18), the Developer's Note (article 526, 2023-10-23), and the launch Convene notice (article 758, 2024-05-23). The Profile Reveal establishes the canonical name and epithet; the Developer's Note establishes the Tacet Mark, the weapon as pistols empowered with Tacetite energy, and the Annoyance concept (builds on hit, reaches maximum, triggers enhanced Resonance Skill, expends all Annoyance); the Convene notice binds Mortefi to the Version 1.0 launch as a 4-star Featured Resonator."
+    - "The full live kit (ability names, Fury Fugue, Annoyance cap 100, Burning Rhapsody duration 10s, Marcato 1/2 triggers, 0.35s rate limit, Rage Transposition 38% / 14s, Harmonic Control 25% / 8s, Rhythmic Vibrato, Heavy Attack aiming) is supplied by two independent secondary sources — Wuthering Wiki (full EN in-game kit text) and Moegirlpedia (full CN in-game kit text) — that agree on every mechanic and number; per ingestion policy these secondary-only sub-facts keep the record at partially_verified. The CN native names of the two Inherent Skills could not be cross-checked (the Moegirlpedia page omits the Inherent Skill section), so only the official EN names are recorded."
+    - "Burning Rhapsody representation: the coordinated-attack team effect has a party-scoped subject, so it is not a StateFact (subject_scope cannot honestly be self/target/unknown); it is modeled as a TeamInteractionFact + TeamMechanics buffs/off_field_effects, matching the Shorekeeper Stellarealm precedent. The active-teammate hit trigger that fires Mortefi's coordinated Marcato attacks is an external team event that cannot be expressed as a MechanicRef source node in Mortefi's own ability graph, so that trigger edge is recorded as graph friction rather than a relation."
+    - "Marcato is not modeled as an independent AbilityFact. It has no independent entry point or activation; it appears only within the Burning Rhapsody interaction description, the off_field_effects prose, and the Rhythmic Vibrato description. Creating a Marcato node would introduce a graph node with no incoming relation edges, which is inconsistent with the frozen semantic decisions."
+    - "The Heavy Attack aiming targeting mechanic (Charged Attack enters an aiming state for a precise shot) is included per the Human Decision to preserve the pistol weapon-type aiming behavior in the record."
