@@ -36,6 +36,47 @@ def _codes(draft: CharacterDraft):
 
 
 @pytest.mark.parametrize(
+    ("forbidden", "constraint_note"),
+    [
+        ("personal build-up gauge", "No personal build-up gauge"),
+        ("personal meter", "No personal meter"),
+        ("fake named teammate", "No fake named teammate is invented"),
+    ],
+)
+def test_constraint_notes_echoes_do_not_propose_forbidden_elements(
+    forbidden: str, constraint_note: str
+):
+    request = replace(_good_request(), forbidden_elements=(forbidden,))
+    report = CanonChecker().check(
+        replace(_good_draft(), constraint_notes=(constraint_note,)),
+        request=request,
+    )
+
+    assert CanonFindingCode.HARD_CONSTRAINT_VIOLATION not in {
+        finding.code for finding in report.findings
+    }
+
+
+@pytest.mark.parametrize(
+    ("forbidden", "field"),
+    [
+        ("personal build-up gauge", "ability_concept"),
+        ("personal meter", "design_pitch"),
+        ("fake named teammate", "background"),
+    ],
+)
+def test_forbidden_elements_in_design_content_still_fail(forbidden: str, field: str):
+    request = replace(_good_request(), forbidden_elements=(forbidden,))
+    draft = replace(_good_draft(), **{field: f"The proposed design includes {forbidden}."})
+
+    report = CanonChecker().check(draft, request=request)
+
+    assert CanonFindingCode.HARD_CONSTRAINT_VIOLATION in {
+        finding.code for finding in report.findings
+    }
+
+
+@pytest.mark.parametrize(
     "text",
     [
         "未新增秘密政府组织。",
@@ -104,7 +145,7 @@ def test_live_absence_and_non_use_denials_are_safe(text: str):
 )
 def test_live_positive_forbidden_absence_near_neighbors_still_fail(text: str):
     report = CanonChecker().check(
-        replace(_good_draft(), constraint_notes=(text,)),
+        replace(_good_draft(), background=text),
         request=_good_request(),
     )
     codes = {item.code for item in report.findings}
@@ -119,9 +160,7 @@ def test_live_mixed_absence_clause_does_not_hide_positive_secret_entity():
     report = CanonChecker().check(
         replace(
             _good_draft(),
-            constraint_notes=(
-                "角色不使用秘密政府组织设定，但其真实身份隶属于一个不公开的监管机构。",
-            ),
+            background="角色不使用秘密政府组织设定，但其真实身份隶属于一个不公开的监管机构。",
         ),
         request=_good_request(),
     )
@@ -200,7 +239,7 @@ def test_compound_absence_polarity_is_consistent_for_literal_and_generic_paths(
     def result(forbidden: str):
         request = replace(_good_request(), forbidden_elements=(forbidden,))
         report = CanonChecker().check(
-            replace(_good_draft(), constraint_notes=(text,)),
+            replace(_good_draft(), background=text),
             request=request,
         )
         return report.status, {
@@ -238,7 +277,7 @@ def test_compound_absence_polarity_is_consistent_for_literal_and_generic_paths(
 )
 def test_live_compound_positive_controls_still_fail(text: str):
     report = CanonChecker().check(
-        replace(_good_draft(), constraint_notes=(text,)),
+        replace(_good_draft(), background=text),
         request=_good_request(),
     )
     codes = {item.code for item in report.findings}
@@ -253,9 +292,7 @@ def test_live_compound_negative_property_is_not_absence_scope():
     report = CanonChecker().check(
         replace(
             _good_draft(),
-            constraint_notes=(
-                "无公开登记的秘密监管机构或秘密行政机关统一负责全城能力事务。",
-            ),
+            background="无公开登记的秘密监管机构或秘密行政机关统一负责全城能力事务。",
         ),
         request=_good_request(),
     )
@@ -277,7 +314,7 @@ def test_live_compound_negative_property_is_not_absence_scope():
 )
 def test_live_compound_absence_scope_stops_at_mixed_clause_boundary(text: str):
     report = CanonChecker().check(
-        replace(_good_draft(), constraint_notes=(text,)),
+        replace(_good_draft(), background=text),
         request=_good_request(),
     )
     codes = {item.code for item in report.findings}

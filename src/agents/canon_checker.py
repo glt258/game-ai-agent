@@ -1666,11 +1666,14 @@ class CanonChecker:
 
     @classmethod
     def _all_draft_text(cls, draft: CharacterDraft) -> str:
+        # constraint_notes records how the draft satisfies or interprets the
+        # request.  It is evidence about the proposal, not proposal content;
+        # including it here makes merely echoing a forbidden term look like a
+        # forbidden design element.
         values = [str(getattr(draft, field)) for field in _TEXT_FIELDS]
         values.extend(draft.personality)
         values.extend(draft.new_design_elements)
         values.extend(draft.proposed_new_content)
-        values.extend(draft.constraint_notes)
         return " ".join(values)
 
     @classmethod
