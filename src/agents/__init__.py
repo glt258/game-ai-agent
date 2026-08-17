@@ -124,6 +124,8 @@ from .provider_profiles import (
     resolve_provider_profile,
 )
 from .response_contracts import (
+    CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL,
+    CHARACTER_AUTHORING_ACTION_RESPONSE_CONTRACT,
     CHARACTER_DRAFT_JSON_SCHEMA,
     CHARACTER_DRAFT_RESPONSE_CONTRACT,
     GROUNDED_RESPONSE_CONTRACT,
@@ -194,6 +196,8 @@ __all__ = [
     "CharacterGenerationRuntimeView",
     "CharacterAuthoringView",
     "DeterministicCharacterGenerationModel",
+    "CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL",
+    "CHARACTER_AUTHORING_ACTION_RESPONSE_CONTRACT",
     "StoryLink",
     "MAX_REPAIR_ATTEMPTS",
     "CharacterAuthoringResult",

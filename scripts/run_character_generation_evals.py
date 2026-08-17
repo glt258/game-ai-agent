@@ -9,6 +9,7 @@ from agents import (
     AgentExecutionError,
     AgentToolError,
     CharacterDesignRequest,
+    CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL,
     CharacterGenerationAgent,
     DeterministicCharacterGenerationModel,
     ModelMalformedResponseError,
@@ -81,7 +82,10 @@ def main() -> int:
         checks.append(False)
     try:
         CharacterGenerationAgent(
-            ScriptedAgentModel([ModelTurn(text=json.dumps(_payload(story_link={"target_id": "incident_999", "relation": "related_context", "status": "canon_backed"}), ensure_ascii=False))])
+            ScriptedAgentModel([
+                ModelTurn(text=CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL),
+                ModelTurn(text=json.dumps(_payload(story_link={"target_id": "incident_999", "relation": "related_context", "status": "canon_backed"}), ensure_ascii=False)),
+            ])
         ).generate("设计一个角色")
     except AgentExecutionError:
         checks.append(True)
@@ -89,7 +93,10 @@ def main() -> int:
         checks.append(False)
     try:
         CharacterGenerationAgent(
-            ScriptedAgentModel([ModelTurn(text=json.dumps(_payload(proposed_new_content=["秘密政府组织"]), ensure_ascii=False))])
+            ScriptedAgentModel([
+                ModelTurn(text=CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL),
+                ModelTurn(text=json.dumps(_payload(proposed_new_content=["秘密政府组织"]), ensure_ascii=False)),
+            ])
         ).generate(CharacterDesignRequest("不要新增秘密政府组织"))
     except AgentExecutionError:
         checks.append(True)
@@ -97,14 +104,22 @@ def main() -> int:
         checks.append(False)
     try:
         CharacterGenerationAgent(
-            ScriptedAgentModel([ModelTurn(text=json.dumps(_payload(faction_id="faction_999"), ensure_ascii=False))])
+            ScriptedAgentModel([
+                ModelTurn(text=CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL),
+                ModelTurn(text=json.dumps(_payload(faction_id="faction_999"), ensure_ascii=False)),
+            ])
         ).generate("设计一个角色")
     except AgentExecutionError:
         checks.append(True)
     else:
         checks.append(False)
     try:
-        CharacterGenerationAgent(ScriptedAgentModel([ModelTurn(text=json.dumps({"age": "twenty three"}))])).generate("设计一个角色")
+        CharacterGenerationAgent(
+            ScriptedAgentModel([
+                ModelTurn(text=CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL),
+                ModelTurn(text=json.dumps({"age": "twenty three"})),
+            ])
+        ).generate("设计一个角色")
     except ModelMalformedResponseError:
         checks.append(True)
     else:

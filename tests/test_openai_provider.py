@@ -220,6 +220,37 @@ def test_openai_client_keeps_text_tool_round_without_response_format():
     assert "response_format" not in completions.request
 
 
+def test_openai_client_keeps_authoring_action_tool_round_without_response_format():
+    sdk_response = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                finish_reason="tool_calls",
+                message=SimpleNamespace(content=None, tool_calls=[]),
+            )
+        ],
+        usage=None,
+        _request_id=None,
+    )
+    completions = FakeCompletions(sdk_response)
+    client = OpenAIChatClient(
+        api_key="placeholder-test-key",
+        sdk_client=SimpleNamespace(chat=SimpleNamespace(completions=completions)),
+    )
+
+    client.complete(
+        model="configured-model",
+        messages=[{"role": "system", "content": "Retrieve evidence."}],
+        tools=[{"type": "function", "function": {"name": "search"}}],
+        timeout_seconds=30,
+        response_contract=NegotiatedResponseContract(
+            "character_authoring_action", ResponseMode.TEXT
+        ),
+    )
+
+    assert completions.request["tools"]
+    assert "response_format" not in completions.request
+
+
 def test_deepseek_compatible_request_disables_thinking_only_via_extra_body():
     sdk_response = SimpleNamespace(
         choices=[

@@ -25,6 +25,19 @@ class ResponseContract:
 
 
 TEXT_RESPONSE_CONTRACT = ResponseContract("text", strict=False)
+CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL = "FINALIZE"
+CHARACTER_AUTHORING_ACTION_RESPONSE_CONTRACT = ResponseContract(
+    "character_authoring_action", strict=False
+)
+
+
+def has_terminal_authoring_finalize_signal(text: str) -> bool:
+    """Accept FINALIZE only when it is the last non-empty response line."""
+
+    if not isinstance(text, str):
+        return False
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    return bool(lines) and lines[-1] == CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL
 
 
 CHARACTER_DRAFT_JSON_SCHEMA: Mapping[str, Any] = MappingProxyType(
@@ -153,6 +166,8 @@ GROUNDED_RESPONSE_CONTRACT = ResponseContract(
 def response_contract_for(response_format: str) -> ResponseContract:
     if response_format == "character_draft":
         return CHARACTER_DRAFT_RESPONSE_CONTRACT
+    if response_format == "character_authoring_action":
+        return CHARACTER_AUTHORING_ACTION_RESPONSE_CONTRACT
     if response_format == "grounded_response":
         return GROUNDED_RESPONSE_CONTRACT
     return TEXT_RESPONSE_CONTRACT
@@ -201,11 +216,14 @@ def character_draft_prompt_contract() -> str:
 __all__ = [
     "CHARACTER_DRAFT_JSON_SCHEMA",
     "CHARACTER_DRAFT_RESPONSE_CONTRACT",
+    "CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL",
+    "CHARACTER_AUTHORING_ACTION_RESPONSE_CONTRACT",
     "GROUNDED_RESPONSE_CONTRACT",
     "GROUNDED_RESPONSE_JSON_SCHEMA",
     "ResponseContract",
     "TEXT_RESPONSE_CONTRACT",
     "character_draft_root_example",
     "character_draft_prompt_contract",
+    "has_terminal_authoring_finalize_signal",
     "response_contract_for",
 ]

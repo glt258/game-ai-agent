@@ -27,6 +27,7 @@ from .character_repair import (
 )
 from .model_protocol import ScriptedAgentModel
 from .models import ModelTurn, ToolCall
+from .response_contracts import CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL
 
 
 CORE_CASE_IDS = ("A", "B", "C", "D")
@@ -308,6 +309,7 @@ def _run_case(
     generated_turns = []
     if case.case_id == "C":
         generated_turns.append(ModelTurn(tool_calls=(ToolCall("character", "get_character", {"character_id": "char_launch_001"}),)))
+    generated_turns.append(ModelTurn(text=CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL))
     generated_turns.append(_draft_turn(case.initial_payload))
     generation = CharacterGenerationAgent(
         ScriptedAgentModel(generated_turns),

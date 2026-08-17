@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
-from dataclasses import asdict
+from dataclasses import asdict, replace
 
 import pytest
 
@@ -14,6 +14,7 @@ from agents import (
     DeterministicCharacterGenerationModel,
     LiveLLMAdapter,
     ModelAuthenticationError,
+    ModelCapabilityError,
     ModelMalformedResponseError,
     ModelProviderError,
     ModelRateLimitError,
@@ -22,7 +23,10 @@ from agents import (
     ProviderClientError,
     ProviderCompletion,
     ProviderToolCall,
+    ProviderCapabilities,
+    PROVIDER_PROFILES,
     ScriptedAgentModel,
+    ThinkingModeBehavior,
     ToolCall,
 )
 from agents.character_generation import CHARACTER_SYSTEM_CONTRACT
@@ -81,6 +85,7 @@ def test_fake_faction_id_is_rejected():
     model = ScriptedAgentModel(
         [
             ModelTurn(tool_calls=(ToolCall("w", "get_world_rules", {}),)),
+            ModelTurn(text="FINALIZE"),
             ModelTurn(
                 text=json.dumps(_payload(faction_id="faction_999"), ensure_ascii=False)
             ),
@@ -99,6 +104,7 @@ def test_canon_dependent_faction_uses_tool_evidence_before_grounded_draft():
                     ToolCall("faction", "get_faction", {"faction_id": "faction_002"}),
                 )
             ),
+            ModelTurn(text="FINALIZE"),
             ModelTurn(
                 text=json.dumps(
                     _payload(
@@ -122,7 +128,7 @@ def test_canon_dependent_faction_uses_tool_evidence_before_grounded_draft():
     )
 
     assert result.draft.faction_id == "faction_002"
-    assert result.sources == ("faction_002",)
+    assert "faction_002" in result.sources
     assert [(item.tool_name, item.result_status) for item in result.audit.tool_calls] == [
         ("get_faction", "allowed")
     ]
@@ -130,7 +136,10 @@ def test_canon_dependent_faction_uses_tool_evidence_before_grounded_draft():
 
 def test_canon_independent_original_brief_can_finish_without_tools():
     model = ScriptedAgentModel(
-        [ModelTurn(text=json.dumps(_payload(canon_basis=[]), ensure_ascii=False))]
+        [
+            ModelTurn(text="FINALIZE"),
+            ModelTurn(text=json.dumps(_payload(canon_basis=[]), ensure_ascii=False)),
+        ]
     )
 
     result = CharacterGenerationAgent(model).generate(
@@ -163,14 +172,19 @@ def test_unknown_write_tool_is_rejected():
 
 
 def test_malformed_draft_is_rejected_strictly():
-    model = ScriptedAgentModel([ModelTurn(text=json.dumps({"age": "twenty three"}))])
+    model = ScriptedAgentModel(
+        [ModelTurn(text="FINALIZE"), ModelTurn(text=json.dumps({"age": "twenty three"}))]
+    )
     with pytest.raises(ModelMalformedResponseError):
         CharacterGenerationAgent(model).generate("设计一个角色")
 
 
 def test_numeric_faction_id_is_not_normalized():
     model = ScriptedAgentModel(
-        [ModelTurn(text=json.dumps(_payload(faction_id=123), ensure_ascii=False))]
+        [
+            ModelTurn(text="FINALIZE"),
+            ModelTurn(text=json.dumps(_payload(faction_id=123), ensure_ascii=False)),
+        ]
     )
     with pytest.raises(ModelMalformedResponseError):
         CharacterGenerationAgent(model).generate("设计一个角色")
@@ -178,7 +192,10 @@ def test_numeric_faction_id_is_not_normalized():
 
 def test_hard_age_constraint_is_enforced():
     model = ScriptedAgentModel(
-        [ModelTurn(text=json.dumps(_payload(age=17), ensure_ascii=False))]
+        [
+            ModelTurn(text="FINALIZE"),
+            ModelTurn(text=json.dumps(_payload(age=17), ensure_ascii=False)),
+        ]
     )
     with pytest.raises(AgentExecutionError, match="violates hard constraint"):
         CharacterGenerationAgent(model).generate(
@@ -214,6 +231,7 @@ class FakeProviderClient:
 
 
 def live_agent(outcomes: list, **adapter_options):
+    max_tool_rounds = adapter_options.pop("max_tool_rounds", 6)
     client = FakeProviderClient(outcomes)
     adapter = LiveLLMAdapter(
         client,
@@ -222,26 +240,33 @@ def live_agent(outcomes: list, **adapter_options):
         sleep=lambda _: None,
         **adapter_options,
     )
-    return CharacterGenerationAgent(adapter), client
+    return CharacterGenerationAgent(adapter, max_tool_rounds=max_tool_rounds), client
 
 
 def test_live_malformed_structured_output_records_failure_audit():
     agent, client = live_agent(
-        [ProviderCompletion(text="not valid json at all", request_id="req_bad")]
+        [
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(text="not valid json at all", request_id="req_bad"),
+        ]
     )
 
     with pytest.raises(ModelMalformedResponseError) as captured:
         agent.generate("设计一个角色")
 
     error = captured.value
-    assert client.call_count == 1
+    assert client.call_count == 2
     assert error.audit is not None
     assert error.audit.outcome == "malformed_response"
     assert error.audit.provider == "openai" and error.audit.model == "test-model"
     assert error.audit.retry_count == 0
     assert error.audit.provider_request_id == "req_bad"
     assert error.audit.error_message == "Provider final response is not valid CharacterDraft JSON"
-    assert error.model_invocations == (error.audit,)
+    assert [item.outcome for item in error.model_invocations] == [
+        "success",
+        "malformed_response",
+    ]
+    assert error.model_invocations[-1] == error.audit
 
 
 def test_live_character_draft_request_uses_structured_json_mode():
@@ -251,6 +276,7 @@ def test_live_character_draft_request_uses_structured_json_mode():
                 tool_calls=(ProviderToolCall("world", "get_world_rules", {}),),
                 finish_reason="tool_calls",
             ),
+            ProviderCompletion(text="FINALIZE"),
             ProviderCompletion(text=json.dumps(_payload(), ensure_ascii=False)),
         ]
     )
@@ -258,8 +284,322 @@ def test_live_character_draft_request_uses_structured_json_mode():
     result = agent.generate("设计一个角色")
 
     assert result.draft.status == "draft"
-    assert client.requests[0]["response_contract"]["mode"] == "json_object"
+    assert client.requests[0]["response_contract"]["mode"] == "text"
+    assert client.requests[1]["response_contract"]["mode"] == "text"
+    assert client.requests[2]["response_contract"]["mode"] == "json_object"
+
+
+def test_live_character_generation_separates_retrieval_and_finalization_contracts():
+    agent, client = live_agent(
+        [
+            ProviderCompletion(
+                tool_calls=(
+                    ProviderToolCall(
+                        "search-faction",
+                        "search_factions",
+                        '{"query":"大学","limit":5}',
+                    ),
+                ),
+                finish_reason="tool_calls",
+            ),
+            ProviderCompletion(text="FINALIZE", finish_reason="stop"),
+            ProviderCompletion(
+                text=json.dumps(
+                    _payload(
+                        faction_id="faction_002",
+                        canon_basis=[
+                            {
+                                "source_id": "faction_002",
+                                "supports": ["faction_id"],
+                                "source_type": "faction",
+                            }
+                        ],
+                    ),
+                    ensure_ascii=False,
+                ),
+                finish_reason="stop",
+            ),
+        ]
+    )
+
+    result = agent.generate("设计一个必须加入现有临洲大学研究中心的角色")
+
+    assert result.draft.faction_id == "faction_002"
+    assert client.requests[0]["response_contract"]["mode"] == "text"
+    assert client.requests[0]["tools"]
+    retrieval_prompt = client.requests[0]["messages"][0]["content"]
+    assert "FINALIZE" in retrieval_prompt
+    assert "Authoritative CharacterDraft JSON Schema" not in retrieval_prompt
+    assert "root JSON object itself is the CharacterDraft" not in retrieval_prompt
+    assert client.requests[1]["response_contract"]["mode"] == "text"
+    assert client.requests[2]["response_contract"]["mode"] == "json_object"
+    assert client.requests[2]["tools"] == []
+
+
+@pytest.mark.parametrize(
+    "action_text",
+    [
+        "FINALIZE",
+        "I have enough Canon evidence.\nFINALIZE",
+        "Retrieval is complete.\nFINALIZE\n\n",
+    ],
+)
+def test_live_authoring_action_accepts_terminal_finalize_line(action_text):
+    agent, client = live_agent(
+        [
+            ProviderCompletion(text=action_text),
+            ProviderCompletion(text=json.dumps(_payload(canon_basis=[]), ensure_ascii=False)),
+        ]
+    )
+
+    result = agent.generate("设计一个完全原创的角色")
+
+    assert result.draft.status == "draft"
+    assert client.requests[0]["response_contract"]["mode"] == "text"
     assert client.requests[1]["response_contract"]["mode"] == "json_object"
+    assert client.requests[1]["tools"] == []
+
+
+@pytest.mark.parametrize(
+    "action_text",
+    [
+        "FINALIZE please",
+        '{"action":"FINALIZE"}',
+        "I think we should finalize",
+        "FINALIZE and use faction_005",
+        '{"/users/.../search_factions":null}',
+    ],
+)
+def test_live_authoring_action_rejects_non_terminal_finalize_text(action_text):
+    agent, client = live_agent([ProviderCompletion(text=action_text)])
+
+    with pytest.raises(ModelMalformedResponseError, match="real tool call"):
+        agent.generate("选择一个已有阵营的角色")
+
+    assert client.call_count == 1
+
+
+def test_live_protocol_tool_calls_take_precedence_over_action_text():
+    agent, client = live_agent(
+        [
+            ProviderCompletion(
+                text="I will retrieve the faction first.\nFINALIZE",
+                tool_calls=(
+                    ProviderToolCall(
+                        "search-faction",
+                        "search_factions",
+                        '{"query":"大学","limit":5}',
+                    ),
+                ),
+            ),
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(
+                text=json.dumps(
+                    _payload(
+                        faction_id="faction_002",
+                        canon_basis=[
+                            {
+                                "source_id": "faction_002",
+                                "supports": ["faction_id"],
+                                "source_type": "faction",
+                            }
+                        ],
+                    ),
+                    ensure_ascii=False,
+                )
+            ),
+        ]
+    )
+
+    result = agent.generate("设计一个必须加入现有临洲大学研究中心的角色")
+
+    assert result.draft.faction_id == "faction_002"
+    assert result.audit.tool_calls[0].tool_name == "search_factions"
+    assert client.requests[0]["response_contract"]["mode"] == "text"
+    assert client.requests[2]["response_contract"]["mode"] == "json_object"
+
+
+def test_live_character_generation_supports_multiple_retrieval_rounds():
+    agent, client = live_agent(
+        [
+            ProviderCompletion(
+                tool_calls=(
+                    ProviderToolCall(
+                        "search-faction",
+                        "search_factions",
+                        '{"query":"大学","limit":5}',
+                    ),
+                )
+            ),
+            ProviderCompletion(
+                tool_calls=(
+                    ProviderToolCall(
+                        "get-faction",
+                        "get_faction",
+                        '{"faction_id":"faction_002"}',
+                    ),
+                )
+            ),
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(
+                text=json.dumps(
+                    _payload(
+                        faction_id="faction_002",
+                        canon_basis=[
+                            {
+                                "source_id": "faction_002",
+                                "supports": ["faction_id"],
+                                "source_type": "faction",
+                            }
+                        ],
+                    ),
+                    ensure_ascii=False,
+                )
+            ),
+        ]
+    )
+
+    result = agent.generate("设计一个必须使用现有临洲大学研究中心的角色")
+
+    assert result.draft.faction_id == "faction_002"
+    assert "faction_002" in result.sources
+    assert [request["response_contract"]["mode"] for request in client.requests] == [
+        "text",
+        "text",
+        "text",
+        "json_object",
+    ]
+    assert client.requests[3]["tools"] == []
+    assert [entry.tool_name for entry in result.audit.tool_calls] == [
+        "search_factions",
+        "get_faction",
+    ]
+
+
+def test_live_character_generation_finalizes_immediately_after_retrieval_budget():
+    agent, client = live_agent(
+        [
+            ProviderCompletion(
+                tool_calls=(
+                    ProviderToolCall(
+                        "search-faction",
+                        "search_factions",
+                        '{"query":"大学","limit":5}',
+                    ),
+                )
+            ),
+            ProviderCompletion(
+                tool_calls=(
+                    ProviderToolCall(
+                        "get-faction",
+                        "get_faction",
+                        '{"faction_id":"faction_002"}',
+                    ),
+                )
+            ),
+            ProviderCompletion(
+                text=json.dumps(
+                    _payload(
+                        canon_basis=[],
+                        open_questions=["Confirm the character's faction after review."],
+                        constraint_notes=["Do not infer missing faction evidence."],
+                    ),
+                    ensure_ascii=False,
+                ),
+                request_id="req_draft",
+            ),
+        ],
+        max_tool_rounds=2,
+    )
+
+    result = agent.generate("设计一个必须参考现有临洲大学研究中心的角色")
+
+    assert result.draft.open_questions == ("Confirm the character's faction after review.",)
+    assert result.draft.constraint_notes == ("Do not infer missing faction evidence.",)
+    assert "faction_002" in result.sources
+    assert client.call_count == 3
+    assert [request["response_contract"]["mode"] for request in client.requests] == [
+        "text",
+        "text",
+        "json_object",
+    ]
+    assert client.requests[0]["tools"]
+    assert client.requests[1]["tools"]
+    assert client.requests[2]["tools"] == []
+    assert [entry.turn_number for entry in result.audit.model_invocations] == [1, 2, 3]
+    assert [entry.tool_call_count for entry in result.audit.model_invocations] == [1, 1, 0]
+    assert [entry.provider_request_id for entry in result.audit.model_invocations] == [
+        None,
+        None,
+        "req_draft",
+    ]
+
+
+def test_live_budget_exhaustion_does_not_bypass_final_grounding_validation():
+    agent, client = live_agent(
+        [
+            ProviderCompletion(
+                tool_calls=(ProviderToolCall("world", "get_world_rules", {}),)
+            ),
+            ProviderCompletion(
+                text=json.dumps(
+                    _payload(faction_id="faction_999", canon_basis=[]),
+                    ensure_ascii=False,
+                ),
+                request_id="req_draft",
+            ),
+        ],
+        max_tool_rounds=1,
+    )
+
+    with pytest.raises(AgentExecutionError, match="not grounded") as captured:
+        agent.generate("设计一个角色")
+
+    assert client.call_count == 2
+    assert client.requests[1]["tools"] == []
+    assert client.requests[1]["response_contract"]["mode"] == "json_object"
+    assert [entry.turn_number for entry in captured.value.model_invocations] == [1, 2]
+    assert [entry.tool_call_count for entry in captured.value.model_invocations] == [1, 0]
+
+
+def test_live_pseudo_tool_json_is_not_recognized_as_a_tool_call():
+    agent, client = live_agent(
+        [ProviderCompletion(text=json.dumps({"/users/.../search_factions": None}))]
+    )
+
+    with pytest.raises(ModelMalformedResponseError, match="real tool call") as captured:
+        agent.generate("选择一个已有阵营的角色")
+
+    assert client.call_count == 1
+    assert client.requests[0]["response_contract"]["mode"] == "text"
+    assert captured.value.model_invocations[0].tool_call_count == 0
+
+
+def test_live_tools_only_provider_fails_closed_at_finalization():
+    profile = replace(
+        PROVIDER_PROFILES["openai"],
+        capabilities=ProviderCapabilities(
+            supports_tools=True,
+            supports_json_schema=False,
+            supports_json_object=False,
+            supports_parallel_tool_calls=False,
+            thinking_mode_behavior=ThinkingModeBehavior.PROVIDER_DEFAULT,
+        ),
+    )
+    client = FakeProviderClient([ProviderCompletion(text="FINALIZE")])
+    adapter = LiveLLMAdapter(
+        client,
+        provider="openai",
+        model="tools-only",
+        profile=profile,
+        sleep=lambda _: None,
+    )
+
+    with pytest.raises(ModelCapabilityError, match="cannot satisfy strict"):
+        CharacterGenerationAgent(adapter).generate("设计一个完全原创的角色")
+
+    assert client.call_count == 1
+    assert client.requests[0]["response_contract"]["mode"] == "text"
 
 
 @pytest.mark.parametrize(
@@ -267,25 +607,34 @@ def test_live_character_draft_request_uses_structured_json_mode():
 )
 def test_live_character_draft_envelopes_are_rejected(wrapper):
     agent, client = live_agent(
-        [ProviderCompletion(text=json.dumps({wrapper: _payload()}, ensure_ascii=False))]
+        [
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(text=json.dumps({wrapper: _payload()}, ensure_ascii=False)),
+        ]
     )
 
     with pytest.raises(ModelMalformedResponseError, match="unknown field") as captured:
         agent.generate("设计一个角色")
 
     assert wrapper in str(captured.value)
-    assert client.call_count == 1
+    assert client.call_count == 2
 
 
 def test_live_character_prompt_requires_direct_root_and_forbids_wrappers():
     agent, client = live_agent(
-        [ProviderCompletion(text=json.dumps(_payload(canon_basis=[]), ensure_ascii=False))]
+        [
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(text=json.dumps(_payload(canon_basis=[]), ensure_ascii=False)),
+        ]
     )
 
     result = agent.generate("设计一个角色")
 
-    system_prompt = client.requests[0]["messages"][0]["content"]
+    retrieval_prompt = client.requests[0]["messages"][0]["content"]
+    system_prompt = client.requests[1]["messages"][0]["content"]
     assert result.draft.draft_id == "draft_test_001"
+    assert "Authoritative CharacterDraft JSON Schema" not in retrieval_prompt
+    assert "root JSON object itself is the CharacterDraft" not in retrieval_prompt
     assert "root JSON object itself is the CharacterDraft" in system_prompt
     assert "Do not wrap it" in system_prompt
     for wrapper in ("character_draft", "draft", "result", "data", "response", "payload"):
@@ -348,6 +697,7 @@ def test_live_draft_schema_failure_keeps_success_invocation_trail():
     # model was called rather than looking like a call that never happened.
     agent, client = live_agent(
         [
+            ProviderCompletion(text="FINALIZE"),
             ProviderCompletion(
                 text=json.dumps({"age": "twenty three"}), request_id="req_schema"
             )
@@ -359,10 +709,10 @@ def test_live_draft_schema_failure_keeps_success_invocation_trail():
 
     error = captured.value
     assert error.audit is None
-    assert client.call_count == 1
-    assert len(error.model_invocations) == 1
-    assert error.model_invocations[0].outcome == "success"
-    assert error.model_invocations[0].provider_request_id == "req_schema"
+    assert client.call_count == 2
+    assert len(error.model_invocations) == 2
+    assert error.model_invocations[1].outcome == "success"
+    assert error.model_invocations[1].provider_request_id == "req_schema"
 
 
 def test_live_tool_round_then_failure_preserves_prior_success_audit():
@@ -371,6 +721,7 @@ def test_live_tool_round_then_failure_preserves_prior_success_audit():
             ProviderCompletion(
                 tool_calls=(ProviderToolCall("t1", "get_world_rules", {}),)
             ),
+            ProviderCompletion(text="FINALIZE"),
             ProviderCompletion(text="not valid json", request_id="req_bad2"),
         ]
     )
@@ -379,8 +730,9 @@ def test_live_tool_round_then_failure_preserves_prior_success_audit():
         agent.generate("设计一个角色")
 
     error = captured.value
-    assert client.call_count == 2
+    assert client.call_count == 3
     assert [item.outcome for item in error.model_invocations] == [
+        "success",
         "success",
         "malformed_response",
     ]
@@ -393,6 +745,7 @@ def test_live_validation_failure_keeps_invocation_trail():
             ProviderCompletion(
                 tool_calls=(ProviderToolCall("t1", "get_world_rules", {}),)
             ),
+            ProviderCompletion(text="FINALIZE"),
             ProviderCompletion(
                 text=json.dumps(
                     _payload(faction_id="faction_999"), ensure_ascii=False
@@ -406,18 +759,22 @@ def test_live_validation_failure_keeps_invocation_trail():
         agent.generate("设计一个角色")
 
     error = captured.value
-    assert client.call_count == 2
+    assert client.call_count == 3
     assert [item.outcome for item in error.model_invocations] == [
         "success",
         "success",
+        "success",
     ]
-    assert error.model_invocations[1].provider_request_id == "req_draft"
+    assert error.model_invocations[2].provider_request_id == "req_draft"
 
 
 def test_live_failure_audit_excludes_raw_model_content():
     secret = "RESTRICTED_TEST_SECRET_123"
     agent, client = live_agent(
-        [ProviderCompletion(text=f"prefix {secret} not json", request_id="req_secret")]
+        [
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(text=f"prefix {secret} not json", request_id="req_secret"),
+        ]
     )
 
     with pytest.raises(ModelMalformedResponseError) as captured:
@@ -437,6 +794,7 @@ def test_live_success_records_success_invocations():
     payload = json.dumps(_payload(canon_basis=[]), ensure_ascii=False)
     agent, client = live_agent(
         [
+            ProviderCompletion(text="FINALIZE"),
             ProviderCompletion(
                 text=payload, request_id="req_ok", finish_reason="stop"
             )
@@ -445,7 +803,10 @@ def test_live_success_records_success_invocations():
 
     result = agent.generate("设计一个角色")
 
-    assert client.call_count == 1
-    assert [item.outcome for item in result.audit.model_invocations] == ["success"]
-    assert result.audit.model_invocations[0].provider_request_id == "req_ok"
-    assert result.audit.model_invocations[0].finish_reason == "stop"
+    assert client.call_count == 2
+    assert [item.outcome for item in result.audit.model_invocations] == [
+        "success",
+        "success",
+    ]
+    assert result.audit.model_invocations[1].provider_request_id == "req_ok"
+    assert result.audit.model_invocations[1].finish_reason == "stop"

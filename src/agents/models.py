@@ -209,8 +209,9 @@ class AgentPrompt:
     evidence: tuple[GroundingEvidence, ...] = ()
     repair_request: GroundingRepairRequest | None = None
     # Kept optional so the existing NPC prompt contract remains unchanged.
-    # Authoring consumers use ``character_draft`` to select their strict JSON
-    # transport/parser in the shared LiveLLMAdapter.
+    # Authoring consumers use ``character_authoring_action`` for tool
+    # retrieval and ``character_draft`` for strict final JSON in the shared
+    # LiveLLMAdapter.
     response_format: str = "grounded_response"
     # Bounded, provider-neutral payload for authoring operations that do not
     # use the NPC conversation message history (for example character repair).

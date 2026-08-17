@@ -37,6 +37,8 @@ from .provider_protocol import (
 )
 from .provider_profiles import ProviderProfile, resolve_provider_profile
 from .response_contracts import (
+    CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL,
+    has_terminal_authoring_finalize_signal,
     response_contract_for,
 )
 
@@ -190,6 +192,14 @@ class LiveLLMAdapter:
             segments = ()
             structured_output = None
             rendered_text = text
+        elif prompt.response_format == "character_authoring_action":
+            if not has_terminal_authoring_finalize_signal(text or ""):
+                raise ModelMalformedResponseError(
+                    "Authoring action must be a real tool call or end with the exact FINALIZE signal"
+                )
+            structured_output = None
+            segments = ()
+            rendered_text = CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL
         elif prompt.response_format == "character_draft":
             structured_output = self._parse_structured_object(text or "")
             segments = ()
@@ -248,6 +258,8 @@ class LiveLLMAdapter:
                 f"{prompt.system_contract}\n\n"
                 "Return only the requested CharacterDraft root JSON object."
             )
+        elif prompt.response_format == "character_authoring_action":
+            protocol_content = prompt.system_contract
         else:
             protocol_content = (
                 f"{prompt.system_contract}\n\n"

@@ -39,7 +39,9 @@ from .models import (
 )
 from .response_contracts import (
     CHARACTER_DRAFT_JSON_SCHEMA,
+    CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL,
     character_draft_prompt_contract,
+    has_terminal_authoring_finalize_signal,
 )
 
 
@@ -683,6 +685,17 @@ If the brief uses or depends on an existing Canon entity, identifier, fact, rule
 Every existing Canon claim must be represented by a canon_basis source ID returned by a successful tool observation. canon_basis.supports is a machine-validated contract: prefer defined generic support keys, field paths, or short extractive phrases copied from the cited Canon source; do not freely paraphrase Canon claims in supports. New personal details must be placed in new_design_elements or proposed_new_content and must never be presented as existing Canon. Never create organizations, IDs, files or Canon records. If required Canon cannot be found or verified, do not invent or guess it; leave the Canon-dependent field unresolved and surface the uncertainty through open_questions and constraint_notes. Respect hard constraints. Keep combat_role high-level and do not invent numeric balance values.""" + "\n\n" + character_draft_prompt_contract()
 
 
+CHARACTER_AUTHORING_ACTION_SYSTEM_CONTRACT = (
+    """You are a read-only game character authoring retrieval agent. Inspect the design brief and gather only the existing Canon evidence needed to create a reviewable CharacterDraft. This is a retrieval/action phase, not the final draft response.
+
+If the brief depends on an existing Canon faction, lore fact, character, world rule, story, case or incident, use the appropriate listed read-only authoring tool before finalization. Do not treat names or IDs in the brief as verified evidence. Use only facts returned by successful tool observations, never invent Canon, and never create organizations, IDs, files or Canon records. Perform as many retrieval steps as needed within the tool-round limit. If no Canon retrieval is needed, you may finalize immediately.
+
+When enough evidence has been gathered, or when no Canon retrieval is needed, return exactly """
+    + CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL
+    + """ and nothing else. Do not return a CharacterDraft, JSON schema, wrapper object, prose, or a substitute signal."""
+)
+
+
 @dataclass(frozen=True)
 class CharacterAuthoringView:
     principal: str
@@ -742,13 +755,14 @@ class CharacterGenerationAgent:
         audits: list[ToolAuditEntry] = []
         invocations: list[ModelInvocationAudit] = []
         try:
-            for round_number in range(1, self.max_tool_rounds + 2):
+            finalization_round: int | None = None
+            for round_number in range(1, self.max_tool_rounds + 1):
                 evidence = tuple(
                     GroundingEvidence(f"canon:{source_id}", GroundingEvidenceType.TOOL_LORE, source_id, source_id if source_type == "lore" else None)
                     for source_id, source_type in sorted(source_types.items())
                 )
                 prompt = AgentPrompt(
-                    CHARACTER_SYSTEM_CONTRACT,
+                    CHARACTER_AUTHORING_ACTION_SYSTEM_CONTRACT,
                     authoring,
                     runtime,
                     tuple(messages),
@@ -756,14 +770,12 @@ class CharacterGenerationAgent:
                     f"character_generation:{request.request_id}",
                     round_number,
                     evidence,
-                    response_format="character_draft",
+                    response_format="character_authoring_action",
                 )
                 turn = self.model.generate(prompt)
                 if turn.invocation is not None:
                     invocations.append(turn.invocation)
                 if turn.tool_calls:
-                    if round_number > self.max_tool_rounds:
-                        raise AgentExecutionError(f"Tool loop exceeded {self.max_tool_rounds} rounds")
                     messages.append(ConversationMessage("assistant", {"tool_calls": [{"id": call.id, "name": call.name, "arguments": dict(call.arguments)} for call in turn.tool_calls]}))
                     for call in turn.tool_calls:
                         try:
@@ -776,18 +788,49 @@ class CharacterGenerationAgent:
                         source_types.update(execution.source_types)
                         messages.append(ConversationMessage("tool", {"tool_call_id": call.id, **dict(execution.observation)}))
                     continue
-                payload = turn.structured_output
-                if payload is None:
-                    if not isinstance(turn.text, str):
-                        raise AgentExecutionError("Model returned no CharacterDraft")
-                    try:
-                        payload = json.loads(turn.text)
-                    except json.JSONDecodeError:
-                        raise ModelMalformedResponseError("CharacterDraft response is not valid JSON") from None
-                draft = CharacterDraft.from_mapping(payload)
-                self._validate_draft(draft, request, source_ids, source_types)
-                audit = CharacterGenerationAudit(request.request_id, len(audits), tuple(audits), tuple(sorted(source_ids)), tuple(invocations))
-                return CharacterGenerationResult(draft, tuple(sorted(source_ids)), audit)
+                if not has_terminal_authoring_finalize_signal(turn.text or ""):
+                    raise ModelMalformedResponseError(
+                        "Authoring action must be a real tool call or end with the exact FINALIZE signal"
+                    )
+                finalization_round = round_number + 1
+                break
+            if finalization_round is None:
+                finalization_round = self.max_tool_rounds + 1
+
+            evidence = tuple(
+                GroundingEvidence(f"canon:{source_id}", GroundingEvidenceType.TOOL_LORE, source_id, source_id if source_type == "lore" else None)
+                for source_id, source_type in sorted(source_types.items())
+            )
+            final_prompt = AgentPrompt(
+                CHARACTER_SYSTEM_CONTRACT,
+                authoring,
+                runtime,
+                tuple(messages),
+                (),
+                f"character_generation:{request.request_id}",
+                finalization_round,
+                evidence,
+                response_format="character_draft",
+            )
+            final_turn = self.model.generate(final_prompt)
+            if final_turn.invocation is not None:
+                invocations.append(final_turn.invocation)
+            if final_turn.tool_calls:
+                raise AgentExecutionError(
+                    "Character finalization model attempted a tool call"
+                )
+            payload = final_turn.structured_output
+            if payload is None:
+                if not isinstance(final_turn.text, str):
+                    raise AgentExecutionError("Model returned no CharacterDraft")
+                try:
+                    payload = json.loads(final_turn.text)
+                except json.JSONDecodeError:
+                    raise ModelMalformedResponseError("CharacterDraft response is not valid JSON") from None
+            draft = CharacterDraft.from_mapping(payload)
+            self._validate_draft(draft, request, source_ids, source_types)
+            audit = CharacterGenerationAudit(request.request_id, len(audits), tuple(audits), tuple(sorted(source_ids)), tuple(invocations))
+            return CharacterGenerationResult(draft, tuple(sorted(source_ids)), audit)
         except Exception as error:
             # CharacterGenerationAudit only exists on success, so the
             # propagating exception is the failure-path audit carrier. Keep the
@@ -851,8 +894,13 @@ class DeterministicCharacterGenerationModel:
 
     def generate(self, prompt: AgentPrompt) -> ModelTurn:
         self.prompts.append(prompt)
-        if prompt.response_format != "character_draft":
-            raise RuntimeError("DeterministicCharacterGenerationModel requires character_draft prompts")
+        if prompt.response_format not in {
+            "character_authoring_action",
+            "character_draft",
+        }:
+            raise RuntimeError(
+                "DeterministicCharacterGenerationModel requires character authoring prompts"
+            )
         called = {
             message.content.get("tool_calls", [{}])[0].get("name")
             for message in prompt.messages
@@ -867,6 +915,8 @@ class DeterministicCharacterGenerationModel:
             return ModelTurn(tool_calls=(ToolCall("lore", "search_lore", {"query": brief, "limit": 5}),))
         if ("事件" in brief or "事故" in brief or "南站" in brief or "南栈" in brief) and "search_story_context" not in called:
             return ModelTurn(tool_calls=(ToolCall("story", "search_story_context", {"query": brief, "limit": 5}),))
+        if prompt.response_format == "character_authoring_action":
+            return ModelTurn(text=CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL)
         selected_faction = None
         selected_story = None
         lore_sources: list[str] = []
