@@ -4,6 +4,8 @@
 
 Status: **FROZEN FOR AGENT / EVAL BASELINE**
 
+Baseline anchor commit: `90ee1e2` (`data: finalize Mortefi reference corpus`)
+
 Production records: **10**
 
 Expansion mode:
@@ -14,6 +16,16 @@ Expansion mode:
 The Reference Corpus is supporting infrastructure for the Character Generation
 Agent, Canon Checker, Repair Loop, and evaluation. It is not the project's
 primary product.
+
+This is the frozen baseline for Character Generation evaluation work. Caesar
+expansion stops here. The ten accepted production records are read-only
+baseline data; the Reference Corpus is a precedent/oracle source, not a set of
+answers to inject into generation prompts or a commercial-character imitation
+target. The frozen Reference Corpus schema remains unchanged.
+
+Future record #11 requires a demonstrated benchmark-driven coverage gap and
+human approval. Benchmark failures alone do not authorize corpus expansion,
+and no character may be added merely to increase the sample count.
 
 ## Production Characters
 
@@ -71,22 +83,22 @@ Decision rule:
 
 This is **GAP-DRIVEN CORPUS EXPANSION**, not roster-driven corpus expansion.
 
-## Paused Roster Work
+## Caesar and Paused Roster Work
 
-Caesar King: **PAUSED**
+Caesar expansion: **STOPPED** at this baseline
 
 Remaining previously planned expansion characters remain **BACKLOG**. They are
 not cancelled permanently and no longer have automatic priority.
 
-## Agent Mainline
+## Next Phase
 
-The next project priority is:
+The next phase is:
 
-1. Character Generation Benchmark / Eval
-2. Character Generation Agent
-3. Canon Checker
-4. Repair Loop
-5. End-to-end evaluation and gap discovery
+1. Character Generation quality
+2. Canon checking
+3. Repair Loop
+4. Eval / Lean Benchmark
+5. Demo
 
 The Reference Corpus should initially serve as a benchmark, oracle, and
 precedent corpus.
