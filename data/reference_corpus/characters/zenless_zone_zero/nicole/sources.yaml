@@ -1,0 +1,111 @@
+schema_version: "character-sources/0.2"
+reference_id: "zenless-zone-zero:nicole"
+sources:
+  - source_id: official-character-page-zh
+    source_type: official
+    publisher: "Zenless Zone Zero / HoYoverse"
+    title: "妮可·德玛拉 — 官方角色页（官方网站角色名录）"
+    url: "https://zenless.hoyoverse.com/zh-cn/main?catchSpider=1&page=character"
+    language: zh-CN
+    retrieved_at: "2026-08-16T23:42:42Z"
+    published_at: null
+    version_context: "current official site character roster"
+    content_hash: "sha256:4a85c0be4ef48fa41195d63052fbe7204fe1687cfbe6cac26693ca4f5a9bd886"
+    reliability: primary
+  - source_id: official-character-page-en
+    source_type: official
+    publisher: "Zenless Zone Zero / HoYoverse"
+    title: "Nicole Demara — Official character page (official site character roster)"
+    url: "https://zenless.hoyoverse.com/en-us/main?catchSpider=1&page=character"
+    language: en-US
+    retrieved_at: "2026-08-16T23:42:42Z"
+    published_at: null
+    version_context: "current official site character roster"
+    content_hash: "sha256:56991e88a8c9f943de45bec3b90d6c7e0b58b4fdc7e58dcd3adc1d31b0da19a1"
+    reliability: primary
+  - source_id: official-character-intro
+    source_type: official
+    publisher: "Zenless Zone Zero / HoYoverse"
+    title: "「明智之选！委托我的话，出场费可不低哦！」——妮可·德玛拉（官方角色介绍）"
+    url: "https://zenless.hoyoverse.com/zh-cn/news/102187"
+    language: zh-CN
+    retrieved_at: "2026-08-16T23:42:42Z"
+    published_at: null
+    version_context: "pre-release character introduction (original-era post, before global launch)"
+    content_hash: "sha256:9063f5795bcea90d45fc048812b4cd9ccdbe037b0f37e559a87d2e050625f984"
+    reliability: primary
+  - source_id: official-character-demo
+    source_type: official
+    publisher: "Zenless Zone Zero / HoYoverse"
+    title: "当生意来敲门 | 《绝区零》妮可角色展示 (When Business Comes Knocking | Nicole Character Demo)"
+    url: "https://zenless.hoyoverse.com/zh-cn/news/113831"
+    language: zh-CN
+    retrieved_at: "2026-08-16T23:42:42Z"
+    published_at: null
+    version_context: "Version 1.0 launch window"
+    content_hash: "sha256:160ac7590ac026ddaae33539e76faff4ab9bb4f97ee016f8ca8708d29e6e5ca2"
+    reliability: primary
+  - source_id: official-character-pv
+    source_type: official
+    publisher: "Zenless Zone Zero / HoYoverse"
+    title: "希望的标价 | 《绝区零》妮可角色PV (Price of Hope | Nicole Character Teaser)"
+    url: "https://zenless.hoyoverse.com/zh-cn/news/114144"
+    language: zh-CN
+    retrieved_at: "2026-08-16T23:42:42Z"
+    published_at: null
+    version_context: "Version 1.0 launch window"
+    content_hash: "sha256:d27a6dae9fc100379e192c9dca551c3ce962750da47557961a5bb48f9339dbff"
+    reliability: primary
+  - source_id: official-launch-announcement
+    source_type: official
+    publisher: "Zenless Zone Zero / HoYoverse"
+    title: "《绝区零》7月4日开启全平台公测 (Zenless Zone Zero Officially Releases on July 4 on All Platforms)"
+    url: "https://zenless.hoyoverse.com/zh-cn/news/124378"
+    language: zh-CN
+    retrieved_at: "2026-08-16T23:42:42Z"
+    published_at: null
+    version_context: "Version 1.0 (global launch)"
+    content_hash: "sha256:63d74da3baf8c6614c76b0cbb82c6f1f60804e077434e9b743fa870782b4c4cc"
+    reliability: primary
+  - source_id: secondary-moegirl
+    source_type: wiki
+    publisher: "Moegirlpedia (萌娘百科)"
+    title: "妮可·德玛拉"
+    url: "https://zh.moegirl.org.cn/%E5%A6%AE%E5%8F%AF%C2%B7%E5%BE%B7%E7%8E%9B%E6%8B%89"
+    language: zh-CN
+    retrieved_at: "2026-08-16T23:42:42Z"
+    published_at: null
+    version_context: "post-launch wiki page (page created 2024-07-02), transcribes official in-game CN skill text"
+    content_hash: "sha256:1d94f1cf90df248a2f026df9cde18b6b15c77cb05592ce39d420b43fcbe1308e"
+    reliability: secondary
+source_relations: []
+field_evidence:
+  identity.game_id: [official-character-page-zh, official-character-page-en]
+  identity.names.canonical: [official-character-page-zh, official-character-page-en, official-character-intro]
+  identity.names.localized: [official-character-page-zh, official-character-page-en, secondary-moegirl]
+  identity.rarity: [official-character-page-zh, official-character-page-en]
+  combat.native_taxonomy: [official-character-page-zh, official-character-page-en, secondary-moegirl]
+  combat.native_taxonomy.labels.attribute: [official-character-page-zh, official-character-page-en]
+  combat.native_taxonomy.labels.specialty: [official-character-page-zh, official-character-page-en]
+  combat.native_taxonomy.labels.rank: [official-character-page-zh, official-character-page-en]
+  combat.native_taxonomy.labels.faction: [official-character-page-zh, official-character-page-en, official-character-intro]
+  combat.abilities: [secondary-moegirl]
+  combat.team_mechanics.debuffs: [secondary-moegirl]
+  combat.team_mechanics.grouping: [secondary-moegirl]
+  combat.team_mechanics.interactions: [secondary-moegirl]
+  combat.relations: [secondary-moegirl]
+  narrative.faction: [official-character-page-zh, official-character-page-en, official-character-intro]
+  narrative.occupation: [official-character-page-zh, official-character-page-en]
+verification:
+  status: partially_verified
+  conflicts: []
+  notes:
+    - "Identity facts are primary: the official character roster page (content_v2 character channel, iInfoId 102183, zh-CN and en-US payloads) provides the canonical name Nicole Demara / 妮可·德玛拉, the Cunning Hares (狡兔屋) faction, the official intro text, and, via its official asset metadata, the A-Rank (level-icon 'Arank'), the Ether attribute (prop-icon-1 '以太') and the Support specialty (prop-icon-2 '支援'). The official launch announcement gives the July 4, 2024 global launch date."
+    - "Kit ability facts (skill names and move summaries) are supported by the Moegirlpedia transcription of the official in-game zh-CN skill text; per the ingestion policy, talent-detail sub-facts whose only source is secondary keep the record at partially_verified."
+    - "No official 'Agent Mechanics Intro' post exists for Nicole (the official mechanic-introduction series began at Version 1.0 with Rina and Soldier 11, after Nicole's launch), and the official site publishes no full in-game kit text. EN-specific in-game skill names were therefore not retrievable on this host; native_category uses the official EN UI slot labels (Basic Attack / Dodge / Assist / Special Attack / EX Special Attack / Chain Attack / Ultimate / Core Passive) while native_name uses the source-supported official zh-CN in-game skill names (狡兔连打, 脱兔, 糖衣炮弹, 夹心糖衣炮弹, 高价以太爆弹, 特制以太榴弹, 机关箱) cross-checked in the summaries. The Assist slot carries three distinct named moves (救急炮击, 狡兔出手!, 趁虚而入) with no single slot-level name, so its native_name is left null rather than picking one."
+    - "Core Passive (机关箱) existence and its debuff nature are supported by official in-game text transcribed by Moegirlpedia (the Mindscape Cinema 2 entry references 'the debuff effect of Core Passive: 机关箱'); the debuff's exact parameters are not present in the consulted sources and are deliberately not inferred. The Additional Ability is likewise not recorded because no consulted source carries its text."
+    - "The continuous-pull energy field created by EX Special Attack / Chain Attack / Ultimate is modeled as TeamMechanics.grouping (a placed area effect that continuously pulls surrounding enemies and deals Ether DMG). It is not modeled as a StateFact: no named persistent state with a self/target subject is defined, and treating a placed field as a state would over-StateFact the kit. Field duration and whether the field persists after Nicole leaves the field are not explicit in the consulted sources, so off_field_effects is left empty."
+    - "Quick Assist triggering on hit is part of Nicole's kit wording but is the game's systemic Quick Assist mechanic; it is described in the ability summaries and is not modeled as a character-specific TeamInteractionFact. The Ultimate's squad Energy recovery (10 Energy to other squad members, +20 to the next character swapped in) is Nicole-specific kit text and is modeled as one team interaction with a relation from the Ultimate."
+    - "resources: [] — ZZZ's Energy is a game-generic combat resource, not a Nicole-specific resource, so no ResourceFact is recorded per the corpus rule."
+    - "Launch-era official materials establish Nicole's presence around launch, but exact release fields are intentionally left null because the current source set does not directly support those exact field values. The game's global launch (July 4, 2024, Version 1.0) is documented by the official launch announcement, and the launch-window character demo/PV posts show Nicole was present at launch, but no first-party statement explicitly and directly binds Nicole's own availability/release to Version 1.0 or 2024-07-04."
+    - "No leaks, datamines, beta-only data, private-server data, Reddit or forum speculation, tier lists, or build guides were used."
