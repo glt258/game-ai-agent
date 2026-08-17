@@ -1,0 +1,137 @@
+schema_version: "character-facts/0.3"
+reference_id: "neverness-to-everness:fadia"
+identity:
+  game_id: neverness-to-everness
+  native_character_id: null
+  names:
+    canonical: "Fadia"
+    localized:
+      zh-CN: "法帝娅"
+  release:
+    version: null
+    date: null
+  rarity:
+    native_value: "S-Class"
+    normalized_tier: null
+combat:
+  native_taxonomy:
+    labels:
+      rank: "S-Class"
+      esper_type: "Psyche"
+      arc_type: "Synthesis"
+  abilities:
+    - ability_id: basic_attack
+      native_name: "Wordless Rejection"
+      native_category: "Basic Attack"
+      normalized_category: null
+      description_summary: "Swings her cross shield and performs up to five consecutive attacks dealing Psyche DMG."
+    - ability_id: basic_passive
+      native_name: "All Eyes on Me"
+      native_category: "Basic Passive"
+      normalized_category: null
+      description_summary: "While Fadia's current HP is above 1, she redirects a portion of damage taken by teammates to herself, before any shield mitigation. Once her HP drops to 1, she ceases redirecting and instead shares incoming damage with surviving teammates before absorbing the remainder herself."
+    - ability_id: charged_basic
+      native_name: "Falling Contempt"
+      native_category: "Charged Basic"
+      normalized_category: null
+      description_summary: "Swinging her cross shield in the air, she plunges and deals one instance of Psyche DMG to an area on impact; damage increases with fall height, up to 100%."
+    - ability_id: dodge_counter_basic
+      native_name: "Critical Riposte: Evasion Trigger"
+      native_category: "Dodge Counter Basic"
+      normalized_category: null
+      description_summary: "Triggers when casting Wordless Rejection after a Critical Dodge: charges toward the target at high speed and deals one instance of Psyche DMG to an area, reducing Break."
+    - ability_id: skill
+      native_name: "Existence"
+      native_category: "Redirect Skill"
+      normalized_category: null
+      description_summary: "Deals one instance of Psyche DMG to an area and inflicts Destructive Experience on the enemy with the highest Max HP. During its duration, when Fadia takes damage, the marked target shares a percentage of that damage. Destructive Experience ends when its duration expires, when the redirected damage reaches its cap, or when the target and Fadia leave combat."
+    - ability_id: ultimate
+      native_name: "Agony to Euphoria"
+      native_category: "Ultimate"
+      normalized_category: null
+      description_summary: "Enters the Lilith state, dealing six instances of Mental DMG and restoring HP. While in Lilith, recasting Wordless Rejection performs up to five follow-up attacks that each deal Mental DMG. When Fadia's lost HP reaches the Destructive Threshold, her Energy is fully restored, and the move deals more damage and restores more HP when cast with lost HP at or above the Destructive Threshold. The Lilith state ends when its duration ends, when all five follow-up attacks are performed, when characters are switched, or when other skills are used."
+    - ability_id: passive_1
+      native_name: "Furnace of Guilt"
+      native_category: "Passive"
+      normalized_category: null
+      description_summary: "Nova Enhancement: when the Nova state on a target ends, drains 10% of Fadia's base Max HP from the target at 5% efficiency; the total drained cannot exceed 50% of Fadia's base Max HP. Both parties' stats are restored upon exiting combat."
+    - ability_id: passive_2
+      native_name: "Denial and Plunder"
+      native_category: "Passive"
+      normalized_category: null
+      description_summary: "While Fadia is in the team, increases the team's Max HP by 10%."
+  mechanics:
+    resources: []
+    states:
+      - state_id: lilith
+        native_name: "Lilith"
+        subject_scope: self
+        description_summary: "A Fadia self-state entered by her Ultimate Agony to Euphoria: while active she deals enhanced Mental DMG and restores HP, and recasting Wordless Rejection performs up to five follow-up attacks. It ends when the duration ends, when all five follow-ups are performed, when characters are switched, or when other skills are used."
+      - state_id: destructive-experience
+        native_name: "Destructive Experience"
+        subject_scope: target
+        description_summary: "A mark applied to the enemy with the highest Max HP by Fadia's Skill Existence: while it lasts, a percentage of the damage Fadia takes is shared to the marked target. It ends when the duration expires, when the redirected damage reaches its cap, or when the target and Fadia leave combat."
+    transformations: []
+    summons: []
+    mobility_mechanics: []
+    targeting_mechanics: []
+  team_mechanics:
+    buffs:
+      - "Denial and Plunder: while Fadia is in the team, the team's Max HP is increased by 10%."
+    debuffs:
+      - "Destructive Experience: the marked enemy shares a percentage of the damage Fadia takes while the mark lasts."
+    healing:
+      - "Agony to Euphoria: the Ultimate restores Fadia's own HP while she is in the Lilith state."
+    shielding: []
+    grouping: []
+    off_field_effects: []
+    interactions:
+      - interaction_id: damage-redirection
+        native_name: "All Eyes on Me"
+        description_summary: "While Fadia's HP is above 1, a portion of damage taken by teammates is redirected to Fadia before any shield mitigation; once her HP drops to 1, she stops redirecting and instead shares incoming damage with surviving teammates before absorbing the remainder herself."
+  relations:
+    - relation_id: skill-applies-destructive-experience
+      source:
+        kind: ability
+        id: skill
+      relation_type: applies
+      target:
+        kind: state
+        id: destructive-experience
+      description_summary: "Fadia's Skill Existence inflicts Destructive Experience on the enemy with the highest Max HP."
+    - relation_id: ultimate-enables-lilith
+      source:
+        kind: ability
+        id: ultimate
+      relation_type: enables
+      target:
+        kind: state
+        id: lilith
+      description_summary: "Agony to Euphoria enters the Lilith state."
+    - relation_id: lilith-modifies-basic-attack
+      source:
+        kind: state
+        id: lilith
+      relation_type: modifies
+      target:
+        kind: ability
+        id: basic_attack
+      description_summary: "While in Lilith, recasting Wordless Rejection performs up to five follow-up attacks that deal Mental DMG."
+    - relation_id: all-eyes-on-me-provides-damage-redirection
+      source:
+        kind: ability
+        id: basic_passive
+      relation_type: provides
+      target:
+        kind: team_interaction
+        id: damage-redirection
+      description_summary: "The Basic Passive All Eyes on Me provides the damage-redirection team effect."
+narrative:
+  faction: "Bureau of Anomaly Control"
+  occupation: null
+  affiliations:
+    - "Bureau of Anomaly Control (ETD)"
+  public_identity: null
+presentation:
+  official_visual_tags: []
+  official_character_keywords: []
