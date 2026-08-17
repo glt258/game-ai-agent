@@ -6,6 +6,13 @@ Canon-grounded `CharacterDraft` through bounded retrieval, strict structured
 finalization, deterministic validation, Canon checking, and bounded repair.
 The agent proposes content; it does not write or approve formal Canon.
 
+## Current Status
+
+- **Public Release:** `v0.7.0 — Canon-Grounded Character Authoring` (latest public release)
+- **Development Version:** `0.8.0.dev0`
+- **Runtime Baseline:** `v0.6.6` — earlier frozen runtime milestone, not the current overall project version
+- **Reference Corpus Baseline:** `v0.1` — independent namespace; frozen 10-record production baseline
+
 ## What This Project Is
 
 Game designers need AI assistance without allowing a model to freely invent
@@ -198,8 +205,8 @@ new record is considered. See
 
 ## Current Status and Limitations
 
-The runtime baseline is frozen separately as **Character Authoring Pipeline
-v0.6.6**, with status `READY_FOR_DEMO`. The Reference Corpus production
+The earlier runtime baseline is documented separately as **Character Authoring
+Pipeline v0.6.6**, with status `READY_FOR_DEMO`. The Reference Corpus production
 baseline v0.1 is also frozen. Current work is centered on Agent quality,
 evaluation, and demo readiness rather than speculative platform features.
 
