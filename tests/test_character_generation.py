@@ -25,6 +25,7 @@ from agents import (
     ScriptedAgentModel,
     ToolCall,
 )
+from agents.character_generation import CHARACTER_SYSTEM_CONTRACT
 
 
 def _payload(**overrides):
@@ -88,6 +89,69 @@ def test_fake_faction_id_is_rejected():
     agent = CharacterGenerationAgent(model)
     with pytest.raises(AgentExecutionError, match="not grounded"):
         agent.generate("设计一个角色")
+
+
+def test_canon_dependent_faction_uses_tool_evidence_before_grounded_draft():
+    model = ScriptedAgentModel(
+        [
+            ModelTurn(
+                tool_calls=(
+                    ToolCall("faction", "get_faction", {"faction_id": "faction_002"}),
+                )
+            ),
+            ModelTurn(
+                text=json.dumps(
+                    _payload(
+                        faction_id="faction_002",
+                        canon_basis=[
+                            {
+                                "source_id": "faction_002",
+                                "supports": ["faction_id"],
+                                "source_type": "faction",
+                            }
+                        ],
+                    ),
+                    ensure_ascii=False,
+                )
+            ),
+        ]
+    )
+
+    result = CharacterGenerationAgent(model).generate(
+        CharacterDesignRequest("设计一个必须加入现有临洲大学研究中心的角色。")
+    )
+
+    assert result.draft.faction_id == "faction_002"
+    assert result.sources == ("faction_002",)
+    assert [(item.tool_name, item.result_status) for item in result.audit.tool_calls] == [
+        ("get_faction", "allowed")
+    ]
+
+
+def test_canon_independent_original_brief_can_finish_without_tools():
+    model = ScriptedAgentModel(
+        [ModelTurn(text=json.dumps(_payload(canon_basis=[]), ensure_ascii=False))]
+    )
+
+    result = CharacterGenerationAgent(model).generate(
+        CharacterDesignRequest(
+            "设计一个完全原创的独立辅助型角色，不使用任何既有组织、角色、事件、规则或其他 Canon。"
+        )
+    )
+
+    assert result.draft.faction_id is None
+    assert result.sources == ()
+    assert result.audit.tool_calls == ()
+
+
+def test_character_contract_requires_conditional_canon_retrieval():
+    contract = CHARACTER_SYSTEM_CONTRACT
+
+    assert "conditional on Canon dependency" in contract
+    assert "must first search for or retrieve it" in contract
+    assert "Do not treat a name or ID in the brief as verified evidence" in contract
+    assert "If required Canon cannot be found or verified, do not invent or guess it" in contract
+    assert "may be produced without authoring-tool calls" in contract
 
 
 def test_unknown_write_tool_is_rejected():
