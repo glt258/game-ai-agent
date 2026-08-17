@@ -67,12 +67,12 @@ field_evidence:
   combat.native_taxonomy.labels.weapon_type: [official-developer-note-mortefi, secondary-wuthering-wiki, secondary-moegirl]
   combat.native_taxonomy.labels.rarity: [official-launch-convene-mortefi, secondary-wuthering-wiki, secondary-moegirl]
   combat.abilities: [secondary-wuthering-wiki, secondary-moegirl]
-  combat.mechanics.resources: [official-developer-note-mortefi, secondary-wuthering-wiki, secondary-moegirl]
+  combat.mechanics.resources: [secondary-wuthering-wiki, secondary-moegirl]
   combat.mechanics.targeting_mechanics: [secondary-wuthering-wiki, secondary-moegirl]
   combat.team_mechanics.buffs: [secondary-wuthering-wiki, secondary-moegirl]
   combat.team_mechanics.off_field_effects: [secondary-wuthering-wiki, secondary-moegirl]
-  combat.team_mechanics.interactions: [official-developer-note-mortefi, secondary-wuthering-wiki, secondary-moegirl]
-  combat.relations: [official-developer-note-mortefi, secondary-wuthering-wiki, secondary-moegirl]
+  combat.team_mechanics.interactions: [secondary-wuthering-wiki, secondary-moegirl]
+  combat.relations: [secondary-wuthering-wiki, secondary-moegirl]
   narrative.faction: [secondary-wuthering-wiki, secondary-moegirl]
   narrative.occupation: [official-profile-reveal-dragons-breath, official-developer-note-mortefi]
   narrative.affiliations: [official-profile-reveal-dragons-breath, official-developer-note-mortefi, secondary-wuthering-wiki, secondary-moegirl]
@@ -86,3 +86,4 @@ verification:
     - "Burning Rhapsody representation: the coordinated-attack team effect has a party-scoped subject, so it is not a StateFact (subject_scope cannot honestly be self/target/unknown); it is modeled as a TeamInteractionFact + TeamMechanics buffs/off_field_effects, matching the Shorekeeper Stellarealm precedent. The active-teammate hit trigger that fires Mortefi's coordinated Marcato attacks is an external team event that cannot be expressed as a MechanicRef source node in Mortefi's own ability graph, so that trigger edge is recorded as graph friction rather than a relation."
     - "Marcato is not modeled as an independent AbilityFact. It has no independent entry point or activation; it appears only within the Burning Rhapsody interaction description, the off_field_effects prose, and the Rhythmic Vibrato description. Creating a Marcato node would introduce a graph node with no incoming relation edges, which is inconsistent with the frozen semantic decisions."
     - "The Heavy Attack aiming targeting mechanic (Charged Attack enters an aiming state for a precise shot) is included per the Human Decision to preserve the pistol weapon-type aiming behavior in the record."
+    - "Human sign-off approved the core ability set only: Fury Fugue and Harmonic Control remain independent AbilityFacts, while lower-value auxiliary abilities remain prose-only where useful (Rage Transposition in buffs and Rhythmic Vibrato in off_field_effects). Human sign-off also approved the bounded Burning Rhapsody details and secondary-only mechanics with explicit field evidence; verification remains partially_verified."

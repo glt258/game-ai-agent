@@ -47,21 +47,11 @@ combat:
       native_category: "Intro Skill"
       normalized_category: null
       description_summary: "Enters the field and fires a shot dealing Fusion DMG; a successful hit generates Annoyance."
-    - ability_id: outro_skill
-      native_name: "Rage Transposition"
-      native_category: "Outro Skill"
-      normalized_category: null
-      description_summary: "The incoming Resonator gains 38% Heavy Attack DMG Amplification for 14s."
     - ability_id: inherent_harmonic_control
       native_name: "Harmonic Control"
       native_category: "Inherent Skill"
       normalized_category: null
       description_summary: "After casting Passionate Variation, the next Fury Fugue deals 25% increased DMG for 8s."
-    - ability_id: inherent_rhythmic_vibrato
-      native_name: "Rhythmic Vibrato"
-      native_category: "Inherent Skill"
-      normalized_category: null
-      description_summary: "During Burning Rhapsody, each Marcato hit has a chance to deal additional Fusion DMG."
   mechanics:
     resources:
       - resource_id: annoyance
@@ -84,6 +74,7 @@ combat:
     grouping: []
     off_field_effects:
       - "Burning Rhapsody persists for 10s on the team; while active, the active character's Basic Attack and Heavy Attack hits trigger Mortefi's coordinated Marcato fires, without requiring Mortefi to remain the on-field Resonator."
+      - "Rhythmic Vibrato (Inherent Skill): during Burning Rhapsody, each Marcato hit has a chance to deal additional Fusion DMG."
     interactions:
       - interaction_id: burning-rhapsody
         native_name: "Burning Rhapsody"
