@@ -187,6 +187,7 @@ class LiveLLMAdapter:
             provider_request_id=response.request_id,
             transport=self.transport,
             response_contract=self._response_contract(prompt).mode.value,
+            purpose=prompt.invocation_purpose,
         )
         if calls:
             segments = ()
@@ -620,4 +621,5 @@ class LiveLLMAdapter:
             transport=self.transport,
             response_contract=self._response_contract(prompt).mode.value,
             error_message=error_message,
+            purpose=prompt.invocation_purpose,
         )

@@ -28,6 +28,7 @@ from .errors import (
 from .model_protocol import AgentModel
 from .models import (
     AgentPrompt,
+    CharacterDraftRecoveryAudit,
     ConversationMessage,
     GroundingEvidence,
     GroundingEvidenceType,
@@ -38,6 +39,7 @@ from .models import (
     ToolDefinition,
 )
 from .response_contracts import (
+    CHARACTER_DRAFT_CORE_FIELDS,
     CHARACTER_DRAFT_JSON_SCHEMA,
     CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL,
     character_draft_prompt_contract,
@@ -141,7 +143,14 @@ class StoryLink:
 
 @dataclass(frozen=True)
 class CharacterDraft:
-    """Strict, approval-independent candidate character representation."""
+    """Strict, approval-independent candidate character representation.
+
+    ``age`` and ``age_range`` are nullable design facts.  They are not an
+    appearance estimator, a legal-status classifier, or a required proxy for
+    social position.  Age presentation and life-stage nuance remain authored
+    in the existing narrative fields until the project has a demonstrated
+    need for a separate structured representation.
+    """
 
     draft_id: str
     status: str
@@ -179,7 +188,7 @@ class CharacterDraft:
             raise ModelMalformedResponseError(
                 f"CharacterDraft has unknown field(s): {sorted(unknown)}"
             )
-        required = {"draft_id", "status", "name", "canon_basis", "new_design_elements", "open_questions"}
+        required = set(CHARACTER_DRAFT_CORE_FIELDS)
         missing = required - set(payload)
         if missing:
             raise ModelMalformedResponseError(
@@ -382,6 +391,193 @@ def _normalize_character_draft_payload(
         normalized["open_questions"] = []
         return normalized, ("open_questions",)
     return payload, ()
+
+
+_AGE_UNSPECIFIED_MARKERS = (
+    "不要给出具体年龄",
+    "不要提供具体年龄",
+    "不明确具体年龄",
+    "年龄不公开",
+    "年龄保持不明确",
+    "年龄保持未知",
+    "不指定年龄",
+    "不确定年龄",
+    "年龄模糊",
+    "年龄未知",
+    "具体年龄未知",
+    "当前年龄未知",
+    "年龄信息未知",
+    "年龄不明确",
+    "年龄不明",
+    "年龄未定",
+    "具体年龄不详",
+    "不说明年龄",
+    "不透露年龄",
+    "exact age must remain unspecified",
+    "do not give a specific age",
+    "do not provide an exact age",
+    "age must remain unknown",
+    "age unspecified",
+    "age ambiguous",
+    "age unknown",
+    "exact age unknown",
+)
+
+_SCHOOL_HISTORY_UNSPECIFIED_MARKERS = (
+    "不要解释她过去是否上过学",
+    "不要解释他过去是否上过学",
+    "不要说明她过去是否上过学",
+    "不要说明他过去是否上过学",
+    "过去是否上过学保持未知",
+    "学校经历保持未知",
+    "学校历史保持未知",
+    "不说明是否上过学",
+    "不要设定学校经历",
+    "do not explain whether she ever attended school",
+    "do not explain whether he ever attended school",
+    "school history must remain unknown",
+)
+
+_SELF_REFERENT_PATTERN = r"(?:她|他|该角色|角色)"
+_AGE_VALUE_PATTERN = r"(?:\d{1,3}|[零〇一二两三四五六七八九十百]+)\s*岁"
+_LEGAL_AGE_PATTERN = r"(?:未成年(?:人)?|成年人|成年女性|成年男性)"
+_RELATIVE_AGE_PATTERNS = (
+    r"十几岁",
+    r"少年时期",
+    r"少女时期",
+    r"童年(?:时|时期)?",
+    r"小时候",
+    r"幼年(?:时|时期)?",
+    r"成年(?:以后|后)",
+    r"未成年时期",
+    r"年轻时",
+)
+_SCHOOL_HISTORY_PATTERNS = (
+    r"上过学",
+    r"读过书",
+    r"曾就读",
+    r"离开学校后",
+    r"毕业后",
+    r"读书期间",
+    r"上学时",
+    r"在校期间",
+)
+
+
+def age_must_remain_unspecified(request: CharacterDesignRequest) -> bool:
+    """Return whether the brief explicitly preserves unknown age.
+
+    This is intentionally narrow: it recognizes an explicit authoring
+    constraint, not youthful presentation, body description, or a guessed
+    legal-age category.  It exists so a model cannot silently violate a
+    plainly stated ambiguity requirement during finalization or repair.
+    """
+
+    text = " ".join((*request.hard_constraints, request.brief)).casefold()
+    return any(marker.casefold() in text for marker in _AGE_UNSPECIFIED_MARKERS)
+
+
+def school_history_must_remain_unspecified(request: CharacterDesignRequest) -> bool:
+    """Return whether the brief separately preserves unknown school history.
+
+    Current non-student status is deliberately not included.  A request can
+    exclude school as a present identity while still supplying ordinary past
+    school history.
+    """
+
+    text = " ".join((*request.hard_constraints, request.brief)).casefold()
+    return any(marker.casefold() in text for marker in _SCHOOL_HISTORY_UNSPECIFIED_MARKERS)
+
+
+def _character_narrative_fields(draft: CharacterDraft) -> tuple[tuple[str, str], ...]:
+    fields: list[tuple[str, str]] = []
+    for field_name in (
+        "occupation",
+        "social_role",
+        "design_pitch",
+        "personality",
+        "background",
+        "story_hook",
+        "ability_concept",
+        "knowledge_scope",
+        "constraint_notes",
+        "new_design_elements",
+        "open_questions",
+        "proposed_new_content",
+    ):
+        value = getattr(draft, field_name)
+        if isinstance(value, tuple):
+            fields.extend((field_name, str(item)) for item in value)
+        elif isinstance(value, str) and value:
+            fields.append((field_name, value))
+    for relationship in draft.relationships:
+        description = relationship.get("description")
+        if isinstance(description, str) and description:
+            fields.append(("relationships.description", description))
+    return tuple(fields)
+
+
+def _self_age_claim_kind(text: str, character_name: str) -> str | None:
+    self_ref = rf"(?:{_SELF_REFERENT_PATTERN}|{re.escape(character_name)})"
+    age_value = _AGE_VALUE_PATTERN
+    # These patterns intentionally require a self reference close to the age
+    # phrase.  They do not classify age mentions belonging to another person.
+    if re.search(rf"(?:当前)?年龄\s*(?:是|为|：|:)\s*{age_value}", text):
+        return "exact_age"
+    if re.search(rf"{self_ref}\s*(?:目前|现在|如今)?\s*(?:是|为)?\s*{age_value}(?!的)", text):
+        return "exact_age"
+    if re.search(rf"{self_ref}\s*(?:从|在|于)\s*{age_value}\s*(?:时|起|以后|后)?", text):
+        return "exact_age"
+    if re.search(rf"{age_value}\s*(?:时|起|以后|后)\s*{self_ref}", text):
+        return "exact_age"
+    if re.search(rf"{self_ref}\s*(?:目前|现在|如今)?\s*(?:是|为|属于)?\s*{_LEGAL_AGE_PATTERN}(?!人?的)", text):
+        return "legal_age_status"
+    for relative in _RELATIVE_AGE_PATTERNS:
+        if re.search(rf"{self_ref}\s*(?:曾经|过去|从|在|于)?\s*{relative}", text):
+            return "relative_life_stage"
+        if re.search(rf"{relative}(?:时|起|以后|后)?\s*[，,、]?\s*{self_ref}", text):
+            return "relative_life_stage"
+    return None
+
+
+def _self_school_history_claim(text: str, character_name: str) -> bool:
+    self_ref = rf"(?:{_SELF_REFERENT_PATTERN}|{re.escape(character_name)})"
+    for school_pattern in _SCHOOL_HISTORY_PATTERNS:
+        if re.search(rf"{self_ref}\s*(?:曾经|过去|后来|在|从)?\s*{school_pattern}", text):
+            return True
+        if re.search(rf"{school_pattern}\s*[，,、]?\s*{self_ref}", text):
+            return True
+    return False
+
+
+def age_information_preservation_violations(
+    request: CharacterDesignRequest,
+    draft: CharacterDraft,
+    *,
+    canon_age_supported: bool = False,
+) -> tuple[str, ...]:
+    """Find unsupported age or school-history claims about the drafted character.
+
+    This is a preservation check, not an age classifier.  It only activates
+    for an explicit ambiguity requirement and only recognizes self-referential
+    claims in authored text.  A validated Canon source may support the
+    structured exact/legal age fields; it does not authorize inventing a
+    relative life-stage history.
+    """
+
+    violations: list[str] = []
+    if age_must_remain_unspecified(request):
+        if not canon_age_supported and (draft.age is not None or draft.age_range is not None):
+            violations.append("exact_age")
+        for _field_name, text in _character_narrative_fields(draft):
+            kind = _self_age_claim_kind(text, draft.name)
+            if kind is not None and not (canon_age_supported and kind in {"exact_age", "legal_age_status"}):
+                violations.append(kind)
+    if school_history_must_remain_unspecified(request):
+        for _field_name, text in _character_narrative_fields(draft):
+            if _self_school_history_claim(text, draft.name):
+                violations.append("school_history")
+    return tuple(dict.fromkeys(violations))
 
 
 def _json_safe_relationship_value(value: Any) -> Any:
@@ -716,9 +912,23 @@ Character hook requirements:
 - Use the existing `story_hook` field to make three dimensions explicit when possible: `first impression` (what the player understands immediately), `visual_or_behavioral_motif` (one repeatable phrase, gesture, ordinary object, or routine), and `memorable_contrast` (an observable “appears X, but repeatedly does Y” tension).
 - Derive the hook from the brief's identity, personality, routine, ability, or conflict. Ordinary hooks are valid; the hook is not a marketing gimmick and must not be a generic hidden past.
 
+Age, life-stage, and social-position requirements:
+- Treat exact Canon age, age presentation, life/social position, and authority as separate concepts. `age: null` and `age_range: null` are valid and preferred when the brief and Canon do not establish an exact age or supported range.
+- Never infer an exact age, age range, or legal-age label from height, face, voice, body proportions, clothing, behavior, or youthful/mature presentation. Do not turn age presentation into biological or legal speculation.
+- When the brief explicitly keeps age unknown, do not invent self-referential historical age claims such as `十几岁时`, `少年时期`, `小时候`, or `成年后`. Unknown age includes unsupported past life-stage facts; do not add them merely to make the biography feel complete.
+- Do not map life stage mechanically to occupation or story importance: youthful presentation does not imply student, adulthood does not imply formal employment, and mature presentation does not imply mentor, parent, retired master, or veteran.
+- Do not infer school attendance from youthful presentation alone. A current non-student constraint does not automatically ban ordinary past school history; if the brief explicitly keeps past school history unknown, do not invent `离开学校后` or equivalent self-history. If school is not supported by the brief or Canon, choose among several plausible everyday, occupational, community, family, itinerant, freelance, or independent positions.
+- A younger-presenting or age-ambiguous character may hold a dangerous-world occupation when the world and brief support it. Explain how practical experience, apprenticeship, family trade, survival experience, local knowledge, or bounded training makes the work plausible; state limits, support, and missing authority. Do not reject the role solely because presentation is young.
+- Playability is not evidence of prodigy, secret training, elite operative status, hidden bloodline, experiment status, command authority, or world-truth knowledge. Preserve high practical competence with limited formal authority when that is the more plausible design.
+- Keep competence, formal authority, knowledge access, and narrative importance distinct. Faction membership is not leadership or blanket information access. `faction_id` means formal organization identity; if the prose says the character is not a member, leave `faction_id` null rather than creating a contradiction.
+- Do not add sexualized, adultized, or otherwise inappropriate appeal to younger-presenting characters. Build appeal from identity, personality, relationships, motifs, story tension, agency, and gameplay fantasy.
+
 Reference context requirements:
 - The supplied reference context is bounded external design precedent, not Canon evidence and not a template. Extract a high-level design principle, transform it into this brief, and do not copy a reference character's personality, combat kit, or visual identity. Field-level causal attribution is not available.
 """
+
+
+CHARACTER_DRAFT_RECOVERY_SYSTEM_CONTRACT = """You are a bounded provider-neutral CharacterDraft contract recovery step. The original provider response is a partially valid draft. Complete only the explicitly listed missing core fields. Return one JSON object only. Do not rewrite, improve, summarize, or reinterpret any existing field. Do not add fields outside the CharacterDraft schema. Do not call tools. `canon_basis` is a proposal for later Canon Checker validation, not proof of Canon truth. `new_design_elements` must classify only new design material already evidenced by the original draft; do not invent lore, organizations, identities, or major concepts. If the missing field cannot be completed from the original draft and available context, return the field in a schema-valid unresolved form only when the original contract semantics permit it; otherwise return the best structurally valid proposal and let normal validation decide."""
 
 CHARACTER_AUTHORING_ACTION_SYSTEM_CONTRACT = (
     """You are a read-only game character authoring retrieval agent. Inspect the design brief and gather only the existing Canon evidence needed to create a reviewable CharacterDraft. This is a retrieval/action phase, not the final draft response.
@@ -760,6 +970,7 @@ class CharacterGenerationAudit:
     model_invocations: tuple[ModelInvocationAudit, ...] = ()
     reference_ids: tuple[str, ...] = ()
     normalized_fields: tuple[str, ...] = ()
+    contract_recovery: CharacterDraftRecoveryAudit = field(default_factory=CharacterDraftRecoveryAudit)
 
 
 @dataclass(frozen=True)
@@ -795,6 +1006,7 @@ class CharacterGenerationAgent:
         source_types: dict[str, str] = {}
         audits: list[ToolAuditEntry] = []
         invocations: list[ModelInvocationAudit] = []
+        recovery_audit = CharacterDraftRecoveryAudit()
         try:
             finalization_round: int | None = None
             for round_number in range(1, self.max_tool_rounds + 1):
@@ -869,9 +1081,30 @@ class CharacterGenerationAgent:
                 except json.JSONDecodeError:
                     raise ModelMalformedResponseError("CharacterDraft response is not valid JSON") from None
             payload, normalized_fields = _normalize_character_draft_payload(payload)
+            payload, recovery_audit = self._recover_character_draft_payload(
+                payload,
+                request=request,
+                authoring=authoring,
+                runtime=runtime,
+                messages=messages,
+                evidence=evidence,
+                turn_number=finalization_round,
+                invocations=invocations,
+                source_ids=source_ids,
+                source_types=source_types,
+            )
             draft = CharacterDraft.from_mapping(payload)
             self._validate_draft(draft, request, source_ids, source_types)
-            audit = CharacterGenerationAudit(request.request_id, len(audits), tuple(audits), tuple(sorted(source_ids)), tuple(invocations), tuple(item["reference_id"] for item in self.reference_context if isinstance(item.get("reference_id"), str)), normalized_fields)
+            audit = CharacterGenerationAudit(
+                request.request_id,
+                len(audits),
+                tuple(audits),
+                tuple(sorted(source_ids)),
+                tuple(invocations),
+                tuple(item["reference_id"] for item in self.reference_context if isinstance(item.get("reference_id"), str)),
+                normalized_fields,
+                recovery_audit,
+            )
             return CharacterGenerationResult(draft, tuple(sorted(source_ids)), audit)
         except Exception as error:
             # CharacterGenerationAudit only exists on success, so the
@@ -882,12 +1115,186 @@ class CharacterGenerationAgent:
             if isinstance(error, ModelError) and error.audit is not None:
                 invocations.append(error.audit)
             error.model_invocations = tuple(invocations)
+            recovery_audit = getattr(error, "contract_recovery", recovery_audit)
+            error.contract_recovery = recovery_audit
             raise
         raise AgentExecutionError("Character generation ended without a draft")
+
+    def _recover_character_draft_payload(
+        self,
+        payload: Any,
+        *,
+        request: CharacterDesignRequest,
+        authoring: CharacterAuthoringView,
+        runtime: CharacterGenerationRuntimeView,
+        messages: Sequence[ConversationMessage],
+        evidence: tuple[GroundingEvidence, ...],
+        turn_number: int,
+        invocations: list[ModelInvocationAudit],
+        source_ids: set[str],
+        source_types: Mapping[str, str],
+    ) -> tuple[Mapping[str, Any], CharacterDraftRecoveryAudit]:
+        inspection = inspect_character_draft_payload(payload)
+        if inspection.invalid_fields:
+            raise ModelMalformedResponseError(
+                self._contract_diagnosis("CharacterDraft validation failed", inspection)
+            )
+
+        # Unknown keys are safe to discard only after all known core fields
+        # are present and the known payload itself parses successfully.
+        if inspection.unknown_fields and not inspection.missing_required:
+            cleaned = {
+                key: value
+                for key, value in payload.items()
+                if key in CharacterDraft._KNOWN_FIELDS
+            }
+            return cleaned, CharacterDraftRecoveryAudit(
+                status="applied",
+                discarded_unknown_fields=inspection.unknown_fields,
+                unknown_fields=inspection.unknown_fields,
+            )
+
+        if not inspection.missing_required:
+            return payload, CharacterDraftRecoveryAudit()
+
+        # Missing core fields and unknown/invalid known fields together are
+        # ambiguous.  Do not discard or rewrite anything in that case.
+        if inspection.unknown_fields or inspection.invalid_fields:
+            raise ModelMalformedResponseError(
+                self._contract_diagnosis("CharacterDraft contract is not safely recoverable", inspection)
+            )
+
+        recovery_audit = CharacterDraftRecoveryAudit(
+            status="attempted",
+            attempted=True,
+            missing_required=inspection.missing_required,
+        )
+        recovery_prompt = AgentPrompt(
+            CHARACTER_DRAFT_RECOVERY_SYSTEM_CONTRACT,
+            authoring,
+            runtime,
+            tuple(messages),
+            (),
+            f"character_generation:{request.request_id}",
+            turn_number + 1,
+            evidence,
+            response_format="character_draft",
+            authoring_payload={
+                "task": "complete_missing_character_draft_fields",
+                "missing_required": list(inspection.missing_required),
+                "original_draft": dict(payload),
+                "request": request.to_dict(),
+                "available_canon_source_ids": sorted(source_ids),
+                "available_canon_source_types": dict(sorted(source_types.items())),
+                "reference_context": [dict(item) for item in self.reference_context],
+            },
+            invocation_purpose="character_draft_recovery",
+        )
+        try:
+            recovery_turn = self.model.generate(recovery_prompt)
+            if recovery_turn.invocation is not None:
+                invocations.append(recovery_turn.invocation)
+            if recovery_turn.tool_calls:
+                raise AgentExecutionError(
+                    "CharacterDraft contract recovery does not permit tool calls"
+                )
+            recovered = recovery_turn.structured_output
+            if recovered is None:
+                if not isinstance(recovery_turn.text, str):
+                    raise ModelMalformedResponseError(
+                        "CharacterDraft contract recovery returned no JSON object"
+                    )
+                try:
+                    recovered = json.loads(recovery_turn.text)
+                except json.JSONDecodeError:
+                    raise ModelMalformedResponseError(
+                        "CharacterDraft contract recovery returned invalid JSON"
+                    ) from None
+            if not isinstance(recovered, Mapping):
+                raise ModelMalformedResponseError(
+                    "CharacterDraft contract recovery must return a JSON object"
+                )
+            recovered_inspection = inspect_character_draft_payload(recovered)
+            if recovered_inspection.unknown_fields or recovered_inspection.invalid_fields:
+                raise ModelMalformedResponseError(
+                    self._contract_diagnosis(
+                        "CharacterDraft contract recovery returned invalid fields",
+                        recovered_inspection,
+                    )
+                )
+            missing = set(inspection.missing_required)
+            if not missing <= set(recovered):
+                remaining = tuple(sorted(missing - set(recovered)))
+                raise ModelMalformedResponseError(
+                    "CharacterDraft contract recovery remained incomplete: "
+                    + ", ".join(remaining)
+                )
+            for key, value in recovered.items():
+                if key in missing:
+                    continue
+                if key not in payload or payload[key] != value:
+                    raise ModelMalformedResponseError(
+                        f"CharacterDraft contract recovery attempted to overwrite valid field: {key}"
+                    )
+            merged = dict(payload)
+            merged.update({key: recovered[key] for key in inspection.missing_required})
+            merged_inspection = inspect_character_draft_payload(merged)
+            if merged_inspection.missing_required or merged_inspection.unknown_fields or merged_inspection.invalid_fields:
+                raise ModelMalformedResponseError(
+                    self._contract_diagnosis(
+                        "CharacterDraft contract recovery produced an invalid draft",
+                        merged_inspection,
+                    )
+                )
+            CharacterDraft.from_mapping(merged)
+            return merged, CharacterDraftRecoveryAudit(
+                status="applied",
+                attempted=True,
+                missing_required=inspection.missing_required,
+                recovered_fields=inspection.missing_required,
+            )
+        except Exception as error:
+            failed = CharacterDraftRecoveryAudit(
+                status="failed",
+                attempted=True,
+                missing_required=inspection.missing_required,
+                error_message=str(error),
+            )
+            error.contract_recovery = failed
+            raise
+
+    @staticmethod
+    def _contract_diagnosis(
+        prefix: str,
+        inspection: CharacterDraftContractInspection,
+    ) -> str:
+        return (
+            f"{prefix}: missing_required={list(inspection.missing_required)}, "
+            f"unknown fields={list(inspection.unknown_fields)}, "
+            f"invalid fields={list(inspection.invalid_fields)}"
+        )
 
     @staticmethod
     def _validate_draft(draft: CharacterDraft, request: CharacterDesignRequest, source_ids: set[str], source_types: Mapping[str, str]) -> None:
         age_bounds = CharacterGenerationAgent._age_bounds(request)
+        canon_age_supported = any(
+            entry.source_id in source_ids
+            and any(
+                support.casefold() in {"age", "age_range", "legal_age_status", "age_status"}
+                for support in entry.supports
+            )
+            for entry in draft.canon_basis
+        )
+        age_violations = age_information_preservation_violations(
+            request,
+            draft,
+            canon_age_supported=canon_age_supported,
+        )
+        if age_violations:
+            raise AgentExecutionError(
+                "Draft age-preservation violation despite an explicit unspecified-age constraint: "
+                + ", ".join(age_violations)
+            )
         if draft.age is not None and age_bounds is not None and not age_bounds[0] <= draft.age <= age_bounds[1]:
             raise AgentExecutionError(f"Draft age {draft.age} violates hard constraint {age_bounds[0]}-{age_bounds[1]}")
         if draft.faction_id is not None:
@@ -1028,12 +1435,70 @@ class DeterministicCharacterGenerationModel:
             "story_link": {"target_id": selected_story, "relation": "indirect_connection", "status": "canon_backed"} if selected_story else None,
             "proposed_new_content": [],
         }
+
         if self.scenario == "canon_conflict":
             # This is a deterministic model fixture, not a checker shortcut:
             # the real CanonChecker must detect RULE-008 and the real repair
             # model must handle the resulting finding.
             payload["background"] = "她隶属于秘密政府能力管理局，负责统一处理所有能力相关事务。"
         return ModelTurn(text=json.dumps(payload, ensure_ascii=False, separators=(",", ":")), structured_output=payload)
+
+
+@dataclass(frozen=True)
+class CharacterDraftContractInspection:
+    """Provider-neutral diagnosis before CharacterDraft parsing."""
+
+    missing_required: tuple[str, ...] = ()
+    unknown_fields: tuple[str, ...] = ()
+    invalid_fields: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict[str, list[str]]:
+        return {
+            "missing_required": list(self.missing_required),
+            "unknown_fields": list(self.unknown_fields),
+            "invalid_fields": list(self.invalid_fields),
+        }
+
+
+def inspect_character_draft_payload(payload: Any) -> CharacterDraftContractInspection:
+    """Inspect shape without inventing any missing CharacterDraft content."""
+
+    if not isinstance(payload, Mapping):
+        return CharacterDraftContractInspection(invalid_fields=("<root>",))
+    missing = tuple(sorted(set(CHARACTER_DRAFT_CORE_FIELDS) - set(payload)))
+    unknown = tuple(sorted(set(payload) - CharacterDraft._KNOWN_FIELDS))
+    known_payload = {key: value for key, value in payload.items() if key in CharacterDraft._KNOWN_FIELDS}
+    if missing:
+        # Fill only for diagnostic probing so a malformed known field is not
+        # mistaken for a recoverable omission.  These values never reach the
+        # final draft and are not deterministic defaults.
+        probe = dict(known_payload)
+        probe.setdefault("draft_id", "draft_contract_probe")
+        probe.setdefault("status", "draft")
+        probe.setdefault("name", "contract probe")
+        probe.setdefault("canon_basis", [])
+        probe.setdefault("new_design_elements", [])
+        probe.setdefault("open_questions", [])
+        try:
+            CharacterDraft.from_mapping(probe)
+        except ModelMalformedResponseError as error:
+            fields = tuple(sorted(set(re.findall(r"CharacterDraft\.([A-Za-z_][A-Za-z0-9_]*)", str(error)))))
+            if fields:
+                return CharacterDraftContractInspection(
+                    missing_required=missing,
+                    unknown_fields=unknown,
+                    invalid_fields=fields,
+                )
+        return CharacterDraftContractInspection(missing_required=missing, unknown_fields=unknown)
+    try:
+        CharacterDraft.from_mapping(known_payload)
+    except ModelMalformedResponseError as error:
+        fields = tuple(sorted(set(re.findall(r"CharacterDraft\.([A-Za-z_][A-Za-z0-9_]*)", str(error)))))
+        return CharacterDraftContractInspection(
+            unknown_fields=unknown,
+            invalid_fields=fields or ("<root>",),
+        )
+    return CharacterDraftContractInspection(unknown_fields=unknown)
 
 
 # Friendly aliases for callers that use the agent-oriented vocabulary.
@@ -1058,6 +1523,11 @@ __all__ = [
     "CharacterGenerationResponse",
     "CharacterGenerationRuntimeView",
     "CharacterAuthoringView",
+    "CharacterDraftContractInspection",
     "DeterministicCharacterGenerationModel",
     "StoryLink",
+    "age_information_preservation_violations",
+    "age_must_remain_unspecified",
+    "school_history_must_remain_unspecified",
+    "inspect_character_draft_payload",
 ]

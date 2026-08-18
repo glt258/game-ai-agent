@@ -63,6 +63,30 @@ def test_knowledge_hard_constraint_is_classified_and_preserved():
     assert result.recommended_draft == draft
 
 
+def test_repair_rejects_candidate_that_keeps_unsupported_age_history():
+    draft, base_request = _case("bad")
+    request = replace(
+        base_request,
+        brief="设计一个年龄保持未知、且不新增秘密政府组织的辅助角色。",
+        hard_constraints=("年龄保持未知", "不得成为事件核心负责人"),
+    )
+    draft = replace(
+        draft,
+        age=None,
+        age_range=None,
+        background="她从十几岁起参与社区活动，并秘密领导未公开能力监管部门。",
+    )
+    initial, result = _repair(
+        draft,
+        request,
+        _candidate_model(draft, background="她从十几岁起参与普通社区活动。"),
+    )
+    assert initial.status == CanonCheckStatus.FAIL
+    assert result.status == RepairResultStatus.REPAIR_SCOPE_VIOLATION
+    assert "age-information" in (result.error or "")
+    assert result.recommended_draft == draft
+
+
 def test_authority_hard_constraint_cannot_be_removed():
     draft, base_request = _case("good")
     request = replace(base_request, hard_constraints=("必须拥有跨部门统一指挥权",), request_id="rt_authority_hard")

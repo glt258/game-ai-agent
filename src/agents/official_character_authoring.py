@@ -87,6 +87,13 @@ class OfficialCharacterAuthoringRun:
             "source_ids": list(self.generation.audit.source_ids),
             "reference_ids": list(self.generation.audit.reference_ids),
             "normalized_fields": list(self.generation.audit.normalized_fields),
+            "contract_recovery": {
+                "status": self.generation.audit.contract_recovery.status,
+                "attempted": self.generation.audit.contract_recovery.attempted,
+                "missing_required": list(self.generation.audit.contract_recovery.missing_required),
+                "recovered_fields": list(self.generation.audit.contract_recovery.recovered_fields),
+                "discarded_unknown_fields": list(self.generation.audit.contract_recovery.discarded_unknown_fields),
+            },
             "model_invocations": [asdict(item) for item in self.generation.audit.model_invocations],
         }
         return {
@@ -399,6 +406,9 @@ def render(run: OfficialCharacterAuthoringRun, *, scenario: str, model_mode: str
         "----------------------------------------------------------",
         f"References: {', '.join(run.generation.audit.reference_ids) or 'none'}",
         f"Normalized fields: {', '.join(run.generation.audit.normalized_fields) or 'none'}",
+        f"Contract recovery: {run.generation.audit.contract_recovery.status.upper()}",
+        f"Recovered fields: {', '.join(run.generation.audit.contract_recovery.recovered_fields) or 'none'}",
+        f"Discarded unknown fields: {', '.join(run.generation.audit.contract_recovery.discarded_unknown_fields) or 'none'}",
         f"Canon evidence used: {', '.join(source_labels.get(source_id, source_id) for source_id in run.generation.sources) or 'none'}",
         f"Generation turns: {generation_turns}",
         f"Model invocations: {model_invocations} [{model_mode}; provider audit entries: {model_audits}]",
@@ -454,6 +464,7 @@ def render_live_failure(
         and "CharacterDraft" in str(error)
         else "NOT_RUN"
     )
+    recovery = getattr(error, "contract_recovery", None)
     lines = [
         "OFFICIAL CHARACTER AUTHORING — LIVE MODE",
         "",
@@ -465,6 +476,16 @@ def render_live_failure(
         f"Outcome: {outcome}",
         f"Provider invocation: {provider_invocation}",
         f"CharacterDraft validation: {draft_validation}",
+        "Contract recovery: " + (
+            str(recovery.status).upper()
+            if recovery is not None
+            else "NOT_ATTEMPTED"
+        ),
+        "Recovered fields: " + (
+            ", ".join(recovery.recovered_fields) or "none"
+            if recovery is not None
+            else "none"
+        ),
         f"Error: {detail}",
         "",
         "Requested model mode: LIVE",

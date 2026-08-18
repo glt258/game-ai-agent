@@ -6,6 +6,13 @@ Canon-grounded `CharacterDraft` through bounded retrieval, strict structured
 finalization, deterministic validation, Canon checking, and bounded repair.
 The agent proposes content; it does not write or approve formal Canon.
 
+Character authoring supports age-ambiguous and diverse life-stage concepts
+without forcing age-to-school/work mappings, while preserving Canon,
+authority, and playable-role constraints.
+The v0.3 authoring contract also preserves unknown exact, legal, and historical
+age information, with school-history ambiguity kept separate from current
+non-student status.
+
 ## Current Status
 
 - **Public Release:** `v0.7.0 — Canon-Grounded Character Authoring` (latest public release)
@@ -141,7 +148,7 @@ claim about universal model quality.
 The repository evaluates the boundaries around generation, not just whether
 some text was produced:
 
-- Full deterministic test suite: **583 passed, 1 skipped**.
+- Full deterministic test suite: **641 passed, 1 skipped**.
 - Character Generation tests: **43 passed**.
 - Provider / adapter contract selection (`test_provider_contracts.py`,
   `test_openai_provider.py`, `test_live_llm_adapter.py`,

@@ -125,6 +125,13 @@ CHARACTER_DRAFT_JSON_SCHEMA: Mapping[str, Any] = MappingProxyType(
     }
 )
 
+# These fields are required by the runtime CharacterDraft parser even though
+# the provider schema declares every property required for strict transport.
+# They are the only fields eligible for bounded structural recovery.
+CHARACTER_DRAFT_CORE_FIELDS = frozenset(
+    {"draft_id", "status", "name", "canon_basis", "new_design_elements", "open_questions"}
+)
+
 
 GROUNDED_RESPONSE_JSON_SCHEMA: Mapping[str, Any] = MappingProxyType(
     {
@@ -224,6 +231,7 @@ def character_draft_prompt_contract() -> str:
 
 __all__ = [
     "CHARACTER_DRAFT_JSON_SCHEMA",
+    "CHARACTER_DRAFT_CORE_FIELDS",
     "CHARACTER_DRAFT_RESPONSE_CONTRACT",
     "CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL",
     "CHARACTER_AUTHORING_ACTION_RESPONSE_CONTRACT",

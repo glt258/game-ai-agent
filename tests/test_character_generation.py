@@ -225,16 +225,17 @@ def test_live_character_draft_missing_canon_and_design_fields_still_fail_closed(
         [
             ProviderCompletion(text="FINALIZE"),
             ProviderCompletion(text=json.dumps(incomplete, ensure_ascii=False)),
+            ProviderCompletion(text=json.dumps({"canon_basis": []}, ensure_ascii=False)),
         ]
     )
 
     with pytest.raises(
         ModelMalformedResponseError,
-        match="canon_basis.*new_design_elements",
+        match="new_design_elements",
     ) as captured:
         agent.generate("设计一个完全原创的角色")
 
-    assert client.call_count == 2
+    assert client.call_count == 3
     assert captured.value.model_invocations[-1].outcome == "success"
     assert captured.value.audit is None
     assert captured.value.model_invocations[-1].error_message is None
@@ -296,6 +297,7 @@ def test_other_missing_core_fields_still_fail_closed(missing_field):
         [
             ProviderCompletion(text="FINALIZE"),
             ProviderCompletion(text=json.dumps(payload, ensure_ascii=False)),
+            ProviderCompletion(text=json.dumps({}, ensure_ascii=False)),
         ]
     )
 
@@ -311,6 +313,7 @@ def test_multiple_missing_core_fields_are_not_fixed_by_open_questions_default():
         [
             ProviderCompletion(text="FINALIZE"),
             ProviderCompletion(text=json.dumps(payload, ensure_ascii=False)),
+            ProviderCompletion(text=json.dumps({}, ensure_ascii=False)),
         ]
     )
 

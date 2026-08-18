@@ -59,6 +59,9 @@ class ModelInvocationAudit:
     # messages). Must never contain raw model output, prompts, tool results,
     # restricted lore, or player input.
     error_message: str | None = None
+    # Provider-neutral purpose marker.  Existing callers default to ordinary
+    # generation; bounded structural recovery marks its own invocation.
+    purpose: str = "generation"
 
 
 class SegmentKind(str, Enum):
@@ -117,6 +120,24 @@ class GroundingRepairRequest:
     candidate_segments: tuple[GroundedResponseSegment, ...]
     rejected_segment_ids: tuple[str, ...]
     reasons: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class CharacterDraftRecoveryAudit:
+    """Audit metadata for structural CharacterDraft recovery.
+
+    This is deliberately separate from Canon repair: it records shape
+    completion/cleanup before a valid draft reaches CanonChecker.
+    """
+
+    status: str = "not_attempted"
+    attempted: bool = False
+    missing_required: tuple[str, ...] = ()
+    unknown_fields: tuple[str, ...] = ()
+    invalid_fields: tuple[str, ...] = ()
+    recovered_fields: tuple[str, ...] = ()
+    discarded_unknown_fields: tuple[str, ...] = ()
+    error_message: str | None = None
 
 
 @dataclass(frozen=True)
@@ -218,6 +239,9 @@ class AgentPrompt:
     # It is serialized as data by the live adapter, never interpolated into
     # the system contract.
     authoring_payload: Mapping[str, Any] | None = None
+    # Allows provider-neutral audit consumers to distinguish a bounded
+    # structural recovery invocation from ordinary generation.
+    invocation_purpose: str = "generation"
 
 
 @dataclass(frozen=True)

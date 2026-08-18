@@ -6,6 +6,13 @@ from .models import ModelInvocationAudit
 class AgentError(Exception):
     """Base error for the deterministic NPC conversation runtime."""
 
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        # Optional sanitized structural-recovery metadata.  It is attached to
+        # failures so live renderers can distinguish recovery from Canon
+        # repair without exposing model content.
+        self.contract_recovery = None
+
 
 class AgentExecutionError(AgentError):
     """Raised when the model/tool loop cannot safely finish."""
