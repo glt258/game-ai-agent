@@ -94,6 +94,8 @@ The project separates these responsibilities:
   checks.
 - **Reference Corpus** — external precedent/reference data for evaluation and
   authoring-quality analysis.
+- **Reference Selection Quality Benchmark v0.4** — offline ranking,
+  sensitivity, concentration, stability, and corpus-coverage diagnostics.
 
 ## Character Generation Flow
 

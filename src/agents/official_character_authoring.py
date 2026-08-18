@@ -141,18 +141,12 @@ def load_reference_grounding(
     manifest = load_corpus_manifest(corpus_root / "_catalog" / "corpus_manifest.yaml")
     repository = CharacterReferenceRepository(corpus_root, catalog=catalog)
     references = repository.list_all()
-    query = _tokens(brief)
-    ranked: list[tuple[int, str, Mapping[str, Any]]] = []
-    for reference in references:
-        summary = _reference_summary(reference)
-        haystack = _tokens(json.dumps(summary, ensure_ascii=False))
-        score = sum(1 for token in query if token in haystack)
-        ranked.append((score, str(summary["reference_id"]), summary))
-    ranked.sort(key=lambda item: (-item[0], item[1]))
+    summaries = [_reference_summary(reference) for reference in references]
+    ranked = rank_reference_summaries(brief, summaries)
     return ReferenceGrounding(
         manifest.corpus_version,
         len(references),
-        tuple(item[2] for item in ranked[:limit]),
+        tuple(item["summary"] for item in ranked[:limit]),
     )
 
 
@@ -191,6 +185,45 @@ def _reference_summary(reference: Any) -> dict[str, Any]:
         "ability_categories": categories,
         "taxonomy": taxonomy,
     }
+
+
+def rank_reference_summaries(
+    brief: str,
+    summaries: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Return the production reference ranking with diagnostic totals.
+
+    The sort and score are intentionally the same as the frozen production
+    selector.  This helper adds visibility for the benchmark; it does not
+    introduce component attribution or change selection behavior.
+    """
+
+    query = _tokens(brief)
+    ranked: list[tuple[int, str, Mapping[str, Any]]] = []
+    for summary in summaries:
+        reference_id = str(summary["reference_id"])
+        haystack = _tokens(json.dumps(dict(summary), ensure_ascii=False))
+        score = sum(1 for token in query if token in haystack)
+        ranked.append((score, reference_id, summary))
+    ranked.sort(key=lambda item: (-item[0], item[1]))
+
+    result: list[dict[str, Any]] = []
+    for rank, (score, reference_id, summary) in enumerate(ranked, start=1):
+        previous_score = ranked[rank - 2][0] if rank > 1 else None
+        result.append(
+            {
+                "rank": rank,
+                "reference_id": reference_id,
+                "character_name": summary.get("display_name"),
+                "source_game": summary.get("game_id"),
+                "score": score,
+                "score_gap_from_previous": (
+                    previous_score - score if previous_score is not None else None
+                ),
+                "summary": dict(summary),
+            }
+        )
+    return result
 
 
 class OfficialCharacterAuthoringDemo:
