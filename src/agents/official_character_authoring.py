@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from dataclasses import asdict, dataclass
@@ -32,6 +33,7 @@ from .character_repair import (
     CharacterRepairAgent,
     DeterministicCharacterRepairModel,
 )
+from .errors import AgentError, ModelError, ModelMalformedResponseError
 from .model_factory import character_model_from_environment
 
 
@@ -84,6 +86,7 @@ class OfficialCharacterAuthoringRun:
             ],
             "source_ids": list(self.generation.audit.source_ids),
             "reference_ids": list(self.generation.audit.reference_ids),
+            "normalized_fields": list(self.generation.audit.normalized_fields),
             "model_invocations": [asdict(item) for item in self.generation.audit.model_invocations],
         }
         return {
@@ -236,13 +239,23 @@ def make_demo(
     mode: str,
     scenario: str,
     brief: str,
+    provider: str | None = None,
+    model_name: str | None = None,
 ) -> OfficialCharacterAuthoringDemo:
     references = load_reference_grounding(brief)
     if mode == "offline":
         generation_model = DeterministicCharacterGenerationModel(scenario=scenario)
         repair_model = DeterministicCharacterRepairModel()
     else:
-        generation_model = character_model_from_environment(mode_override="live")
+        environment = dict(os.environ)
+        if provider is not None:
+            environment["NPC_LLM_PROVIDER"] = provider
+        if model_name is not None:
+            environment["NPC_LLM_MODEL"] = model_name
+        generation_model = character_model_from_environment(
+            environment=environment,
+            mode_override="live",
+        )
         repair_model = generation_model
     return OfficialCharacterAuthoringDemo(
         generation_model=generation_model,
@@ -305,6 +318,9 @@ def render(run: OfficialCharacterAuthoringRun, *, scenario: str, model_mode: str
     model_audits = len(run.generation.audit.model_invocations) + len(repair.model_audit)
     generation_turns = len({item.round for item in run.generation.audit.tool_calls}) + 1
     model_invocations = model_audits or generation_turns + repair.repair_attempt
+    all_model_audits = tuple(run.generation.audit.model_invocations) + tuple(repair.model_audit)
+    provider = all_model_audits[0].provider if all_model_audits else "offline-deterministic"
+    model = all_model_audits[0].model if all_model_audits else "fixture"
     final_status = "ACCEPTED" if final.status == CanonCheckStatus.PASS else "NEEDS_REVIEW"
     source_labels = dict(run.source_labels)
     evidence = [source_labels.get(source_id, source_id) for source_id in final.checked_source_ids]
@@ -325,8 +341,11 @@ def render(run: OfficialCharacterAuthoringRun, *, scenario: str, model_mode: str
 
     lines = [
         "=" * 58,
-        " Official Character Authoring Demo v0.1.1",
+        " OFFICIAL CHARACTER AUTHORING — LIVE MODE" if model_mode == "live" else " Official Character Authoring Demo v0.2",
         "=" * 58,
+        f"Provider: {provider}",
+        f"Model: {model}",
+        f"Input: {'Custom Brief' if scenario == 'custom' else 'Scenario ' + scenario}",
         "",
         "[AUTHOR BRIEF]",
         run.request.request_id + " / " + scenario,
@@ -379,6 +398,7 @@ def render(run: OfficialCharacterAuthoringRun, *, scenario: str, model_mode: str
         "AUTHORING AUDIT",
         "----------------------------------------------------------",
         f"References: {', '.join(run.generation.audit.reference_ids) or 'none'}",
+        f"Normalized fields: {', '.join(run.generation.audit.normalized_fields) or 'none'}",
         f"Canon evidence used: {', '.join(source_labels.get(source_id, source_id) for source_id in run.generation.sources) or 'none'}",
         f"Generation turns: {generation_turns}",
         f"Model invocations: {model_invocations} [{model_mode}; provider audit entries: {model_audits}]",
@@ -392,6 +412,70 @@ def render(run: OfficialCharacterAuthoringRun, *, scenario: str, model_mode: str
         f" FINAL: {final_status}",
         "=" * 58,
     ]
+    return "\n".join(lines)
+
+
+def _live_failure_audits(error: BaseException) -> tuple[Any, ...]:
+    """Return only sanitized invocation metadata attached by live components."""
+
+    invocations = getattr(error, "model_invocations", ())
+    if invocations:
+        return tuple(invocations)
+    audit = getattr(error, "audit", None)
+    return (audit,) if audit is not None else ()
+
+
+def render_live_failure(
+    error: BaseException,
+    *,
+    provider: str | None = None,
+    model_name: str | None = None,
+) -> str:
+    """Render a fail-closed live result without printing secrets or raw output."""
+
+    audits = _live_failure_audits(error)
+    audit_provider = audits[-1].provider if audits else None
+    audit_model = audits[-1].model if audits else None
+    display_provider = audit_provider or provider or os.environ.get("NPC_LLM_PROVIDER", "openai")
+    display_model = audit_model or model_name or os.environ.get("NPC_LLM_MODEL") or "<not configured>"
+    if isinstance(error, ModelError):
+        detail = str(error)
+    elif isinstance(error, AgentError):
+        detail = f"{type(error).__name__}: the live authoring pipeline could not complete safely"
+    else:
+        detail = "Unexpected live authoring failure; the pipeline was not completed"
+    outcome = audits[-1].outcome if audits else "not_started"
+    provider_invocation = (
+        "SUCCESS" if outcome == "success" else "FAILED" if audits else "NOT_STARTED"
+    )
+    draft_validation = (
+        "FAILED"
+        if isinstance(error, ModelMalformedResponseError)
+        and "CharacterDraft" in str(error)
+        else "NOT_RUN"
+    )
+    lines = [
+        "OFFICIAL CHARACTER AUTHORING — LIVE MODE",
+        "",
+        "LIVE MODEL INVOCATION FAILURE",
+        "",
+        f"Provider: {display_provider}",
+        f"Model: {display_model}",
+        f"Invocation count: {len(audits)}",
+        f"Outcome: {outcome}",
+        f"Provider invocation: {provider_invocation}",
+        f"CharacterDraft validation: {draft_validation}",
+        f"Error: {detail}",
+        "",
+        "Requested model mode: LIVE",
+        f"Invocation: {provider_invocation}",
+        "Pipeline status: NOT_COMPLETED",
+        "No Character draft or Canon result was fabricated.",
+    ]
+    if audits:
+        lines.append("Audit retained: provider/model and sanitized failure metadata.")
+    else:
+        lines.append("The authoring pipeline was not started.")
     return "\n".join(lines)
 
 
@@ -452,12 +536,20 @@ def request_from_inputs(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Official Character Authoring Demo v0.1")
+    parser = argparse.ArgumentParser(description="Official Character Authoring Demo v0.2")
     inputs = parser.add_mutually_exclusive_group()
     inputs.add_argument("--scenario", choices=("valid", "conflict"))
     inputs.add_argument("--brief", help="planner brief text to send through the real pipeline")
     inputs.add_argument("--brief-file", help="UTF-8 file containing the planner brief")
     parser.add_argument("--model", choices=("offline", "live"), default="offline")
+    parser.add_argument(
+        "--provider",
+        help="live provider override; otherwise NPC_LLM_PROVIDER (default: openai)",
+    )
+    parser.add_argument(
+        "--model-name",
+        help="live model override; otherwise NPC_LLM_MODEL",
+    )
     parser.add_argument("--json", action="store_true", dest="as_json")
     args = parser.parse_args(argv)
     if args.scenario is None and args.brief is None and args.brief_file is None:
@@ -471,8 +563,27 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     except ValueError as exc:
         parser.error(str(exc))
-    demo = make_demo(mode=args.model, scenario=generation_scenario, brief=request.brief)
-    run = demo.run(request)
+    try:
+        demo = make_demo(
+            mode=args.model,
+            scenario=generation_scenario,
+            brief=request.brief,
+            provider=args.provider,
+            model_name=args.model_name,
+        )
+        run = demo.run(request)
+    except Exception as exc:
+        if args.model == "live":
+            print(
+                render_live_failure(
+                    exc,
+                    provider=args.provider,
+                    model_name=args.model_name,
+                ),
+                file=sys.stderr,
+            )
+            return 2
+        raise
     if args.as_json:
         payload = run.to_dict()
         payload["demo"] = {

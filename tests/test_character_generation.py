@@ -163,6 +163,161 @@ def test_character_contract_requires_conditional_canon_retrieval():
     assert "may be produced without authoring-tool calls" in contract
 
 
+def test_playable_generation_contract_requires_combat_fantasy_without_new_game_systems():
+    contract = CHARACTER_SYSTEM_CONTRACT
+
+    assert "ordinary person can plausibly enter dangerous scenes" in contract
+    assert "what the player imagines doing during combat" in contract
+    assert "visible or spatial feedback" in contract
+    assert "what the play rhythm is" in contract
+    assert "Non-damage support and control are valid" in contract
+    for forbidden in (
+        "elemental classes",
+        "weapon taxonomies",
+        "damage multipliers",
+        "critical-rate systems",
+        "cooldown or energy systems",
+    ):
+        assert forbidden in contract
+
+
+def test_non_playable_generation_contract_preserves_ordinary_npc_identity():
+    contract = CHARACTER_SYSTEM_CONTRACT
+
+    assert "If the brief is NPC-only or does not request playability" in contract
+    assert "do not force combat fantasy or a combat role" in contract
+    assert "secret fighter, elite operative, or hidden-organization member" in contract
+
+
+def test_character_hook_contract_uses_existing_three_part_semantics():
+    contract = CHARACTER_SYSTEM_CONTRACT
+
+    assert "existing `story_hook` field" in contract
+    assert "`first impression`" in contract
+    assert "`visual_or_behavioral_motif`" in contract
+    assert "`memorable_contrast`" in contract
+    assert "not a marketing gimmick" in contract
+
+
+def test_reference_context_contract_is_transformative_and_non_canon():
+    contract = CHARACTER_SYSTEM_CONTRACT
+
+    assert "bounded external design precedent, not Canon evidence and not a template" in contract
+    assert "do not copy a reference character's personality, combat kit, or visual identity" in contract
+    assert "Field-level causal attribution is not available" in contract
+
+
+def test_character_draft_prompt_repeats_required_field_completion_checklist():
+    contract = CHARACTER_SYSTEM_CONTRACT
+
+    assert "Emit every property listed by the schema exactly once" in contract
+    assert "including canon_basis, new_design_elements, and open_questions" in contract
+    assert "Use canon_basis=[] when no Canon claim was retrieved" in contract
+    assert "never omit a required field" in contract
+
+
+def test_live_character_draft_missing_canon_and_design_fields_still_fail_closed():
+    incomplete = _payload(canon_basis=[])
+    incomplete.pop("canon_basis")
+    incomplete.pop("new_design_elements")
+    incomplete.pop("open_questions")
+    agent, client = live_agent(
+        [
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(text=json.dumps(incomplete, ensure_ascii=False)),
+        ]
+    )
+
+    with pytest.raises(
+        ModelMalformedResponseError,
+        match="canon_basis.*new_design_elements",
+    ) as captured:
+        agent.generate("设计一个完全原创的角色")
+
+    assert client.call_count == 2
+    assert captured.value.model_invocations[-1].outcome == "success"
+    assert captured.value.audit is None
+    assert captured.value.model_invocations[-1].error_message is None
+
+
+def test_live_character_draft_explicit_empty_arrays_are_safe():
+    payload = _payload(canon_basis=[], new_design_elements=[], open_questions=[])
+    agent, _ = live_agent(
+        [
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(text=json.dumps(payload, ensure_ascii=False)),
+        ]
+    )
+
+    result = agent.generate("设计一个完全原创且没有未决问题的角色")
+
+    assert result.draft.canon_basis == ()
+    assert result.draft.new_design_elements == ()
+    assert result.draft.open_questions == ()
+
+
+def test_missing_only_open_questions_uses_field_specific_safe_normalization():
+    payload = _payload(canon_basis=[])
+    payload.pop("open_questions")
+    agent, _ = live_agent(
+        [
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(text=json.dumps(payload, ensure_ascii=False)),
+        ]
+    )
+
+    result = agent.generate("设计一个没有未决问题的原创角色")
+
+    assert result.draft.open_questions == ()
+    assert result.audit.normalized_fields == ("open_questions",)
+
+
+def test_explicit_non_empty_open_questions_are_preserved_without_normalization():
+    questions = ["需要确认她与某组织的正式关系"]
+    payload = _payload(canon_basis=[], open_questions=questions)
+    agent, _ = live_agent(
+        [
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(text=json.dumps(payload, ensure_ascii=False)),
+        ]
+    )
+
+    result = agent.generate("设计一个关系仍待确认的角色")
+
+    assert result.draft.open_questions == tuple(questions)
+    assert result.audit.normalized_fields == ()
+
+
+@pytest.mark.parametrize("missing_field", ["canon_basis", "new_design_elements"])
+def test_other_missing_core_fields_still_fail_closed(missing_field):
+    payload = _payload()
+    payload.pop(missing_field)
+    agent, _ = live_agent(
+        [
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(text=json.dumps(payload, ensure_ascii=False)),
+        ]
+    )
+
+    with pytest.raises(ModelMalformedResponseError, match=missing_field):
+        agent.generate("设计一个角色")
+
+
+def test_multiple_missing_core_fields_are_not_fixed_by_open_questions_default():
+    payload = _payload()
+    payload.pop("open_questions")
+    payload.pop("canon_basis")
+    agent, _ = live_agent(
+        [
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(text=json.dumps(payload, ensure_ascii=False)),
+        ]
+    )
+
+    with pytest.raises(ModelMalformedResponseError, match="canon_basis"):
+        agent.generate("设计一个角色")
+
+
 def test_unknown_write_tool_is_rejected():
     model = ScriptedAgentModel(
         [ModelTurn(tool_calls=(ToolCall("x", "write_character", {"id": "x"}),))]

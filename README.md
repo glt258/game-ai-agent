@@ -181,6 +181,18 @@ py -m agents.official_character_authoring --brief "设计一个新的都市辅�
 
 See [Official Character Authoring Demo v0.1](docs/official_character_authoring_demo_v0.1.md).
 
+The offline commands are deterministic regression demonstrations. For a live
+authoring run with a fresh brief, configure `NPC_LLM_API_KEY` and
+`NPC_LLM_MODEL`, then run:
+
+```bash
+py -m agents.official_character_authoring --brief-file .\demo_brief.txt --model live
+```
+
+Use `--provider` and `--model-name` for one-off live overrides. Live
+configuration or provider failures are reported as `NOT_COMPLETED`; the CLI
+does not fall back to the offline fixture or fabricate a Canon result.
+
 Live mode uses the shared OpenAI-compatible transport. Configure
 `NPC_LLM_PROVIDER`, `NPC_LLM_MODEL`, `NPC_LLM_API_KEY`, and related settings as
 described in [the provider capability layer](docs/provider_capability_layer.md).

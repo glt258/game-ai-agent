@@ -15,13 +15,18 @@ from agents import (
     CharacterGenerationResult,
     CharacterRepairAgent,
     DeterministicCharacterRepairModel,
+    ModelInvocationAudit,
+    ModelMalformedResponseError,
+    ModelProviderError,
 )
+import agents.official_character_authoring as official_module
 from agents.official_character_authoring import (
     OfficialCharacterAuthoringDemo,
     _request_for_scenario,
     load_reference_grounding,
     make_demo,
     render,
+    render_live_failure,
     request_from_inputs,
 )
 
@@ -198,3 +203,128 @@ def test_audit_summary_keeps_reference_and_canon_evidence() -> None:
     assert payload["generation"]["audit"]["reference_ids"]
     assert payload["generation"]["audit"]["source_ids"]
     assert "chain_of_thought" not in json.dumps(payload, ensure_ascii=False)
+
+
+def test_live_factory_path_keeps_custom_provider_and_model_in_the_existing_contract(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class MarkerModel:
+        pass
+
+    marker = MarkerModel()
+
+    def fake_factory(**kwargs):
+        captured.update(kwargs)
+        return marker
+
+    monkeypatch.setattr(official_module, "character_model_from_environment", fake_factory)
+    official_module.make_demo(
+        mode="live",
+        scenario="valid",
+        brief="一个新的都市辅助角色。",
+        provider="deepseek",
+        model_name="configured-live-model",
+    )
+
+    assert captured["mode_override"] == "live"
+    environment = captured["environment"]
+    assert environment["NPC_LLM_PROVIDER"] == "deepseek"
+    assert environment["NPC_LLM_MODEL"] == "configured-live-model"
+
+
+def test_live_failure_renderer_is_fail_closed_and_does_not_leak_secret() -> None:
+    secret = "unit-test-api-key"
+    error = ModelProviderError("Live LLM provider request failed")
+    error.audit = ModelInvocationAudit(
+        "live-session",
+        1,
+        "deepseek",
+        "deepseek-chat",
+        "provider",
+        12.0,
+        1,
+        error_message="Live LLM provider request failed",
+    )
+
+    output = render_live_failure(
+        error,
+        provider="deepseek",
+        model_name="deepseek-chat",
+    )
+
+    assert "Provider: deepseek" in output
+    assert "Model: deepseek-chat" in output
+    assert "Invocation count: 1" in output
+    assert "Provider invocation: FAILED" in output
+    assert "CharacterDraft validation: NOT_RUN" in output
+    assert "Pipeline status: NOT_COMPLETED" in output
+    assert "FINAL: ACCEPTED" not in output
+    assert secret not in output
+
+
+def test_live_renderer_distinguishes_provider_success_from_draft_validation_failure() -> None:
+    error = ModelMalformedResponseError(
+        "CharacterDraft is missing field(s): ['canon_basis', 'new_design_elements', 'open_questions']"
+    )
+    error.model_invocations = (
+        ModelInvocationAudit(
+            "live-session",
+            7,
+            "opencode_go",
+            "deepseek-v4-flash",
+            "success",
+            12.0,
+            0,
+        ),
+    )
+
+    output = render_live_failure(error)
+
+    assert "Provider invocation: SUCCESS" in output
+    assert "CharacterDraft validation: FAILED" in output
+    assert "Invocation: SUCCESS" in output
+    assert "Pipeline status: NOT_COMPLETED" in output
+
+
+def test_live_cli_invocation_failure_never_falls_back_to_offline(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    secret = "unit-test-api-key"
+
+    class FailingDemo:
+        def run(self, _request):
+            error = ModelProviderError("Live LLM provider request failed")
+            error.audit = ModelInvocationAudit(
+                "live-session",
+                1,
+                "openai",
+                "live-model",
+                "provider",
+                1.0,
+                0,
+            )
+            raise error
+
+    monkeypatch.setattr(official_module, "make_demo", lambda **_: FailingDemo())
+    exit_code = official_module.main(
+        [
+            "--brief",
+            f"设计角色，密钥是 {secret}。",
+            "--model",
+            "live",
+            "--provider",
+            "openai",
+            "--model-name",
+            "live-model",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "Invocation: FAILED" in captured.err
+    assert "Pipeline status: NOT_COMPLETED" in captured.err
+    assert "ACCEPTED" not in captured.err
+    assert secret not in captured.err

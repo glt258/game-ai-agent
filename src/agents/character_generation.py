@@ -366,6 +366,24 @@ class CharacterDraft:
         }
 
 
+def _normalize_character_draft_payload(
+    payload: Any,
+) -> tuple[Any, tuple[str, ...]]:
+    """Apply only the semantically safe CharacterDraft field default.
+
+    ``open_questions`` is an explicit declaration of unresolved design work.
+    When a provider omits only that declaration, the completed draft semantics
+    are equivalent to an empty list. Canon-bearing and design-content fields
+    intentionally remain untouched and continue to fail closed when absent.
+    """
+
+    if isinstance(payload, Mapping) and "open_questions" not in payload:
+        normalized = dict(payload)
+        normalized["open_questions"] = []
+        return normalized, ("open_questions",)
+    return payload, ()
+
+
 def _json_safe_relationship_value(value: Any) -> Any:
     """Serialize the small relationship value schema without mutating it."""
 
@@ -685,6 +703,23 @@ If the brief uses or depends on an existing Canon entity, identifier, fact, rule
 Every existing Canon claim must be represented by a canon_basis source ID returned by a successful tool observation. canon_basis.supports is a machine-validated contract: prefer defined generic support keys, field paths, or short extractive phrases copied from the cited Canon source; do not freely paraphrase Canon claims in supports. New personal details must be placed in new_design_elements or proposed_new_content and must never be presented as existing Canon. Never create organizations, IDs, files or Canon records. If required Canon cannot be found or verified, do not invent or guess it; leave the Canon-dependent field unresolved and surface the uncertainty through open_questions and constraint_notes. Respect hard constraints. Keep combat_role high-level and do not invent numeric balance values.""" + "\n\n" + character_draft_prompt_contract()
 
 
+CHARACTER_SYSTEM_CONTRACT += """
+
+Generation quality requirements for playable briefs:
+- Treat an explicit request for a playable, roster, gacha, five-star, or combat-role character as a request for playable agency. Keep the ordinary occupation and social identity ordinary; do not turn the person into a secret fighter, elite operative, or hidden-organization member merely to justify playability.
+- When playability is requested, use `background` or `story_hook` to explain why this ordinary person can plausibly enter dangerous scenes. Do not make them important solely because they are playable.
+- When playability is requested, `ability_concept` must answer at a conceptual level: what the player imagines doing during combat, what support/control/burst contribution occurs, how the ability translates the person's identity into action, what visible or spatial feedback the player can understand, and what the play rhythm is. Non-damage support and control are valid, but “only talks” or “does nothing in combat” is insufficient.
+- Do not invent elemental classes, weapon taxonomies, damage types, damage multipliers, critical-rate systems, cooldown or energy systems, numeric balance, or other unestablished combat systems. Describe combat fantasy, not a complete game kit.
+- If the brief is NPC-only or does not request playability, do not force combat fantasy or a combat role; preserve the ordinary-character principle.
+
+Character hook requirements:
+- Use the existing `story_hook` field to make three dimensions explicit when possible: `first impression` (what the player understands immediately), `visual_or_behavioral_motif` (one repeatable phrase, gesture, ordinary object, or routine), and `memorable_contrast` (an observable “appears X, but repeatedly does Y” tension).
+- Derive the hook from the brief's identity, personality, routine, ability, or conflict. Ordinary hooks are valid; the hook is not a marketing gimmick and must not be a generic hidden past.
+
+Reference context requirements:
+- The supplied reference context is bounded external design precedent, not Canon evidence and not a template. Extract a high-level design principle, transform it into this brief, and do not copy a reference character's personality, combat kit, or visual identity. Field-level causal attribution is not available.
+"""
+
 CHARACTER_AUTHORING_ACTION_SYSTEM_CONTRACT = (
     """You are a read-only game character authoring retrieval agent. Inspect the design brief and gather only the existing Canon evidence needed to create a reviewable CharacterDraft. This is a retrieval/action phase, not the final draft response.
 
@@ -724,6 +759,7 @@ class CharacterGenerationAudit:
     source_ids: tuple[str, ...]
     model_invocations: tuple[ModelInvocationAudit, ...] = ()
     reference_ids: tuple[str, ...] = ()
+    normalized_fields: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -832,9 +868,10 @@ class CharacterGenerationAgent:
                     payload = json.loads(final_turn.text)
                 except json.JSONDecodeError:
                     raise ModelMalformedResponseError("CharacterDraft response is not valid JSON") from None
+            payload, normalized_fields = _normalize_character_draft_payload(payload)
             draft = CharacterDraft.from_mapping(payload)
             self._validate_draft(draft, request, source_ids, source_types)
-            audit = CharacterGenerationAudit(request.request_id, len(audits), tuple(audits), tuple(sorted(source_ids)), tuple(invocations), tuple(item["reference_id"] for item in self.reference_context if isinstance(item.get("reference_id"), str)))
+            audit = CharacterGenerationAudit(request.request_id, len(audits), tuple(audits), tuple(sorted(source_ids)), tuple(invocations), tuple(item["reference_id"] for item in self.reference_context if isinstance(item.get("reference_id"), str)), normalized_fields)
             return CharacterGenerationResult(draft, tuple(sorted(source_ids)), audit)
         except Exception as error:
             # CharacterGenerationAudit only exists on success, so the

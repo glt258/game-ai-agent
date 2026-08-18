@@ -210,6 +210,15 @@ def character_draft_prompt_contract() -> str:
         + json.dumps(dict(CHARACTER_DRAFT_JSON_SCHEMA), ensure_ascii=False, separators=(",", ":"))
         + "\nValid root-object shape example:\n"
         + json.dumps(character_draft_root_example(), ensure_ascii=False, separators=(",", ":"))
+        + "\nFinal mandatory checklist before sending the JSON:\n"
+        "1. Emit every property listed by the schema exactly once, including "
+        "canon_basis, new_design_elements, and open_questions.\n"
+        "2. Emit an empty array when one of those fields has no entries; never "
+        "omit a required field.\n"
+        "3. Use canon_basis=[] when no Canon claim was retrieved; never invent "
+        "a Canon source merely to complete the shape.\n"
+        "4. Return the complete root object only after checking the required "
+        "field list."
     )
 
 
