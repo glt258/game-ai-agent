@@ -154,10 +154,10 @@ combat:
         id: charge_enhancement
       description_summary: "Lone Stride provides Charge Enhancement."
 narrative:
-  faction: "UAC-2 de la ACA"
+  faction: "Bureau of Anomaly Control"
   occupation: null
   affiliations:
-    - "UAC-2 de la ACA"
+    - "Bureau of Anomaly Control (ETD-6)"
   public_identity: null
 presentation:
   official_visual_tags: []

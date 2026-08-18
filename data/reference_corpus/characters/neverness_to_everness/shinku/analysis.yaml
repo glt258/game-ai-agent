@@ -78,9 +78,9 @@ character_design:
     restraint-for-payoff stance and a team energy conduit.
   personality_archetypes: []
   identity_hooks:
-    - "uac_2_de_la_aca_faction_member"
+    - "bureau_of_anomaly_control_faction_member"
   narrative_hooks:
-    - "affiliated_with_uac_2_de_la_aca_faction"
+    - "etd_6_affiliation"
   visual_motifs: []
   gameplay_identity_alignment: null
 product_design:
@@ -96,7 +96,7 @@ product_design:
     - "active_character_energy_shared_to_off_field_allies"
   visual_hooks: []
   narrative_hooks:
-    - "uac_2_de_la_aca_faction_member"
+    - "bureau_of_anomaly_control_faction_member"
   novelty_dimensions:
     - "stance_that_rewards_active_presence_without_attacking"
     - "ultimate_as_resource_to_state_conversion"
@@ -129,7 +129,7 @@ similarity_features:
     - "patience_stance_release_strike"
     - "team_wide_energy_share_conduit"
   narrative_signature:
-    - "uac_2_de_la_aca_faction_member"
+    - "bureau_of_anomaly_control_faction_member"
   presentation_signature: []
 confidence:
   overall: 0.55
