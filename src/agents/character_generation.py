@@ -711,6 +711,9 @@ class CharacterGenerationRuntimeView:
     soft_preferences: tuple[str, ...]
     forbidden_elements: tuple[str, ...]
     desired_connections: tuple[str, ...]
+    # Optional, bounded external design-reference context.  It is deliberately
+    # separate from Canon evidence and defaults empty for all existing callers.
+    reference_context: tuple[Mapping[str, Any], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -720,6 +723,7 @@ class CharacterGenerationAudit:
     tool_calls: tuple[ToolAuditEntry, ...]
     source_ids: tuple[str, ...]
     model_invocations: tuple[ModelInvocationAudit, ...] = ()
+    reference_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -732,7 +736,7 @@ class CharacterGenerationResult:
 class CharacterGenerationAgent:
     """Sibling consumer to NpcConversationAgent for one-shot draft generation."""
 
-    def __init__(self, model: AgentModel, *, resolver: KnowledgeResolver | None = None, story_repository: StoryRepository | None = None, max_tool_rounds: int = 6, authoring_context: CharacterAuthoringKnowledgeContext | None = None) -> None:
+    def __init__(self, model: AgentModel, *, resolver: KnowledgeResolver | None = None, story_repository: StoryRepository | None = None, max_tool_rounds: int = 6, authoring_context: CharacterAuthoringKnowledgeContext | None = None, reference_context: Sequence[Mapping[str, Any]] = ()) -> None:
         if max_tool_rounds < 1:
             raise ValueError("max_tool_rounds must be positive")
         self.resolver = resolver or KnowledgeResolver()
@@ -741,6 +745,7 @@ class CharacterGenerationAgent:
         self.model = model
         self.max_tool_rounds = max_tool_rounds
         self.authoring_context = authoring_context or CharacterAuthoringKnowledgeContext()
+        self.reference_context = tuple(dict(item) for item in reference_context)
 
     def generate(self, request: CharacterDesignRequest | str) -> CharacterGenerationResult:
         if isinstance(request, str):
@@ -748,7 +753,7 @@ class CharacterGenerationAgent:
         if not isinstance(request, CharacterDesignRequest):
             raise TypeError("request must be CharacterDesignRequest or string")
         authoring = CharacterAuthoringView("character_authoring", "create a reviewable CharacterDraft", tuple(sorted(self.authoring_context.allowed_scopes)))
-        runtime = CharacterGenerationRuntimeView(request.request_id, request.brief, request.hard_constraints, request.soft_preferences, request.forbidden_elements, request.desired_connections)
+        runtime = CharacterGenerationRuntimeView(request.request_id, request.brief, request.hard_constraints, request.soft_preferences, request.forbidden_elements, request.desired_connections, self.reference_context)
         messages: list[ConversationMessage] = [ConversationMessage("user", json.dumps(request.to_dict(), ensure_ascii=False, separators=(",", ":")))]
         source_ids: set[str] = set()
         source_types: dict[str, str] = {}
@@ -829,7 +834,7 @@ class CharacterGenerationAgent:
                     raise ModelMalformedResponseError("CharacterDraft response is not valid JSON") from None
             draft = CharacterDraft.from_mapping(payload)
             self._validate_draft(draft, request, source_ids, source_types)
-            audit = CharacterGenerationAudit(request.request_id, len(audits), tuple(audits), tuple(sorted(source_ids)), tuple(invocations))
+            audit = CharacterGenerationAudit(request.request_id, len(audits), tuple(audits), tuple(sorted(source_ids)), tuple(invocations), tuple(item["reference_id"] for item in self.reference_context if isinstance(item.get("reference_id"), str)))
             return CharacterGenerationResult(draft, tuple(sorted(source_ids)), audit)
         except Exception as error:
             # CharacterGenerationAudit only exists on success, so the
@@ -889,7 +894,10 @@ class CharacterGenerationAgent:
 class DeterministicCharacterGenerationModel:
     """Offline model used by tests, evals and the demo; no network required."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, scenario: str = "valid") -> None:
+        if scenario not in {"valid", "canon_conflict"}:
+            raise ValueError("scenario must be 'valid' or 'canon_conflict'")
+        self.scenario = scenario
         self.prompts: list[AgentPrompt] = []
 
     def generate(self, prompt: AgentPrompt) -> ModelTurn:
@@ -983,6 +991,11 @@ class DeterministicCharacterGenerationModel:
             "story_link": {"target_id": selected_story, "relation": "indirect_connection", "status": "canon_backed"} if selected_story else None,
             "proposed_new_content": [],
         }
+        if self.scenario == "canon_conflict":
+            # This is a deterministic model fixture, not a checker shortcut:
+            # the real CanonChecker must detect RULE-008 and the real repair
+            # model must handle the resulting finding.
+            payload["background"] = "她隶属于秘密政府能力管理局，负责统一处理所有能力相关事务。"
         return ModelTurn(text=json.dumps(payload, ensure_ascii=False, separators=(",", ":")), structured_output=payload)
 
 

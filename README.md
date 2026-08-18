@@ -171,6 +171,16 @@ py scripts/demo_character_generation_v0_1.py --model offline
 py scripts/demo_character_generation_v0_1.py --model offline --json
 ```
 
+For the official end-to-end authoring demo:
+
+```bash
+py -m agents.official_character_authoring --scenario valid --model offline
+py -m agents.official_character_authoring --scenario conflict --model offline
+py -m agents.official_character_authoring --brief "设计一个新的都市辅助角色。" --model offline
+```
+
+See [Official Character Authoring Demo v0.1](docs/official_character_authoring_demo_v0.1.md).
+
 Live mode uses the shared OpenAI-compatible transport. Configure
 `NPC_LLM_PROVIDER`, `NPC_LLM_MODEL`, `NPC_LLM_API_KEY`, and related settings as
 described in [the provider capability layer](docs/provider_capability_layer.md).
