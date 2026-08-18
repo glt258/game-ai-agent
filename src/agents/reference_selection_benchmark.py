@@ -15,6 +15,14 @@ from typing import Any, Mapping, Sequence
 
 from reference_corpus.loader import load_corpus_manifest, load_game_catalog
 from reference_corpus.repository import CharacterReferenceRepository
+from reference_corpus.features import (
+    FEATURE_VOCABULARY_VERSION,
+    DiagnosticFeatureProfile,
+    diagnostic_overlap,
+    extract_brief_features,
+    feature_coverage,
+    reference_feature_profile,
+)
 
 from .official_character_authoring import (
     DEFAULT_CORPUS_ROOT,
@@ -282,11 +290,16 @@ def _tie_groups(ranking: Sequence[Mapping[str, Any]]) -> list[list[str]]:
     return [ids for _, ids in sorted(groups.items(), reverse=True) if len(ids) > 1]
 
 
-def _run_case(case: Mapping[str, Any], summaries: Sequence[Mapping[str, Any]], top_k: int) -> dict[str, Any]:
+def _run_case(
+    case: Mapping[str, Any],
+    summaries: Sequence[Mapping[str, Any]],
+    top_k: int,
+    feature_profiles: Mapping[str, DiagnosticFeatureProfile] | None = None,
+) -> dict[str, Any]:
     ranking = rank_reference_summaries(str(case["brief"]), summaries)
     repeated = rank_reference_summaries(str(case["brief"]), summaries)
     compact = _compact_ranking(ranking)
-    return {
+    result = {
         "brief_id": case["brief_id"],
         "category": case["category"],
         "brief": case["brief"],
@@ -301,6 +314,21 @@ def _run_case(case: Mapping[str, Any], summaries: Sequence[Mapping[str, Any]], t
         "stable_on_repeat": [item["reference_id"] for item in compact]
         == [item["reference_id"] for item in _compact_ranking(repeated)],
     }
+    if feature_profiles is not None:
+        brief_features = extract_brief_features(str(case["brief"]))
+        result["diagnostic_features"] = {
+            "vocabulary_version": FEATURE_VOCABULARY_VERSION,
+            "score_contribution": 0,
+            "brief": brief_features.to_dict(include_evidence=False),
+            "overlap_by_reference": {
+                reference_id: diagnostic_overlap(
+                    brief_features,
+                    feature_profiles[reference_id],
+                )
+                for reference_id in sorted(feature_profiles)
+            },
+        }
+    return result
 
 
 def _rank_map(result: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
@@ -604,9 +632,13 @@ def run_benchmark(
     references = repository.list_all()
     summaries = [_reference_summary(reference) for reference in references]
     summaries_by_id = {str(item["reference_id"]): item for item in summaries}
+    feature_profiles = {
+        reference.reference_id: reference_feature_profile(reference)
+        for reference in references
+    }
 
     cases = benchmark_cases()
-    case_results = [_run_case(case, summaries, top_k) for case in cases]
+    case_results = [_run_case(case, summaries, top_k, feature_profiles) for case in cases]
     result_by_id = {str(item["brief_id"]): item for item in case_results}
     selected_slots = [
         reference_id
@@ -637,8 +669,8 @@ def run_benchmark(
     for pair in COUNTERFACTUAL_PAIRS:
         before_case = _case(pair["pair_id"] + "-before", pair["dimension"], pair["before"], (pair["dimension"],))
         after_case = _case(pair["pair_id"] + "-after", pair["dimension"], pair["after"], (pair["dimension"],))
-        before = _run_case(before_case, summaries, top_k)
-        after = _run_case(after_case, summaries, top_k)
+        before = _run_case(before_case, summaries, top_k, feature_profiles)
+        after = _run_case(after_case, summaries, top_k, feature_profiles)
         counterfactual_results.append(
             {
                 **pair,
@@ -699,6 +731,10 @@ def run_benchmark(
     }
     order_test = _corpus_order_test(cases[0]["brief"], summaries, top_k)
     coverage = _coverage(summaries)
+    diagnostic_coverage = feature_coverage(
+        [extract_brief_features(str(case["brief"])) for case in cases],
+        [feature_profiles[reference_id] for reference_id in sorted(feature_profiles)],
+    )
     classification, classification_reasons = _classify(summary, order_test, coverage)
     historical_replays = run_historical_replays(corpus_root=corpus_root, top_k=top_k)
 
@@ -742,10 +778,12 @@ def run_benchmark(
             "candidate_filtering": "none",
             "tie_breaking": "ascending reference_id after descending total score",
             "component_scores_available": False,
+            "diagnostic_feature_scoring": "disabled; feature overlap is reported only",
             "production_behavior_changed": False,
         },
         "corpus_audit": _corpus_audit(summaries),
         "corpus_coverage": coverage,
+        "diagnostic_coverage": diagnostic_coverage,
         "cases": case_results,
         "contrast_pairs": contrast_results,
         "counterfactuals": counterfactual_results,

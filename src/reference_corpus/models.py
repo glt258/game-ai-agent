@@ -416,6 +416,122 @@ class AlignmentAssessment(ReferenceModel):
     _reasoning = field_validator("reasoning")(lambda value: _text(value, "reasoning"))
 
 
+class AuthoringFeatureEvidence(ReferenceModel):
+    """Small provenance entries for normalized analysis features."""
+
+    kind: Literal["source_fact", "brief", "analyst_derivation"]
+    source_id: str | None = None
+    fact_path: str | None = None
+    note: str | None = None
+
+    _source_id = field_validator("source_id")(lambda value: _optional_text(value))
+    _fact_path = field_validator("fact_path")(lambda value: _optional_text(value))
+    _note = field_validator("note")(lambda value: _optional_text(value))
+
+    @model_validator(mode="after")
+    def validate_kind_shape(self) -> "AuthoringFeatureEvidence":
+        if self.kind == "source_fact":
+            if self.source_id is None:
+                raise ValueError("source_fact evidence requires source_id")
+            if self.fact_path is not None and self.fact_path.startswith("facts."):
+                raise ValueError("fact_path must be relative to CharacterFacts")
+        elif self.kind == "brief":
+            if self.source_id is not None or self.fact_path is not None:
+                raise ValueError("brief evidence cannot reference a corpus source fact")
+        elif self.kind == "analyst_derivation":
+            if self.source_id is not None or self.fact_path is not None:
+                raise ValueError("analyst_derivation cannot masquerade as source_fact")
+            if self.note is None:
+                raise ValueError("analyst_derivation evidence requires note")
+        return self
+
+
+class StructuredHookFeatures(ReferenceModel):
+    surface_traits: list[str] = Field(default_factory=list)
+    contrast_traits: list[str] = Field(default_factory=list)
+    behavioral_patterns: list[str] = Field(default_factory=list)
+
+    _lists = field_validator(
+        "surface_traits", "contrast_traits", "behavioral_patterns"
+    )(_string_list)
+
+
+def _canonical_authoring_list(
+    value: list[str],
+    domain: str,
+) -> list[str]:
+    values = _string_list(value, f"authoring_features.{domain}")
+    # Import lazily to keep the validated model layer independent from the
+    # diagnostic extractor's provenance helpers during package import.
+    from .features import canonical_tokens
+
+    allowed = set(canonical_tokens(domain))
+    unknown = sorted(set(values) - allowed)
+    if unknown:
+        raise ValueError(
+            f"authoring_features.{domain} contains unsupported canonical token(s): {unknown}"
+        )
+    return values
+
+
+class AuthoringFeatureBlock(ReferenceModel):
+    """Optional normalized authoring interpretation for a reference."""
+
+    personality: list[str] = Field(default_factory=list)
+    gameplay_fantasy: list[str] = Field(default_factory=list)
+    life_social_identity: list[str] = Field(default_factory=list)
+    life_stage: list[str] = Field(default_factory=list)
+    authority: list[str] = Field(default_factory=list)
+    hook: StructuredHookFeatures | None = None
+    visual_behavioral_motifs: list[str] = Field(default_factory=list)
+    evidence: dict[str, list[AuthoringFeatureEvidence]] = Field(default_factory=dict)
+
+    _personality = field_validator("personality")(
+        lambda value: _canonical_authoring_list(value, "personality")
+    )
+    _gameplay_fantasy = field_validator("gameplay_fantasy")(
+        lambda value: _canonical_authoring_list(value, "gameplay_fantasy")
+    )
+    _life_social_identity = field_validator("life_social_identity")(
+        lambda value: _canonical_authoring_list(value, "life_social_identity")
+    )
+    _life_stage = field_validator("life_stage")(
+        lambda value: _canonical_authoring_list(value, "life_stage")
+    )
+    _authority = field_validator("authority")(
+        lambda value: _canonical_authoring_list(value, "authority")
+    )
+    _visual_behavioral_motifs = field_validator("visual_behavioral_motifs")(
+        lambda value: _canonical_authoring_list(value, "visual_behavioral_motif")
+    )
+
+    @field_validator("evidence")
+    @classmethod
+    def validate_evidence(cls, value: dict[str, list[AuthoringFeatureEvidence]]) -> dict[str, list[AuthoringFeatureEvidence]]:
+        allowed = {
+            "personality",
+            "gameplay_fantasy",
+            "life_social_identity",
+            "life_stage",
+            "authority",
+            "hook.surface_traits",
+            "hook.contrast_traits",
+            "hook.behavioral_patterns",
+            "visual_behavioral_motifs",
+        }
+        result: dict[str, list[AuthoringFeatureEvidence]] = {}
+        for path, entries in value.items():
+            clean_path = _text(path, "authoring feature evidence path")
+            if clean_path not in allowed:
+                raise ValueError(
+                    f"unsupported authoring feature evidence path: {clean_path}"
+                )
+            if not isinstance(entries, list) or not entries:
+                raise ValueError(f"authoring feature evidence for {clean_path} must not be empty")
+            result[clean_path] = entries
+        return result
+
+
 class CharacterDesignAnalysis(ReferenceModel):
     character_fantasy: str | None = None
     personality_archetypes: list[str] = Field(default_factory=list)
@@ -423,6 +539,7 @@ class CharacterDesignAnalysis(ReferenceModel):
     narrative_hooks: list[str] = Field(default_factory=list)
     visual_motifs: list[str] = Field(default_factory=list)
     gameplay_identity_alignment: AlignmentAssessment | None = None
+    authoring_features: AuthoringFeatureBlock | None = None
 
     _fantasy = field_validator("character_fantasy")(lambda value: _optional_text(value))
     _lists = field_validator(

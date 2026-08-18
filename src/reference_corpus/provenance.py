@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from .errors import ProvenanceValidationError
-from .models import CharacterFacts, CharacterProvenance
+from .models import CharacterAnalysis, CharacterFacts, CharacterProvenance
 
 
 def resolve_fact_field_path(facts: CharacterFacts, field_path: str) -> object:
@@ -38,6 +38,7 @@ def resolve_fact_field_path(facts: CharacterFacts, field_path: str) -> object:
 def validate_provenance(
     provenance: CharacterProvenance,
     facts: CharacterFacts,
+    analysis: CharacterAnalysis | None = None,
 ) -> None:
     """Validate source IDs, evidence paths, and cross-file provenance invariants."""
     source_ids = [source.source_id for source in provenance.sources]
@@ -94,6 +95,8 @@ def validate_provenance(
             )
         resolve_fact_field_path(facts, field_path)
 
+    validate_analysis_feature_provenance(provenance, facts, analysis)
+
     superseded_fields: dict[str, set[str]] = {}
     for relation in provenance.source_relations:
         if relation.relation_type != "supersedes":
@@ -120,6 +123,35 @@ def validate_provenance(
 
 def evidence_source_ids(provenance: CharacterProvenance) -> set[str]:
     return {source_id for ids in provenance.field_evidence.values() for source_id in ids}
+
+
+def validate_analysis_feature_provenance(
+    provenance: CharacterProvenance,
+    facts: CharacterFacts,
+    analysis: CharacterAnalysis | None,
+) -> None:
+    """Validate source-backed evidence attached to optional authoring features."""
+
+    if analysis is None or analysis.character_design.authoring_features is None:
+        return
+    known_source_ids = {source.source_id for source in provenance.sources}
+    block = analysis.character_design.authoring_features
+    for feature_path, entries in block.evidence.items():
+        for entry in entries:
+            if entry.kind == "source_fact":
+                if entry.source_id not in known_source_ids:
+                    raise ProvenanceValidationError(
+                        "UNKNOWN_AUTHORING_FEATURE_SOURCE: "
+                        f"{feature_path}: {entry.source_id}"
+                    )
+                if entry.fact_path:
+                    try:
+                        resolve_fact_field_path(facts, entry.fact_path)
+                    except ProvenanceValidationError as exc:
+                        raise ProvenanceValidationError(
+                            "UNKNOWN_AUTHORING_FEATURE_FACT: "
+                            f"{feature_path}: {entry.fact_path}: {exc}"
+                        ) from exc
 
 
 def validate_field_paths(facts: CharacterFacts, paths: Iterable[str]) -> None:

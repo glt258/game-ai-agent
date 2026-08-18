@@ -58,6 +58,29 @@ def test_benchmark_does_not_alter_production_selection() -> None:
     assert before == after
 
 
+def test_diagnostic_features_do_not_contribute_to_selection() -> None:
+    result = _result()
+    assert result["selector"]["diagnostic_feature_scoring"].startswith("disabled")
+    assert result["summary"]["unique_selected"] == 8
+    assert result["summary"]["average_top_k_overlap"] == 0.448485
+    assert result["summary"]["selection_concentration"]["hhi"] == 0.159808
+    assert all(case["diagnostic_features"]["score_contribution"] == 0 for case in result["cases"])
+    assert all(
+        case["selected_references"]
+        == [item["reference_id"] for item in case["full_ranking"][:TOP_K]]
+        for case in result["cases"]
+    )
+
+
+def test_diagnostic_feature_output_is_deterministic() -> None:
+    first = _result()
+    second = _result()
+    assert first["diagnostic_coverage"] == second["diagnostic_coverage"]
+    assert [case["diagnostic_features"] for case in first["cases"]] == [
+        case["diagnostic_features"] for case in second["cases"]
+    ]
+
+
 def test_identical_case_has_stable_ranking() -> None:
     result = _result()
     assert result["summary"]["stability"]["all_cases_stable"] is True

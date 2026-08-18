@@ -116,7 +116,7 @@ class CharacterReferenceLoader:
             )
         reference_id = facts.reference_id
         try:
-            validate_provenance(provenance, facts)
+            validate_provenance(provenance, facts, analysis)
         except ReferenceValidationError:
             raise
         except Exception as exc:
