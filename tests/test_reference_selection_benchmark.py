@@ -18,11 +18,11 @@ def _result() -> dict:
     return run_benchmark()
 
 
-def test_benchmark_loads_all_ten_reference_records() -> None:
+def test_benchmark_loads_all_eleven_reference_records() -> None:
     result = _result()
     assert result["corpus_audit"]["records"]
-    assert len(result["corpus_audit"]["records"]) == 10
-    assert result["selector"]["candidate_count"] == 10
+    assert len(result["corpus_audit"]["records"]) == 11
+    assert result["selector"]["candidate_count"] == 11
 
 
 def test_all_required_cases_run() -> None:
@@ -37,9 +37,9 @@ def test_all_required_cases_run() -> None:
 def test_full_ranking_contains_all_eligible_candidates() -> None:
     result = _result()
     for case in result["cases"]:
-        assert len(case["full_ranking"]) == 10
-        assert [item["rank"] for item in case["full_ranking"]] == list(range(1, 11))
-        assert len({item["reference_id"] for item in case["full_ranking"]}) == 10
+        assert len(case["full_ranking"]) == 11
+        assert [item["rank"] for item in case["full_ranking"]] == list(range(1, 12))
+        assert len({item["reference_id"] for item in case["full_ranking"]}) == 11
 
 
 def test_selected_top_k_matches_production_selector() -> None:
@@ -61,10 +61,10 @@ def test_benchmark_does_not_alter_production_selection() -> None:
 def test_diagnostic_features_do_not_contribute_to_selection() -> None:
     result = _result()
     assert "activated" in result["selector"]["diagnostic_feature_scoring"]
-    assert result["summary"]["unique_selected"] == 9
-    assert result["summary"]["average_top_k_overlap"] == 0.360606
-    assert result["summary"]["selection_concentration"]["hhi"] == 0.146776
-    assert result["legacy_baseline"]["unique_selected"] == 8
+    assert result["summary"]["unique_selected"] == 10
+    assert result["summary"]["average_top_k_overlap"] == 0.304545
+    assert result["summary"]["selection_concentration"]["hhi"] == 0.137174
+    assert result["legacy_baseline"]["unique_selected"] == 9
     assert all(case["diagnostic_features"]["score_contribution"] == 0 for case in result["cases"])
     assert all(
         case["selected_references"]
@@ -125,7 +125,7 @@ def test_contrast_pair_delta_calculations_work() -> None:
     assert len(result["contrast_pairs"]) >= 3
     for pair in result["contrast_pairs"]:
         delta = pair["delta"]
-        assert len(delta["candidates"]) == 10
+        assert len(delta["candidates"]) == 11
         assert delta["changed_candidate_count"] >= 0
         assert 0 <= delta["selected_overlap_jaccard"] <= 1
 
@@ -223,9 +223,9 @@ def test_parity_comparison_preserves_unknown_historical_scores() -> None:
 def test_parity_classification_and_metrics_are_separate() -> None:
     result = _result()
     assert result["parity_classification"]["classification"] == "HISTORICAL_CASE_DIFFERENCE"
-    assert result["summary"]["unique_selected"] == 9
-    assert result["summary"]["average_top_k_overlap"] == 0.360606
-    assert result["summary"]["selection_concentration"]["hhi"] == 0.146776
+    assert result["summary"]["unique_selected"] == 10
+    assert result["summary"]["average_top_k_overlap"] == 0.304545
+    assert result["summary"]["selection_concentration"]["hhi"] == 0.137174
 
 
 def test_production_audit_semantics_are_recorded() -> None:

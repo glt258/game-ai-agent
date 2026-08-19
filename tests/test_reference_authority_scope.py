@@ -29,6 +29,7 @@ EXPECTED_SCOPE = {
 UNKNOWN_SCOPE = {
     "genshin-impact:furina",
     "wuthering-waves:mortefi",
+    "wuthering-waves:aalto",
     "zenless-zone-zero:jane-doe",
     "neverness-to-everness:fadia",
     "neverness-to-everness:shinku",
@@ -92,9 +93,9 @@ def test_authority_scope_brief_extraction_is_conservative(
     assert extract_brief_features(brief).authority_scope == expected
 
 
-def test_same10_scope_migration_is_exact_and_provenance_valid() -> None:
+def test_scope_migration_is_exact_and_provenance_valid() -> None:
     references = CharacterReferenceRepository(DEFAULT_CORPUS_ROOT).list_all()
-    assert len(references) == 10
+    assert len(references) == 11
     populated: dict[str, str] = {}
     for reference in references:
         profile = reference_feature_profile(reference)

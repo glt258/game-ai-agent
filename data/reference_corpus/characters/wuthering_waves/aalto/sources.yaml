@@ -1,0 +1,46 @@
+schema_version: "character-sources/0.2"
+reference_id: "wuthering-waves:aalto"
+sources:
+  - source_id: official-developer-notes-aalto
+    source_type: official
+    publisher: "Kuro Games"
+    title: "Developer's Notes — Aalto (Article 497)"
+    url: "https://wutheringwaves.kurogames.com/en/main/news/detail/497"
+    language: en-US
+    retrieved_at: "2026-08-20T00:00:00Z"
+    published_at: null
+    version_context: "Wuthering Waves official article 497; body source on Kuro Games CDN hw-media-cdn-mingchao.kurogame.com"
+    content_hash: null
+    reliability: primary
+  - source_id: official-profile-reveal-aalto
+    source_type: official
+    publisher: "Kuro Games"
+    title: "Profile Reveal: Mistcloak Strike — Aalto (Article 475)"
+    url: "https://wutheringwaves.kurogames.com/en/main/news/detail/475"
+    language: en-US
+    retrieved_at: "2026-08-20T00:00:00Z"
+    published_at: null
+    version_context: "Wuthering Waves official article 475; body source on Kuro Games CDN hw-media-cdn-mingchao.kurogame.com"
+    content_hash: null
+    reliability: primary
+source_relations: []
+field_evidence:
+  identity.game_id: [official-developer-notes-aalto, official-profile-reveal-aalto]
+  identity.names.canonical: [official-developer-notes-aalto, official-profile-reveal-aalto]
+  combat.native_taxonomy.labels.weapon_type: [official-developer-notes-aalto]
+  combat.native_taxonomy.labels.attack_style: [official-developer-notes-aalto]
+  combat.abilities: [official-developer-notes-aalto]
+  combat.mechanics.mobility_mechanics: [official-developer-notes-aalto]
+  combat.team_mechanics.buffs: [official-developer-notes-aalto]
+  combat.relations: [official-developer-notes-aalto]
+  narrative.faction: [official-developer-notes-aalto]
+  narrative.occupation: [official-developer-notes-aalto, official-profile-reveal-aalto]
+  narrative.affiliations: [official-developer-notes-aalto]
+  narrative.public_identity: [official-developer-notes-aalto, official-profile-reveal-aalto]
+verification:
+  status: verified
+  conflicts: []
+  notes:
+    - "Production facts are bounded to the two confirmed Kuro Games PRIMARY sources: Article 497 establishes the intelligence-broker work, personal pricing criteria, Black Shores membership, ranged combat, Mist Avatar, Gate of Quandary, and Mistform movement/maneuvering; Article 475 establishes the Information Broker profile identity and right-price information trade."
+    - "Black Shores membership is retained alongside external information brokerage. The record does not claim that Aalto is fully independent, unaffiliated, an outsider, or without an institutional anchor."
+    - "The official article body is served from hw-media-cdn-mingchao.kurogame.com; the canonical article URLs and article IDs are preserved in the source records. No secondary source is used as production provenance."
