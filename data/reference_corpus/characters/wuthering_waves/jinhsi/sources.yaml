@@ -85,6 +85,7 @@ field_evidence:
   narrative.occupation: [official-introduction, official-developer-notes-jinhsi, current-jinhsi-database]
   narrative.affiliations: [official-introduction, current-jinhsi-database]
   narrative.public_identity: [official-introduction, official-developer-notes-jinhsi, current-jinhsi-database]
+  presentation.official_visual_tags: [official-developer-notes-jinhsi]
 verification:
   status: partially_verified
   conflicts: []
@@ -92,4 +93,4 @@ verification:
     - "Official first-party sources support Jinhsi's canonical identity, localized Chinese name, Spectro attribute, Broadblade weapon, Magistrate of Jinzhou occupation, and official character context."
     - "The current secondary database and current guide supply the detailed live ability, state, resource, mobility, and team-interaction descriptions; official web character material available in this collection does not expose the full skill text."
     - "Current live references use an Incandescence cap of 50 and the current Eras in Unity timing. Earlier 1.1-era descriptions with a lower cap are treated as superseded rather than recorded as a conflict."
-    - "No native character ID, official visual tags, or official character keywords were located in the consulted first-party material; those fields remain null or empty."
+    - "The official Developer's Notes describe Jinhsi's Loong Scales as a visual feature that can appear under power use, severe injury, or moments of shyness; this is recorded as the raw presentation tag 'Loong Scales' without inferring a broader motif or authoring token. No native character ID or official character keywords were located, so those fields remain null or empty."

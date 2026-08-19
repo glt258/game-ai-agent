@@ -226,5 +226,6 @@ narrative:
     - "Jinzhou"
   public_identity: "Magistrate of Jinzhou"
 presentation:
-  official_visual_tags: []
+  official_visual_tags:
+    - "Loong Scales"
   official_character_keywords: []
