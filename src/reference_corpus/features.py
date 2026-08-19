@@ -15,7 +15,7 @@ from typing import Any, Literal, Mapping, Sequence
 from .provenance import resolve_fact_field_path
 
 
-FEATURE_VOCABULARY_VERSION = "reference-feature-vocabulary/0.4.1c"
+FEATURE_VOCABULARY_VERSION = "reference-feature-vocabulary/0.4.2d"
 
 FeatureDomain = Literal[
     "personality",
@@ -23,6 +23,7 @@ FeatureDomain = Literal[
     "life_social_identity",
     "life_stage",
     "authority",
+    "authority_scope",
     "hook_surface",
     "hook_contrast",
     "hook_behavioral_pattern",
@@ -239,6 +240,11 @@ VOCABULARY: Mapping[FeatureDomain, Mapping[str, tuple[str, ...]]] = {
             "正式领导",
         ),
     ),
+    "authority_scope": _canonical_map(
+        private_group=("private_group",),
+        institutional=("institutional",),
+        state_scale=("state_scale",),
+    ),
     "hook_surface": _canonical_map(
         public_performance=("public performance", "public performer", "stage identity", "公开演出"),
         ordinary_work_identity=("ordinary work identity", "ordinary urban worker", "repair shop"),
@@ -332,6 +338,7 @@ class DiagnosticFeatureProfile:
     life_social_identity: tuple[str, ...] = ()
     life_stage: tuple[str, ...] = ()
     authority: tuple[str, ...] = ()
+    authority_scope: tuple[str, ...] = ()
     hook: HookFeatures = HookFeatures()
     visual_behavioral_motifs: tuple[str, ...] = ()
     evidence: tuple[FeatureEvidence, ...] = ()
@@ -355,6 +362,7 @@ class DiagnosticFeatureProfile:
             "life_social_identity": list(self.life_social_identity),
             "life_stage": list(self.life_stage),
             "authority": list(self.authority),
+            "authority_scope": list(self.authority_scope),
             "hook": self.hook.to_dict(),
             "visual_behavioral_motifs": list(self.visual_behavioral_motifs),
         }
@@ -377,6 +385,134 @@ def _contains_alias(text: str, alias: str) -> bool:
     if re.search(r"[a-z0-9]", needle):
         return f" {needle} " in f" {haystack} "
     return needle in haystack
+
+
+def _contains_any(text: str, phrases: Sequence[str]) -> bool:
+    return any(_contains_alias(text, phrase) for phrase in phrases)
+
+
+def _extract_authority_scope(
+    brief: str,
+) -> tuple[tuple[str, ...], tuple[FeatureEvidence, ...]]:
+    """Extract only explicit, bounded authority-reach phrases from a brief."""
+
+    text = _phrase_text(brief)
+    if not text:
+        return (), ()
+
+    state_phrases = (
+        "governs the city",
+        "governs an entire city",
+        "city wide governance",
+        "city state governance",
+        "city state institution",
+        "broad public responsibilities",
+        "head of state",
+        "highest public authority",
+        "sovereign governing responsibility",
+        "national governance",
+        "regional public governance",
+        "sole governing authority",
+    )
+    state_negations = (
+        "no state or government office",
+        "no government authority",
+        "not government authority",
+        "not state authority",
+        "not sole ruler",
+    )
+    private_group_phrases = (
+        "small private team",
+        "small independent team",
+        "tiny independent crew",
+        "small private agency",
+        "small private organization",
+        "small private group",
+        "leads a few members",
+        "leads a small group",
+        "leads a tiny crew",
+    )
+    private_context = (
+        "small private",
+        "small independent",
+        "tiny independent",
+    )
+    leadership_context = (
+        "formal leadership",
+        "real leadership",
+        "leads",
+        "leader",
+        "direct reports",
+        "command responsibility",
+    )
+    institutional_phrases = (
+        "formal organization executive",
+        "institutional leadership",
+        "governing portfolio",
+        "portfolio within a council",
+        "council governance",
+        "formal governing institution",
+        "organization level executive",
+        "department leadership",
+        "formal leadership within an organization",
+        "organizational executive",
+        "organizational custodial executive",
+        "custodial system maintenance",
+    )
+    institutional_context = (
+        "organization",
+        "institution",
+        "department",
+        "council",
+    )
+    institutional_authority_terms = (
+        "leader",
+        "leadership",
+        "executive",
+        "governing",
+        "governance",
+        "command responsibility",
+    )
+
+    state_match = _contains_any(text, state_phrases) and not _contains_any(
+        text, state_negations
+    )
+    private_match = _contains_any(text, private_group_phrases)
+    if not private_match and _contains_any(text, private_context):
+        private_match = _contains_any(text, leadership_context) and _contains_any(
+            text, ("team", "crew", "agency", "organization", "group")
+        )
+    institutional_match = _contains_any(text, institutional_phrases) or (
+        _contains_any(text, institutional_context)
+        and _contains_any(text, institutional_authority_terms)
+    )
+
+    # Explicit institutional context wins over a generic small-department
+    # phrase; membership alone is deliberately never sufficient.
+    if state_match:
+        token = "state_scale"
+    elif private_match and (
+        not institutional_match
+        or not _contains_any(text, ("government", "state", "department"))
+    ):
+        token = "private_group"
+    elif institutional_match:
+        token = "institutional"
+    else:
+        return (), ()
+    return (
+        (token,),
+        (
+            FeatureEvidence(
+                domain="authority_scope",
+                canonical_token=token,
+                provenance_kind="brief",
+                source_path="brief",
+                raw_value=brief,
+                support_status="direct_normalization",
+            ),
+        ),
+    )
 
 
 def canonical_tokens(domain: FeatureDomain) -> tuple[str, ...]:
@@ -451,6 +587,7 @@ def _profile_from_parts(
         life_social_identity=values.get("life_social_identity", ()),
         life_stage=values.get("life_stage", ()),
         authority=values.get("authority", ()),
+        authority_scope=values.get("authority_scope", ()),
         hook=HookFeatures(
             surface_traits=values.get("hook_surface", ()),
             contrast_traits=values.get("hook_contrast", ()),
@@ -466,10 +603,27 @@ def extract_brief_features(brief: str) -> DiagnosticFeatureProfile:
 
     if not isinstance(brief, str):
         raise TypeError("brief must be a string")
-    domains: dict[FeatureDomain, Sequence[tuple[Sequence[str], str | None, ProvenanceKind, Sequence[str]]]] = {
-        domain: [((brief,), "brief", "brief", ())] for domain in VOCABULARY
+    domains: dict[
+        FeatureDomain,
+        Sequence[tuple[Sequence[str], str | None, ProvenanceKind, Sequence[str]]],
+    ] = {
+        domain: [((brief,), "brief", "brief", ())]
+        for domain in VOCABULARY
+        if domain != "authority_scope"
     }
-    return _profile_from_parts(domains)
+    profile = _profile_from_parts(domains)
+    scope, scope_evidence = _extract_authority_scope(brief)
+    return DiagnosticFeatureProfile(
+        personality=profile.personality,
+        gameplay_fantasy=profile.gameplay_fantasy,
+        life_social_identity=profile.life_social_identity,
+        life_stage=profile.life_stage,
+        authority=profile.authority,
+        authority_scope=scope,
+        hook=profile.hook,
+        visual_behavioral_motifs=profile.visual_behavioral_motifs,
+        evidence=profile.evidence + scope_evidence,
+    )
 
 
 def _field_sources(reference: Any, path: str) -> tuple[str, ...]:
@@ -520,9 +674,14 @@ def reference_feature_profile(reference: Any) -> DiagnosticFeatureProfile:
                 ("life_social_identity", "life_social_identity"),
                 ("life_stage", "life_stage"),
                 ("authority", "authority"),
+                ("authority_scope", "authority_scope"),
                 ("visual_behavioral_motif", "visual_behavioral_motifs"),
             ):
                 values = getattr(authoring, attribute)
+                if values is None:
+                    continue
+                if domain == "authority_scope":
+                    values = (values,)
                 parts[domain].append(
                     (
                         values,
@@ -616,6 +775,7 @@ def diagnostic_overlap(
         "life_social_identity",
         "life_stage",
         "authority",
+        "authority_scope",
         "hook_surface",
         "hook_contrast",
         "hook_behavioral_pattern",
@@ -679,6 +839,7 @@ def feature_coverage(
         "life_social_identity",
         "life_stage",
         "authority",
+        "authority_scope",
         "hook_surface",
         "hook_contrast",
         "hook_behavioral_pattern",

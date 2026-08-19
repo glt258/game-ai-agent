@@ -16,6 +16,7 @@ character_design:
     life_social_identity: [formal_professional]
     life_stage: []
     authority: [formal_leadership]
+    authority_scope: institutional
     hook:
       surface_traits: [organization_member_identity]
       contrast_traits: [competence_without_spectacle]
@@ -34,6 +35,9 @@ character_design:
       authority:
         - {kind: source_fact, source_id: official-profile-reveal, fact_path: narrative}
         - {kind: analyst_derivation, note: "Formal leadership is custodial/acting executive organizational authority, not sovereign or state governance."}
+      authority_scope:
+        - {kind: source_fact, source_id: official-profile-reveal, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Custodial/acting executive authority is bounded to an organization, so it is institutional rather than state-scale."}
       hook.surface_traits:
         - {kind: source_fact, source_id: official-profile-reveal, fact_path: narrative}
         - {kind: analyst_derivation, note: "Organization-member identity is the available surface token, despite Shorekeeper's stronger custodial executive scope."}

@@ -16,6 +16,7 @@ character_design:
     life_social_identity: [formal_professional]
     life_stage: []
     authority: [formal_leadership]
+    authority_scope: state_scale
     hook:
       surface_traits: [formal_role_identity]
       contrast_traits: [charisma_without_office]
@@ -35,6 +36,9 @@ character_design:
       authority:
         - {kind: source_fact, source_id: official-character-page, fact_path: narrative}
         - {kind: analyst_derivation, note: "Formal leadership has a temporal caveat: Nahida is a sovereign Archon, but confinement stripped effective authority before restored rule; this is not one timeless leadership state."}
+      authority_scope:
+        - {kind: source_fact, source_id: official-character-page, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Sovereign Archon authority reaches state-scale public governance; confinement and restoration remain temporal/effective provenance, not scope."}
       hook.surface_traits:
         - {kind: source_fact, source_id: official-character-page, fact_path: narrative}
         - {kind: analyst_derivation, note: "The surface hook is formal role identity as Archon/ruler."}

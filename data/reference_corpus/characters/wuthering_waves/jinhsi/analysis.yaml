@@ -79,6 +79,7 @@ character_design:
     life_social_identity: [formal_professional]
     life_stage: []
     authority: [formal_leadership]
+    authority_scope: state_scale
     hook:
       surface_traits: [formal_role_identity]
       contrast_traits: [formal_role_personal_action]
@@ -97,6 +98,9 @@ character_design:
       authority:
         - {kind: source_fact, source_id: official-introduction, fact_path: narrative}
         - {kind: analyst_derivation, note: "Formal leadership denotes real Magistrate/head-of-state institutional scope; it is not the small-agency leadership represented by Nicole."}
+      authority_scope:
+        - {kind: source_fact, source_id: official-introduction, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Magistrate responsibility reaches city-scale public governance; the scope value does not encode title, combat power, or temporal effectiveness."}
       hook.surface_traits:
         - {kind: source_fact, source_id: official-introduction, fact_path: narrative}
         - {kind: analyst_derivation, note: "The surface hook is the Magistrate's formal role identity."}

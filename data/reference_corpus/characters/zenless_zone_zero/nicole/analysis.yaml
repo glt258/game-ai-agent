@@ -16,6 +16,7 @@ character_design:
     life_social_identity: [independent_operator]
     life_stage: []
     authority: [formal_leadership]
+    authority_scope: private_group
     hook:
       surface_traits: [organization_member_identity]
       contrast_traits: [charisma_without_office]
@@ -34,6 +35,9 @@ character_design:
       authority:
         - {kind: source_fact, source_id: official-character-page-en, fact_path: narrative}
         - {kind: analyst_derivation, note: "Formal leadership explicitly means small private-agency leadership: Cunning Hares scale, not state/government authority and not Jinhsi/Nahida scope."}
+      authority_scope:
+        - {kind: source_fact, source_id: official-character-page-en, fact_path: narrative}
+        - {kind: analyst_derivation, note: "The leader of the odd-job agency has private-group scope; no state or government authority is inferred."}
       hook.surface_traits:
         - {kind: source_fact, source_id: official-character-page-en, fact_path: narrative}
         - {kind: analyst_derivation, note: "Organization-member identity is the available surface token for Cunning Hares membership."}

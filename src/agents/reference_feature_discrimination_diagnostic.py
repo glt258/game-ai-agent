@@ -35,6 +35,7 @@ DOMAINS: tuple[FeatureDomain, ...] = (
     "life_social_identity",
     "life_stage",
     "authority",
+    "authority_scope",
     "hook_surface",
     "hook_contrast",
     "hook_behavioral_pattern",
@@ -49,6 +50,19 @@ CLASSIFICATIONS = (
     "MULTI_REFERENCE_COLLISION",
     "EXPECTED_SHARED_TRAIT",
 )
+
+
+# The frozen cases and their wording remain unchanged.  These are the approved
+# v0.4.2d representation expectations used only to evaluate the new shadow
+# domain.
+EXPECTED_AUTHORITY_SCOPES: Mapping[str, str] = {
+    "authority-scope-small-private-team": "private_group",
+    "authority-scope-state-institution": "state_scale",
+    "authority-form-portfolio-governance": "institutional",
+    "authority-form-sovereign": "state_scale",
+    "authority-form-formal-organization-leader": "institutional",
+    "authority-form-custodial-executive": "institutional",
+}
 
 
 @dataclass(frozen=True)
@@ -322,6 +336,14 @@ def diagnostic_cases() -> tuple[DiagnosticCase, ...]:
     return _CASES
 
 
+def _expected_features(case: DiagnosticCase) -> Mapping[FeatureDomain, tuple[str, ...]]:
+    expected = dict(case.expected_features)
+    scope = EXPECTED_AUTHORITY_SCOPES.get(case.case_id)
+    if scope is not None:
+        expected["authority_scope"] = (scope,)
+    return expected
+
+
 def _profile_values(profile: DiagnosticFeatureProfile) -> dict[FeatureDomain, tuple[str, ...]]:
     return {domain: tuple(profile.domain_values(domain)) for domain in DOMAINS}
 
@@ -412,8 +434,9 @@ def run_diagnostic(*, corpus_root: Path | None = None) -> dict[str, Any]:
     for case in diagnostic_cases():
         brief_profile = extract_brief_features(case.brief)
         actual = _profile_values(brief_profile)
-        delta = _feature_delta(case.expected_features, actual)
-        match_ids = _matching_references(case.expected_features, profiles)
+        expected_features = _expected_features(case)
+        delta = _feature_delta(expected_features, actual)
+        match_ids = _matching_references(expected_features, profiles)
         shadow = _shadow_overlap(brief_profile, profiles)
         classification = (
             "BRIEF_EXTRACTION_GAP"
@@ -430,7 +453,7 @@ def run_diagnostic(*, corpus_root: Path | None = None) -> dict[str, Any]:
                 "counterfactual_partner": case.counterfactual_partner,
                 "expected_features": {
                     domain: list(values)
-                    for domain, values in case.expected_features.items()
+                    for domain, values in expected_features.items()
                     if values
                 },
                 "extracted_features": {

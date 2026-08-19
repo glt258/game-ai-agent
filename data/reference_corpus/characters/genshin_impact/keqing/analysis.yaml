@@ -62,6 +62,7 @@ character_design:
     life_social_identity: [formal_professional]
     life_stage: []
     authority: [formal_leadership]
+    authority_scope: institutional
     hook:
       surface_traits: [formal_role_identity]
       contrast_traits: [formal_role_personal_action]
@@ -80,6 +81,9 @@ character_design:
       authority:
         - {kind: source_fact, source_id: official-character-page, fact_path: narrative}
         - {kind: analyst_derivation, note: "Formal leadership is limited to a Yuheng seat and portfolio within the Liyue Qixing's council governance; it is not sole head-of-state authority."}
+      authority_scope:
+        - {kind: source_fact, source_id: official-character-page, fact_path: narrative}
+        - {kind: analyst_derivation, note: "The Yuheng seat and portfolio are institutional collective governance, not sole state-scale authority."}
       hook.surface_traits:
         - {kind: source_fact, source_id: official-character-page, fact_path: narrative}
         - {kind: analyst_derivation, note: "The public hook is her formal Yuheng role identity."}

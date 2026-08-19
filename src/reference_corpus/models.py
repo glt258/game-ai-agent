@@ -474,6 +474,25 @@ def _canonical_authoring_list(
     return values
 
 
+def _canonical_authoring_optional(
+    value: str | None,
+    domain: str,
+) -> str | None:
+    if value is None:
+        return None
+    clean_value = _text(value, f"authoring_features.{domain}")
+    # Import lazily to keep the validated model layer independent from the
+    # diagnostic extractor's provenance helpers during package import.
+    from .features import canonical_tokens
+
+    if clean_value not in set(canonical_tokens(domain)):
+        raise ValueError(
+            f"authoring_features.{domain} contains unsupported canonical token(s): "
+            f"[{clean_value!r}]"
+        )
+    return clean_value
+
+
 class AuthoringFeatureBlock(ReferenceModel):
     """Optional normalized authoring interpretation for a reference."""
 
@@ -482,6 +501,7 @@ class AuthoringFeatureBlock(ReferenceModel):
     life_social_identity: list[str] = Field(default_factory=list)
     life_stage: list[str] = Field(default_factory=list)
     authority: list[str] = Field(default_factory=list)
+    authority_scope: str | None = None
     hook: StructuredHookFeatures | None = None
     visual_behavioral_motifs: list[str] = Field(default_factory=list)
     evidence: dict[str, list[AuthoringFeatureEvidence]] = Field(default_factory=dict)
@@ -501,6 +521,9 @@ class AuthoringFeatureBlock(ReferenceModel):
     _authority = field_validator("authority")(
         lambda value: _canonical_authoring_list(value, "authority")
     )
+    _authority_scope = field_validator("authority_scope")(
+        lambda value: _canonical_authoring_optional(value, "authority_scope")
+    )
     _visual_behavioral_motifs = field_validator("visual_behavioral_motifs")(
         lambda value: _canonical_authoring_list(value, "visual_behavioral_motif")
     )
@@ -514,6 +537,7 @@ class AuthoringFeatureBlock(ReferenceModel):
             "life_social_identity",
             "life_stage",
             "authority",
+            "authority_scope",
             "hook.surface_traits",
             "hook.contrast_traits",
             "hook.behavioral_patterns",

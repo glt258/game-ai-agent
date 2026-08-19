@@ -173,13 +173,14 @@ def test_schema_serialization_is_deterministic_and_analysis_is_not_canon(tmp_pat
 
 
 def test_vocabulary_is_bounded_and_canonical_tokens_are_stable() -> None:
-    assert FEATURE_VOCABULARY_VERSION == "reference-feature-vocabulary/0.4.1c"
+    assert FEATURE_VOCABULARY_VERSION == "reference-feature-vocabulary/0.4.2d"
     assert set(VOCABULARY) == {
         "personality",
         "gameplay_fantasy",
         "life_social_identity",
         "life_stage",
         "authority",
+        "authority_scope",
         "hook_surface",
         "hook_contrast",
         "hook_behavioral_pattern",
