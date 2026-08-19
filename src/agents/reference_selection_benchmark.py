@@ -277,6 +277,9 @@ def _compact_ranking(ranking: Sequence[Mapping[str, Any]]) -> list[dict[str, Any
             "character_name": item["character_name"],
             "source_game": item["source_game"],
             "score": item["score"],
+            "legacy_score": item.get("legacy_score", item["score"]),
+            "feature_secondary_score": item.get("feature_secondary_score", 0.0),
+            "ordering_reason": item.get("ordering_reason", "LEGACY_SCORE"),
             "score_gap_from_previous": item["score_gap_from_previous"],
         }
         for item in ranking
@@ -296,8 +299,16 @@ def _run_case(
     top_k: int,
     feature_profiles: Mapping[str, DiagnosticFeatureProfile] | None = None,
 ) -> dict[str, Any]:
-    ranking = rank_reference_summaries(str(case["brief"]), summaries)
-    repeated = rank_reference_summaries(str(case["brief"]), summaries)
+    ranking = rank_reference_summaries(
+        str(case["brief"]),
+        summaries,
+        feature_profiles=feature_profiles,
+    )
+    repeated = rank_reference_summaries(
+        str(case["brief"]),
+        summaries,
+        feature_profiles=feature_profiles,
+    )
     compact = _compact_ranking(ranking)
     result = {
         "brief_id": case["brief_id"],
@@ -309,8 +320,18 @@ def _run_case(
         "selected_top_k": top_k,
         "tie_groups": _tie_groups(compact),
         "score_gaps": [item["score_gap_from_previous"] for item in compact],
-        "component_scores_available": False,
-        "component_scores": None,
+        "component_scores_available": feature_profiles is not None,
+        "component_scores": {
+            item["reference_id"]: {
+                "personality_match": item["feature_trace"]["domains"]["personality"]["score"],
+                "gameplay_fantasy_match": item["feature_trace"]["domains"]["gameplay_fantasy"]["score"],
+                "authority_match": item["feature_trace"]["domains"]["authority"]["score"],
+                "feature_secondary_score": item["feature_secondary_score"],
+            }
+            for item in ranking
+        }
+        if feature_profiles is not None
+        else None,
         "stable_on_repeat": [item["reference_id"] for item in compact]
         == [item["reference_id"] for item in _compact_ranking(repeated)],
     }
@@ -318,7 +339,16 @@ def _run_case(
         brief_features = extract_brief_features(str(case["brief"]))
         result["diagnostic_features"] = {
             "vocabulary_version": FEATURE_VOCABULARY_VERSION,
+            # The feature is a secondary ordering key, not an additive score
+            # contribution.  Keep this historical field at zero and expose
+            # the new value separately for activation reporting.
             "score_contribution": 0,
+            "secondary_ordering_score": {
+                item["reference_id"]: item["feature_secondary_score"]
+                for item in ranking
+            }
+            if feature_profiles is not None
+            else None,
             "brief": brief_features.to_dict(include_evidence=False),
             "overlap_by_reference": {
                 reference_id: diagnostic_overlap(
@@ -539,17 +569,30 @@ def run_historical_replays(
     corpus_root = Path(corpus_root)
     catalog = load_game_catalog(corpus_root / "_catalog" / "games.yaml")
     repository = CharacterReferenceRepository(corpus_root, catalog=catalog)
-    summaries = [_reference_summary(reference) for reference in repository.list_all()]
+    references = repository.list_all()
+    summaries = [_reference_summary(reference) for reference in references]
+    feature_profiles = {
+        reference.reference_id: reference_feature_profile(reference)
+        for reference in references
+    }
     replay_results: list[dict[str, Any]] = []
     for fixture in HISTORICAL_REPLAY_FIXTURES:
         brief = str(fixture["brief"])
-        benchmark_ranking = rank_reference_summaries(brief, summaries)
+        benchmark_ranking = rank_reference_summaries(
+            brief,
+            summaries,
+            feature_profiles=feature_profiles,
+        )
         production_grounding = load_reference_grounding(
             brief,
             corpus_root=corpus_root,
             limit=top_k,
         )
-        direct_ranking = rank_reference_summaries(brief, summaries)
+        direct_ranking = rank_reference_summaries(
+            brief,
+            summaries,
+            feature_profiles=feature_profiles,
+        )
         benchmark_top_k = [item["reference_id"] for item in benchmark_ranking[:top_k]]
         production_top_k = list(production_grounding.reference_ids)
         direct_top_k = [item["reference_id"] for item in direct_ranking[:top_k]]
@@ -639,6 +682,7 @@ def run_benchmark(
 
     cases = benchmark_cases()
     case_results = [_run_case(case, summaries, top_k, feature_profiles) for case in cases]
+    legacy_case_results = [_run_case(case, summaries, top_k) for case in cases]
     result_by_id = {str(item["brief_id"]): item for item in case_results}
     selected_slots = [
         reference_id
@@ -729,6 +773,26 @@ def run_benchmark(
             }.items()
         },
     }
+    legacy_selected_slots = [
+        reference_id
+        for case in legacy_case_results
+        for reference_id in case["selected_references"]
+    ]
+    legacy_broad_results = legacy_case_results[:12]
+    legacy_overlaps = [
+        _jaccard(left["selected_references"], right["selected_references"])
+        for left, right in combinations(legacy_broad_results, 2)
+    ]
+    legacy_baseline = {
+        "unique_selected": len(set(legacy_selected_slots)),
+        "average_top_k_overlap": round(
+            sum(legacy_overlaps) / len(legacy_overlaps), 6
+        )
+        if legacy_overlaps
+        else 0.0,
+        "hhi": _hhi(legacy_selected_slots),
+        "classification": "LIMITED_SENSITIVITY",
+    }
     order_test = _corpus_order_test(cases[0]["brief"], summaries, top_k)
     coverage = _coverage(summaries)
     diagnostic_coverage = feature_coverage(
@@ -773,18 +837,30 @@ def run_benchmark(
             "entry_point": "agents.official_character_authoring.load_reference_grounding",
             "candidate_count": len(summaries),
             "top_k": top_k,
-            "scoring": "sum(1 for brief token present in tokenized JSON reference summary)",
+            "scoring": "legacy integer score primary; ready-domain bounded normalized Jaccard secondary within equal legacy-score groups",
             "score_normalization": "none",
             "candidate_filtering": "none",
-            "tie_breaking": "ascending reference_id after descending total score",
-            "component_scores_available": False,
-            "diagnostic_feature_scoring": "disabled; feature overlap is reported only",
-            "production_behavior_changed": False,
+            "tie_breaking": "descending legacy score, descending feature secondary score within exact legacy ties, then ascending reference_id",
+            "component_scores_available": True,
+            "diagnostic_feature_scoring": "activated for personality, gameplay_fantasy, and authority only",
+            "production_behavior_changed": True,
+            "feature_ordering_contract": "(legacy_score, feature_secondary_score, reference_id)",
+            "feature_domains": ["personality", "gameplay_fantasy", "authority"],
+            "non_active_domains": [
+                "authority_scope",
+                "life_social_identity",
+                "hook_surface",
+                "hook_contrast",
+                "hook_behavioral_pattern",
+                "life_stage",
+                "visual_behavioral_motif",
+            ],
         },
         "corpus_audit": _corpus_audit(summaries),
         "corpus_coverage": coverage,
         "diagnostic_coverage": diagnostic_coverage,
         "cases": case_results,
+        "legacy_baseline_cases": legacy_case_results,
         "contrast_pairs": contrast_results,
         "counterfactuals": counterfactual_results,
         "corpus_order_test": order_test,
@@ -792,18 +868,19 @@ def run_benchmark(
             "entry_point": "agents.official_character_authoring.main -> make_demo -> load_reference_grounding",
             "invocation_timing": "once before CharacterGenerationAgent construction and before generation",
             "input_object": "request.brief (raw str); hard_constraints, soft_preferences, and other request fields are not passed",
-            "feature_extraction": "load_reference_grounding tokenizes the raw brief and JSON summaries",
+            "feature_extraction": "load_reference_grounding tokenizes the raw brief and JSON summaries, then computes ready-domain traces",
             "reference_call_count_cli": 1,
             "live_model_dependency": False,
             "tool_loop_dependency": False,
             "top_k": top_k,
             "audit_path": "ReferenceGrounding.selected -> CharacterGenerationRuntimeView.reference_context -> CharacterGenerationAudit.reference_ids -> OfficialCharacterAuthoringRun",
-            "selected_reference_semantics": "final deterministic pre-generation top-k inserted into generation context and mirrored in generation audit",
+            "selected_reference_semantics": "final deterministic pre-generation top-k inserted into generation context and mirrored in generation audit; feature values only reorder exact legacy ties",
+            "selection_audit": "ReferenceGrounding.selection_audit exposes legacy score, three domain matches, feature secondary score, trace, and ordering reason",
         },
         "benchmark_path": {
             "entry_point": "agents.reference_selection_benchmark.main -> run_benchmark",
             "input_object": "case brief string plus repository summaries",
-            "feature_extraction": "same _tokens and rank_reference_summaries implementation",
+            "feature_extraction": "same _tokens and rank_reference_summaries implementation plus the shared ready-domain trace",
             "top_k": top_k,
             "shared_production_function": True,
             "differences_from_production_path": [
@@ -812,6 +889,7 @@ def run_benchmark(
             ],
             "same_selector_implementation": True,
             "same_effective_input_for_same_brief": True,
+            "activation_matches_frozen_shadow_model_3": True,
         },
         "historical_replays": historical_replays,
         "parity_classification": {
@@ -826,6 +904,7 @@ def run_benchmark(
             "recommendation": "FREEZE_V0.4_THEN_EXPAND_CORPUS",
         },
         "summary": summary,
+        "legacy_baseline": legacy_baseline,
         "classification": classification,
         "classification_reasons": classification_reasons,
         "review_packet": review_packet,

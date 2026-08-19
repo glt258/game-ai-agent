@@ -60,10 +60,11 @@ def test_benchmark_does_not_alter_production_selection() -> None:
 
 def test_diagnostic_features_do_not_contribute_to_selection() -> None:
     result = _result()
-    assert result["selector"]["diagnostic_feature_scoring"].startswith("disabled")
-    assert result["summary"]["unique_selected"] == 8
-    assert result["summary"]["average_top_k_overlap"] == 0.448485
-    assert result["summary"]["selection_concentration"]["hhi"] == 0.159808
+    assert "activated" in result["selector"]["diagnostic_feature_scoring"]
+    assert result["summary"]["unique_selected"] == 9
+    assert result["summary"]["average_top_k_overlap"] == 0.360606
+    assert result["summary"]["selection_concentration"]["hhi"] == 0.146776
+    assert result["legacy_baseline"]["unique_selected"] == 8
     assert all(case["diagnostic_features"]["score_contribution"] == 0 for case in result["cases"])
     assert all(
         case["selected_references"]
@@ -149,7 +150,7 @@ def test_source_game_frequency_calculates_from_selected_slots() -> None:
 
 def test_benchmark_works_without_live_llm_credentials() -> None:
     result = _result()
-    assert result["selector"]["production_behavior_changed"] is False
+    assert result["selector"]["production_behavior_changed"] is True
     assert result["summary"]["stability"]["all_cases_stable"]
 
 
@@ -222,9 +223,9 @@ def test_parity_comparison_preserves_unknown_historical_scores() -> None:
 def test_parity_classification_and_metrics_are_separate() -> None:
     result = _result()
     assert result["parity_classification"]["classification"] == "HISTORICAL_CASE_DIFFERENCE"
-    assert result["summary"]["unique_selected"] == 8
-    assert result["summary"]["average_top_k_overlap"] == 0.448485
-    assert result["summary"]["selection_concentration"]["hhi"] == 0.159808
+    assert result["summary"]["unique_selected"] == 9
+    assert result["summary"]["average_top_k_overlap"] == 0.360606
+    assert result["summary"]["selection_concentration"]["hhi"] == 0.146776
 
 
 def test_production_audit_semantics_are_recorded() -> None:

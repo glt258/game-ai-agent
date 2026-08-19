@@ -19,6 +19,7 @@ from typing import Any, Mapping, Sequence
 
 from reference_corpus.loader import load_corpus_manifest, load_game_catalog
 from reference_corpus.repository import CharacterReferenceRepository
+from reference_corpus.features import extract_brief_features, reference_feature_profile
 
 from .canon_checker import CanonCheckStatus, CanonChecker, CanonFindingCode
 from .character_generation import (
@@ -35,6 +36,7 @@ from .character_repair import (
 )
 from .errors import AgentError, ModelError, ModelMalformedResponseError
 from .model_factory import character_model_from_environment
+from .reference_feature_ordering import ready_feature_score_trace
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -46,6 +48,7 @@ class ReferenceGrounding:
     corpus_version: str
     total_records: int
     selected: tuple[Mapping[str, Any], ...]
+    selection_audit: tuple[Mapping[str, Any], ...] = ()
 
     @property
     def reference_ids(self) -> tuple[str, ...]:
@@ -60,6 +63,7 @@ class ReferenceGrounding:
             "corpus_version": self.corpus_version,
             "total_records": self.total_records,
             "selected": [dict(item) for item in self.selected],
+            "selection_audit": [dict(item) for item in self.selection_audit],
         }
 
 
@@ -142,11 +146,20 @@ def load_reference_grounding(
     repository = CharacterReferenceRepository(corpus_root, catalog=catalog)
     references = repository.list_all()
     summaries = [_reference_summary(reference) for reference in references]
-    ranked = rank_reference_summaries(brief, summaries)
+    feature_profiles = {
+        reference.reference_id: reference_feature_profile(reference)
+        for reference in references
+    }
+    ranked = rank_reference_summaries(
+        brief,
+        summaries,
+        feature_profiles=feature_profiles,
+    )
     return ReferenceGrounding(
         manifest.corpus_version,
         len(references),
         tuple(item["summary"] for item in ranked[:limit]),
+        tuple(_selection_audit(item) for item in ranked),
     )
 
 
@@ -190,40 +203,133 @@ def _reference_summary(reference: Any) -> dict[str, Any]:
 def rank_reference_summaries(
     brief: str,
     summaries: Sequence[Mapping[str, Any]],
+    *,
+    feature_profiles: Mapping[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Return the production reference ranking with diagnostic totals.
+    """Return the production reference ranking.
 
-    The sort and score are intentionally the same as the frozen production
-    selector.  This helper adds visibility for the benchmark; it does not
-    introduce component attribution or change selection behavior.
+    Legacy score is always the primary key.  When feature profiles are
+    supplied, the approved ready-domain score is used only inside equal
+    legacy-score groups; the existing reference-id tie-break remains final.
+    Omitting profiles gives the immutable legacy-only baseline used by the
+    shadow and historical benchmark tooling.
     """
 
     query = _tokens(brief)
-    ranked: list[tuple[int, str, Mapping[str, Any]]] = []
+    brief_profile = extract_brief_features(brief) if feature_profiles is not None else None
+    ranked: list[dict[str, Any]] = []
     for summary in summaries:
         reference_id = str(summary["reference_id"])
         haystack = _tokens(json.dumps(dict(summary), ensure_ascii=False))
-        score = sum(1 for token in query if token in haystack)
-        ranked.append((score, reference_id, summary))
-    ranked.sort(key=lambda item: (-item[0], item[1]))
+        legacy_score = sum(1 for token in query if token in haystack)
+        profile = feature_profiles.get(reference_id) if feature_profiles is not None else None
+        trace = (
+            ready_feature_score_trace(brief_profile, profile)
+            if brief_profile is not None and profile is not None
+            else {
+                "primitive": "bounded_normalized_jaccard",
+                "domains": {
+                    domain: {
+                        "brief_values": [],
+                        "reference_values": [],
+                        "shared_values": [],
+                        "score": 0.0,
+                        "missing_neutral": True,
+                    }
+                    for domain in ("personality", "gameplay_fantasy", "authority")
+                },
+                "active_domain_count": 0,
+                "feature_subtotal": 0.0,
+                "feature_score_cap": 1.0,
+                "non_active_domains": [
+                    "authority_scope",
+                    "life_social_identity",
+                    "hook_surface",
+                    "hook_contrast",
+                    "hook_behavioral_pattern",
+                    "life_stage",
+                    "visual_behavioral_motif",
+                ],
+            }
+        )
+        ranked.append(
+            {
+                "reference_id": reference_id,
+                "summary": dict(summary),
+                "legacy_score": legacy_score,
+                # Keep the historical public score field integer and
+                # non-additive; feature score is a separate sort key.
+                "score": legacy_score,
+                "feature_secondary_score": trace["feature_subtotal"],
+                "feature_trace": trace,
+            }
+        )
+    ranked.sort(
+        key=lambda item: (
+            -item["legacy_score"],
+            -item["feature_secondary_score"],
+            item["reference_id"],
+        )
+    )
 
     result: list[dict[str, Any]] = []
-    for rank, (score, reference_id, summary) in enumerate(ranked, start=1):
-        previous_score = ranked[rank - 2][0] if rank > 1 else None
+    for rank, item in enumerate(ranked, start=1):
+        previous = ranked[rank - 2] if rank > 1 else None
+        legacy_group = [
+            candidate
+            for candidate in ranked
+            if candidate["legacy_score"] == item["legacy_score"]
+        ]
+        group_has_feature_order = len(
+            {candidate["feature_secondary_score"] for candidate in legacy_group}
+        ) > 1
+        if group_has_feature_order and (
+            previous is None or item["legacy_score"] != previous["legacy_score"]
+        ):
+            reason = "FEATURE_SECONDARY_TIEBREAK"
+        elif previous is None or item["legacy_score"] != previous["legacy_score"]:
+            reason = "LEGACY_SCORE"
+        elif item["feature_secondary_score"] != previous["feature_secondary_score"]:
+            reason = "FEATURE_SECONDARY_TIEBREAK"
+        else:
+            reason = "DETERMINISTIC_FINAL_TIEBREAK"
         result.append(
             {
                 "rank": rank,
-                "reference_id": reference_id,
-                "character_name": summary.get("display_name"),
-                "source_game": summary.get("game_id"),
-                "score": score,
+                "reference_id": item["reference_id"],
+                "character_name": item["summary"].get("display_name"),
+                "source_game": item["summary"].get("game_id"),
+                "score": item["legacy_score"],
+                "legacy_score": item["legacy_score"],
+                "feature_secondary_score": item["feature_secondary_score"],
+                "feature_trace": item["feature_trace"],
+                "ordering_reason": reason,
                 "score_gap_from_previous": (
-                    previous_score - score if previous_score is not None else None
+                    previous["legacy_score"] - item["legacy_score"]
+                    if previous is not None
+                    else None
                 ),
-                "summary": dict(summary),
+                "summary": item["summary"],
             }
         )
     return result
+
+
+def _selection_audit(item: Mapping[str, Any]) -> dict[str, Any]:
+    """Convert a ranking row into a stable, selection-level explanation."""
+
+    domains = item["feature_trace"]["domains"]
+    return {
+        "rank": item["rank"],
+        "reference_id": item["reference_id"],
+        "legacy_score": item["legacy_score"],
+        "personality_match": domains["personality"]["score"],
+        "gameplay_fantasy_match": domains["gameplay_fantasy"]["score"],
+        "authority_match": domains["authority"]["score"],
+        "feature_secondary_score": item["feature_secondary_score"],
+        "ordering_reason": item["ordering_reason"],
+        "feature_trace": dict(item["feature_trace"]),
+    }
 
 
 class OfficialCharacterAuthoringDemo:

@@ -26,6 +26,11 @@ from .official_character_authoring import (
     _reference_summary,
     rank_reference_summaries,
 )
+from .reference_feature_ordering import (
+    READY_DOMAINS as SHARED_READY_DOMAINS,
+    bounded_normalized_jaccard,
+    ready_feature_score_trace,
+)
 from .reference_feature_discrimination_diagnostic import diagnostic_cases
 from .reference_selection_benchmark import benchmark_cases
 
@@ -145,7 +150,7 @@ def _primitive_score(
     if primitive == "binary":
         return 1.0 if shared else 0.0
     if primitive == "jaccard":
-        return round(shared / len(left_set | right_set), 3)
+        return bounded_normalized_jaccard(left, right)
     if primitive == "overlap_coefficient":
         return round(shared / min(len(left_set), len(right_set)), 3)
     return round(min(1.0, shared / 2), 3)
@@ -194,6 +199,12 @@ def feature_score_trace(
     """Return bounded per-domain traces with no production side effects."""
 
     selected_domains = tuple(dict.fromkeys(domains))
+    if (
+        selected_domains == SHARED_READY_DOMAINS
+        and primitive == "jaccard"
+        and hook_mode == "family_max"
+    ):
+        return ready_feature_score_trace(brief, reference)
     scores: dict[str, dict[str, Any]] = {}
     active_scores: list[float] = []
     for domain in selected_domains:
