@@ -83,7 +83,7 @@ character_design:
       surface_traits: [formal_role_identity]
       contrast_traits: [formal_role_personal_action]
       behavioral_patterns: [restraint_for_payoff]
-    visual_behavioral_motifs: []
+    visual_behavioral_motifs: [signature_object]
     evidence:
       personality:
         - {kind: source_fact, source_id: official-introduction, fact_path: narrative}
@@ -107,6 +107,9 @@ character_design:
       hook.behavioral_patterns:
         - {kind: source_fact, source_id: official-developer-notes-jinhsi, fact_path: combat}
         - {kind: analyst_derivation, note: "Restraint for payoff reflects the staged, composed combat cycle and public leadership instrument rather than a generic quiet trait."}
+      visual_behavioral_motifs:
+        - {kind: source_fact, source_id: official-developer-notes-jinhsi, fact_path: presentation.official_visual_tags}
+        - {kind: analyst_derivation, note: "The source-backed Loong Scales feature is a concrete character-specific visual object and supports the signature_object motif without adding symbolic interpretation."}
   gameplay_identity_alignment:
     score: 0.5
     reasoning: >-
