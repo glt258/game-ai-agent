@@ -82,6 +82,40 @@ character_design:
   narrative_hooks:
     - "etd_6_affiliation"
   visual_motifs: []
+  authoring_features:
+    personality: [restrained, socially_isolated, disciplined]
+    gameplay_fantasy: [protective_stabilization, direct_frontline_pressure]
+    life_social_identity: [formal_professional]
+    life_stage: []
+    authority: [operational_responsibility]
+    hook:
+      surface_traits: [organization_member_identity]
+      contrast_traits: [competence_without_spectacle]
+      behavioral_patterns: [low_spectacle_routine]
+    visual_behavioral_motifs: []
+    evidence:
+      personality:
+        - {kind: source_fact, source_id: official-nte-character-page, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Reserve and social distance describe the corrected BAC/ETD-6 operative role and dependable discipline under danger."}
+      gameplay_fantasy:
+        - {kind: source_fact, source_id: official-nte-v1-2-patch-notes, fact_path: combat}
+        - {kind: analyst_derivation, note: "The combat facts support direct frontline pressure and protection through team charge sharing, while avoiding a leadership claim."}
+      life_social_identity:
+        - {kind: source_fact, source_id: official-nte-character-page, fact_path: narrative}
+        - {kind: analyst_derivation, note: "The corrected Bureau of Anomaly Control / ETD-6 hierarchy supports a formal professional enforcer framing rather than the weaker organization-member label."}
+      authority:
+        - {kind: source_fact, source_id: official-nte-character-page, fact_path: narrative}
+        - {kind: source_fact, source_id: official-nte-v1-2-patch-notes, fact_path: combat}
+        - {kind: analyst_derivation, note: "Operational responsibility means combat-core/enforcer responsibility; the record does not support squad-captain or formal leadership authority."}
+      hook.surface_traits:
+        - {kind: source_fact, source_id: official-nte-character-page, fact_path: narrative}
+        - {kind: analyst_derivation, note: "The surface hook is membership in BAC/ETD-6, with the stronger professional framing retained in life identity."}
+      hook.contrast_traits:
+        - {kind: source_fact, source_id: official-nte-character-page, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Competence without spectacle preserves social awkwardness and distance versus dependable protection in danger."}
+      hook.behavioral_patterns:
+        - {kind: source_fact, source_id: official-nte-v1-2-patch-notes, fact_path: combat}
+        - {kind: analyst_derivation, note: "Low-spectacle routine captures the restrained, dependable operating pattern without inventing a motif."}
   gameplay_identity_alignment: null
 product_design:
   primary_selling_points:

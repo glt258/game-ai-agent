@@ -1,0 +1,47 @@
+schema_version: "character-analysis/0.1"
+reference_id: "wuthering-waves:mortefi"
+analysis_metadata:
+  analyzer: "same10-backfill"
+  model: null
+  prompt_version: "reference-corpus-v0.4.1e-backfill"
+  analyzed_at: "2026-08-18T00:00:00Z"
+combat_design:
+  primary_loop:
+    summary: null
+    steps: []
+character_design:
+  authoring_features:
+    personality: [serious, practical, confrontational]
+    gameplay_fantasy: [direct_frontline_pressure, battlefield_control]
+    life_social_identity: [formal_professional]
+    life_stage: []
+    authority: [operational_responsibility]
+    hook:
+      surface_traits: []
+      contrast_traits: [competence_without_spectacle]
+      behavioral_patterns: [routine_problem_solving]
+    visual_behavioral_motifs: []
+    evidence:
+      personality:
+        - {kind: source_fact, source_id: official-profile-reveal-dragons-breath}
+        - {kind: analyst_derivation, note: "Serious, practical, and confrontational describe the expert/prickly inventor presentation; Red Dragon remains a source identity precedent, not a canonical personality token."}
+      gameplay_fantasy:
+        - {kind: source_fact, source_id: official-developer-note-mortefi, fact_path: combat}
+        - {kind: analyst_derivation, note: "Annoyance build/spend, precise ranged attacks, and coordinated Marcato fire support direct pressure and battlefield control; team enabling/reactive support are not added without a sharper fact-grounded distinction."}
+      life_social_identity:
+        - {kind: source_fact, source_id: official-profile-reveal-dragons-breath, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Researcher and Applied Tacetite expert are normalized as a formal professional identity."}
+      authority:
+        - {kind: source_fact, source_id: official-profile-reveal-dragons-breath, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Operational responsibility captures expert research and field responsibility; expert researcher is not commander and no formal leadership is claimed."}
+      hook.contrast_traits:
+        - {kind: source_fact, source_id: official-profile-reveal-dragons-breath, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Competence without spectacle preserves the expert/prickly inventor and dormant Red Dragon precedent without treating Red Dragon as personality."}
+      hook.behavioral_patterns:
+        - {kind: source_fact, source_id: official-profile-reveal-dragons-breath, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Routine problem solving is the bounded authoring interpretation of an applied researcher role."}
+product_design: {}
+differentiation: {}
+design_patterns: {}
+similarity_features: {}
+confidence: {}

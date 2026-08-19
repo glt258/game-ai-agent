@@ -77,6 +77,39 @@ character_design:
   narrative_hooks:
     - "law_enforcement_faction_member_with_personal_combat_presence"
   visual_motifs: []
+  authoring_features:
+    personality: [guarded, practical, restrained]
+    gameplay_fantasy: [mobility_repositioning, information_investigation]
+    life_social_identity: [investigator]
+    life_stage: []
+    authority: [operational_responsibility]
+    hook:
+      surface_traits: [organization_member_identity]
+      contrast_traits: [competence_without_spectacle]
+      behavioral_patterns: [restraint_for_payoff]
+    visual_behavioral_motifs: []
+    evidence:
+      personality:
+        - {kind: source_fact, source_id: official-zzz-roster-current-en, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Guarded practical restraint describes identity control and professional deception, not a claim about a fixed private temperament."}
+      gameplay_fantasy:
+        - {kind: source_fact, source_id: official-version-1-1-undercover-rb, fact_path: combat}
+        - {kind: analyst_derivation, note: "Qualifying dodges and assists feed Passion Stream and the operative identity supports bounded information investigation; no unsupported mobility mechanics are added."}
+      life_social_identity:
+        - {kind: source_fact, source_id: official-zzz-roster-current-en, fact_path: narrative}
+        - {kind: analyst_derivation, note: "The Criminal Investigation Special Response Team affiliation supports investigator as the life/social identity."}
+      authority:
+        - {kind: source_fact, source_id: official-zzz-roster-current-en, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Operational responsibility describes an external consultant/undercover operative scope and is not command authority."}
+      hook.surface_traits:
+        - {kind: source_fact, source_id: official-zzz-roster-current-en, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Organization-member identity is retained as the bounded surface hook despite her consultant/operative distinction."}
+      hook.contrast_traits:
+        - {kind: source_fact, source_id: official-version-1-1-undercover-rb, fact_path: combat}
+        - {kind: analyst_derivation, note: "Competence without spectacle preserves the professional operative's low-key identity masking and effective field work."}
+      hook.behavioral_patterns:
+        - {kind: source_fact, source_id: official-version-1-1-undercover-rb, fact_path: combat}
+        - {kind: analyst_derivation, note: "Restraint for payoff reflects evasion, Passion Stream thresholding, and professional identity control."}
   gameplay_identity_alignment:
     score: 0.3
     reasoning: >-

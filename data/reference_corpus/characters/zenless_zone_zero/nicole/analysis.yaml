@@ -1,0 +1,50 @@
+schema_version: "character-analysis/0.1"
+reference_id: "zenless-zone-zero:nicole"
+analysis_metadata:
+  analyzer: "same10-backfill"
+  model: null
+  prompt_version: "reference-corpus-v0.4.1e-backfill"
+  analyzed_at: "2026-08-18T00:00:00Z"
+combat_design:
+  primary_loop:
+    summary: null
+    steps: []
+character_design:
+  authoring_features:
+    personality: [expressive, impulsive, practical]
+    gameplay_fantasy: [team_enabling, setup_payoff]
+    life_social_identity: [independent_operator]
+    life_stage: []
+    authority: [formal_leadership]
+    hook:
+      surface_traits: [organization_member_identity]
+      contrast_traits: [charisma_without_office]
+      behavioral_patterns: [public_performance]
+    visual_behavioral_motifs: []
+    evidence:
+      personality:
+        - {kind: source_fact, source_id: official-character-intro}
+        - {kind: analyst_derivation, note: "Expressive, impulsive, and practical describe the public-facing operator and her opportunistic working style without adding greedy as a canonical personality token."}
+      gameplay_fantasy:
+        - {kind: source_fact, source_id: official-character-page-en, fact_path: combat}
+        - {kind: analyst_derivation, note: "Reload/strengthen sequences and team energy/grouping effects support setup_payoff and team_enabling."}
+      life_social_identity:
+        - {kind: source_fact, source_id: official-character-page-en, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Leader of the private Cunning Hares odd-job agency is normalized as an independent operator."}
+      authority:
+        - {kind: source_fact, source_id: official-character-page-en, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Formal leadership explicitly means small private-agency leadership: Cunning Hares scale, not state/government authority and not Jinhsi/Nahida scope."}
+      hook.surface_traits:
+        - {kind: source_fact, source_id: official-character-page-en, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Organization-member identity is the available surface token for Cunning Hares membership."}
+      hook.contrast_traits:
+        - {kind: source_fact, source_id: official-character-intro, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Charisma without office preserves greedy/con-artist surface versus protective found-family leadership; it does not treat greedy as a canonical personality token."}
+      hook.behavioral_patterns:
+        - {kind: source_fact, source_id: official-character-intro, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Public performance captures the con-artist-facing surface and social leadership behavior without making it a literal official claim."}
+product_design: {}
+differentiation: {}
+design_patterns: {}
+similarity_features: {}
+confidence: {}

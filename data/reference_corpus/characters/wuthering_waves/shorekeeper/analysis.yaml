@@ -1,0 +1,50 @@
+schema_version: "character-analysis/0.1"
+reference_id: "wuthering-waves:shorekeeper"
+analysis_metadata:
+  analyzer: "same10-backfill"
+  model: null
+  prompt_version: "reference-corpus-v0.4.1e-backfill"
+  analyzed_at: "2026-08-18T00:00:00Z"
+combat_design:
+  primary_loop:
+    summary: null
+    steps: []
+character_design:
+  authoring_features:
+    personality: [restrained, socially_isolated, disciplined]
+    gameplay_fantasy: [protective_stabilization, team_enabling]
+    life_social_identity: [formal_professional]
+    life_stage: []
+    authority: [formal_leadership]
+    hook:
+      surface_traits: [organization_member_identity]
+      contrast_traits: [competence_without_spectacle]
+      behavioral_patterns: [low_spectacle_routine]
+    visual_behavioral_motifs: []
+    evidence:
+      personality:
+        - {kind: source_fact, source_id: official-profile-reveal}
+        - {kind: analyst_derivation, note: "Reserve and social isolation are interpreted through the custodial/created-purpose role; discipline describes dependable stewardship, not human age."}
+      gameplay_fantasy:
+        - {kind: source_fact, source_id: official-1-3-patch-notes, fact_path: combat}
+        - {kind: analyst_derivation, note: "Healing, Stellarealm staging, party amplification, and autonomous support entities support protective stabilization plus team enabling."}
+      life_social_identity:
+        - {kind: source_fact, source_id: official-profile-reveal, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Guardian of the Black Shores is normalized as a formal professional/custodial identity."}
+      authority:
+        - {kind: source_fact, source_id: official-profile-reveal, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Formal leadership is custodial/acting executive organizational authority, not sovereign or state governance."}
+      hook.surface_traits:
+        - {kind: source_fact, source_id: official-profile-reveal, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Organization-member identity is the available surface token, despite Shorekeeper's stronger custodial executive scope."}
+      hook.contrast_traits:
+        - {kind: source_fact, source_id: official-1-3-patch-notes, fact_path: combat}
+        - {kind: analyst_derivation, note: "Competence without spectacle captures dependable custodial capability rather than a spectacle-first identity."}
+      hook.behavioral_patterns:
+        - {kind: source_fact, source_id: official-1-3-patch-notes, fact_path: combat}
+        - {kind: analyst_derivation, note: "Low-spectacle routine preserves the steady operational pattern visible in healing, realm maintenance, and autonomous support."}
+product_design: {}
+differentiation: {}
+design_patterns: {}
+similarity_features: {}
+confidence: {}

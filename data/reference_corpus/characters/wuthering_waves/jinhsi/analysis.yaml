@@ -73,6 +73,40 @@ character_design:
   narrative_hooks:
     - "governing_official_with_personal_combat_presence"
   visual_motifs: []
+  authoring_features:
+    personality: [restrained, idealistic, socially_embedded]
+    gameplay_fantasy: [direct_frontline_pressure, setup_payoff]
+    life_social_identity: [formal_professional]
+    life_stage: []
+    authority: [formal_leadership]
+    hook:
+      surface_traits: [formal_role_identity]
+      contrast_traits: [formal_role_personal_action]
+      behavioral_patterns: [restraint_for_payoff]
+    visual_behavioral_motifs: []
+    evidence:
+      personality:
+        - {kind: source_fact, source_id: official-introduction, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Composure is treated as a public-leadership instrument, idealism as the civic role's value orientation, and social embeddedness as Jinzhou institutional belonging."}
+      gameplay_fantasy:
+        - {kind: source_fact, source_id: official-developer-notes-jinhsi, fact_path: combat}
+        - {kind: analyst_derivation, note: "The staged enhanced state, team-fed Incandescence, empowered skill, and handoff support setup_payoff alongside direct frontline pressure."}
+      life_social_identity:
+        - {kind: source_fact, source_id: official-introduction, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Magistrate of Jinzhou is normalized as a formal professional identity."}
+      authority:
+        - {kind: source_fact, source_id: official-introduction, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Formal leadership denotes real Magistrate/head-of-state institutional scope; it is not the small-agency leadership represented by Nicole."}
+      hook.surface_traits:
+        - {kind: source_fact, source_id: official-introduction, fact_path: narrative}
+        - {kind: analyst_derivation, note: "The surface hook is the Magistrate's formal role identity."}
+      hook.contrast_traits:
+        - {kind: source_fact, source_id: official-introduction, fact_path: narrative}
+        - {kind: source_fact, source_id: official-developer-notes-jinhsi, fact_path: combat}
+        - {kind: analyst_derivation, note: "Formal role/personal action is a distinct governing-official precedent: institutional authority expressed through personal frontline action."}
+      hook.behavioral_patterns:
+        - {kind: source_fact, source_id: official-developer-notes-jinhsi, fact_path: combat}
+        - {kind: analyst_derivation, note: "Restraint for payoff reflects the staged, composed combat cycle and public leadership instrument rather than a generic quiet trait."}
   gameplay_identity_alignment:
     score: 0.5
     reasoning: >-

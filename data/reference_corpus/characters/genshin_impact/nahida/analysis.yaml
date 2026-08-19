@@ -1,0 +1,51 @@
+schema_version: "character-analysis/0.1"
+reference_id: "genshin-impact:nahida"
+analysis_metadata:
+  analyzer: "same10-backfill"
+  model: null
+  prompt_version: "reference-corpus-v0.4.1e-backfill"
+  analyzed_at: "2026-08-18T00:00:00Z"
+combat_design:
+  primary_loop:
+    summary: null
+    steps: []
+character_design:
+  authoring_features:
+    personality: [restrained, socially_isolated, idealistic]
+    gameplay_fantasy: [battlefield_control, information_investigation]
+    life_social_identity: [formal_professional]
+    life_stage: []
+    authority: [formal_leadership]
+    hook:
+      surface_traits: [formal_role_identity]
+      contrast_traits: [charisma_without_office]
+      behavioral_patterns: [routine_problem_solving]
+    visual_behavioral_motifs: []
+    evidence:
+      personality:
+        - {kind: source_fact, source_id: official-narrative-intro, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Restraint reflects confinement and identity control; social isolation reflects the interrupted authority period; idealism is the civic value orientation."
+          }
+      gameplay_fantasy:
+        - {kind: source_fact, source_id: official-3-2-update-notes, fact_path: combat}
+        - {kind: analyst_derivation, note: "Marking/linking targets, selecting an area, and party-composition field effects support battlefield control and information/investigation authoring; no unsupported mechanic is added."}
+      life_social_identity:
+        - {kind: source_fact, source_id: official-character-page, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Dendro Archon of Sumeru is normalized as a formal professional identity."}
+      authority:
+        - {kind: source_fact, source_id: official-character-page, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Formal leadership has a temporal caveat: Nahida is a sovereign Archon, but confinement stripped effective authority before restored rule; this is not one timeless leadership state."}
+      hook.surface_traits:
+        - {kind: source_fact, source_id: official-character-page, fact_path: narrative}
+        - {kind: analyst_derivation, note: "The surface hook is formal role identity as Archon/ruler."}
+      hook.contrast_traits:
+        - {kind: source_fact, source_id: official-narrative-intro, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Charisma without office is an approximation for formal authority without effective social/political power during confinement; it does not claim she literally had no office."}
+      hook.behavioral_patterns:
+        - {kind: source_fact, source_id: official-3-2-update-notes, fact_path: combat}
+        - {kind: analyst_derivation, note: "Routine problem solving captures information-led intervention without converting youngest-Archon language into a life-stage claim."}
+product_design: {}
+differentiation: {}
+design_patterns: {}
+similarity_features: {}
+confidence: {}

@@ -56,6 +56,40 @@ character_design:
     - "governing_official_with_personal_combat_presence"
     - "member_of_a_city_state_governing_council"
   visual_motifs: []
+  authoring_features:
+    personality: [restrained, disciplined]
+    gameplay_fantasy: [direct_frontline_pressure, mobility_repositioning]
+    life_social_identity: [formal_professional]
+    life_stage: []
+    authority: [formal_leadership]
+    hook:
+      surface_traits: [formal_role_identity]
+      contrast_traits: [formal_role_personal_action]
+      behavioral_patterns: [routine_problem_solving]
+    visual_behavioral_motifs: []
+    evidence:
+      personality:
+        - {kind: source_fact, source_id: official-character-page, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Restraint and discipline describe Keqing's self-directed work discipline and governing role, not generic quietness."}
+      gameplay_fantasy:
+        - {kind: source_fact, source_id: official-version-1-3-keqing, fact_path: combat}
+        - {kind: analyst_derivation, note: "The mark, teleport, infusion, and rapid melee facts support direct pressure plus mobility repositioning."}
+      life_social_identity:
+        - {kind: source_fact, source_id: official-character-page, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Yuheng of the Liyue Qixing is normalized as a formal professional identity."}
+      authority:
+        - {kind: source_fact, source_id: official-character-page, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Formal leadership is limited to a Yuheng seat and portfolio within the Liyue Qixing's council governance; it is not sole head-of-state authority."}
+      hook.surface_traits:
+        - {kind: source_fact, source_id: official-character-page, fact_path: narrative}
+        - {kind: analyst_derivation, note: "The public hook is her formal Yuheng role identity."}
+      hook.contrast_traits:
+        - {kind: source_fact, source_id: official-character-page, fact_path: narrative}
+        - {kind: source_fact, source_id: official-version-1-3-keqing, fact_path: combat}
+        - {kind: analyst_derivation, note: "The contrast is a secular, self-reliant governing official who acts personally, not merely an official who happens to fight."}
+      hook.behavioral_patterns:
+        - {kind: source_fact, source_id: official-character-page, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Routine problem solving preserves the practical governing-official precedent without adding a new personality claim."}
   gameplay_identity_alignment:
     score: 0.55
     reasoning: >-

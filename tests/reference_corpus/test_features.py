@@ -84,10 +84,18 @@ AUTHORING_FEATURES = {
 }
 
 
-def test_existing_production_records_validate_unchanged() -> None:
+def test_same10_production_records_have_valid_authoring_features() -> None:
     references = CharacterReferenceRepository(DEFAULT_CORPUS_ROOT).list_all()
     assert len(references) == 10
-    assert all(reference.analysis is None or reference.analysis.character_design.authoring_features is None for reference in references)
+    assert all(
+        reference.analysis is not None
+        and reference.analysis.character_design.authoring_features is not None
+        for reference in references
+    )
+    for reference in references:
+        validate_feature_provenance(
+            reference_feature_profile(reference), reference=reference
+        )
 
 
 def test_analysis_without_authoring_features_remains_valid() -> None:
