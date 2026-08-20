@@ -15,6 +15,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Mapping, Sequence
 
+from character_intelligence.planner import CharacterDesignPlan
 from knowledge import KnowledgeResolver
 from knowledge.loader import default_data_dir
 from story import StoryRepository, load_story_repository
@@ -978,6 +979,7 @@ class CharacterGenerationResult:
     draft: CharacterDraft
     sources: tuple[str, ...]
     audit: CharacterGenerationAudit
+    design_plan: CharacterDesignPlan | None = None
 
 
 class CharacterGenerationAgent:
@@ -994,11 +996,20 @@ class CharacterGenerationAgent:
         self.authoring_context = authoring_context or CharacterAuthoringKnowledgeContext()
         self.reference_context = tuple(dict(item) for item in reference_context)
 
-    def generate(self, request: CharacterDesignRequest | str) -> CharacterGenerationResult:
+    def generate(
+        self,
+        request: CharacterDesignRequest | str,
+        *,
+        use_intent_layer: bool = False,
+    ) -> CharacterGenerationResult:
         if isinstance(request, str):
             request = CharacterDesignRequest(request)
         if not isinstance(request, CharacterDesignRequest):
             raise TypeError("request must be CharacterDesignRequest or string")
+        design_plan = None
+        if use_intent_layer:
+            design_plan = CharacterDesignPlan.from_text(request.brief)
+            request = self._request_with_design_plan(request, design_plan)
         authoring = CharacterAuthoringView("character_authoring", "create a reviewable CharacterDraft", tuple(sorted(self.authoring_context.allowed_scopes)))
         runtime = CharacterGenerationRuntimeView(request.request_id, request.brief, request.hard_constraints, request.soft_preferences, request.forbidden_elements, request.desired_connections, self.reference_context)
         messages: list[ConversationMessage] = [ConversationMessage("user", json.dumps(request.to_dict(), ensure_ascii=False, separators=(",", ":")))]
@@ -1105,7 +1116,12 @@ class CharacterGenerationAgent:
                 normalized_fields,
                 recovery_audit,
             )
-            return CharacterGenerationResult(draft, tuple(sorted(source_ids)), audit)
+            return CharacterGenerationResult(
+                draft,
+                tuple(sorted(source_ids)),
+                audit,
+                design_plan,
+            )
         except Exception as error:
             # CharacterGenerationAudit only exists on success, so the
             # propagating exception is the failure-path audit carrier. Keep the
@@ -1119,6 +1135,43 @@ class CharacterGenerationAgent:
             error.contract_recovery = recovery_audit
             raise
         raise AgentExecutionError("Character generation ended without a draft")
+
+    def generate_with_intent(
+        self,
+        request: CharacterDesignRequest | str,
+    ) -> CharacterGenerationResult:
+        """Generate through the optional deterministic Character Intelligence Layer."""
+
+        return self.generate(request, use_intent_layer=True)
+
+    @staticmethod
+    def _request_with_design_plan(
+        request: CharacterDesignRequest,
+        plan: CharacterDesignPlan,
+    ) -> CharacterDesignRequest:
+        """Project plan signals into the existing request contract.
+
+        The existing CharacterDesignRequest remains the only input contract
+        seen by the generation pipeline.  This keeps the new layer additive
+        while allowing the current agent and its validators to remain intact.
+        """
+
+        intent = plan.parsed_intent
+        forbidden = tuple(
+            dict.fromkeys((*request.forbidden_elements, *intent.forbidden_patterns))
+        )
+        return CharacterDesignRequest(
+            brief=request.brief,
+            hard_constraints=tuple(
+                dict.fromkeys((*request.hard_constraints, *plan.generation_constraints))
+            ),
+            soft_preferences=tuple(
+                dict.fromkeys((*request.soft_preferences, *plan.recommended_traits))
+            ),
+            forbidden_elements=forbidden,
+            desired_connections=request.desired_connections,
+            request_id=request.request_id,
+        )
 
     def _recover_character_draft_payload(
         self,
