@@ -17,6 +17,7 @@ PRODUCTION_GAMES = {
     "wuthering-waves": "Wuthering Waves",
     "zenless-zone-zero": "Zenless Zone Zero",
     "neverness-to-everness": "Neverness to Everness",
+    "honkai-impact-3rd": "Honkai Impact 3rd",
 }
 
 

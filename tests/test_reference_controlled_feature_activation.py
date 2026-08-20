@@ -159,7 +159,7 @@ def test_feature_and_corpus_order_permutations_are_invariant() -> None:
 
 def test_production_audit_exposes_trace_and_ordering_reason() -> None:
     grounding = load_reference_grounding("A flamboyant expressive performer with formal leadership")
-    assert len(grounding.selection_audit) == 14
+    assert len(grounding.selection_audit) == 16
     row = grounding.selection_audit[0]
     assert {"legacy_score", "personality_match", "gameplay_fantasy_match", "authority_match"} <= row.keys()
     assert row["ordering_reason"] in {
@@ -213,9 +213,9 @@ def test_all_six_diagnostic_pairs_are_reported_and_explainable() -> None:
     assert all(pair["responsible_domain"] != "authority_scope" for pair in pairs)
 
 
-def test_production_reference_corpus_has_fourteen_records() -> None:
+def test_production_reference_corpus_has_sixteen_records() -> None:
     references = CharacterReferenceRepository(DEFAULT_CORPUS_ROOT).list_all()
-    assert len(references) == 14
+    assert len(references) == 16
 
 
 def test_shadow_ready_trace_has_same_semantics_as_production_trace() -> None:

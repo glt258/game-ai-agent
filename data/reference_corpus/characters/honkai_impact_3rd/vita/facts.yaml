@@ -1,0 +1,48 @@
+schema_version: "character-facts/0.3"
+reference_id: "honkai-impact-3rd:vita"
+identity:
+  game_id: honkai-impact-3rd
+  native_character_id: "126475"
+  names:
+    canonical: "Vita"
+    localized:
+      en-US: "Vita"
+  release:
+    version: null
+    date: null
+  rarity:
+    native_value: null
+    normalized_tier: null
+combat:
+  native_taxonomy:
+    labels:
+      attribute: "Lightning"
+      type: "Mecha"
+      weapon: "Drive Core"
+      battlesuit: "Lone Planetfarer"
+      resonance: "Rite of Oblivion"
+  abilities: []
+  mechanics:
+    resources: []
+    states: []
+    transformations: []
+    summons: []
+    mobility_mechanics: []
+    targeting_mechanics: []
+  team_mechanics:
+    buffs: []
+    debuffs: []
+    healing: []
+    shielding: []
+    grouping: []
+    off_field_effects: []
+    interactions: []
+  relations: []
+narrative:
+  faction: null
+  occupation: null
+  affiliations: []
+  public_identity: "The lone survivor of a planet who wanders the universe in solitude and travels freely from planet to planet."
+presentation:
+  official_visual_tags: []
+  official_character_keywords: []

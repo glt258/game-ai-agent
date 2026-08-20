@@ -38,12 +38,14 @@ def test_wave2_records_load_alongside_aalto() -> None:
     ids = {item.reference_id for item in repository.list_all()}
 
     assert reference.reference_id == "wuthering-waves:aalto"
-    assert len(ids) == 14
+    assert len(ids) == 16
     assert ids == EXPECTED_EXISTING_IDS | {
         "wuthering-waves:aalto",
         "zenless-zone-zero:astra-yao",
         "zenless-zone-zero:piper-wheel",
         "zenless-zone-zero:qingyi",
+        "honkai-impact-3rd:vita",
+        "honkai-impact-3rd:songque",
     }
 
 
@@ -109,9 +111,11 @@ def test_existing_ten_records_are_unchanged_in_corpus_membership_and_identity_sc
         "zenless-zone-zero:astra-yao",
         "zenless-zone-zero:piper-wheel",
         "zenless-zone-zero:qingyi",
+        "honkai-impact-3rd:vita",
+        "honkai-impact-3rd:songque",
     } == EXPECTED_EXISTING_IDS
     result = run_benchmark()
-    assert result["selector"]["candidate_count"] == 14
+    assert result["selector"]["candidate_count"] == 16
     assert result["selector"]["feature_domains"] == ["personality", "gameplay_fantasy", "authority"]
     assert "life_social_identity" in result["selector"]["non_active_domains"]
     assert all(case["diagnostic_features"]["score_contribution"] == 0 for case in result["cases"])

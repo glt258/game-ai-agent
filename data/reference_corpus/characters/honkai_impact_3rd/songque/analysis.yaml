@@ -1,0 +1,34 @@
+schema_version: "character-analysis/0.1"
+reference_id: "honkai-impact-3rd:songque"
+analysis_metadata:
+  analyzer: "wave-3-primary-ingestion"
+  model: null
+  prompt_version: "reference-corpus-expansion-wave3-v0.5.2"
+  analyzed_at: "2026-08-20T00:00:00Z"
+combat_design:
+  primary_loop:
+    summary: null
+    steps: []
+  core_mechanics: []
+character_design:
+  authoring_features:
+    personality: []
+    gameplay_fantasy: []
+    life_social_identity: [non_career_identity]
+    life_stage: []
+    authority: []
+    authority_scope: null
+    hook:
+      surface_traits: []
+      contrast_traits: []
+      behavioral_patterns: []
+    visual_behavioral_motifs: []
+    evidence:
+      life_social_identity:
+        - {kind: source_fact, source_id: official-content-v2-hi3-songque-roster-en, fact_path: narrative.public_identity}
+        - {kind: analyst_derivation, note: "non_career_identity is an authoring interpretation: the official roleDec foregrounds deceptive persona, hope-producing social action, and commitment toward Langqiu people without stating a profession or formal title. It is not a literal source fact."}
+product_design: {}
+differentiation: {}
+design_patterns: {}
+similarity_features: {}
+confidence: {}

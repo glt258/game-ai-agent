@@ -18,11 +18,11 @@ def _result() -> dict:
     return run_benchmark()
 
 
-def test_benchmark_loads_all_fourteen_reference_records() -> None:
+def test_benchmark_loads_all_sixteen_reference_records() -> None:
     result = _result()
     assert result["corpus_audit"]["records"]
-    assert len(result["corpus_audit"]["records"]) == 14
-    assert result["selector"]["candidate_count"] == 14
+    assert len(result["corpus_audit"]["records"]) == 16
+    assert result["selector"]["candidate_count"] == 16
 
 
 def test_all_required_cases_run() -> None:
@@ -37,9 +37,9 @@ def test_all_required_cases_run() -> None:
 def test_full_ranking_contains_all_eligible_candidates() -> None:
     result = _result()
     for case in result["cases"]:
-        assert len(case["full_ranking"]) == 14
-        assert [item["rank"] for item in case["full_ranking"]] == list(range(1, 15))
-        assert len({item["reference_id"] for item in case["full_ranking"]}) == 14
+        assert len(case["full_ranking"]) == 16
+        assert [item["rank"] for item in case["full_ranking"]] == list(range(1, 17))
+        assert len({item["reference_id"] for item in case["full_ranking"]}) == 16
 
 
 def test_selected_top_k_matches_production_selector() -> None:
@@ -125,7 +125,7 @@ def test_contrast_pair_delta_calculations_work() -> None:
     assert len(result["contrast_pairs"]) >= 3
     for pair in result["contrast_pairs"]:
         delta = pair["delta"]
-        assert len(delta["candidates"]) == 14
+        assert len(delta["candidates"]) == 16
         assert delta["changed_candidate_count"] >= 0
         assert 0 <= delta["selected_overlap_jaccard"] <= 1
 

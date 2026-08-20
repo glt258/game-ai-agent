@@ -33,6 +33,8 @@ UNKNOWN_SCOPE = {
     "zenless-zone-zero:jane-doe",
     "neverness-to-everness:fadia",
     "neverness-to-everness:shinku",
+    "honkai-impact-3rd:vita",
+    "honkai-impact-3rd:songque",
 }
 
 
@@ -95,7 +97,7 @@ def test_authority_scope_brief_extraction_is_conservative(
 
 def test_scope_migration_is_exact_and_provenance_valid() -> None:
     references = CharacterReferenceRepository(DEFAULT_CORPUS_ROOT).list_all()
-    assert len(references) == 14
+    assert len(references) == 16
     populated: dict[str, str] = {}
     for reference in references:
         profile = reference_feature_profile(reference)
