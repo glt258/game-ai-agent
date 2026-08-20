@@ -43,7 +43,7 @@ def test_valid_brief_runs_real_pipeline_and_passes() -> None:
     assert run.authoring.final_status == CanonCheckStatus.PASS
     assert run.authoring.initial_check.status == CanonCheckStatus.PASS
     assert not run.authoring.repair_result.repair_attempted
-    assert run.references.total_records == 11
+    assert run.references.total_records == 14
     assert run.generation.audit.reference_ids == run.references.reference_ids
     assert run.generation.audit.source_ids
     assert demo.generation_agent.model.prompts[0].runtime.reference_context
@@ -199,7 +199,7 @@ def test_audit_summary_keeps_reference_and_canon_evidence() -> None:
 
     payload = run.to_dict()
 
-    assert payload["references"]["total_records"] == 11
+    assert payload["references"]["total_records"] == 14
     assert payload["generation"]["audit"]["reference_ids"]
     assert payload["generation"]["audit"]["source_ids"]
     assert "chain_of_thought" not in json.dumps(payload, ensure_ascii=False)

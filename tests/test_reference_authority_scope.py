@@ -95,7 +95,7 @@ def test_authority_scope_brief_extraction_is_conservative(
 
 def test_scope_migration_is_exact_and_provenance_valid() -> None:
     references = CharacterReferenceRepository(DEFAULT_CORPUS_ROOT).list_all()
-    assert len(references) == 11
+    assert len(references) == 14
     populated: dict[str, str] = {}
     for reference in references:
         profile = reference_feature_profile(reference)
@@ -112,7 +112,11 @@ def test_scope_migration_is_exact_and_provenance_valid() -> None:
         reference.reference_id
         for reference in references
         if not reference_feature_profile(reference).authority_scope
-    } == UNKNOWN_SCOPE
+    } == UNKNOWN_SCOPE | {
+        "zenless-zone-zero:astra-yao",
+        "zenless-zone-zero:piper-wheel",
+        "zenless-zone-zero:qingyi",
+    }
 
 
 def test_scope_profile_serialization_is_separate_from_authority_form() -> None:

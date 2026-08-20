@@ -159,7 +159,7 @@ def test_feature_and_corpus_order_permutations_are_invariant() -> None:
 
 def test_production_audit_exposes_trace_and_ordering_reason() -> None:
     grounding = load_reference_grounding("A flamboyant expressive performer with formal leadership")
-    assert len(grounding.selection_audit) == 11
+    assert len(grounding.selection_audit) == 14
     row = grounding.selection_audit[0]
     assert {"legacy_score", "personality_match", "gameplay_fantasy_match", "authority_match"} <= row.keys()
     assert row["ordering_reason"] in {
@@ -178,19 +178,19 @@ def test_production_matches_frozen_shadow_model_3_for_all_core_cases() -> None:
 def test_activation_metrics_and_review_gate_match_approved_model() -> None:
     report = run_activation_report()
     assert report["legacy_baseline"] == {
-        "unique": 9,
-        "overlap": 0.413636,
-        "hhi": 0.14952,
+        "unique": 11,
+        "overlap": 0.348485,
+        "hhi": 0.139232,
         "classification": "LIMITED_SENSITIVITY",
     }
     assert report["controlled_activation"] == {
-        "unique": 10,
-        "overlap": 0.304545,
-        "hhi": 0.137174,
-        "changed": 12,
+        "unique": 11,
+        "overlap": 0.34697,
+        "hhi": 0.136488,
+        "changed": 6,
         "plausibly_better": 4,
         "plausibly_worse": 0,
-        "ambiguous": 8,
+        "ambiguous": 2,
         "corpus_gap": 0,
         "metadata_gap": 0,
     }
@@ -199,7 +199,7 @@ def test_activation_metrics_and_review_gate_match_approved_model() -> None:
 def test_no_changed_core_case_crosses_legacy_score_groups() -> None:
     report = run_activation_report()
     changed = [case for case in report["core_cases"] if case["changed"]]
-    assert len(changed) == 12
+    assert len(changed) == 6
     assert all(case["affected_references_same_legacy_group"] for case in changed)
     assert all(case["no_cross_legacy_leapfrog"] for case in report["core_cases"])
 
@@ -213,9 +213,9 @@ def test_all_six_diagnostic_pairs_are_reported_and_explainable() -> None:
     assert all(pair["responsible_domain"] != "authority_scope" for pair in pairs)
 
 
-def test_production_reference_corpus_has_eleven_records() -> None:
+def test_production_reference_corpus_has_fourteen_records() -> None:
     references = CharacterReferenceRepository(DEFAULT_CORPUS_ROOT).list_all()
-    assert len(references) == 11
+    assert len(references) == 14
 
 
 def test_shadow_ready_trace_has_same_semantics_as_production_trace() -> None:

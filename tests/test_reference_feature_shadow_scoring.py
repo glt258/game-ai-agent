@@ -110,13 +110,13 @@ def test_shadow_rank_is_deterministic_and_production_remains_unchanged() -> None
     after = load_reference_grounding(brief).reference_ids
     assert before == after
     core = run_benchmark()
-    assert core["summary"]["unique_selected"] == 10
-    assert core["summary"]["average_top_k_overlap"] == 0.304545
-    assert core["summary"]["selection_concentration"]["hhi"] == 0.137174
+    assert core["summary"]["unique_selected"] == 11
+    assert core["summary"]["average_top_k_overlap"] == 0.34697
+    assert core["summary"]["selection_concentration"]["hhi"] == 0.136488
     assert core["legacy_baseline"] == {
-        "unique_selected": 9,
-        "average_top_k_overlap": 0.413636,
-        "hhi": 0.14952,
+        "unique_selected": 11,
+        "average_top_k_overlap": 0.348485,
+        "hhi": 0.139232,
         "classification": "LIMITED_SENSITIVITY",
     }
     assert first["production_behavior"]["feature_score_contribution"] == 0

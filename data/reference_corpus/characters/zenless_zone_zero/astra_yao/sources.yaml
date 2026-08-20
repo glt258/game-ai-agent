@@ -1,0 +1,57 @@
+schema_version: "character-sources/0.2"
+reference_id: "zenless-zone-zero:astra-yao"
+sources:
+  - source_id: official-content-v2-astra-character-en
+    source_type: official
+    publisher: "Zenless Zone Zero / HoYoverse"
+    title: "Astra Yao — official content_v2 character record"
+    url: "https://sg-public-api-static.hoyoverse.com/content_v2_user/app/3e9196a4b9274bd7/getContentList?iChanId=287&iPageSize=200&iPage=1&sLangKey=en-us"
+    language: en-US
+    retrieved_at: "2026-08-20T00:00:00Z"
+    published_at: null
+    version_context: >-
+      Official content_v2 locator: app id 3e9196a4b9274bd7; request channel
+      iChanId=287 (Character); record sChanId=998; iInfoId=127387; stable
+      record selector data.list[iInfoId=127387]. Stable fields used:
+      sTitle, sContent, sChanId, iInfoId, sExt.chara-name-en,
+      sExt.level-icon, sExt.prop-icon-1, sExt.prop-icon-2,
+      sExt.chara-line. No full kit text was promoted from this record.
+    content_hash: null
+    reliability: primary
+  - source_id: official-content-v2-astra-faction-en
+    source_type: official
+    publisher: "Zenless Zone Zero / HoYoverse"
+    title: "Stars of Lyra — official content_v2 faction record"
+    url: "https://sg-public-api-static.hoyoverse.com/content_v2_user/app/3e9196a4b9274bd7/getContentList?iChanId=286&iPageSize=200&iPage=1&sLangKey=en-us"
+    language: en-US
+    retrieved_at: "2026-08-20T00:00:00Z"
+    published_at: null
+    version_context: >-
+      Official content_v2 locator: app id 3e9196a4b9274bd7; request channel
+      iChanId=286 (Faction); associated record iInfoId=127385, title Stars of
+      Lyra. The Astra character record's sChanId=998 is retained as the
+      character-to-group relation locator.
+    content_hash: null
+    reliability: primary
+source_relations: []
+field_evidence:
+  identity.game_id: [official-content-v2-astra-character-en]
+  identity.names.canonical: [official-content-v2-astra-character-en]
+  identity.names.localized: [official-content-v2-astra-character-en]
+  identity.rarity: [official-content-v2-astra-character-en]
+  combat.native_taxonomy: [official-content-v2-astra-character-en]
+  combat.native_taxonomy.labels.attribute: [official-content-v2-astra-character-en]
+  combat.native_taxonomy.labels.specialty: [official-content-v2-astra-character-en]
+  combat.native_taxonomy.labels.rank: [official-content-v2-astra-character-en]
+  narrative.faction: [official-content-v2-astra-character-en, official-content-v2-astra-faction-en]
+  narrative.occupation: [official-content-v2-astra-character-en]
+  narrative.affiliations: [official-content-v2-astra-character-en, official-content-v2-astra-faction-en]
+  narrative.public_identity: [official-content-v2-astra-character-en]
+verification:
+  status: verified
+  conflicts: []
+  notes:
+    - "PRIMARY facts are limited to the official content_v2 character record and its associated official faction record. Astra's public music identity is supported by the record flavor describing her as Ridu's brightest star, a music monarch, idol, and concert performer."
+    - "Ether, Support, and S-rank are read from the official sExt prop-icon-1, prop-icon-2, and level-icon fields."
+    - "Detailed abilities, ally-empowerment wording, and performance-to-combat causality are intentionally absent because no stable PRIMARY kit text was used."
+    - "No secondary source fact is promoted to PRIMARY."

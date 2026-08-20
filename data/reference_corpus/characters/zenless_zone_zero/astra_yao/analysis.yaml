@@ -1,0 +1,48 @@
+schema_version: "character-analysis/0.1"
+reference_id: "zenless-zone-zero:astra-yao"
+analysis_metadata:
+  analyzer: "wave-2-primary-ingestion"
+  model: null
+  prompt_version: "reference-corpus-expansion-wave2-v0.5.1"
+  analyzed_at: "2026-08-20T00:00:00Z"
+combat_design:
+  attack_range: "unknown"
+  mobility: "unknown"
+  primary_loop:
+    summary: null
+    steps: []
+  core_mechanics: []
+character_design:
+  authoring_features:
+    personality: []
+    gameplay_fantasy: [team_enabling]
+    life_social_identity: [performer]
+    life_stage: []
+    authority: [public_social_influence]
+    authority_scope: null
+    hook:
+      surface_traits: [public_performance]
+      contrast_traits: []
+      behavioral_patterns: [public_performance]
+    visual_behavioral_motifs: []
+    evidence:
+      gameplay_fantasy:
+        - {kind: source_fact, source_id: official-content-v2-astra-character-en, fact_path: combat.native_taxonomy.labels.specialty}
+        - {kind: analyst_derivation, note: "Support is mapped to the existing team_enabling precedent as a bounded gameplay-fantasy interpretation; this does not claim that performance literally empowers allies and no detailed kit mechanic is asserted."}
+      life_social_identity:
+        - {kind: source_fact, source_id: official-content-v2-astra-character-en, fact_path: narrative.occupation}
+        - {kind: analyst_derivation, note: "The existing performer token is a bounded normalization of the official public music, idol, and concert identity."}
+      authority:
+        - {kind: source_fact, source_id: official-content-v2-astra-character-en, fact_path: narrative.public_identity}
+        - {kind: analyst_derivation, note: "public_social_influence is a bounded analyst-derived precedent from explicit public idol/concert reach; it is not formal_leadership and does not claim office or command authority."}
+      hook.surface_traits:
+        - {kind: source_fact, source_id: official-content-v2-astra-character-en, fact_path: narrative.occupation}
+        - {kind: analyst_derivation, note: "public_performance is the bounded hook surface for the confirmed public music identity."}
+      hook.behavioral_patterns:
+        - {kind: source_fact, source_id: official-content-v2-astra-character-en, fact_path: narrative.occupation}
+        - {kind: analyst_derivation, note: "public_performance records the visible performance-facing identity only; it does not infer personality."}
+product_design: {}
+differentiation: {}
+design_patterns: {}
+similarity_features: {}
+confidence: {}

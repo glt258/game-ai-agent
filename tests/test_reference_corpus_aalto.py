@@ -32,14 +32,19 @@ def _aalto():
     return CharacterReferenceLoader(CATALOG).load(AALTO_DIR)
 
 
-def test_aalto_record_loads_and_adds_exactly_one_production_record() -> None:
+def test_wave2_records_load_alongside_aalto() -> None:
     reference = _aalto()
     repository = CharacterReferenceRepository(CORPUS_ROOT, catalog=CATALOG)
     ids = {item.reference_id for item in repository.list_all()}
 
     assert reference.reference_id == "wuthering-waves:aalto"
-    assert len(ids) == 11
-    assert ids == EXPECTED_EXISTING_IDS | {"wuthering-waves:aalto"}
+    assert len(ids) == 14
+    assert ids == EXPECTED_EXISTING_IDS | {
+        "wuthering-waves:aalto",
+        "zenless-zone-zero:astra-yao",
+        "zenless-zone-zero:piper-wheel",
+        "zenless-zone-zero:qingyi",
+    }
 
 
 def test_aalto_primary_sources_resolve_and_preserve_article_ids() -> None:
@@ -96,9 +101,17 @@ def test_aalto_gameplay_facts_and_analysis_provenance_validate() -> None:
 def test_existing_ten_records_are_unchanged_in_corpus_membership_and_identity_scoring_is_non_scoring() -> None:
     repository = CharacterReferenceRepository(CORPUS_ROOT, catalog=CATALOG)
     references = repository.list_all()
-    assert {item.reference_id for item in references} - {"wuthering-waves:aalto"} == EXPECTED_EXISTING_IDS
+    assert {
+        item.reference_id
+        for item in references
+    } - {
+        "wuthering-waves:aalto",
+        "zenless-zone-zero:astra-yao",
+        "zenless-zone-zero:piper-wheel",
+        "zenless-zone-zero:qingyi",
+    } == EXPECTED_EXISTING_IDS
     result = run_benchmark()
-    assert result["selector"]["candidate_count"] == 11
+    assert result["selector"]["candidate_count"] == 14
     assert result["selector"]["feature_domains"] == ["personality", "gameplay_fantasy", "authority"]
     assert "life_social_identity" in result["selector"]["non_active_domains"]
     assert all(case["diagnostic_features"]["score_contribution"] == 0 for case in result["cases"])
@@ -133,7 +146,7 @@ def test_aalto_selection_trace_is_explainable_and_tie_break_artifact_free() -> N
             ):
                 zero_evidence_artifacts.append(case["brief_id"])
 
-    assert selected_cases == ["case-f-information-investigation", "case-k-charisma-low-authority"]
+    assert selected_cases == ["case-f-information-investigation"]
     assert zero_evidence_artifacts == []
     audit = load_reference_grounding(benchmark_cases()[5]["brief"]).selection_audit
     aalto = next(item for item in audit if item["reference_id"] == "wuthering-waves:aalto")
@@ -142,4 +155,4 @@ def test_aalto_selection_trace_is_explainable_and_tie_break_artifact_free() -> N
     assert aalto["personality_match"] == 0.0
     assert aalto["gameplay_fantasy_match"] == 0.0
     assert aalto["authority_match"] == 0.0
-    assert "wuthering-waves:aalto" in load_reference_grounding(benchmark_cases()[10]["brief"]).reference_ids
+    assert "wuthering-waves:aalto" not in load_reference_grounding(benchmark_cases()[10]["brief"]).reference_ids

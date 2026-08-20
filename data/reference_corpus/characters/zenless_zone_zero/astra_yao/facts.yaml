@@ -1,0 +1,48 @@
+schema_version: "character-facts/0.3"
+reference_id: "zenless-zone-zero:astra-yao"
+identity:
+  game_id: zenless-zone-zero
+  native_character_id: null
+  names:
+    canonical: "Astra Yao"
+    localized:
+      en-US: "Astra Yao"
+      zh-CN: "耀嘉音"
+  release:
+    version: null
+    date: null
+  rarity:
+    native_value: "S"
+    normalized_tier: null
+combat:
+  native_taxonomy:
+    labels:
+      attribute: "Ether"
+      specialty: "Support"
+      rank: "S"
+  abilities: []
+  mechanics:
+    resources: []
+    states: []
+    transformations: []
+    summons: []
+    mobility_mechanics: []
+    targeting_mechanics: []
+  team_mechanics:
+    buffs: []
+    debuffs: []
+    healing: []
+    shielding: []
+    grouping: []
+    off_field_effects: []
+    interactions: []
+  relations: []
+narrative:
+  faction: "Stars of Lyra"
+  occupation: "Performer / singer / idol"
+  affiliations:
+    - "Stars of Lyra"
+  public_identity: "Public music performer and idol in New Eridu."
+presentation:
+  official_visual_tags: []
+  official_character_keywords: []

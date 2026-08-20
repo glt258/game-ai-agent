@@ -93,9 +93,9 @@ def test_core_benchmark_metrics_and_selector_remain_unchanged() -> None:
     core = run_benchmark()
     assert diagnostic["case_count"] == 12
     assert before == after
-    assert core["summary"]["unique_selected"] == 10
-    assert core["summary"]["average_top_k_overlap"] == 0.304545
-    assert core["summary"]["selection_concentration"]["hhi"] == 0.137174
+    assert core["summary"]["unique_selected"] == 11
+    assert core["summary"]["average_top_k_overlap"] == 0.34697
+    assert core["summary"]["selection_concentration"]["hhi"] == 0.136488
     assert core["classification"] == "LIMITED_SENSITIVITY"
     assert core["corpus_order_test"]["result"] == "ORDER_INDEPENDENT"
     assert all(case["diagnostic_features"]["score_contribution"] == 0 for case in core["cases"])

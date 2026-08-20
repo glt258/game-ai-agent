@@ -1,0 +1,59 @@
+schema_version: "character-sources/0.2"
+reference_id: "zenless-zone-zero:piper-wheel"
+sources:
+  - source_id: official-content-v2-piper-character-en
+    source_type: official
+    publisher: "Zenless Zone Zero / HoYoverse"
+    title: "Piper Wheel — official content_v2 character record"
+    url: "https://sg-public-api-static.hoyoverse.com/content_v2_user/app/3e9196a4b9274bd7/getContentList?iChanId=287&iPageSize=200&iPage=1&sLangKey=en-us"
+    language: en-US
+    retrieved_at: "2026-08-20T00:00:00Z"
+    published_at: null
+    version_context: >-
+      Official content_v2 locator: app id 3e9196a4b9274bd7; request channel
+      iChanId=287 (Character); record sChanId=889; iInfoId=124310; stable
+      record selector data.list[iInfoId=124310]. Stable fields used:
+      sTitle, sContent, sChanId, iInfoId, sExt.chara-name-en,
+      sExt.level-icon, sExt.prop-icon-1, sExt.prop-icon-2,
+      sExt.chara-line. No vehicle-part weapon claim or detailed kit text was
+      promoted from this record.
+    content_hash: null
+    reliability: primary
+  - source_id: official-content-v2-piper-faction-en
+    source_type: official
+    publisher: "Zenless Zone Zero / HoYoverse"
+    title: "Sons of Calydon — official content_v2 faction record"
+    url: "https://sg-public-api-static.hoyoverse.com/content_v2_user/app/3e9196a4b9274bd7/getContentList?iChanId=286&iPageSize=200&iPage=1&sLangKey=en-us"
+    language: en-US
+    retrieved_at: "2026-08-20T00:00:00Z"
+    published_at: null
+    version_context: >-
+      Official content_v2 locator: app id 3e9196a4b9274bd7; request channel
+      iChanId=286 (Faction); associated record iInfoId=124305, title Sons of
+      Calydon. The Piper character record's sChanId=889 is retained as the
+      character-to-group relation locator.
+    content_hash: null
+    reliability: primary
+source_relations: []
+field_evidence:
+  identity.game_id: [official-content-v2-piper-character-en]
+  identity.names.canonical: [official-content-v2-piper-character-en]
+  identity.names.localized: [official-content-v2-piper-character-en]
+  identity.rarity: [official-content-v2-piper-character-en]
+  combat.native_taxonomy: [official-content-v2-piper-character-en]
+  combat.native_taxonomy.labels.attribute: [official-content-v2-piper-character-en]
+  combat.native_taxonomy.labels.specialty: [official-content-v2-piper-character-en]
+  combat.native_taxonomy.labels.rank: [official-content-v2-piper-character-en]
+  narrative.faction: [official-content-v2-piper-character-en, official-content-v2-piper-faction-en]
+  narrative.occupation: [official-content-v2-piper-character-en]
+  narrative.affiliations: [official-content-v2-piper-character-en, official-content-v2-piper-faction-en]
+  narrative.public_identity: [official-content-v2-piper-character-en]
+verification:
+  status: verified
+  conflicts: []
+  notes:
+    - "PRIMARY facts are limited to the official content_v2 character record and its associated official faction record. The character flavor calls Piper a master of all things car and references the Steeltusk; the official character line supplies a lift/seatbelt driver cue."
+    - "Physical, Anomaly, and A-rank are read from the official sExt prop-icon-1, prop-icon-2, and level-icon fields."
+    - "Detailed abilities, the axe-made-from-vehicle-parts claim, and vehicle-maintenance wording are intentionally absent because they were not directly supported by the stable PRIMARY fields used here."
+    - "No authority conclusion is encoded as a production source fact."
+    - "No secondary source fact is promoted to PRIMARY."

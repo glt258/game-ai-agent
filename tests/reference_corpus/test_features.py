@@ -86,7 +86,7 @@ AUTHORING_FEATURES = {
 
 def test_production_records_have_valid_authoring_features() -> None:
     references = CharacterReferenceRepository(DEFAULT_CORPUS_ROOT).list_all()
-    assert len(references) == 11
+    assert len(references) == 14
     assert all(
         reference.analysis is not None
         and reference.analysis.character_design.authoring_features is not None
