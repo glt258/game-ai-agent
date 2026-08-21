@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from typing import Any
 
+from ...character_generation import CharacterDraft
 from ..context import EvaluationContext
 from ..models import EvaluationFinding
 
@@ -16,19 +16,12 @@ class RepresentationCompletenessValidator:
     dimension = "representation"
 
     _FIELDS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
-        ("description", "MISSING_CHARACTER_DESCRIPTION", ("description",)),
+        ("design_pitch", "MISSING_CHARACTER_DESCRIPTION", ("design_pitch",)),
         ("personality", "MISSING_PERSONALITY", ("personality",)),
         ("background", "MISSING_BACKGROUND", ("background",)),
-        ("motivation", "MISSING_MOTIVATION", ("motivation",)),
-        ("conflict", "MISSING_CONFLICT", ("conflict",)),
         ("combat_role", "MISSING_COMBAT_ROLE", ("combat_role",)),
-        ("abilities", "MISSING_ABILITIES", ("abilities",)),
+        ("ability_concept", "MISSING_ABILITIES", ("ability_concept",)),
     )
-
-    _ALIASES = {
-        "description": ("description", "design_pitch"),
-        "abilities": ("abilities", "ability_concept"),
-    }
 
     def validate(self, context: EvaluationContext) -> Iterable[EvaluationFinding]:
         if not isinstance(context, EvaluationContext):
@@ -38,8 +31,7 @@ class RepresentationCompletenessValidator:
 
         findings: list[EvaluationFinding] = []
         for field_path, code, candidates in self._FIELDS:
-            aliases = self._ALIASES.get(field_path, candidates)
-            if self._present(context.draft, aliases):
+            if self._present(context.draft, candidates):
                 continue
             findings.append(
                 EvaluationFinding(
@@ -55,11 +47,9 @@ class RepresentationCompletenessValidator:
         return findings
 
     @staticmethod
-    def _present(draft: object, candidates: Sequence[str]) -> bool:
+    def _present(draft: CharacterDraft, candidates: Sequence[str]) -> bool:
         for candidate in candidates:
-            if not hasattr(draft, candidate):
-                continue
-            value: Any = getattr(draft, candidate)
+            value = getattr(draft, candidate)
             if isinstance(value, str):
                 if value.strip():
                     return True

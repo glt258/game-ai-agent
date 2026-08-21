@@ -24,12 +24,14 @@ def _normalized_strings(value: Sequence[str] | None, field_name: str) -> tuple[s
 
 @dataclass(frozen=True)
 class CharacterDesignIntent:
-    """A stable, serializable interpretation of a natural-language brief.
+    """A stable, serializable, advisory interpretation of a natural-language brief.
 
     The values are intentionally small and descriptive rather than tied to the
     existing reference-corpus vocabulary.  ``element`` is an optional
     normalized design signal (for example, ``"fire"``); it is not a Canon
-    fact and does not modify any frozen data.
+    fact, a ``CharacterDraft`` field, or an enforceable generation constraint.
+    Intent is derived from the request and remains advisory unless the
+    generation-facing plan can represent a value in the draft contract.
     """
 
     role_type: str = "character"

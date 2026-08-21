@@ -48,11 +48,24 @@ def test_parser_has_safe_defaults_when_keywords_are_missing():
 def test_plan_serializes_and_projects_intent_to_generation_constraints():
     plan = CharacterDesignPlan.from_text("五星火属性少女，主C，外向")
 
-    assert "rarity=5" in plan.generation_constraints
-    assert "element=fire" in plan.generation_constraints
-    assert "combat_role=dps" in plan.generation_constraints
+    assert "rarity=5" not in plan.generation_constraints
+    assert "element=fire" not in plan.generation_constraints
+    assert "combat_role=dps" not in plan.generation_constraints
     assert "外向" in plan.recommended_traits
     assert json.dumps(plan.to_dict(), ensure_ascii=False)
+
+
+def test_plan_projects_only_draft_representable_combat_roles():
+    plan = CharacterDesignPlan.from_text("设计一个辅助角色")
+
+    assert "combat_role=support" in plan.generation_constraints
+
+
+def test_plan_keeps_unrepresentable_combat_roles_advisory():
+    plan = CharacterDesignPlan.from_text("设计一个主C角色")
+
+    assert plan.parsed_intent.combat_role == "dps"
+    assert not any(item.startswith("combat_role=") for item in plan.generation_constraints)
 
 
 def test_optional_intent_generation_keeps_legacy_entry_point_unchanged():
@@ -67,6 +80,6 @@ def test_optional_intent_generation_keeps_legacy_entry_point_unchanged():
     assert result.design_plan.parsed_intent.rarity == 5
     assert result.design_plan.parsed_intent.element == "fire"
     first_runtime = model.prompts[0].runtime
-    assert "rarity=5" in first_runtime.hard_constraints
-    assert "element=fire" in first_runtime.hard_constraints
-    assert "combat_role=dps" in first_runtime.hard_constraints
+    assert "rarity=5" not in first_runtime.hard_constraints
+    assert "element=fire" not in first_runtime.hard_constraints
+    assert "combat_role=dps" not in first_runtime.hard_constraints

@@ -7,9 +7,8 @@ from types import MappingProxyType
 from typing import Any, Mapping
 
 from character_intelligence import CharacterDesignIntent
-from character_intelligence.intent import parse_character_design_intent
 
-from ..character_generation import CharacterDesignRequest, CharacterGenerationResult
+from ..character_generation import CharacterDesignRequest, CharacterDraft, CharacterGenerationResult
 from ..character_repair import CharacterAuthoringResult
 
 
@@ -59,20 +58,22 @@ class EvaluationContext:
     """Resolved, read-only context supplied to evaluation validators."""
 
     subject: EvaluationSubject
-    intent: CharacterDesignIntent
-    draft: object | None = None
+    intent: CharacterDesignIntent | None
+    draft: CharacterDraft | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.subject, EvaluationSubject):
             raise TypeError("subject must be an EvaluationSubject")
-        if not isinstance(self.intent, CharacterDesignIntent):
+        if self.intent is not None and not isinstance(self.intent, CharacterDesignIntent):
             raise TypeError("intent must be a CharacterDesignIntent")
+        if self.draft is not None and not isinstance(self.draft, CharacterDraft):
+            raise TypeError("draft must be a CharacterDraft or None")
         if self.draft is None and self.subject.generation_result is not None:
             object.__setattr__(self, "draft", self.subject.generation_result.draft)
 
     @classmethod
     def from_subject(cls, subject: EvaluationSubject) -> "EvaluationContext":
-        """Resolve the plan intent, falling back to deterministic brief parsing."""
+        """Resolve only the intent carried by the generation design plan."""
 
         if not isinstance(subject, EvaluationSubject):
             raise TypeError("subject must be an EvaluationSubject")
@@ -80,7 +81,7 @@ class EvaluationContext:
         if generation_result is not None and generation_result.design_plan is not None:
             intent = generation_result.design_plan.parsed_intent
         else:
-            intent = parse_character_design_intent(subject.request.brief)
+            intent = None
         draft = generation_result.draft if generation_result is not None else None
         return cls(subject=subject, intent=intent, draft=draft)
 

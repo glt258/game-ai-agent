@@ -12,6 +12,7 @@ from .errors import (
     ReferenceValidationError,
     UnsupportedSchemaVersionError,
 )
+from .combat_vocabulary import CombatVocabulary
 from .models import (
     CharacterAnalysis,
     CharacterFacts,
@@ -22,7 +23,7 @@ from .models import (
     FixturePlan,
 )
 from .normalizer import build_quality
-from .provenance import validate_provenance
+from .provenance import validate_combat_analysis, validate_provenance
 
 
 class _UniqueKeyLoader(yaml.SafeLoader):
@@ -80,8 +81,23 @@ def _require_schema_version(actual: str, expected: str, path: Path) -> None:
 
 
 class CharacterReferenceLoader:
-    def __init__(self, catalog: GameCatalog | None = None):
+    def __init__(
+        self,
+        catalog: GameCatalog | None = None,
+        combat_vocabulary: CombatVocabulary | None = None,
+    ):
         self.catalog = catalog
+        self.combat_vocabulary = combat_vocabulary
+
+    @staticmethod
+    def _discover_combat_vocabulary(character_dir: Path) -> CombatVocabulary | None:
+        candidates = [Path("data/reference_corpus/combat_vocabulary.yaml")]
+        if len(character_dir.parents) >= 3:
+            candidates.append(character_dir.parents[2] / "combat_vocabulary.yaml")
+        for candidate in candidates:
+            if candidate.exists():
+                return load_combat_vocabulary(candidate)
+        return None
 
     def load(self, character_dir: Path) -> CharacterReference:
         character_dir = Path(character_dir)
@@ -117,6 +133,11 @@ class CharacterReferenceLoader:
         reference_id = facts.reference_id
         try:
             validate_provenance(provenance, facts, analysis)
+            validate_combat_analysis(
+                analysis,
+                facts,
+                self.combat_vocabulary or self._discover_combat_vocabulary(character_dir),
+            )
         except ReferenceValidationError:
             raise
         except Exception as exc:
@@ -164,3 +185,15 @@ def load_fixture_plan(path: Path) -> FixturePlan:
         plan.corpus_version, "character-reference-corpus/0.1", Path(path)
     )
     return plan
+
+
+def load_combat_vocabulary(path: Path) -> CombatVocabulary:
+    """Load and validate the standalone v0.6.2-A combat vocabulary."""
+
+    vocabulary = _model(Path(path), CombatVocabulary)
+    _require_schema_version(
+        vocabulary.schema_version,
+        "combat-vocabulary/0.6.2-A",
+        Path(path),
+    )
+    return vocabulary

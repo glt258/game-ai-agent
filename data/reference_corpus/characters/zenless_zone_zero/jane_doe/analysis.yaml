@@ -8,6 +8,16 @@ analysis_metadata:
 combat_design:
   normalized_roles:
     - "on_field_dps"
+  combat_roles:
+    - "main_dps"
+  damage_patterns:
+    - "sustained"
+  mechanics:
+    - "mark_target"
+    - "mobility"
+    - "resource_management"
+  team_position:
+    - "selfish_carry"
   attack_range: "melee"
   field_time: "high"
   mechanical_complexity: "high"
@@ -62,6 +72,76 @@ combat_design:
     - "self_state_attack_modification"
     - "target_state_application"
     - "target_state_anomaly_payoff"
+  role_rationale:
+    main_dps: >-
+      The high-field-time, low-team-dependency profile and the repeated attack
+      payoffs from Passion and Gnawed support a primary damage-contributor role.
+      This is an AI-derived interpretation, not an official Zenless Zone Zero
+      role label.
+  evidence:
+    - dimension: "combat_roles"
+      token: "main_dps"
+      ability_ids: [basic_attack, special_attack, core_passive_insight]
+      mechanic_refs:
+        - {kind: resource, id: passion_stream}
+        - {kind: state, id: passion}
+        - {kind: state, id: gnawed}
+      note: >-
+        Repeated on-field attacks build and exploit Passion Stream, while
+        Insight supplies a target-state payoff through Gnawed.
+    - dimension: "damage_patterns"
+      token: "sustained"
+      ability_ids: [basic_attack, dodge, assist, special_attack]
+      mechanic_refs:
+        - {kind: resource, id: passion_stream}
+        - {kind: state, id: passion}
+      note: >-
+        Qualifying actions repeatedly rebuild the resource and re-enter the
+        empowered state; the facts do not establish a numeric damage profile.
+    - dimension: "mechanics"
+      token: "mark_target"
+      ability_ids: [core_passive_insight]
+      mechanic_refs:
+        - {kind: state, id: gnawed}
+      note: >-
+        Insight applies the named Gnawed condition to enemies for a later
+        Assault payoff.
+    - dimension: "mechanics"
+      token: "mobility"
+      ability_ids: [dodge, assist]
+      mechanic_refs:
+        - {kind: resource, id: passion_stream}
+      note: >-
+        Perfect Dodge and Defensive Assist are recorded qualifying actions in
+        the resource loop; no unsupported movement distance or speed is added.
+    - dimension: "mechanics"
+      token: "resource_management"
+      ability_ids: [basic_attack, dodge, assist, special_attack]
+      mechanic_refs:
+        - {kind: resource, id: passion_stream}
+        - {kind: state, id: passion}
+      note: >-
+        These actions generate, consume, or restore Passion Stream around the
+        Passion threshold state.
+    - dimension: "team_position"
+      token: "selfish_carry"
+      ability_ids: [basic_attack, special_attack, core_passive_insight]
+      mechanic_refs:
+        - {kind: resource, id: passion_stream}
+        - {kind: state, id: passion}
+      note: >-
+        The existing analysis records high field time and low team dependency;
+        the ability loop consequently competes for active field time.
+    - dimension: "primary_loop"
+      ability_ids: [basic_attack, dodge, assist, special_attack, core_passive_insight]
+      mechanic_refs:
+        - {kind: resource, id: passion_stream}
+        - {kind: state, id: passion}
+        - {kind: state, id: gnawed}
+      note: >-
+        The primary loop is derived from the existing mechanic graph and is
+        preserved above without adding a new game-system rule.
+  confidence: 0.8
 character_design:
   character_fantasy: >-
     Playing Jane Doe is an evasion-fueled escalation experience: the player

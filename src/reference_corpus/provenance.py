@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from .combat_vocabulary import CombatVocabulary
 from .errors import ProvenanceValidationError
 from .models import CharacterAnalysis, CharacterFacts, CharacterProvenance
 
@@ -152,6 +153,52 @@ def validate_analysis_feature_provenance(
                             "UNKNOWN_AUTHORING_FEATURE_FACT: "
                             f"{feature_path}: {entry.fact_path}: {exc}"
                         ) from exc
+
+
+def validate_combat_analysis(
+    analysis: CharacterAnalysis | None,
+    facts: CharacterFacts,
+    vocabulary: CombatVocabulary | None = None,
+) -> None:
+    """Validate structured combat tokens and their fact references."""
+
+    if analysis is None:
+        return
+    combat = analysis.combat_design
+    if not combat.has_structured_profile:
+        return
+    if vocabulary is None:
+        raise ProvenanceValidationError(
+            "combat vocabulary is required for structured combat analysis"
+        )
+
+    try:
+        combat.validate_vocabulary(vocabulary)
+    except ValueError as exc:
+        raise ProvenanceValidationError(f"invalid structured combat analysis: {exc}") from exc
+
+    ability_ids = {item.ability_id for item in facts.combat.abilities}
+    mechanic_ids = {
+        "ability": ability_ids,
+        "resource": {item.resource_id for item in facts.combat.mechanics.resources},
+        "state": {item.state_id for item in facts.combat.mechanics.states},
+        "team_interaction": {
+            item.interaction_id for item in facts.combat.team_mechanics.interactions
+        },
+    }
+    for evidence in combat.evidence:
+        unknown_abilities = set(evidence.ability_ids) - ability_ids
+        if unknown_abilities:
+            raise ProvenanceValidationError(
+                "UNKNOWN_COMBAT_EVIDENCE_ABILITY: "
+                f"{sorted(unknown_abilities)}"
+            )
+        for reference in evidence.mechanic_refs:
+            if reference.id not in mechanic_ids[reference.kind]:
+                raise ProvenanceValidationError(
+                    "UNKNOWN_COMBAT_EVIDENCE_MECHANIC: "
+                    f"{reference.kind}:{reference.id}"
+                )
 
 
 def validate_field_paths(facts: CharacterFacts, paths: Iterable[str]) -> None:

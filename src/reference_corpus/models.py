@@ -7,6 +7,8 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from .combat_vocabulary import CombatVocabulary
+from .combat_taxonomy import validate_legacy_compatibility, validate_legacy_crosswalk
 from .enums import (
     AnalysisStatus,
     AttackRange,
@@ -381,8 +383,50 @@ class PrimaryLoop(ReferenceModel):
     _steps = field_validator("steps")(_string_list)
 
 
+class CombatEvidence(ReferenceModel):
+    """Evidence links for one structured combat interpretation."""
+
+    dimension: Literal[
+        "combat_roles",
+        "damage_patterns",
+        "mechanics",
+        "team_position",
+        "primary_loop",
+    ]
+    token: str | None = None
+    ability_ids: list[str] = Field(default_factory=list)
+    mechanic_refs: list[MechanicRef] = Field(default_factory=list)
+    note: str
+
+    _token = field_validator("token")(lambda value: _optional_text(value))
+    _ability_ids = field_validator("ability_ids")(_string_list)
+    _note = field_validator("note")(lambda value: _text(value, "note"))
+
+    @model_validator(mode="after")
+    def valid_claim_shape(self) -> "CombatEvidence":
+        if self.dimension != "primary_loop" and self.token is None:
+            raise ValueError("combat evidence token is required for structured dimensions")
+        if self.dimension == "primary_loop" and self.token is not None:
+            raise ValueError("primary_loop evidence must not have a token")
+        if not self.ability_ids and not self.mechanic_refs:
+            raise ValueError("combat evidence must reference an ability or mechanic")
+        return self
+
+
 class CombatDesignAnalysis(ReferenceModel):
+    """Canonical structured combat interpretation with legacy role support.
+
+    ``combat_roles``, ``damage_patterns``, ``mechanics``, and
+    ``team_position`` are the v0.6 ownership surface. ``normalized_roles`` is
+    retained only for compatibility with older analysis records and is checked
+    through the explicit legacy crosswalk.
+    """
+
     normalized_roles: list[NormalizedRole] = Field(default_factory=list)
+    combat_roles: list[str] = Field(default_factory=list)
+    damage_patterns: list[str] = Field(default_factory=list)
+    mechanics: list[str] = Field(default_factory=list)
+    team_position: list[str] = Field(default_factory=list)
     attack_range: AttackRange = AttackRange.UNKNOWN
     field_time: OrdinalBand = OrdinalBand.UNKNOWN
     mechanical_complexity: OrdinalBand = OrdinalBand.UNKNOWN
@@ -395,6 +439,9 @@ class CombatDesignAnalysis(ReferenceModel):
     burst_pattern: str | None = None
     archetypes: list[str] = Field(default_factory=list)
     core_mechanics: list[str] = Field(default_factory=list)
+    role_rationale: dict[str, str] = Field(default_factory=dict)
+    evidence: list[CombatEvidence] = Field(default_factory=list)
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
 
     @field_validator("normalized_roles")
     @classmethod
@@ -402,6 +449,85 @@ class CombatDesignAnalysis(ReferenceModel):
         if len(value) != len(set(value)):
             raise ValueError("normalized_roles must not contain duplicates")
         return value
+
+    @field_validator("combat_roles", "damage_patterns", "mechanics", "team_position")
+    @classmethod
+    def unique_structured_tokens(cls, value: list[str]) -> list[str]:
+        value = _string_list(value, "combat structured tokens")
+        if len(value) != len(set(value)):
+            raise ValueError("combat structured tokens must not contain duplicates")
+        return value
+
+    @field_validator("role_rationale")
+    @classmethod
+    def valid_role_rationale(cls, value: dict[str, str]) -> dict[str, str]:
+        if not isinstance(value, dict):
+            raise ValueError("role_rationale must be a mapping")
+        return {
+            _text(key, "role rationale key"): _text(item, "role rationale")
+            for key, item in value.items()
+        }
+
+    @model_validator(mode="after")
+    def every_role_has_rationale(self) -> "CombatDesignAnalysis":
+        roles = set(self.combat_roles)
+        rationale = set(self.role_rationale)
+        missing = sorted(roles - rationale)
+        extra = sorted(rationale - roles)
+        if missing or extra:
+            raise ValueError(
+                "role_rationale keys must match combat_roles; "
+                f"missing={missing}, extra={extra}"
+            )
+        return self
+
+    @property
+    def has_structured_profile(self) -> bool:
+        return bool(
+            self.combat_roles
+            or self.damage_patterns
+            or self.mechanics
+            or self.team_position
+            or self.role_rationale
+            or self.evidence
+            or self.confidence is not None
+        )
+
+    def validate_vocabulary(self, vocabulary: CombatVocabulary) -> None:
+        """Validate canonical structured tokens and evidence coverage."""
+
+        validate_legacy_crosswalk(vocabulary)
+        validate_legacy_compatibility(
+            self.normalized_roles,
+            self.combat_roles,
+            self.damage_patterns,
+        )
+
+        fields = {
+            "combat_roles": ("combat_role", self.combat_roles),
+            "damage_patterns": ("damage_pattern", self.damage_patterns),
+            "mechanics": ("mechanic", self.mechanics),
+            "team_position": ("team_position", self.team_position),
+        }
+        expected_claims: set[tuple[str, str]] = set()
+        for field_name, (domain, values) in fields.items():
+            for value in values:
+                canonical = vocabulary.canonical_id(domain, value)
+                if canonical != value:
+                    raise ValueError(
+                        f"{field_name} must use canonical combat vocabulary IDs: {value!r}"
+                    )
+                expected_claims.add((field_name, value))
+
+        covered_claims = {
+            (item.dimension, item.token)
+            for item in self.evidence
+            if item.dimension != "primary_loop" and item.token is not None
+        }
+        missing = sorted(expected_claims - covered_claims)
+        if missing:
+            raise ValueError(f"missing combat evidence for structured claim(s): {missing}")
+
     _analysis_lists = field_validator("archetypes", "core_mechanics")(_string_list)
     _optional_fields = field_validator("resource_loop", "burst_pattern")(
         lambda value: _optional_text(value)

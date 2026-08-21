@@ -10,6 +10,7 @@ from agents import (
 )
 from agents.evaluation import (
     EVALUATION_SCHEMA_VERSION,
+    EvaluationContext,
     EvaluationFinding,
     EvaluationOutcome,
     EvaluationResult,
@@ -110,6 +111,16 @@ def test_evaluation_subject_creation():
     assert subject.generation_result is not None
     assert subject.authoring_result is None
     assert subject.generation_error is None
+
+
+def test_no_plan_does_not_reparse_brief_for_alignment():
+    request = CharacterDesignRequest("设计一个爆发角色。", request_id="no_plan")
+    subject = EvaluationSubject(request=request, generation_result=None)
+
+    assert EvaluationContext.from_subject(subject).intent is None
+    result = EvaluationRunner().run(subject)
+
+    assert result.findings == ()
 
 
 def test_empty_evaluation_passes():

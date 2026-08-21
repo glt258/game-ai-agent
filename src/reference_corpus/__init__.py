@@ -7,6 +7,18 @@ from .enums import (
     SourceType,
     VerificationStatus,
 )
+from .combat_vocabulary import (
+    COMBAT_VOCABULARY_DOMAINS,
+    COMBAT_VOCABULARY_SCHEMA_VERSION,
+    CombatVocabulary,
+    CombatVocabularyEntry,
+)
+from .combat_taxonomy import (
+    LEGACY_COMBAT_CROSSWALK,
+    LegacyCombatCrosswalkEntry,
+    validate_legacy_compatibility,
+    validate_legacy_crosswalk,
+)
 from .errors import (
     CatalogValidationError,
     DuplicateReferenceError,
@@ -32,6 +44,7 @@ from .features import (
     validate_feature_provenance,
 )
 from .models import *
+from .loader import load_combat_vocabulary
 from .provenance import validate_analysis_feature_provenance
 
 __all__ = [
@@ -42,6 +55,15 @@ __all__ = [
     "SourceReliability",
     "SourceType",
     "VerificationStatus",
+    "COMBAT_VOCABULARY_DOMAINS",
+    "COMBAT_VOCABULARY_SCHEMA_VERSION",
+    "CombatVocabulary",
+    "CombatVocabularyEntry",
+    "LEGACY_COMBAT_CROSSWALK",
+    "LegacyCombatCrosswalkEntry",
+    "load_combat_vocabulary",
+    "validate_legacy_compatibility",
+    "validate_legacy_crosswalk",
     "ReferenceCorpusError",
     "ReferenceLoadError",
     "ReferenceNotFoundError",
@@ -64,6 +86,7 @@ __all__ = [
     "validate_feature_provenance",
     "validate_analysis_feature_provenance",
     "AbilityFact",
+    "CombatEvidence",
     "CombatFacts",
     "CombatMechanics",
     "AlignmentAssessment",

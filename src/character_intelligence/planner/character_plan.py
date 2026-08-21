@@ -9,6 +9,11 @@ from typing import Any
 from ..intent import CharacterDesignIntent, parse_character_design_intent
 
 
+_DRAFT_COMBAT_ROLES = frozenset(
+    {"support", "control", "defense", "burst", "sustain", "flex", "none"}
+)
+
+
 def _unique(values: Sequence[str]) -> tuple[str, ...]:
     result: list[str] = []
     for value in values:
@@ -39,19 +44,15 @@ class CharacterDesignPlan:
     @classmethod
     def from_intent(cls, intent: CharacterDesignIntent) -> "CharacterDesignPlan":
         constraints: list[str] = []
-        if intent.role_type != "character":
-            constraints.append(f"role_type={intent.role_type}")
-        if intent.combat_role != "unspecified":
+        if intent.combat_role in _DRAFT_COMBAT_ROLES:
             constraints.append(f"combat_role={intent.combat_role}")
-        if intent.rarity is not None:
-            constraints.append(f"rarity={intent.rarity}")
-        if intent.element is not None:
-            constraints.append(f"element={intent.element}")
-        if intent.target_audience != "general":
-            constraints.append(f"target_audience={intent.target_audience}")
         constraints.extend(f"forbidden_pattern={item}" for item in intent.forbidden_patterns)
 
         traits = list(intent.personality_keywords)
+        if intent.element is not None:
+            traits.append(f"element:{intent.element}")
+        if intent.target_audience != "general":
+            traits.append(f"target_audience:{intent.target_audience}")
         traits.extend(item for item in intent.design_goals if item not in {intent.element})
         return cls(intent, tuple(constraints), _unique(tuple(traits)))
 

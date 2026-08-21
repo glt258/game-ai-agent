@@ -1,0 +1,109 @@
+schema_version: "combat-vocabulary/0.6.2-A"
+
+domains:
+  combat_role:
+    - id: control
+      description: Restricts, redirects, groups, or conditions enemy actions.
+      aliases: [crowd_control, 控场]
+    - id: healer
+      description: Restores ally survivability through healing.
+      aliases: [healing_support, 治疗]
+    - id: main_dps
+      description: Primary damage contributor requiring meaningful field presence.
+      aliases: [on_field_dps, primary_dps, "main damage dealer", 主C]
+    - id: sub_dps
+      description: Damage contributor whose value persists with limited field time.
+      aliases: [off_field_dps, secondary_dps, "sub damage dealer", 副C]
+    - id: support
+      description: Improves ally performance or enables team conditions.
+      aliases: [team_support, 辅助]
+    - id: tank
+      description: Absorbs, mitigates, or redirects threat or damage.
+      aliases: [defender, frontline_defender, 坦克]
+
+  damage_pattern:
+    - id: burst
+      description: Concentrates meaningful damage into a short activation window.
+      aliases: [burst_damage, 爆发]
+    - id: execute
+      description: Gains a payoff against weakened or thresholded targets.
+      aliases: [finisher, execute_damage, 斩杀]
+    - id: reaction_based
+      description: Damage depends on triggering or combining a reaction condition.
+      aliases: [reaction_damage, elemental_reaction, 反应伤害]
+    - id: summon
+      description: Damage is produced or continued by a summoned entity.
+      aliases: [summoned_damage, 召唤]
+    - id: sustained
+      description: Produces damage consistently across an extended combat interval.
+      aliases: [sustained_damage, damage_over_time, 持续]
+
+  mechanic:
+    - id: area_effect
+      description: Affects an area or multiple entities rather than one target only.
+      aliases: [aoe, 范围]
+    - id: buff
+      description: Improves an ally or the character through a beneficial effect.
+      aliases: [ally_buff, 增益]
+    - id: charge
+      description: Requires holding, charging, or accumulating toward an action.
+      aliases: [charged_action, 蓄力]
+    - id: combo
+      description: Rewards a defined sequence or chain of actions.
+      aliases: [sequence, 连招]
+    - id: control
+      description: Applies an effect that restricts, redirects, or groups targets.
+      aliases: [crowd_control, 控制]
+    - id: counter
+      description: Provides a payoff for correctly responding to an incoming action.
+      aliases: [parry, 反击]
+    - id: debuff
+      description: Applies a harmful or weakening effect to a target.
+      aliases: [target_debuff, 减益]
+    - id: field_effect
+      description: Creates a persistent area or field that changes combat conditions.
+      aliases: [domain, area_field, 场地]
+    - id: healing
+      description: Restores health or another explicitly defined survivability resource.
+      aliases: [restore_health, 治疗机制]
+    - id: mark_target
+      description: Applies a named or tracked condition to a target for later interaction.
+      aliases: [target_mark, mark, 标记]
+    - id: mobility
+      description: Changes position, movement, or traversal during combat.
+      aliases: [repositioning, movement, 位移]
+    - id: off_field_effect
+      description: Continues to contribute while the character is not active.
+      aliases: [off_field, offscreen, 后台]
+    - id: reaction_trigger
+      description: Triggers or enables a distinct reaction condition.
+      aliases: [reaction, reaction_enablement, 反应触发]
+    - id: resource_management
+      description: Builds, spends, or otherwise manages a named combat resource.
+      aliases: [resource_loop, resource, 资源管理]
+    - id: shield
+      description: Prevents, absorbs, or reduces incoming damage through a shield.
+      aliases: [barrier, shielding, 护盾]
+    - id: stance_change
+      description: Switches between distinct modes that alter available behavior.
+      aliases: [stance_switch, 姿态切换]
+    - id: summon
+      description: Creates or controls an entity that participates in combat.
+      aliases: [summoned_entity, 召唤物]
+    - id: transformation
+      description: Enters a distinct transformed state with broader behavioral changes.
+      aliases: [transform, 变身]
+
+  team_position:
+    - id: buffer
+      description: Occupies a team position primarily by improving ally performance.
+      aliases: [team_buffer, 增益位]
+    - id: enabler
+      description: Establishes conditions that allow allies to realize their payoffs.
+      aliases: [team_enabler, enabling, 反应位]
+    - id: quick_swap
+      description: Delivers meaningful value with brief field time before rotation.
+      aliases: [quick_swap_in, swap_support, 速切]
+    - id: selfish_carry
+      description: Requires substantial field time and competes for team field time.
+      aliases: [selfish_dps, carry, 主站场]
