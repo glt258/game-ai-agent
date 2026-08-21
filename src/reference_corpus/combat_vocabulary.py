@@ -7,6 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
+from combat_semantics import CANONICAL_COMBAT_ROLES, CombatRoleNormalization
+
 
 COMBAT_VOCABULARY_SCHEMA_VERSION = "combat-vocabulary/0.6.2-A"
 COMBAT_VOCABULARY_DOMAINS = (
@@ -153,6 +155,24 @@ class CombatVocabulary(BaseModel):
             }:
                 return entry.id
         raise ValueError(f"unknown {domain} combat vocabulary token: {value!r}")
+
+    def normalize_combat_role(self, value: str) -> CombatRoleNormalization:
+        """Resolve one role-domain token and retain lossy crosswalk metadata."""
+
+        canonical = self.canonical_id("combat_role", value)
+        if canonical not in CANONICAL_COMBAT_ROLES:
+            raise ValueError(f"unsupported canonical combat role: {canonical!r}")
+        if canonical == "off_field_dps" or _lookup_key(value) == "off_field_dps":
+            return CombatRoleNormalization(
+                raw_value=value.strip(),
+                canonical_role="sub_dps",
+                lossy=True,
+                note="off_field_dps projects to sub_dps; off-field behavior belongs to another domain",
+            )
+        return CombatRoleNormalization(
+            raw_value=value.strip(),
+            canonical_role=canonical,  # type: ignore[arg-type]
+        )
 
     def _validate_domain(self, domain: str) -> None:
         if domain not in COMBAT_VOCABULARY_DOMAINS:

@@ -13,6 +13,12 @@ from .combat_vocabulary import (
     CombatVocabulary,
     CombatVocabularyEntry,
 )
+from combat_semantics import (
+    CANONICAL_COMBAT_ROLES,
+    CombatRole,
+    CombatRoleNormalization,
+    CombatRoleProfile,
+)
 from .combat_taxonomy import (
     LEGACY_COMBAT_CROSSWALK,
     LegacyCombatCrosswalkEntry,
@@ -59,6 +65,10 @@ __all__ = [
     "COMBAT_VOCABULARY_SCHEMA_VERSION",
     "CombatVocabulary",
     "CombatVocabularyEntry",
+    "CANONICAL_COMBAT_ROLES",
+    "CombatRole",
+    "CombatRoleNormalization",
+    "CombatRoleProfile",
     "LEGACY_COMBAT_CROSSWALK",
     "LegacyCombatCrosswalkEntry",
     "load_combat_vocabulary",

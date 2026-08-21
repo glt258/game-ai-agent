@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from pathlib import Path
+
+from combat_semantics import CombatRoleProfile
+from reference_corpus.loader import load_combat_vocabulary
 
 from .schema import CharacterDesignIntent
 
@@ -53,13 +57,21 @@ _ROLE_TYPE_PATTERNS = (
 )
 
 _COMBAT_ROLE_PATTERNS = (
-    (r"主\s*[cC]|main\s*(?:dps|damage)|主输出|核心输出", "dps"),
-    (r"副\s*[cC]|sub\s*(?:dps|damage)|副输出", "sub_dps"),
-    (r"辅助|support|增益|治疗|奶妈|healer", "support"),
-    (r"坦克|前排|承伤|防御|tank", "defense"),
-    (r"控制|control|控场", "control"),
+    (r"main[_\s-]*(?:dps|damage)(?:\s*dealer)?|primary[_\s-]*(?:dps|damage)|主\s*[cC]|主输出|核心输出", True, False),
+    (r"sub[_\s-]*(?:dps|damage)(?:\s*dealer)?|secondary[_\s-]*(?:dps|damage)|off[_\s-]*field[_\s-]*dps|副\s*[cC]|副输出", False, False),
+    (r"healing[_\s-]*support|healer|治疗|奶妈", False, False),
+    (r"team[_\s-]*support|support|辅助|增益", False, False),
+    (r"defense|tank|defender|frontline[_\s-]*defender|坦克|前排|承伤|防御", False, False),
+    (r"control|控制|控场", False, False),
+    (r"(?<![a-z_])dps(?![a-z_])", False, True),
+)
+
+_NON_ROLE_COMBAT_PATTERNS = (
     (r"爆发型|爆发输出|burst", "burst"),
     (r"持续输出|持续伤害|站场|sustain", "sustain"),
+    (r"hybrid|混合定位|混合型", "hybrid"),
+    (r"buffer|增益位", "buffer"),
+    (r"enabler|反应位", "enabler"),
 )
 
 _TARGET_PATTERNS = (
@@ -91,6 +103,64 @@ _PERSONALITY_PATTERNS = (
 class DeterministicCharacterDesignIntentParser:
     """Parse common design phrases without an LLM or network request."""
 
+    def __init__(self, vocabulary=None):
+        self.vocabulary = vocabulary or self._default_vocabulary()
+
+    @staticmethod
+    def _default_vocabulary():
+        root = Path(__file__).resolve().parents[3]
+        return load_combat_vocabulary(root / "data" / "reference_corpus" / "combat_vocabulary.yaml")
+
+    def _combat_role_mentions(self, text: str) -> list[tuple[int, int, str, bool]]:
+        matches: list[tuple[int, int, str, bool]] = []
+        for pattern, intrinsic_primary, requires_role_context in _COMBAT_ROLE_PATTERNS:
+            for match in re.finditer(pattern, text, flags=re.IGNORECASE):
+                if requires_role_context and not self._bare_dps_has_role_context(
+                    text, match.start(), match.end()
+                ):
+                    continue
+                raw = match.group(0)
+                try:
+                    role = self.vocabulary.normalize_combat_role(raw).canonical_role
+                except ValueError:
+                    continue
+                matches.append((match.start(), match.end(), role, intrinsic_primary))
+
+        # Specific aliases (for example main_dps) contain generic dps. Keep
+        # the longest match at an overlapping span so one mention is not
+        # counted twice.
+        matches.sort(key=lambda item: (item[0], -(item[1] - item[0])))
+        selected: list[tuple[int, int, str, bool]] = []
+        for candidate in matches:
+            if any(candidate[0] < item[1] and item[0] < candidate[1] for item in selected):
+                continue
+            selected.append(candidate)
+        return sorted(selected, key=lambda item: item[0])
+
+    @staticmethod
+    def _has_explicit_primary_marker(text: str, start: int, intrinsic_primary: bool) -> bool:
+        if intrinsic_primary:
+            return True
+        prefix = text[max(0, start - 16):start]
+        return bool(
+            re.search(
+                r"(?:主定位|主职|主要定位|primary(?:\s+(?:role|position))?|main(?:\s+(?:role|position))?)\s*(?:为|是|is|as|:)?\s*$",
+                prefix,
+                flags=re.IGNORECASE,
+            )
+        )
+
+    @staticmethod
+    def _bare_dps_has_role_context(text: str, start: int, end: int) -> bool:
+        context = text[max(0, start - 12):min(len(text), end + 12)]
+        return bool(
+            re.search(
+                r"角色|定位|character|unit|hero|role|position|输出|damage|main|primary|主",
+                context,
+                flags=re.IGNORECASE,
+            )
+        )
+
     def parse(self, request: str) -> CharacterDesignIntent:
         if not isinstance(request, str) or not request.strip():
             raise ValueError("character design request must be a non-empty string")
@@ -98,7 +168,28 @@ class DeterministicCharacterDesignIntentParser:
 
         rarity = self._parse_rarity(text)
         element = _first_match(text, _ELEMENT_PATTERNS)
-        combat_role = _first_match(text, _COMBAT_ROLE_PATTERNS) or "unspecified"
+        mentions = self._combat_role_mentions(text)
+        roles: list[str] = []
+        primary_index: int | None = None
+        for start, _end, role, intrinsic_primary in mentions:
+            if role not in roles:
+                roles.append(role)
+            if primary_index is None and self._has_explicit_primary_marker(text, start, intrinsic_primary):
+                primary_index = roles.index(role)
+
+        if roles:
+            if primary_index is None:
+                primary_index = 0
+            primary = roles[primary_index]
+            ordered_roles = [primary, *(role for role in roles if role != primary)]
+            profile = CombatRoleProfile(primary_role=ordered_roles[0], secondary_roles=tuple(ordered_roles[1:]))
+            # Keep the old scalar as a boundary projection. The historical
+            # parser exposed main DPS as "dps"; retain that spelling only for
+            # old callers while the profile remains canonical.
+            combat_role = "dps" if primary == "main_dps" else primary
+        else:
+            profile = CombatRoleProfile()
+            combat_role = _first_match(text, _NON_ROLE_COMBAT_PATTERNS) or "unspecified"
         role_type = _first_match(text, _ROLE_TYPE_PATTERNS) or "character"
         target_audience = _first_match(text, _TARGET_PATTERNS) or "general"
 
@@ -129,6 +220,7 @@ class DeterministicCharacterDesignIntentParser:
             forbidden_patterns=forbidden,
             element=element,
             raw_request=text,
+            combat_role_profile=profile,
         )
 
     @staticmethod

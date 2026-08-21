@@ -1,5 +1,13 @@
 """Character Intelligence Layer public package."""
 
+from combat_semantics import (
+    CANONICAL_COMBAT_ROLES,
+    CombatRole,
+    CombatRoleNormalization,
+    CombatRoleProfile,
+    legacy_combat_role_projection,
+)
+
 from .intent import (
     CharacterDesignIntent,
     CharacterDesignIntentParser,
@@ -12,4 +20,9 @@ __all__ = [
     "CharacterDesignIntentParser",
     "CharacterDesignPlan",
     "DeterministicCharacterDesignIntentParser",
+    "CANONICAL_COMBAT_ROLES",
+    "CombatRole",
+    "CombatRoleNormalization",
+    "CombatRoleProfile",
+    "legacy_combat_role_projection",
 ]

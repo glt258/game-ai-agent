@@ -6,6 +6,12 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from combat_semantics import (
+    CombatRoleProfile,
+    legacy_combat_role_projection,
+    normalize_legacy_combat_role,
+)
+
 
 def _normalized_strings(value: Sequence[str] | None, field_name: str) -> tuple[str, ...]:
     if value is None:
@@ -35,7 +41,7 @@ class CharacterDesignIntent:
     """
 
     role_type: str = "character"
-    combat_role: str = "unspecified"
+    combat_role: str | None = None
     rarity: int | None = None
     target_audience: str = "general"
     personality_keywords: tuple[str, ...] = ()
@@ -43,9 +49,10 @@ class CharacterDesignIntent:
     forbidden_patterns: tuple[str, ...] = ()
     element: str | None = None
     raw_request: str = ""
+    combat_role_profile: CombatRoleProfile | None = None
 
     def __post_init__(self) -> None:
-        for field_name in ("role_type", "combat_role", "target_audience"):
+        for field_name in ("role_type", "target_audience"):
             value = getattr(self, field_name)
             if not isinstance(value, str) or not value.strip():
                 raise ValueError(f"{field_name} must be a non-empty string")
@@ -61,6 +68,37 @@ class CharacterDesignIntent:
         if not isinstance(self.raw_request, str):
             raise TypeError("raw_request must be a string")
         object.__setattr__(self, "raw_request", self.raw_request.strip())
+        profile = self.combat_role_profile
+        if profile is None:
+            role = (
+                normalize_legacy_combat_role(self.combat_role)
+                if self.combat_role not in (None, "unspecified")
+                else None
+            )
+            profile = CombatRoleProfile(primary_role=role)
+        elif not isinstance(profile, CombatRoleProfile):
+            raise TypeError("combat_role_profile must be a CombatRoleProfile or None")
+        legacy_role = self.combat_role
+        if profile.is_unspecified and legacy_role in {
+            "burst",
+            "sustain",
+            "hybrid",
+            "buffer",
+            "enabler",
+            "flex",
+            "none",
+        }:
+            pass
+        else:
+            expected_legacy_role = legacy_combat_role_projection(profile)
+            if legacy_role not in (None, "unspecified", expected_legacy_role):
+                raise ValueError(
+                    "combat_role is a derived compatibility projection and "
+                    "must match combat_role_profile"
+                )
+            legacy_role = expected_legacy_role
+        object.__setattr__(self, "combat_role", legacy_role or "unspecified")
+        object.__setattr__(self, "combat_role_profile", profile)
         for field_name in (
             "personality_keywords",
             "design_goals",
@@ -85,6 +123,7 @@ class CharacterDesignIntent:
             "forbidden_patterns": list(self.forbidden_patterns),
             "element": self.element,
             "raw_request": self.raw_request,
+            "combat_role_profile": self.combat_role_profile.to_dict(),
         }
 
     @classmethod
@@ -103,4 +142,9 @@ class CharacterDesignIntent:
             forbidden_patterns=payload.get("forbidden_patterns", ()),
             element=payload.get("element"),
             raw_request=payload.get("raw_request", ""),
+            combat_role_profile=(
+                CombatRoleProfile.from_mapping(payload["combat_role_profile"])
+                if payload.get("combat_role_profile") is not None
+                else None
+            ),
         )

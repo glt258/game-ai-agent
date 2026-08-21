@@ -6,11 +6,13 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from combat_semantics import CombatRoleProfile
+
 from ..intent import CharacterDesignIntent, parse_character_design_intent
 
 
 _DRAFT_COMBAT_ROLES = frozenset(
-    {"support", "control", "defense", "burst", "sustain", "flex", "none"}
+    {"support", "control", "defense"}
 )
 
 
@@ -29,10 +31,17 @@ class CharacterDesignPlan:
     parsed_intent: CharacterDesignIntent
     generation_constraints: tuple[str, ...] = ()
     recommended_traits: tuple[str, ...] = ()
+    combat_role_profile: CombatRoleProfile | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.parsed_intent, CharacterDesignIntent):
             raise TypeError("parsed_intent must be CharacterDesignIntent")
+        profile = self.combat_role_profile or self.parsed_intent.combat_role_profile
+        if not isinstance(profile, CombatRoleProfile):
+            raise TypeError("combat_role_profile must be a CombatRoleProfile")
+        if profile != self.parsed_intent.combat_role_profile:
+            raise ValueError("combat_role_profile must match parsed_intent")
+        object.__setattr__(self, "combat_role_profile", profile)
         for field_name in ("generation_constraints", "recommended_traits"):
             value = getattr(self, field_name)
             if isinstance(value, (str, bytes)):
@@ -44,8 +53,11 @@ class CharacterDesignPlan:
     @classmethod
     def from_intent(cls, intent: CharacterDesignIntent) -> "CharacterDesignPlan":
         constraints: list[str] = []
-        if intent.combat_role in _DRAFT_COMBAT_ROLES:
-            constraints.append(f"combat_role={intent.combat_role}")
+        primary = intent.combat_role_profile.primary_role
+        if primary in _DRAFT_COMBAT_ROLES:
+            # Temporary projection for the pre-B1.1 generation boundary. The
+            # structured profile remains the plan's canonical role contract.
+            constraints.append(f"combat_role={primary}")
         constraints.extend(f"forbidden_pattern={item}" for item in intent.forbidden_patterns)
 
         traits = list(intent.personality_keywords)
@@ -65,6 +77,7 @@ class CharacterDesignPlan:
 
         return {
             "parsed_intent": self.parsed_intent.to_dict(),
+            "combat_role_profile": self.combat_role_profile.to_dict(),
             "generation_constraints": list(self.generation_constraints),
             "recommended_traits": list(self.recommended_traits),
         }
@@ -77,6 +90,11 @@ class CharacterDesignPlan:
             parsed_intent=CharacterDesignIntent.from_mapping(payload["parsed_intent"]),
             generation_constraints=payload.get("generation_constraints", ()),
             recommended_traits=payload.get("recommended_traits", ()),
+            combat_role_profile=(
+                CombatRoleProfile.from_mapping(payload["combat_role_profile"])
+                if payload.get("combat_role_profile") is not None
+                else None
+            ),
         )
 
 

@@ -7,19 +7,19 @@ domains:
       aliases: [crowd_control, 控场]
     - id: healer
       description: Restores ally survivability through healing.
-      aliases: [healing_support, 治疗]
+      aliases: [healing_support, 治疗, 奶妈]
     - id: main_dps
       description: Primary damage contributor requiring meaningful field presence.
-      aliases: [on_field_dps, primary_dps, "main damage dealer", 主C]
+      aliases: [dps, on_field_dps, primary_dps, "main damage dealer", 主C, 主输出, 核心输出]
     - id: sub_dps
       description: Damage contributor whose value persists with limited field time.
-      aliases: [off_field_dps, secondary_dps, "sub damage dealer", 副C]
+      aliases: [off_field_dps, secondary_dps, "sub damage dealer", 副C, 副输出]
     - id: support
       description: Improves ally performance or enables team conditions.
-      aliases: [team_support, 辅助]
-    - id: tank
+      aliases: [team_support, 辅助, 增益]
+    - id: defense
       description: Absorbs, mitigates, or redirects threat or damage.
-      aliases: [defender, frontline_defender, 坦克]
+      aliases: [tank, defender, frontline_defender, 坦克, 防御, 前排, 承伤]
 
   damage_pattern:
     - id: burst
