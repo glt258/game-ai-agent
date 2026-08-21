@@ -6,14 +6,9 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from combat_semantics import CombatRoleProfile
+from combat_semantics import CANONICAL_COMBAT_ROLES, CombatRoleProfile
 
 from ..intent import CharacterDesignIntent, parse_character_design_intent
-
-
-_DRAFT_COMBAT_ROLES = frozenset(
-    {"support", "control", "defense"}
-)
 
 
 def _unique(values: Sequence[str]) -> tuple[str, ...]:
@@ -54,9 +49,10 @@ class CharacterDesignPlan:
     def from_intent(cls, intent: CharacterDesignIntent) -> "CharacterDesignPlan":
         constraints: list[str] = []
         primary = intent.combat_role_profile.primary_role
-        if primary in _DRAFT_COMBAT_ROLES:
-            # Temporary projection for the pre-B1.1 generation boundary. The
-            # structured profile remains the plan's canonical role contract.
+        if primary in CANONICAL_COMBAT_ROLES:
+            # Keep the scalar constraint for older prompt consumers, but the
+            # complete profile is propagated on CharacterDesignRequest and is
+            # the only authoritative generation input.
             constraints.append(f"combat_role={primary}")
         constraints.extend(f"forbidden_pattern={item}" for item in intent.forbidden_patterns)
 

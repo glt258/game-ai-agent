@@ -502,7 +502,7 @@ def render(run: OfficialCharacterAuthoringRun, *, scenario: str, model_mode: str
         "----------------------------------------------------------",
         f"Name: {draft.name}",
         f"Faction: {draft.faction_id or '未固化'}",
-        f"Role: {draft.combat_role} / {draft.occupation}",
+        f"Role profile: {draft.combat_role_profile.to_dict()} / {draft.occupation}",
         f"Concept: {draft.design_pitch}",
         f"Personality: {'、'.join(draft.personality) or '—'}",
         f"Background: {draft.background}",

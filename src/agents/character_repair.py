@@ -81,7 +81,7 @@ HARD_CONSTRAINT_DOMAIN_FIELDS: Mapping[HardConstraintDomain, tuple[str, ...]] = 
     HardConstraintDomain.FACTION: ("faction_id",),
     HardConstraintDomain.OCCUPATION: ("occupation", "social_role"),
     HardConstraintDomain.SOCIAL_ROLE: ("social_role",),
-    HardConstraintDomain.COMBAT_ROLE: ("combat_role",),
+    HardConstraintDomain.COMBAT_ROLE: ("combat_role_profile",),
     HardConstraintDomain.KNOWLEDGE_SCOPE: ("knowledge_scope",),
     HardConstraintDomain.AUTHORITY: ("occupation", "social_role", "knowledge_scope", "background", "story_hook"),
     HardConstraintDomain.STORY_ROLE: ("background", "story_hook", "story_link"),
@@ -257,7 +257,7 @@ class RepairEvidenceBuilder:
         return {key: copy.deepcopy(record.get(key)) for key in keys if key in record}
 
 
-_IDENTITY_FIELDS = frozenset({"name", "gender", "age", "age_range", "personality", "combat_role", "ability_concept"})
+_IDENTITY_FIELDS = frozenset({"name", "gender", "age", "age_range", "personality", "combat_role_profile", "combat_role", "ability_concept"})
 _ALWAYS_FROZEN = frozenset({"draft_id", "status", "canonical_character_id"})
 _DEPENDENCIES: Mapping[str, tuple[str, ...]] = {
     "background": ("background", "story_hook", "story_link", "new_design_elements", "proposed_new_content", "canon_basis"),
@@ -267,6 +267,7 @@ _DEPENDENCIES: Mapping[str, tuple[str, ...]] = {
     "faction_id": ("faction_id", "occupation", "social_role", "knowledge_scope", "canon_basis"),
     "forbidden_elements": ("background", "story_hook", "new_design_elements", "proposed_new_content", "occupation", "social_role", "knowledge_scope", "canon_basis"),
     "ability_concept": ("ability_concept",),
+    "combat_role_profile": ("combat_role_profile",),
     "canon_basis": ("canon_basis",),
     "new_design_elements": ("new_design_elements", "background", "story_hook", "design_pitch", "proposed_new_content"),
     "proposed_new_content": ("proposed_new_content", "background", "story_hook", "new_design_elements"),
@@ -351,6 +352,16 @@ def _domain_text(draft: CharacterDraft, fields: Sequence[str]) -> str:
     values: list[str] = []
     for field_name in fields:
         value = getattr(draft, field_name)
+        if field_name == "combat_role_profile":
+            values.extend(
+                role
+                for role in (
+                    value.primary_role,
+                    *value.secondary_roles,
+                )
+                if role is not None
+            )
+            continue
         if isinstance(value, tuple):
             values.extend(str(item) for item in value)
         elif value is not None:

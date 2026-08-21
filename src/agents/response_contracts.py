@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any, Mapping
 
+from combat_semantics import CANONICAL_COMBAT_ROLES
+
 
 @dataclass(frozen=True)
 class ResponseContract:
@@ -57,7 +59,24 @@ CHARACTER_DRAFT_JSON_SCHEMA: Mapping[str, Any] = MappingProxyType(
             "social_role": {"type": "string"},
             "combat_role": {
                 "type": "string",
-                "enum": ["support", "control", "defense", "burst", "sustain", "flex", "none"],
+                # Transitional flat projection. The nested profile below is
+                # the authoritative provider representation.
+                "enum": [*CANONICAL_COMBAT_ROLES, "none"],
+            },
+            "combat_role_profile": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "primary_role": {
+                        "type": ["string", "null"],
+                        "enum": [*CANONICAL_COMBAT_ROLES, None],
+                    },
+                    "secondary_roles": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": list(CANONICAL_COMBAT_ROLES)},
+                    },
+                },
+                "required": ["primary_role", "secondary_roles"],
             },
             "design_pitch": {"type": "string"},
             "personality": {"type": "array", "items": {"type": "string"}},
@@ -117,7 +136,7 @@ CHARACTER_DRAFT_JSON_SCHEMA: Mapping[str, Any] = MappingProxyType(
         "required": [
             "draft_id", "status", "name", "canonical_character_id", "age",
             "age_range", "gender", "faction_id", "occupation", "social_role",
-            "combat_role", "design_pitch", "personality", "background",
+            "combat_role", "combat_role_profile", "design_pitch", "personality", "background",
             "story_hook", "relationships", "ability_concept", "knowledge_scope",
             "canon_basis", "new_design_elements", "open_questions",
             "constraint_notes", "story_link", "proposed_new_content",
@@ -193,6 +212,7 @@ def character_draft_root_example() -> dict[str, Any]:
         "gender": None,
         "faction_id": None,
         "combat_role": "none",
+        "combat_role_profile": {"primary_role": None, "secondary_roles": []},
         "story_link": None,
     }
     properties = CHARACTER_DRAFT_JSON_SCHEMA["properties"]
@@ -225,7 +245,8 @@ def character_draft_prompt_contract() -> str:
         "3. Use canon_basis=[] when no Canon claim was retrieved; never invent "
         "a Canon source merely to complete the shape.\n"
         "4. Return the complete root object only after checking the required "
-        "field list."
+        "field list. The nested combat_role_profile is authoritative; "
+        "combat_role is only a deprecated flat compatibility projection."
     )
 
 

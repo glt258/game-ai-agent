@@ -16,6 +16,7 @@ from types import MappingProxyType
 from typing import Any, Mapping, Sequence
 
 from character_intelligence.planner import CharacterDesignPlan
+from combat_semantics import CombatRoleProfile, normalize_legacy_combat_role
 from knowledge import KnowledgeResolver
 from knowledge.loader import default_data_dir
 from story import StoryRepository, load_story_repository
@@ -58,6 +59,7 @@ class CharacterDesignRequest:
     forbidden_elements: tuple[str, ...] = ()
     desired_connections: tuple[str, ...] = ()
     request_id: str = "request_001"
+    combat_role_profile: CombatRoleProfile | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.brief, str) or not self.brief.strip():
@@ -66,6 +68,10 @@ class CharacterDesignRequest:
             r"[A-Za-z][A-Za-z0-9_.-]*", self.request_id
         ):
             raise ValueError("request_id must be a safe identifier")
+        if self.combat_role_profile is not None and not isinstance(
+            self.combat_role_profile, CombatRoleProfile
+        ):
+            raise TypeError("combat_role_profile must be a CombatRoleProfile or None")
         for name in (
             "hard_constraints",
             "soft_preferences",
@@ -91,6 +97,11 @@ class CharacterDesignRequest:
             "forbidden_elements": list(self.forbidden_elements),
             "desired_connections": list(self.desired_connections),
             "request_id": self.request_id,
+            "combat_role_profile": (
+                self.combat_role_profile.to_dict()
+                if self.combat_role_profile is not None
+                else None
+            ),
         }
 
 
@@ -163,7 +174,10 @@ class CharacterDraft:
     faction_id: str | None = None
     occupation: str = ""
     social_role: str = ""
-    combat_role: str = "none"
+    # ``combat_role_profile`` is authoritative.  ``combat_role`` is retained
+    # as a frozen, derived adapter for older callers and payloads.
+    combat_role: str | None = None
+    combat_role_profile: CombatRoleProfile | None = None
     design_pitch: str = ""
     personality: tuple[str, ...] = ()
     background: str = ""
@@ -179,6 +193,57 @@ class CharacterDraft:
     proposed_new_content: tuple[str, ...] = ()
 
     _KNOWN_FIELDS = frozenset(CHARACTER_DRAFT_JSON_SCHEMA["properties"])
+
+    _LEGACY_NON_ROLE_VALUES = frozenset({"burst", "sustain", "flex", "hybrid"})
+
+    def __post_init__(self) -> None:
+        legacy = self.combat_role
+        profile = self.combat_role_profile
+        if profile is None:
+            if legacy in (None, "", "none", "unspecified"):
+                profile = CombatRoleProfile()
+            elif legacy in self._LEGACY_NON_ROLE_VALUES:
+                # These labels remain readable only for old scalar payloads;
+                # they never enter the canonical role profile.
+                profile = CombatRoleProfile()
+            else:
+                try:
+                    normalized = normalize_legacy_combat_role(legacy)
+                except (TypeError, ValueError) as error:
+                    raise ValueError(f"combat_role is invalid: {legacy!r}") from error
+                if normalized is None:
+                    raise ValueError(f"combat_role is not a supported role: {legacy!r}")
+                profile = CombatRoleProfile(primary_role=normalized)
+        elif not isinstance(profile, CombatRoleProfile):
+            raise TypeError("combat_role_profile must be a CombatRoleProfile")
+
+        if legacy not in (None, "", "none", "unspecified"):
+            if legacy in self._LEGACY_NON_ROLE_VALUES:
+                if not profile.is_unspecified:
+                    raise ValueError(
+                        "legacy combat_role is non-canonical and cannot contradict "
+                        "combat_role_profile"
+                    )
+            else:
+                try:
+                    normalized = normalize_legacy_combat_role(legacy)
+                except (TypeError, ValueError) as error:
+                    raise ValueError(f"combat_role is invalid: {legacy!r}") from error
+                if normalized is None:
+                    raise ValueError(f"combat_role is not a supported role: {legacy!r}")
+                if profile.primary_role != normalized:
+                    raise ValueError(
+                        "combat_role is a derived compatibility projection and "
+                        "must match combat_role_profile.primary_role"
+                    )
+
+        # Draft compatibility uses canonical spellings.  Intent keeps its
+        # historical ``dps`` projection separately at its own boundary.
+        derived_legacy = profile.primary_role or (
+            legacy if legacy in self._LEGACY_NON_ROLE_VALUES else "none"
+        )
+        object.__setattr__(self, "combat_role_profile", profile)
+        object.__setattr__(self, "combat_role", derived_legacy)
 
     @classmethod
     def from_mapping(cls, payload: Mapping[str, Any]) -> "CharacterDraft":
@@ -307,35 +372,49 @@ class CharacterDraft:
                 raise ModelMalformedResponseError("story_link fields are malformed")
             story_link = StoryLink(target, relation.strip(), link_status.strip())
 
-        combat_role = text("combat_role") or "none"
-        if combat_role not in {"support", "control", "defense", "burst", "sustain", "flex", "none"}:
-            raise ModelMalformedResponseError("combat_role is unsupported")
-        return cls(
-            draft_id=draft_id,
-            status=status,
-            name=name,
-            canonical_character_id=None,
-            age=age,
-            age_range=age_range,
-            gender=gender,
-            faction_id=faction_id,
-            occupation=text("occupation"),
-            social_role=text("social_role"),
-            combat_role=combat_role,
-            design_pitch=text("design_pitch"),
-            personality=strings("personality"),
-            background=text("background"),
-            story_hook=text("story_hook"),
-            relationships=tuple(relationships),
-            ability_concept=text("ability_concept"),
-            knowledge_scope=text("knowledge_scope"),
-            canon_basis=tuple(basis),
-            new_design_elements=strings("new_design_elements"),
-            open_questions=strings("open_questions"),
-            constraint_notes=strings("constraint_notes"),
-            story_link=story_link,
-            proposed_new_content=strings("proposed_new_content"),
-        )
+        legacy_raw = payload.get("combat_role")
+        if legacy_raw is not None and not isinstance(legacy_raw, str):
+            raise ModelMalformedResponseError("CharacterDraft.combat_role must be a string")
+        combat_role = legacy_raw.strip() if isinstance(legacy_raw, str) else None
+        profile_raw = payload.get("combat_role_profile")
+        profile = None
+        if profile_raw is not None:
+            try:
+                profile = CombatRoleProfile.from_mapping(profile_raw)
+            except (TypeError, ValueError) as error:
+                raise ModelMalformedResponseError(
+                    f"CharacterDraft.combat_role_profile is invalid: {error}"
+                ) from error
+        try:
+            return cls(
+                draft_id=draft_id,
+                status=status,
+                name=name,
+                canonical_character_id=None,
+                age=age,
+                age_range=age_range,
+                gender=gender,
+                faction_id=faction_id,
+                occupation=text("occupation"),
+                social_role=text("social_role"),
+                combat_role=combat_role,
+                combat_role_profile=profile,
+                design_pitch=text("design_pitch"),
+                personality=strings("personality"),
+                background=text("background"),
+                story_hook=text("story_hook"),
+                relationships=tuple(relationships),
+                ability_concept=text("ability_concept"),
+                knowledge_scope=text("knowledge_scope"),
+                canon_basis=tuple(basis),
+                new_design_elements=strings("new_design_elements"),
+                open_questions=strings("open_questions"),
+                constraint_notes=strings("constraint_notes"),
+                story_link=story_link,
+                proposed_new_content=strings("proposed_new_content"),
+            )
+        except (TypeError, ValueError) as error:
+            raise ModelMalformedResponseError(str(error)) from error
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "CharacterDraft":
@@ -356,6 +435,7 @@ class CharacterDraft:
             "faction_id": self.faction_id,
             "occupation": self.occupation,
             "social_role": self.social_role,
+            "combat_role_profile": self.combat_role_profile.to_dict(),
             "combat_role": self.combat_role,
             "design_pitch": self.design_pitch,
             "personality": list(self.personality),
@@ -897,7 +977,7 @@ Canon grounding is conditional on Canon dependency, not a requirement to call a 
 
 If the brief uses or depends on an existing Canon entity, identifier, fact, rule or context—including an existing faction, lore fact, character, world rule, story, case or incident—you must first search for or retrieve it with the appropriate listed read-only authoring tool before producing the final CharacterDraft. Do not treat a name or ID in the brief as verified evidence. For an existing faction, search/retrieve the faction, use the returned stable ID and evidence, and only then set faction_id or cite that faction in canon_basis. The same rule applies to every other existing Canon claim. Use only facts returned by successful authoring-tool observations.
 
-Every existing Canon claim must be represented by a canon_basis source ID returned by a successful tool observation. canon_basis.supports is a machine-validated contract: prefer defined generic support keys, field paths, or short extractive phrases copied from the cited Canon source; do not freely paraphrase Canon claims in supports. New personal details must be placed in new_design_elements or proposed_new_content and must never be presented as existing Canon. Never create organizations, IDs, files or Canon records. If required Canon cannot be found or verified, do not invent or guess it; leave the Canon-dependent field unresolved and surface the uncertainty through open_questions and constraint_notes. Respect hard constraints. Keep combat_role high-level and do not invent numeric balance values.""" + "\n\n" + character_draft_prompt_contract()
+Every existing Canon claim must be represented by a canon_basis source ID returned by a successful tool observation. canon_basis.supports is a machine-validated contract: prefer defined generic support keys, field paths, or short extractive phrases copied from the cited Canon source; do not freely paraphrase Canon claims in supports. New personal details must be placed in new_design_elements or proposed_new_content and must never be presented as existing Canon. Never create organizations, IDs, files or Canon records. If required Canon cannot be found or verified, do not invent or guess it; leave the Canon-dependent field unresolved and surface the uncertainty through open_questions and constraint_notes. Respect hard constraints. Keep combat_role_profile canonical and high-level; combat_role is only a deprecated compatibility projection. Do not invent numeric balance values.""" + "\n\n" + character_draft_prompt_contract()
 
 
 CHARACTER_SYSTEM_CONTRACT += """
@@ -960,6 +1040,7 @@ class CharacterGenerationRuntimeView:
     # Optional, bounded external design-reference context.  It is deliberately
     # separate from Canon evidence and defaults empty for all existing callers.
     reference_context: tuple[Mapping[str, Any], ...] = ()
+    combat_role_profile: CombatRoleProfile | None = None
 
 
 @dataclass(frozen=True)
@@ -1011,7 +1092,16 @@ class CharacterGenerationAgent:
             design_plan = CharacterDesignPlan.from_text(request.brief)
             request = self._request_with_design_plan(request, design_plan)
         authoring = CharacterAuthoringView("character_authoring", "create a reviewable CharacterDraft", tuple(sorted(self.authoring_context.allowed_scopes)))
-        runtime = CharacterGenerationRuntimeView(request.request_id, request.brief, request.hard_constraints, request.soft_preferences, request.forbidden_elements, request.desired_connections, self.reference_context)
+        runtime = CharacterGenerationRuntimeView(
+            request.request_id,
+            request.brief,
+            request.hard_constraints,
+            request.soft_preferences,
+            request.forbidden_elements,
+            request.desired_connections,
+            self.reference_context,
+            request.combat_role_profile,
+        )
         messages: list[ConversationMessage] = [ConversationMessage("user", json.dumps(request.to_dict(), ensure_ascii=False, separators=(",", ":")))]
         source_ids: set[str] = set()
         source_types: dict[str, str] = {}
@@ -1171,6 +1261,7 @@ class CharacterGenerationAgent:
             forbidden_elements=forbidden,
             desired_connections=request.desired_connections,
             request_id=request.request_id,
+            combat_role_profile=plan.combat_role_profile,
         )
 
     def _recover_character_draft_payload(
@@ -1452,6 +1543,8 @@ class DeterministicCharacterGenerationModel:
                 break
         if selected_faction is None and faction_candidates:
             selected_faction = faction_candidates[0][0]
+        requested_profile = prompt.runtime.combat_role_profile
+        profile = requested_profile if requested_profile is not None else CombatRoleProfile(primary_role="support")
         age = 23 if "23" in brief else 22
         if "20" in brief and "25" in brief:
             age = 23
@@ -1473,7 +1566,8 @@ class DeterministicCharacterGenerationModel:
             "faction_id": selected_faction,
             "occupation": "临洲大学学生助理",
             "social_role": "校园活动与社区安全志愿协调者",
-            "combat_role": "support",
+            "combat_role_profile": profile.to_dict(),
+            "combat_role": profile.primary_role or "none",
             "design_pitch": "一名把现场秩序与他人安全放在首位的年轻辅助型角色。",
             "personality": ["冷静", "克制", "先观察后行动"],
             "background": "她在校园与社区活动中逐渐形成了谨慎处理复杂关系的习惯。",

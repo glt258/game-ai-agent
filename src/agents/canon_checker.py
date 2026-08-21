@@ -917,20 +917,25 @@ class CanonChecker:
             )
 
         combat_requirements = {
+            "main_dps": ("主C", "主输出", "main_dps"),
+            "sub_dps": ("副C", "副输出", "sub_dps"),
             "support": ("辅助", "支援", "support"),
+            "healer": ("治疗", "奶", "healer"),
             "control": ("控制", "control"),
             "defense": ("防御", "defense"),
-            "burst": ("爆发", "burst"),
-            "sustain": ("持续", "sustain"),
+        }
+        canonical_roles = {
+            draft.combat_role_profile.primary_role,
+            *draft.combat_role_profile.secondary_roles,
         }
         for role, markers in combat_requirements.items():
             if any(f"必须{marker}" in hard_text or f"要求{marker}" in hard_text for marker in markers):
-                if draft.combat_role != role:
+                if role not in canonical_roles:
                     yield self._finding(
                         CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
                         FindingSeverity.ERROR,
-                        "combat_role",
-                        f"Draft combat role {draft.combat_role!r} does not satisfy required role {role!r}.",
+                        "combat_role_profile",
+                        f"Draft combat role profile does not satisfy required role {role!r}.",
                         (request.request_id,),
                     )
                 break

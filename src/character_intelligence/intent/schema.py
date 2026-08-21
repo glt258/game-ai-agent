@@ -91,7 +91,10 @@ class CharacterDesignIntent:
             pass
         else:
             expected_legacy_role = legacy_combat_role_projection(profile)
-            if legacy_role not in (None, "unspecified", expected_legacy_role):
+            normalized_legacy = None
+            if legacy_role not in (None, "unspecified"):
+                normalized_legacy = normalize_legacy_combat_role(legacy_role)
+            if legacy_role not in (None, "unspecified", expected_legacy_role) and normalized_legacy != profile.primary_role:
                 raise ValueError(
                     "combat_role is a derived compatibility projection and "
                     "must match combat_role_profile"

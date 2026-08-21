@@ -7,6 +7,7 @@ from types import MappingProxyType
 from typing import Any, Mapping
 
 from character_intelligence import CharacterDesignIntent
+from combat_semantics import CombatRoleProfile
 
 from ..character_generation import CharacterDesignRequest, CharacterDraft, CharacterGenerationResult
 from ..character_repair import CharacterAuthoringResult
@@ -70,6 +71,14 @@ class EvaluationContext:
             raise TypeError("draft must be a CharacterDraft or None")
         if self.draft is None and self.subject.generation_result is not None:
             object.__setattr__(self, "draft", self.subject.generation_result.draft)
+        if self.intent is not None and not isinstance(
+            self.intent.combat_role_profile, CombatRoleProfile
+        ):
+            raise TypeError("intent.combat_role_profile must be canonical")
+        if self.draft is not None and not isinstance(
+            self.draft.combat_role_profile, CombatRoleProfile
+        ):
+            raise TypeError("draft.combat_role_profile must be canonical")
 
     @classmethod
     def from_subject(cls, subject: EvaluationSubject) -> "EvaluationContext":
@@ -92,6 +101,18 @@ class EvaluationContext:
     @property
     def generation_result(self) -> CharacterGenerationResult | None:
         return self.subject.generation_result
+
+    @property
+    def intent_role_profile(self) -> CombatRoleProfile | None:
+        """Canonical intent role profile exposed directly to validators."""
+
+        return self.intent.combat_role_profile if self.intent is not None else None
+
+    @property
+    def draft_role_profile(self) -> CombatRoleProfile | None:
+        """Canonical draft role profile exposed directly to validators."""
+
+        return self.draft.combat_role_profile if self.draft is not None else None
 
 
 __all__ = ["EvaluationContext", "EvaluationSubject"]

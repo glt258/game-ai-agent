@@ -19,7 +19,7 @@ class RepresentationCompletenessValidator:
         ("design_pitch", "MISSING_CHARACTER_DESCRIPTION", ("design_pitch",)),
         ("personality", "MISSING_PERSONALITY", ("personality",)),
         ("background", "MISSING_BACKGROUND", ("background",)),
-        ("combat_role", "MISSING_COMBAT_ROLE", ("combat_role",)),
+        ("combat_role_profile", "MISSING_COMBAT_ROLE", ("combat_role_profile",)),
         ("ability_concept", "MISSING_ABILITIES", ("ability_concept",)),
     )
 
