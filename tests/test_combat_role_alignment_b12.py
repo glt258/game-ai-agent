@@ -116,8 +116,6 @@ def test_provider_schema_uses_canonical_role_set_and_excludes_legacy_patterns() 
     }
     assert "burst" not in profile["properties"]["secondary_roles"]["items"]["enum"]
     assert "sustain" not in profile["properties"]["secondary_roles"]["items"]["enum"]
-    assert "burst" not in CHARACTER_DRAFT_JSON_SCHEMA["properties"]["combat_role"]["enum"]
-    assert "sustain" not in CHARACTER_DRAFT_JSON_SCHEMA["properties"]["combat_role"]["enum"]
 
 
 def test_plan_generation_and_evaluation_preserve_primary_and_secondary_roles() -> None:

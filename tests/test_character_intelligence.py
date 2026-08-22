@@ -64,7 +64,7 @@ def test_plan_serializes_and_projects_intent_to_generation_constraints():
 def test_plan_projects_only_draft_representable_combat_roles():
     plan = CharacterDesignPlan.from_text("设计一个辅助角色")
 
-    assert "combat_role=support" in plan.generation_constraints
+    assert plan.generation_constraints == ()
     assert plan.combat_role_profile.primary_role == "support"
 
 
@@ -73,7 +73,7 @@ def test_plan_propagates_main_dps_into_generation_contract():
 
     assert plan.parsed_intent.combat_role == "dps"
     assert plan.combat_role_profile.primary_role == "main_dps"
-    assert "combat_role=main_dps" in plan.generation_constraints
+    assert plan.generation_constraints == ()
 
 
 def test_parser_preserves_multi_role_mention_order():
@@ -158,16 +158,9 @@ def test_intent_rejects_conflicting_scalar_and_profile_sources():
         )
 
 
-def test_generation_projection_covers_every_canonical_primary_role():
-    assert CharacterDesignPlan.from_text("support").generation_constraints == (
-        "combat_role=support",
-    )
-    assert CharacterDesignPlan.from_text("healer").generation_constraints == ("combat_role=healer",)
-    assert CharacterDesignPlan.from_text("main_dps").generation_constraints == ("combat_role=main_dps",)
-    assert CharacterDesignPlan.from_text("sub_dps").generation_constraints == ("combat_role=sub_dps",)
-    assert CharacterDesignPlan.from_text("defense").generation_constraints == (
-        "combat_role=defense",
-    )
+def test_generation_constraints_do_not_project_combat_roles():
+    for request in ("support", "healer", "main_dps", "sub_dps", "control", "defense"):
+        assert CharacterDesignPlan.from_text(request).generation_constraints == ()
 
 
 def test_optional_intent_generation_keeps_legacy_entry_point_unchanged():

@@ -193,6 +193,10 @@ class CharacterDraft:
     proposed_new_content: tuple[str, ...] = ()
 
     _KNOWN_FIELDS = frozenset(CHARACTER_DRAFT_JSON_SCHEMA["properties"])
+    # Accepted only at the deserialization boundary; never part of the
+    # canonical provider schema or serialized Draft representation.
+    _LEGACY_INPUT_FIELDS = frozenset({"combat_role"})
+    _ACCEPTED_INPUT_FIELDS = _KNOWN_FIELDS | _LEGACY_INPUT_FIELDS
 
     _LEGACY_NON_ROLE_VALUES = frozenset({"burst", "sustain", "flex", "hybrid"})
 
@@ -249,7 +253,7 @@ class CharacterDraft:
     def from_mapping(cls, payload: Mapping[str, Any]) -> "CharacterDraft":
         if not isinstance(payload, Mapping):
             raise ModelMalformedResponseError("CharacterDraft must be a JSON object")
-        unknown = set(payload) - cls._KNOWN_FIELDS
+        unknown = set(payload) - cls._ACCEPTED_INPUT_FIELDS
         if unknown:
             raise ModelMalformedResponseError(
                 f"CharacterDraft has unknown field(s): {sorted(unknown)}"
@@ -436,7 +440,6 @@ class CharacterDraft:
             "occupation": self.occupation,
             "social_role": self.social_role,
             "combat_role_profile": self.combat_role_profile.to_dict(),
-            "combat_role": self.combat_role,
             "design_pitch": self.design_pitch,
             "personality": list(self.personality),
             "background": self.background,
@@ -977,7 +980,7 @@ Canon grounding is conditional on Canon dependency, not a requirement to call a 
 
 If the brief uses or depends on an existing Canon entity, identifier, fact, rule or context—including an existing faction, lore fact, character, world rule, story, case or incident—you must first search for or retrieve it with the appropriate listed read-only authoring tool before producing the final CharacterDraft. Do not treat a name or ID in the brief as verified evidence. For an existing faction, search/retrieve the faction, use the returned stable ID and evidence, and only then set faction_id or cite that faction in canon_basis. The same rule applies to every other existing Canon claim. Use only facts returned by successful authoring-tool observations.
 
-Every existing Canon claim must be represented by a canon_basis source ID returned by a successful tool observation. canon_basis.supports is a machine-validated contract: prefer defined generic support keys, field paths, or short extractive phrases copied from the cited Canon source; do not freely paraphrase Canon claims in supports. New personal details must be placed in new_design_elements or proposed_new_content and must never be presented as existing Canon. Never create organizations, IDs, files or Canon records. If required Canon cannot be found or verified, do not invent or guess it; leave the Canon-dependent field unresolved and surface the uncertainty through open_questions and constraint_notes. Respect hard constraints. Keep combat_role_profile canonical and high-level; combat_role is only a deprecated compatibility projection. Do not invent numeric balance values.""" + "\n\n" + character_draft_prompt_contract()
+Every existing Canon claim must be represented by a canon_basis source ID returned by a successful tool observation. canon_basis.supports is a machine-validated contract: prefer defined generic support keys, field paths, or short extractive phrases copied from the cited Canon source; do not freely paraphrase Canon claims in supports. New personal details must be placed in new_design_elements or proposed_new_content and must never be presented as existing Canon. Never create organizations, IDs, files or Canon records. If required Canon cannot be found or verified, do not invent or guess it; leave the Canon-dependent field unresolved and surface the uncertainty through open_questions and constraint_notes. Respect hard constraints. Keep combat_role_profile canonical and high-level; combat_role is accepted only as a deprecated legacy input and must not be emitted. Do not invent numeric balance values.""" + "\n\n" + character_draft_prompt_contract()
 
 
 CHARACTER_SYSTEM_CONTRACT += """
@@ -1290,7 +1293,7 @@ class CharacterGenerationAgent:
             cleaned = {
                 key: value
                 for key, value in payload.items()
-                if key in CharacterDraft._KNOWN_FIELDS
+                if key in CharacterDraft._ACCEPTED_INPUT_FIELDS
             }
             return cleaned, CharacterDraftRecoveryAudit(
                 status="applied",
@@ -1567,7 +1570,6 @@ class DeterministicCharacterGenerationModel:
             "occupation": "临洲大学学生助理",
             "social_role": "校园活动与社区安全志愿协调者",
             "combat_role_profile": profile.to_dict(),
-            "combat_role": profile.primary_role or "none",
             "design_pitch": "一名把现场秩序与他人安全放在首位的年轻辅助型角色。",
             "personality": ["冷静", "克制", "先观察后行动"],
             "background": "她在校园与社区活动中逐渐形成了谨慎处理复杂关系的习惯。",
@@ -1613,8 +1615,12 @@ def inspect_character_draft_payload(payload: Any) -> CharacterDraftContractInspe
     if not isinstance(payload, Mapping):
         return CharacterDraftContractInspection(invalid_fields=("<root>",))
     missing = tuple(sorted(set(CHARACTER_DRAFT_CORE_FIELDS) - set(payload)))
-    unknown = tuple(sorted(set(payload) - CharacterDraft._KNOWN_FIELDS))
-    known_payload = {key: value for key, value in payload.items() if key in CharacterDraft._KNOWN_FIELDS}
+    unknown = tuple(sorted(set(payload) - CharacterDraft._ACCEPTED_INPUT_FIELDS))
+    known_payload = {
+        key: value
+        for key, value in payload.items()
+        if key in CharacterDraft._ACCEPTED_INPUT_FIELDS
+    }
     if missing:
         # Fill only for diagnostic probing so a malformed known field is not
         # mistaken for a recoverable omission.  These values never reach the
