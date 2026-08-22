@@ -60,14 +60,14 @@ _COMBAT_ROLE_PATTERNS = (
     (r"main[_\s-]*(?:dps|damage)(?:\s*dealer)?|primary[_\s-]*(?:dps|damage)|主\s*[cC]|主输出|核心输出", True, False),
     (r"sub[_\s-]*(?:dps|damage)(?:\s*dealer)?|secondary[_\s-]*(?:dps|damage)|off[_\s-]*field[_\s-]*dps|副\s*[cC]|副输出", False, False),
     (r"healing[_\s-]*support|healer|治疗|奶妈", False, False),
-    (r"team[_\s-]*support|support|辅助|增益", False, False),
+    (r"team[_\s-]*support|support|辅助|增益(?!位)", False, False),
     (r"defense|tank|defender|frontline[_\s-]*defender|坦克|前排|承伤|防御", False, False),
     (r"control|控制|控场", False, False),
     (r"(?<![a-z_])dps(?![a-z_])", False, True),
 )
 
 _NON_ROLE_COMBAT_PATTERNS = (
-    (r"爆发型|爆发输出|burst", "burst"),
+    (r"高?爆发(?:型|输出)?|burst", "burst"),
     (r"持续输出|持续伤害|站场|sustain", "sustain"),
     (r"hybrid|混合定位|混合型", "hybrid"),
     (r"buffer|增益位", "buffer"),
@@ -197,8 +197,6 @@ class DeterministicCharacterDesignIntentParser:
         if element is not None:
             _append_once(design_goals, element)
             _append_once(design_goals, f"element:{element}")
-        if re.search(r"爆发|高爆发|burst", text, flags=re.IGNORECASE):
-            _append_once(design_goals, "burst")
         for pattern, semantic in _NON_ROLE_COMBAT_PATTERNS:
             if re.search(pattern, text, flags=re.IGNORECASE):
                 _append_once(design_goals, semantic)

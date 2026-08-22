@@ -139,21 +139,32 @@ def normalize_legacy_combat_role(value: str) -> CombatRole | None:
 
 
 def resolve_legacy_combat_role_profile(
-    profile: CombatRoleProfile | None,
+    profile: CombatRoleProfile | Mapping[str, object] | None,
     legacy_value: object,
 ) -> CombatRoleProfile:
-    """Resolve one optional flat legacy value into a canonical profile.
+    """Resolve raw profile/flat legacy inputs into one canonical profile.
 
-    This helper is intentionally for deserialization boundaries only.  A
-    supplied profile remains authoritative when the flat value is absent,
+    This helper is the shared deserialization seam.  ``profile`` may be an
+    already-built :class:`CombatRoleProfile`, its canonical mapping form, or
+    ``None``; callers should not parse that value independently.  The flat
+    value is accepted only through the bounded legacy crosswalk below.
+
+    A supplied profile remains authoritative when the flat value is absent,
     unspecified, or an alias of the same primary role.  Non-role labels are
     ignored only when the profile is unspecified; they never become canonical
-    roles.  Any other unknown or contradictory value fails closed.
+    roles.  Any other unknown, malformed, or contradictory value fails closed.
     """
 
-    if profile is not None and not isinstance(profile, CombatRoleProfile):
-        raise TypeError("combat_role_profile must be a CombatRoleProfile or None")
-    resolved = profile or CombatRoleProfile()
+    if profile is None:
+        resolved = CombatRoleProfile()
+    elif isinstance(profile, CombatRoleProfile):
+        resolved = profile
+    elif isinstance(profile, Mapping):
+        resolved = CombatRoleProfile.from_mapping(profile)
+    else:
+        raise TypeError(
+            "combat_role_profile must be a CombatRoleProfile, mapping, or None"
+        )
     if legacy_value is None:
         return resolved
     if not isinstance(legacy_value, str):

@@ -7,13 +7,28 @@ category. The generation draft uses `combat_role_profile` for a high-level comba
 support; damage-pattern language such as burst remains free-form design semantics and is
 not a role field. The profile is not used as an armament type.
 
+## Combat-role compatibility seam
+
+`combat_role_profile` is the only canonical output. The flat `combat_role`
+field is retained only as a limited deserialization-seam input for older JSON;
+it is not a stored field, provider field, or second public role vocabulary.
+The seam accepts only the bounded transport aliases defined by the shared
+combat-semantics crosswalk (for example, `dps`, `team_support`, and `tank`).
+Reference Corpus taxonomy labels are a separate semantic domain and are not
+automatically accepted here; labels such as `on_field_dps` and
+`crowd_control` therefore fail closed at this seam. Damage-pattern and
+composition labels such as `burst`, `sustain`, `flex`, `hybrid`, `buffer`, and
+`enabler` never enter a canonical role profile. When present without a
+specified profile they retain an unspecified profile; when paired with a
+specified profile they are treated as a contradiction.
+
 The formal character schema uses `combat.tentative_role`, `combat.notes`, and a free-form
 `tags` array. It has no `weapon_type`, `weapon_class`, `WeaponType`, or fixed sword/gun/
 spear/bow enum. The Character Generation prompt asks for a high-level combat role and
 does not ask the model to select from a weapon list. Existing deterministic fixtures and
 evals likewise do not validate weapon categories.
 
-Decision for this audit: **NO CODE CHANGE REQUIRED**.
+Decision for the armament audit: **NO ARMAMENT SCHEMA CHANGE REQUIRED**.
 
 Adding a `CharacterArmament` field now would create a new output contract without a
 current fixed-weapon constraint to migrate, and would rewrite the frozen Character

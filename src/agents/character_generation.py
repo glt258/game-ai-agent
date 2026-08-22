@@ -331,19 +331,9 @@ class CharacterDraft:
             story_link = StoryLink(target, relation.strip(), link_status.strip())
 
         legacy_raw = payload.get("combat_role")
-        if isinstance(legacy_raw, str):
-            legacy_raw = legacy_raw.strip()
         profile_raw = payload.get("combat_role_profile")
-        profile = None
-        if profile_raw is not None:
-            try:
-                profile = CombatRoleProfile.from_mapping(profile_raw)
-            except (TypeError, ValueError) as error:
-                raise ModelMalformedResponseError(
-                    f"CharacterDraft.combat_role_profile is invalid: {error}"
-                ) from error
         try:
-            profile = resolve_legacy_combat_role_profile(profile, legacy_raw)
+            profile = resolve_legacy_combat_role_profile(profile_raw, legacy_raw)
         except (TypeError, ValueError) as error:
             raise ModelMalformedResponseError(
                 f"CharacterDraft.combat_role compatibility input is invalid: {error}"

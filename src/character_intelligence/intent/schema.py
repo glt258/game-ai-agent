@@ -106,12 +106,16 @@ class CharacterDesignIntent:
             raise TypeError("CharacterDesignIntent must be a mapping")
         legacy_value = payload.get("combat_role")
         profile_raw = payload.get("combat_role_profile")
-        profile = (
-            CombatRoleProfile.from_mapping(profile_raw)
-            if profile_raw is not None
-            else None
-        )
-        profile = resolve_legacy_combat_role_profile(profile, legacy_value)
+        try:
+            profile = resolve_legacy_combat_role_profile(profile_raw, legacy_value)
+        except TypeError as error:
+            raise TypeError(
+                f"CharacterDesignIntent.combat_role compatibility input is invalid: {error}"
+            ) from error
+        except ValueError as error:
+            raise ValueError(
+                f"CharacterDesignIntent.combat_role compatibility input is invalid: {error}"
+            ) from error
         return cls(
             role_type=payload.get("role_type", "character"),
             rarity=payload.get("rarity"),
