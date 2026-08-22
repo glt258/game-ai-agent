@@ -9,6 +9,7 @@ from agents import (
     CharacterDraft,
     CharacterGenerationAgent,
     DeterministicCharacterGenerationModel,
+    ModelMalformedResponseError,
 )
 from agents.response_contracts import (
     CHARACTER_DRAFT_JSON_SCHEMA,
@@ -103,5 +104,5 @@ def test_legacy_non_role_values_do_not_become_canonical_roles() -> None:
 def test_unknown_legacy_role_fails_closed() -> None:
     payload = _payload()
     payload.pop("combat_role_profile")
-    with pytest.raises(Exception):
+    with pytest.raises(ModelMalformedResponseError, match="not a supported role"):
         CharacterDraft.from_mapping({**payload, "combat_role": "assassin"})

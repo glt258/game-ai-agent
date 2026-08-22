@@ -3,8 +3,9 @@
 ## Audit result
 
 The current Character Generation implementation does **not** hard-code a weapon
-category. The generation draft uses `combat_role` for a high-level combat role such as
-support or burst; it does not use that field as an armament type.
+category. The generation draft uses `combat_role_profile` for a high-level combat role such as
+support; damage-pattern language such as burst remains free-form design semantics and is
+not a role field. The profile is not used as an armament type.
 
 The formal character schema uses `combat.tentative_role`, `combat.notes`, and a free-form
 `tags` array. It has no `weapon_type`, `weapon_class`, `WeaponType`, or fixed sword/gun/

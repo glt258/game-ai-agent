@@ -29,7 +29,7 @@ def _payload(
     faction_id: str | None = None,
     occupation: str = "独立社区工作者",
     social_role: str = "在本地生活网络中承担有限、可复核的实际事务",
-    combat_role: str = "support",
+    combat_role_profile: dict[str, object] | None = None,
     design_pitch: str = "以具体生活选择和有限能力边界建立可操作的角色身份。",
     background: str = "经历、训练和支持网络均为新设计，不宣称既有 Canon 身份。",
     story_hook: str = "先处理手边的具体问题，再决定是否把自己卷入更大的冲突。",
@@ -56,7 +56,7 @@ def _payload(
         "faction_id": faction_id,
         "occupation": occupation,
         "social_role": social_role,
-        "combat_role": combat_role,
+        "combat_role_profile": combat_role_profile or {"primary_role": "support", "secondary_roles": []},
         "design_pitch": design_pitch,
         "personality": ["有行动力", "观察细致"],
         "background": background,
@@ -357,13 +357,13 @@ def test_adult_without_career_identity_and_mature_playable_identity_are_valid():
             age_range=None,
             occupation="城市夜间路线规划顾问",
             social_role="主动接案、亲自勘路并在危险现场保持行动能力的独立工作者",
-            combat_role="control",
+            combat_role_profile={"primary_role": "control", "secondary_roles": []},
             design_pitch="成熟不等于退场；她把多年路线判断转化为可操作的空间控制节奏。",
             ability_concept="在亲自确认过的路线节点上短暂改变人群与障碍的可通行优先级，玩家通过封路、引导和重新开路控制现场。",
             story_hook="她一边标记出口，一边拒绝别人把她当成只负责给年轻人建议的导师。",
         ),
     )
-    assert mature.combat_role == "control"
+    assert mature.combat_role_profile.primary_role == "control"
     assert "导师" in mature.story_hook and "拒绝" in mature.story_hook
     assert "退休" not in mature.social_role
 

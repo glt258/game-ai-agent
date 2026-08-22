@@ -9,6 +9,7 @@ from agents.evaluation import (
 )
 from character_intelligence import CharacterDesignIntent
 from character_intelligence.planner import CharacterDesignPlan
+from combat_semantics import CombatRoleProfile
 
 
 def _subject(**overrides) -> EvaluationSubject:
@@ -17,7 +18,7 @@ def _subject(**overrides) -> EvaluationSubject:
         "design_pitch": "角色概述。",
         "personality": ("冷静",),
         "background": "角色背景。",
-        "combat_role": "support",
+        "combat_role_profile": {"primary_role": "support", "secondary_roles": []},
         "ability_concept": "有限的辅助能力",
     }
     values.update(overrides)
@@ -26,7 +27,7 @@ def _subject(**overrides) -> EvaluationSubject:
         request_id="representation_test",
     )
     intent = CharacterDesignIntent(
-        combat_role="support",
+        combat_role_profile=CombatRoleProfile(primary_role="support"),
         raw_request=request.brief,
     )
     payload = {
@@ -40,7 +41,7 @@ def _subject(**overrides) -> EvaluationSubject:
         "faction_id": None,
         "occupation": "职业",
         "social_role": "角色",
-        "combat_role": values["combat_role"],
+        "combat_role_profile": values["combat_role_profile"],
         "design_pitch": values["design_pitch"],
         "personality": list(values["personality"]),
         "background": values["background"],

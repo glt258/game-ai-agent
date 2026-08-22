@@ -33,7 +33,7 @@ def _subject() -> EvaluationSubject:
             "faction_id": None,
             "occupation": "独立设计者",
             "social_role": "原创角色",
-            "combat_role": "support",
+            "combat_role_profile": {"primary_role": "support", "secondary_roles": []},
             "design_pitch": "有限的辅助能力。",
             "personality": ["冷静"],
             "background": "原创背景。",

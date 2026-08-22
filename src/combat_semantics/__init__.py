@@ -5,8 +5,8 @@ from .roles import (
     CombatRole,
     CombatRoleNormalization,
     CombatRoleProfile,
-    legacy_combat_role_projection,
     normalize_legacy_combat_role,
+    resolve_legacy_combat_role_profile,
 )
 
 __all__ = [
@@ -14,6 +14,6 @@ __all__ = [
     "CombatRole",
     "CombatRoleNormalization",
     "CombatRoleProfile",
-    "legacy_combat_role_projection",
     "normalize_legacy_combat_role",
+    "resolve_legacy_combat_role_profile",
 ]

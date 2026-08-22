@@ -13,7 +13,7 @@ def test_parser_extracts_a_regular_character_brief():
     intent = CharacterDesignIntentParser().parse("设计一个冷静的辅助型女性角色")
 
     assert intent.role_type == "女性"
-    assert intent.combat_role == "support"
+    assert intent.combat_role_profile.primary_role == "support"
     assert "冷静" in intent.personality_keywords
     assert intent.rarity is None
     assert intent.target_audience == "general"
@@ -26,7 +26,6 @@ def test_parser_extracts_five_star_fire_main_dps_girl():
 
     assert intent.rarity == 5
     assert intent.element == "fire"
-    assert intent.combat_role == "dps"
     assert intent.combat_role_profile.primary_role == "main_dps"
     assert intent.combat_role_profile.secondary_roles == ()
     assert intent.role_type == "少女"
@@ -37,7 +36,6 @@ def test_parser_extracts_five_star_fire_main_dps_girl():
 def test_parser_extracts_combat_roles_and_forbidden_patterns():
     intent = CharacterDesignIntentParser().parse("设计一个治疗辅助角色，避免复杂数值系统")
 
-    assert intent.combat_role == "healer"
     assert intent.combat_role_profile.primary_role == "healer"
     assert intent.combat_role_profile.secondary_roles == ("support",)
     assert intent.forbidden_patterns == ("复杂数值系统",)
@@ -71,7 +69,7 @@ def test_plan_projects_only_draft_representable_combat_roles():
 def test_plan_propagates_main_dps_into_generation_contract():
     plan = CharacterDesignPlan.from_text("设计一个主C角色")
 
-    assert plan.parsed_intent.combat_role == "dps"
+    assert plan.parsed_intent.combat_role_profile.primary_role == "main_dps"
     assert plan.combat_role_profile.primary_role == "main_dps"
     assert plan.generation_constraints == ()
 
@@ -112,11 +110,12 @@ def test_healer_is_not_collapsed_into_support():
     assert intent.combat_role_profile.secondary_roles == ("support",)
 
 
-def test_non_role_combat_terms_do_not_become_canonical_roles():
-    for text, legacy_value in (("burst", "burst"), ("sustain", "sustain"), ("hybrid", "hybrid")):
+def test_non_role_combat_terms_remain_design_semantics():
+    for text, semantic in (("burst", "burst"), ("sustain", "sustain"), ("hybrid", "hybrid")):
         intent = CharacterDesignIntentParser().parse(text)
         assert intent.combat_role_profile.is_unspecified
-        assert intent.combat_role == legacy_value
+        assert semantic in intent.design_goals
+        assert "combat_role" not in intent.to_dict()
 
 
 def test_duplicate_aliases_are_rejected_by_canonical_profile():
@@ -148,13 +147,15 @@ def test_bare_dps_requires_role_context():
     assert unrelated_text.combat_role_profile.is_unspecified
 
 
-def test_intent_rejects_conflicting_scalar_and_profile_sources():
+def test_intent_rejects_conflicting_legacy_input_and_profile_sources():
     from combat_semantics import CombatRoleProfile
 
-    with pytest.raises(ValueError, match="derived compatibility projection"):
-        CharacterDesignIntent(
-            combat_role="support",
-            combat_role_profile=CombatRoleProfile(primary_role="main_dps"),
+    with pytest.raises(ValueError, match="contradict"):
+        CharacterDesignIntent.from_mapping(
+            {
+                "combat_role": "support",
+                "combat_role_profile": CombatRoleProfile(primary_role="main_dps").to_dict(),
+            }
         )
 
 

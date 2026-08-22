@@ -239,7 +239,7 @@ def character_draft_prompt_contract() -> str:
         "a Canon source merely to complete the shape.\n"
         "4. Return the complete root object only after checking the required "
         "field list. The nested combat_role_profile is authoritative; "
-        "do not emit the deprecated flat combat_role compatibility input."
+        "do not emit any flat combat-role field."
     )
 
 

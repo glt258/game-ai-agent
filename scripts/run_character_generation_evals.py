@@ -31,7 +31,7 @@ def _payload(**changes):
         "faction_id": None,
         "occupation": "学生",
         "social_role": "志愿协调者",
-        "combat_role": "support",
+        "combat_role_profile": {"primary_role": "support", "secondary_roles": []},
         "design_pitch": "辅助型角色",
         "personality": ["冷静"],
         "background": "新设计",

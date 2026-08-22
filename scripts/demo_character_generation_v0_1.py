@@ -43,7 +43,7 @@ def main() -> int:
     print(f"Age: {draft.age or draft.age_range}")
     print(f"Faction: {draft.faction_id or '未固化'}")
     print(f"Occupation: {draft.occupation}")
-    print(f"Combat Role: {draft.combat_role}")
+    print(f"Combat Role Profile: {draft.combat_role_profile.to_dict()}")
     print(f"\nDesign Pitch:\n{draft.design_pitch}")
     print(f"\nPersonality: {'、'.join(draft.personality)}")
     print(f"Background:\n{draft.background}")

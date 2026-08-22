@@ -16,9 +16,10 @@ from agents.evaluation import (
 )
 from character_intelligence import CharacterDesignIntent
 from character_intelligence.planner import CharacterDesignPlan
+from combat_semantics import CombatRoleProfile
 
 
-def _subject(*, intent: CharacterDesignIntent, combat_role: str = "support", rarity: int | None = None, role_type: str = "character") -> EvaluationSubject:
+def _subject(*, intent: CharacterDesignIntent, primary_role: str = "support", rarity: int | None = None, role_type: str = "character") -> EvaluationSubject:
     request = CharacterDesignRequest(intent.raw_request or "设计一个角色。", request_id="request_alignment_test")
     del rarity, role_type
     draft = CharacterDraft.from_mapping(
@@ -33,7 +34,7 @@ def _subject(*, intent: CharacterDesignIntent, combat_role: str = "support", rar
             "faction_id": None,
             "occupation": "职业",
             "social_role": "角色",
-            "combat_role": combat_role,
+            "combat_role_profile": {"primary_role": primary_role, "secondary_roles": []},
             "design_pitch": "设计概念",
             "personality": ["冷静"],
             "background": "背景",
@@ -66,7 +67,7 @@ def _subject(*, intent: CharacterDesignIntent, combat_role: str = "support", rar
 def test_matching_intent_returns_no_findings():
     intent = CharacterDesignIntent(
         role_type="character",
-        combat_role="support",
+        combat_role_profile=CombatRoleProfile(primary_role="support"),
         rarity=5,
         raw_request="设计一个五星辅助角色。",
     )
@@ -79,29 +80,30 @@ def test_matching_intent_returns_no_findings():
     assert result.findings == ()
 
 
-def test_combat_role_mismatch_produces_blocking_finding():
-    intent = CharacterDesignIntent(combat_role="burst", raw_request="设计一个爆发角色。")
-
-    result = EvaluationRunner([RequestAlignmentValidator()]).run(
-        _subject(intent=intent, combat_role="support")
+def test_non_role_legacy_input_does_not_create_a_role_mismatch():
+    intent = CharacterDesignIntent.from_mapping(
+        {"combat_role": "burst", "raw_request": "设计一个爆发角色。"}
     )
 
-    finding = result.findings[0]
-    assert finding.code == "REQUEST_COMBAT_ROLE_MISMATCH"
-    assert finding.severity == "ERROR"
-    assert finding.blocking is True
-    assert result.outcome == EvaluationOutcome.FAIL
+    result = EvaluationRunner([RequestAlignmentValidator()]).run(
+        _subject(intent=intent, primary_role="support")
+    )
+
+    assert result.findings == ()
+    assert result.outcome == EvaluationOutcome.PASS
 
 
 def test_findings_ordering_is_deterministic():
-    intent = CharacterDesignIntent(
-        combat_role="burst",
-        raw_request="设计一个爆发角色。",
+    intent = CharacterDesignIntent.from_mapping(
+        {
+            "combat_role": "burst",
+            "raw_request": "设计一个爆发角色。",
+        }
     )
     runner = EvaluationRunner([RequestAlignmentValidator()])
 
-    first = runner.run(_subject(intent=intent, combat_role="support"))
-    second = runner.run(_subject(intent=intent, combat_role="support"))
+    first = runner.run(_subject(intent=intent, primary_role="support"))
+    second = runner.run(_subject(intent=intent, primary_role="support"))
 
-    assert [finding.code for finding in first.findings] == ["REQUEST_COMBAT_ROLE_MISMATCH"]
+    assert first.findings == ()
     assert first.to_dict() == second.to_dict()

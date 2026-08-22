@@ -117,7 +117,7 @@ def benchmark_cases() -> tuple[BenchmarkCase, ...]:
             _draft_payload(
                 "draft_benchmark_a",
                 name="岑遥",
-                combat_role="burst",
+                combat_role_profile={"primary_role": None, "secondary_roles": []},
                 design_pitch="以命中积累个人战斗充能，满值后开放一次强化能力。",
                 ability_concept="攻击命中会积累战斗充能；充能达到满值后获得强化能力，使用该能力会消耗并重置充能。",
             ),
@@ -132,7 +132,7 @@ def benchmark_cases() -> tuple[BenchmarkCase, ...]:
             _draft_payload(
                 "draft_benchmark_b",
                 name="陆衡",
-                combat_role="burst",
+                combat_role_profile={"primary_role": None, "secondary_roles": []},
                 design_pitch="通过普通攻击、技能使用和冷却节奏造成稳定伤害。",
                 ability_concept="普通攻击与技能按照各自冷却时间循环使用，直接形成稳定的攻击节奏。",
             ),
@@ -177,7 +177,7 @@ def benchmark_cases() -> tuple[BenchmarkCase, ...]:
             _draft_payload(
                 "draft_benchmark_d",
                 name="顾临",
-                combat_role="sustain",
+                combat_role_profile={"primary_role": None, "secondary_roles": []},
                 design_pitch="这是一个无法同时满足的要求组合，保留原问题供人工决定。",
                 ability_concept="核心能力明确要求为全队治疗，但这与不得提供团队协同相冲突。",
                 open_questions=("不提供团队协同与专职全队治疗发生冲突，不能同时成立，必须先澄清硬约束。",),
@@ -209,7 +209,7 @@ def benchmark_cases() -> tuple[BenchmarkCase, ...]:
             _draft_payload(
                 "draft_benchmark_f",
                 name="唐栖",
-                combat_role="control",
+                combat_role_profile={"primary_role": "control", "secondary_roles": []},
                 design_pitch="创建临时自主召唤物，召唤物会独立攻击一段时间。",
                 ability_concept="角色创建一个持续一段时间的自主召唤物；召唤物独立寻找目标并攻击。当前表示仍是单段能力文字。",
             ),
@@ -411,7 +411,7 @@ def _draft_payload(
     draft_id: str,
     *,
     name: str,
-    combat_role: str = "support",
+    combat_role_profile: Mapping[str, Any] | None = None,
     design_pitch: str = "原创角色设计，保持有限且清晰的个人能力边界。",
     ability_concept: str = "通过普通能力使用与有限个人技巧提供战斗作用。",
     relationships: tuple[Mapping[str, Any], ...] = (),
@@ -429,7 +429,11 @@ def _draft_payload(
         "faction_id": None,
         "occupation": "独立行动者",
         "social_role": "新角色设计中的行动者",
-        "combat_role": combat_role,
+        "combat_role_profile": dict(
+            combat_role_profile
+            if combat_role_profile is not None
+            else {"primary_role": "support", "secondary_roles": []}
+        ),
         "design_pitch": design_pitch,
         "personality": ["清醒", "克制"],
         "background": "个人经历保持原创，不宣称既有 Canon 事件中的官方身份。",

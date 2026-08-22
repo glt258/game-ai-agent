@@ -44,11 +44,12 @@ def test_existing_combat_role_is_role_not_armament() -> None:
         "draft_id": "draft_armament_audit",
         "status": "draft",
         "name": "Audit Character",
-        "combat_role": "support",
+        "combat_role_profile": {"primary_role": "support", "secondary_roles": []},
         "canon_basis": [],
         "new_design_elements": [],
         "open_questions": [],
     }
     draft = CharacterDraft.from_mapping(payload)
-    assert draft.combat_role == "support"
+    assert draft.combat_role_profile.primary_role == "support"
+    assert "combat_role" not in draft.to_dict()
     assert "combat_role" not in {"weapon_type", "weapon_class"}

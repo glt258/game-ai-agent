@@ -8,9 +8,6 @@ from ..context import EvaluationContext
 from ..models import EvaluationFinding
 
 
-_UNSPECIFIED_LEGACY_VALUES = frozenset({"none", "unspecified"})
-
-
 class RequestAlignmentValidator:
     """Check explicitly requested role signals against generated values."""
 
@@ -33,25 +30,6 @@ class RequestAlignmentValidator:
         requested = context.intent_role_profile
         generated = context.draft_role_profile
         assert requested is not None and generated is not None
-
-        # Non-role legacy labels must produce an explicit failure rather than
-        # disappearing into an unspecified profile and bypassing evaluation.
-        if intent.combat_role not in _UNSPECIFIED_LEGACY_VALUES and requested.is_unspecified:
-            findings.append(
-                EvaluationFinding(
-                    validator_id=self.validator_id,
-                    code="REQUEST_COMBAT_ROLE_MISMATCH",
-                    severity="ERROR",
-                    blocking=True,
-                    stage="request_alignment",
-                    field_path="combat_role_profile",
-                    message=(
-                        f"Requested legacy combat label {intent.combat_role!r} is not a "
-                        "canonical combat role."
-                    ),
-                )
-            )
-            return findings
 
         if requested.primary_role is not None and generated.primary_role != requested.primary_role:
             findings.append(

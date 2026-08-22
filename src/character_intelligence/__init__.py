@@ -5,7 +5,6 @@ from combat_semantics import (
     CombatRole,
     CombatRoleNormalization,
     CombatRoleProfile,
-    legacy_combat_role_projection,
 )
 
 from .intent import (
@@ -24,5 +23,4 @@ __all__ = [
     "CombatRole",
     "CombatRoleNormalization",
     "CombatRoleProfile",
-    "legacy_combat_role_projection",
 ]

@@ -10,7 +10,7 @@
     "faction_id": "faction_002",
     "occupation": "研究生助理",
     "social_role": "校园公开活动志愿者",
-    "combat_role": "support",
+    "combat_role_profile": {"primary_role": "support", "secondary_roles": []},
     "design_pitch": "以观察和现场提示帮助同伴的年轻辅助角色。",
     "personality": ["冷静", "谨慎"],
     "background": "她在研究中心协助公开活动，个人经历仍待后续设计。",

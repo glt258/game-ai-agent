@@ -56,6 +56,14 @@ _LEGACY_ROLE_CROSSWALK: dict[str, CombatRole] = {
     "frontline_defender": "defense",
 }
 
+# These values describe damage pattern/composition rather than a canonical
+# high-level combat role.  They may be seen at the legacy JSON boundary, but
+# must never be copied into a ``CombatRoleProfile``.
+_LEGACY_NON_ROLE_VALUES = frozenset(
+    {"burst", "sustain", "flex", "hybrid", "buffer", "enabler"}
+)
+_LEGACY_UNSPECIFIED_VALUES = frozenset({"", "none", "unspecified"})
+
 
 @dataclass(frozen=True)
 class CombatRoleProfile:
@@ -112,16 +120,6 @@ class CombatRoleProfile:
         )
 
 
-def legacy_combat_role_projection(profile: CombatRoleProfile) -> str:
-    """Return the old scalar spelling only at the legacy boundary."""
-
-    if profile.primary_role is None:
-        return "unspecified"
-    if profile.primary_role == "main_dps":
-        return "dps"
-    return profile.primary_role
-
-
 @dataclass(frozen=True)
 class CombatRoleNormalization:
     """Result of resolving one role-domain token."""
@@ -140,11 +138,59 @@ def normalize_legacy_combat_role(value: str) -> CombatRole | None:
     return _LEGACY_ROLE_CROSSWALK.get(_lookup_key(value))
 
 
+def resolve_legacy_combat_role_profile(
+    profile: CombatRoleProfile | None,
+    legacy_value: object,
+) -> CombatRoleProfile:
+    """Resolve one optional flat legacy value into a canonical profile.
+
+    This helper is intentionally for deserialization boundaries only.  A
+    supplied profile remains authoritative when the flat value is absent,
+    unspecified, or an alias of the same primary role.  Non-role labels are
+    ignored only when the profile is unspecified; they never become canonical
+    roles.  Any other unknown or contradictory value fails closed.
+    """
+
+    if profile is not None and not isinstance(profile, CombatRoleProfile):
+        raise TypeError("combat_role_profile must be a CombatRoleProfile or None")
+    resolved = profile or CombatRoleProfile()
+    if legacy_value is None:
+        return resolved
+    if not isinstance(legacy_value, str):
+        raise TypeError("combat_role must be a string or null")
+
+    key = _lookup_key(legacy_value)
+    if key in _LEGACY_UNSPECIFIED_VALUES:
+        return resolved
+    if key in _LEGACY_NON_ROLE_VALUES:
+        if resolved.is_unspecified:
+            return resolved
+        raise ValueError(
+            "legacy combat_role is non-canonical and contradicts "
+            "combat_role_profile"
+        )
+
+    normalized = normalize_legacy_combat_role(legacy_value)
+    if normalized is None:
+        raise ValueError(f"combat_role is not a supported role: {legacy_value!r}")
+    if resolved.primary_role is None:
+        if profile is None:
+            return CombatRoleProfile(primary_role=normalized)
+        raise ValueError(
+            "legacy combat_role contradicts a profile without a primary role"
+        )
+    if resolved.primary_role != normalized:
+        raise ValueError(
+            "legacy combat_role contradicts combat_role_profile.primary_role"
+        )
+    return resolved
+
+
 __all__ = [
     "CANONICAL_COMBAT_ROLES",
     "CombatRole",
     "CombatRoleNormalization",
     "CombatRoleProfile",
-    "legacy_combat_role_projection",
     "normalize_legacy_combat_role",
+    "resolve_legacy_combat_role_profile",
 ]

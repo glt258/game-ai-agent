@@ -11,6 +11,7 @@ from agents import (
     CharacterGenerationResult,
     CharacterGenerationAgent,
     DeterministicCharacterGenerationModel,
+    ModelMalformedResponseError,
 )
 from agents.evaluation import EvaluationOutcome, EvaluationRunner, EvaluationSubject
 from agents.response_contracts import CHARACTER_DRAFT_JSON_SCHEMA
@@ -32,7 +33,6 @@ def _payload(**overrides: Any) -> dict[str, Any]:
         "occupation": "职业",
         "social_role": "角色",
         "combat_role_profile": {"primary_role": "main_dps", "secondary_roles": ["support"]},
-        "combat_role": "main_dps",
         "design_pitch": "设计概念",
         "personality": ["冷静"],
         "background": "背景",
@@ -68,7 +68,6 @@ def _subject(intent: CharacterDesignIntent, draft: CharacterDraft) -> Evaluation
 def test_draft_accepts_every_canonical_primary_role(role: str) -> None:
     draft = CharacterDraft.from_mapping(_payload(
         combat_role_profile={"primary_role": role, "secondary_roles": []},
-        combat_role=role,
     ))
     assert draft.combat_role_profile == CombatRoleProfile(primary_role=role)
 
@@ -82,24 +81,24 @@ def test_draft_accepts_every_canonical_primary_role(role: str) -> None:
     ),
 )
 def test_draft_round_trip_preserves_multi_role_profile(profile: dict[str, Any]) -> None:
-    draft = CharacterDraft.from_mapping(_payload(combat_role_profile=profile, combat_role=profile["primary_role"]))
+    draft = CharacterDraft.from_mapping(_payload(combat_role_profile=profile))
     restored = CharacterDraft.from_mapping(draft.to_dict())
     assert restored.combat_role_profile.to_dict() == profile
 
 
 def test_draft_rejects_invalid_and_duplicate_roles() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ModelMalformedResponseError):
         CharacterDraft.from_mapping(_payload(combat_role_profile={"primary_role": "assassin", "secondary_roles": []}))
-    with pytest.raises(Exception):
+    with pytest.raises(ModelMalformedResponseError):
         CharacterDraft.from_mapping(_payload(combat_role_profile={"primary_role": "support", "secondary_roles": ["support"]}))
-    with pytest.raises(Exception):
+    with pytest.raises(ModelMalformedResponseError):
         CharacterDraft.from_mapping(_payload(combat_role_profile={"primary_role": "main_dps", "secondary_roles": ["support", "support"]}))
 
 
 def test_flat_legacy_role_is_adapted_but_cannot_contradict_profile() -> None:
     draft = CharacterDraft.from_mapping(_payload(combat_role_profile=None, combat_role="healer"))
     assert draft.combat_role_profile == CombatRoleProfile(primary_role="healer")
-    with pytest.raises(Exception):
+    with pytest.raises(ModelMalformedResponseError):
         CharacterDraft.from_mapping(_payload(
             combat_role_profile={"primary_role": "healer", "secondary_roles": []},
             combat_role="support",
@@ -144,15 +143,12 @@ def test_evaluation_checks_primary_secondary_and_allows_extra_secondary() -> Non
     )
     wrong_primary = CharacterDraft.from_mapping(_payload(
         combat_role_profile={"primary_role": "support", "secondary_roles": ["main_dps"]},
-        combat_role="support",
     ))
     missing_secondary = CharacterDraft.from_mapping(_payload(
         combat_role_profile={"primary_role": "main_dps", "secondary_roles": []},
-        combat_role="main_dps",
     ))
     extra_secondary = CharacterDraft.from_mapping(_payload(
         combat_role_profile={"primary_role": "main_dps", "secondary_roles": ["support", "control"]},
-        combat_role="main_dps",
     ))
 
     assert EvaluationRunner().run(_subject(requested, wrong_primary)).outcome == EvaluationOutcome.FAIL
@@ -168,7 +164,6 @@ def test_evaluation_does_not_bypass_canonical_primary_roles(role: str) -> None:
     )
     draft = CharacterDraft.from_mapping(_payload(
         combat_role_profile={"primary_role": role, "secondary_roles": []},
-        combat_role=role,
     ))
     result = EvaluationRunner().run(_subject(intent, draft))
     assert result.outcome == EvaluationOutcome.PASS

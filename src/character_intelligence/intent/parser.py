@@ -183,13 +183,8 @@ class DeterministicCharacterDesignIntentParser:
             primary = roles[primary_index]
             ordered_roles = [primary, *(role for role in roles if role != primary)]
             profile = CombatRoleProfile(primary_role=ordered_roles[0], secondary_roles=tuple(ordered_roles[1:]))
-            # Keep the old scalar as a boundary projection. The historical
-            # parser exposed main DPS as "dps"; retain that spelling only for
-            # old callers while the profile remains canonical.
-            combat_role = "dps" if primary == "main_dps" else primary
         else:
             profile = CombatRoleProfile()
-            combat_role = _first_match(text, _NON_ROLE_COMBAT_PATTERNS) or "unspecified"
         role_type = _first_match(text, _ROLE_TYPE_PATTERNS) or "character"
         target_audience = _first_match(text, _TARGET_PATTERNS) or "general"
 
@@ -204,6 +199,9 @@ class DeterministicCharacterDesignIntentParser:
             _append_once(design_goals, f"element:{element}")
         if re.search(r"爆发|高爆发|burst", text, flags=re.IGNORECASE):
             _append_once(design_goals, "burst")
+        for pattern, semantic in _NON_ROLE_COMBAT_PATTERNS:
+            if re.search(pattern, text, flags=re.IGNORECASE):
+                _append_once(design_goals, semantic)
         if re.search(r"高辨识度|有辨识度|distinctive|recognizable", text, flags=re.IGNORECASE):
             _append_once(design_goals, "distinctive")
         if re.search(r"易上手|容易上手|beginner[- ]?friendly", text, flags=re.IGNORECASE):
@@ -212,7 +210,6 @@ class DeterministicCharacterDesignIntentParser:
         forbidden = self._parse_forbidden_patterns(text)
         return CharacterDesignIntent(
             role_type=role_type,
-            combat_role=combat_role,
             rarity=rarity,
             target_audience=target_audience,
             personality_keywords=tuple(personality),

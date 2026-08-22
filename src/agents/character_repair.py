@@ -257,7 +257,7 @@ class RepairEvidenceBuilder:
         return {key: copy.deepcopy(record.get(key)) for key in keys if key in record}
 
 
-_IDENTITY_FIELDS = frozenset({"name", "gender", "age", "age_range", "personality", "combat_role_profile", "combat_role", "ability_concept"})
+_IDENTITY_FIELDS = frozenset({"name", "gender", "age", "age_range", "personality", "combat_role_profile", "ability_concept"})
 _ALWAYS_FROZEN = frozenset({"draft_id", "status", "canonical_character_id"})
 _DEPENDENCIES: Mapping[str, tuple[str, ...]] = {
     "background": ("background", "story_hook", "story_link", "new_design_elements", "proposed_new_content", "canon_basis"),

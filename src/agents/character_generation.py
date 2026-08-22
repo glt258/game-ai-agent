@@ -16,7 +16,7 @@ from types import MappingProxyType
 from typing import Any, Mapping, Sequence
 
 from character_intelligence.planner import CharacterDesignPlan
-from combat_semantics import CombatRoleProfile, normalize_legacy_combat_role
+from combat_semantics import CombatRoleProfile, resolve_legacy_combat_role_profile
 from knowledge import KnowledgeResolver
 from knowledge.loader import default_data_dir
 from story import StoryRepository, load_story_repository
@@ -174,9 +174,6 @@ class CharacterDraft:
     faction_id: str | None = None
     occupation: str = ""
     social_role: str = ""
-    # ``combat_role_profile`` is authoritative.  ``combat_role`` is retained
-    # as a frozen, derived adapter for older callers and payloads.
-    combat_role: str | None = None
     combat_role_profile: CombatRoleProfile | None = None
     design_pitch: str = ""
     personality: tuple[str, ...] = ()
@@ -198,56 +195,13 @@ class CharacterDraft:
     _LEGACY_INPUT_FIELDS = frozenset({"combat_role"})
     _ACCEPTED_INPUT_FIELDS = _KNOWN_FIELDS | _LEGACY_INPUT_FIELDS
 
-    _LEGACY_NON_ROLE_VALUES = frozenset({"burst", "sustain", "flex", "hybrid"})
-
     def __post_init__(self) -> None:
-        legacy = self.combat_role
         profile = self.combat_role_profile
         if profile is None:
-            if legacy in (None, "", "none", "unspecified"):
-                profile = CombatRoleProfile()
-            elif legacy in self._LEGACY_NON_ROLE_VALUES:
-                # These labels remain readable only for old scalar payloads;
-                # they never enter the canonical role profile.
-                profile = CombatRoleProfile()
-            else:
-                try:
-                    normalized = normalize_legacy_combat_role(legacy)
-                except (TypeError, ValueError) as error:
-                    raise ValueError(f"combat_role is invalid: {legacy!r}") from error
-                if normalized is None:
-                    raise ValueError(f"combat_role is not a supported role: {legacy!r}")
-                profile = CombatRoleProfile(primary_role=normalized)
+            profile = CombatRoleProfile()
         elif not isinstance(profile, CombatRoleProfile):
             raise TypeError("combat_role_profile must be a CombatRoleProfile")
-
-        if legacy not in (None, "", "none", "unspecified"):
-            if legacy in self._LEGACY_NON_ROLE_VALUES:
-                if not profile.is_unspecified:
-                    raise ValueError(
-                        "legacy combat_role is non-canonical and cannot contradict "
-                        "combat_role_profile"
-                    )
-            else:
-                try:
-                    normalized = normalize_legacy_combat_role(legacy)
-                except (TypeError, ValueError) as error:
-                    raise ValueError(f"combat_role is invalid: {legacy!r}") from error
-                if normalized is None:
-                    raise ValueError(f"combat_role is not a supported role: {legacy!r}")
-                if profile.primary_role != normalized:
-                    raise ValueError(
-                        "combat_role is a derived compatibility projection and "
-                        "must match combat_role_profile.primary_role"
-                    )
-
-        # Draft compatibility uses canonical spellings.  Intent keeps its
-        # historical ``dps`` projection separately at its own boundary.
-        derived_legacy = profile.primary_role or (
-            legacy if legacy in self._LEGACY_NON_ROLE_VALUES else "none"
-        )
         object.__setattr__(self, "combat_role_profile", profile)
-        object.__setattr__(self, "combat_role", derived_legacy)
 
     @classmethod
     def from_mapping(cls, payload: Mapping[str, Any]) -> "CharacterDraft":
@@ -377,9 +331,8 @@ class CharacterDraft:
             story_link = StoryLink(target, relation.strip(), link_status.strip())
 
         legacy_raw = payload.get("combat_role")
-        if legacy_raw is not None and not isinstance(legacy_raw, str):
-            raise ModelMalformedResponseError("CharacterDraft.combat_role must be a string")
-        combat_role = legacy_raw.strip() if isinstance(legacy_raw, str) else None
+        if isinstance(legacy_raw, str):
+            legacy_raw = legacy_raw.strip()
         profile_raw = payload.get("combat_role_profile")
         profile = None
         if profile_raw is not None:
@@ -389,6 +342,12 @@ class CharacterDraft:
                 raise ModelMalformedResponseError(
                     f"CharacterDraft.combat_role_profile is invalid: {error}"
                 ) from error
+        try:
+            profile = resolve_legacy_combat_role_profile(profile, legacy_raw)
+        except (TypeError, ValueError) as error:
+            raise ModelMalformedResponseError(
+                f"CharacterDraft.combat_role compatibility input is invalid: {error}"
+            ) from error
         try:
             return cls(
                 draft_id=draft_id,
@@ -401,7 +360,6 @@ class CharacterDraft:
                 faction_id=faction_id,
                 occupation=text("occupation"),
                 social_role=text("social_role"),
-                combat_role=combat_role,
                 combat_role_profile=profile,
                 design_pitch=text("design_pitch"),
                 personality=strings("personality"),
@@ -980,7 +938,7 @@ Canon grounding is conditional on Canon dependency, not a requirement to call a 
 
 If the brief uses or depends on an existing Canon entity, identifier, fact, rule or context—including an existing faction, lore fact, character, world rule, story, case or incident—you must first search for or retrieve it with the appropriate listed read-only authoring tool before producing the final CharacterDraft. Do not treat a name or ID in the brief as verified evidence. For an existing faction, search/retrieve the faction, use the returned stable ID and evidence, and only then set faction_id or cite that faction in canon_basis. The same rule applies to every other existing Canon claim. Use only facts returned by successful authoring-tool observations.
 
-Every existing Canon claim must be represented by a canon_basis source ID returned by a successful tool observation. canon_basis.supports is a machine-validated contract: prefer defined generic support keys, field paths, or short extractive phrases copied from the cited Canon source; do not freely paraphrase Canon claims in supports. New personal details must be placed in new_design_elements or proposed_new_content and must never be presented as existing Canon. Never create organizations, IDs, files or Canon records. If required Canon cannot be found or verified, do not invent or guess it; leave the Canon-dependent field unresolved and surface the uncertainty through open_questions and constraint_notes. Respect hard constraints. Keep combat_role_profile canonical and high-level; combat_role is accepted only as a deprecated legacy input and must not be emitted. Do not invent numeric balance values.""" + "\n\n" + character_draft_prompt_contract()
+Every existing Canon claim must be represented by a canon_basis source ID returned by a successful tool observation. canon_basis.supports is a machine-validated contract: prefer defined generic support keys, field paths, or short extractive phrases copied from the cited Canon source; do not freely paraphrase Canon claims in supports. New personal details must be placed in new_design_elements or proposed_new_content and must never be presented as existing Canon. Never create organizations, IDs, files or Canon records. If required Canon cannot be found or verified, do not invent or guess it; leave the Canon-dependent field unresolved and surface the uncertainty through open_questions and constraint_notes. Respect hard constraints. Keep combat_role_profile canonical and high-level; do not emit a flat combat-role field. Do not invent numeric balance values.""" + "\n\n" + character_draft_prompt_contract()
 
 
 CHARACTER_SYSTEM_CONTRACT += """
