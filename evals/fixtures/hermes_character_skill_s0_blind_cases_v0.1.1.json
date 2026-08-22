@@ -1,0 +1,464 @@
+{
+  "schema_version": "character-skill-blind-review-input/0.1.1",
+  "cases": [
+    {
+      "case_id": "case_01",
+      "request": {
+        "brief": "设计一个围绕可回收专属标记展开的角色技能组概念。",
+        "hard_constraints": [
+          "标记必须由角色的明确行动产生并被另一明确行动消耗",
+          "标记离场时必须有清理或转化关系",
+          "没有标记时仍要有可理解的基础行动路径"
+        ],
+        "forbidden_elements": [
+          "未请求的第二套专属资源"
+        ],
+        "combat_role_profile": null
+      },
+      "candidate_observation": {
+        "summary": "候选明确描述了标记如何产生、被消耗、在场景离开时清理，并保留无标记行动。",
+        "declared_facts": [
+          "明确行动会产生专属标记",
+          "另一明确行动消耗专属标记并改变结果",
+          "没有标记时基础行动仍然成立",
+          "场景离开会清理未消耗标记"
+        ]
+      }
+    },
+    {
+      "case_id": "case_02",
+      "request": {
+        "brief": "设计一个使用专属标记强化后续行动的角色技能组概念。",
+        "hard_constraints": [
+          "标记必须有明确来源、消耗关系和离场处理"
+        ],
+        "forbidden_elements": [
+          "把标记描述成只存在于文案中的气氛词"
+        ],
+        "combat_role_profile": null
+      },
+      "candidate_observation": {
+        "summary": "候选说某行动会消耗标记，但没有说明标记如何产生，也没有无标记或离场处理。",
+        "declared_facts": [
+          "强化行动会消耗专属标记",
+          "候选未声明任何标记产生关系",
+          "候选未声明标记离场或重置关系"
+        ]
+      }
+    },
+    {
+      "case_id": "case_03",
+      "request": {
+        "brief": "设计一个不依赖任何专属资源、直接围绕行动关系展开的角色技能组概念。",
+        "hard_constraints": [
+          "能力之间不得要求角色持有或管理专属资源"
+        ],
+        "forbidden_elements": [
+          "能量、印记、筹码或其他专属资源循环"
+        ],
+        "combat_role_profile": null
+      },
+      "candidate_observation": {
+        "summary": "候选新增了专属能量，并让后续行动读取该能量。",
+        "declared_facts": [
+          "候选引入未被请求的专属能量",
+          "后续行动依赖该专属能量"
+        ]
+      }
+    },
+    {
+      "case_id": "case_04",
+      "request": {
+        "brief": "设计一个角色进入专注状态后改变行动表达的技能组概念。",
+        "hard_constraints": [
+          "专注状态必须有建立、生效和退出或替换关系"
+        ],
+        "forbidden_elements": [
+          "把状态写成永久且不可解释的角色常驻标签"
+        ],
+        "combat_role_profile": null
+      },
+      "candidate_observation": {
+        "summary": "候选说明了角色如何进入专注状态及状态中的作用，但没有退出、替换或结束关系。",
+        "declared_facts": [
+          "明确行动会建立专注状态",
+          "专注状态会改变后续行动",
+          "候选未声明专注状态如何退出或被替换"
+        ]
+      }
+    },
+    {
+      "case_id": "case_05",
+      "request": {
+        "brief": "设计一个会响应队友事件并改变自身行动的辅助技能组概念。",
+        "hard_constraints": [
+          "必须明确是哪一类队友事件作为触发主体",
+          "必须区分触发主体和实际作用主体"
+        ],
+        "forbidden_elements": [
+          "只用队友这个词覆盖所有队伍事件"
+        ],
+        "combat_role_profile": {
+          "primary_role": "support",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选写成队友受到影响时就会响应，但没有说明是哪类队友事件、由谁触发。",
+        "declared_facts": [
+          "候选使用队友受到影响的概括表达",
+          "未区分队友事件触发主体与能力作用主体",
+          "未说明事件来自任意队友、指定队友还是队伍状态"
+        ]
+      }
+    },
+    {
+      "case_id": "case_06",
+      "request": {
+        "brief": "设计一个通过召唤物改变战场关系的角色技能组概念。",
+        "hard_constraints": [
+          "必须说明召唤物如何出现、承担作用以及如何离场或被替换",
+          "必须说明重复召唤时的约束关系"
+        ],
+        "forbidden_elements": [
+          "只把召唤物当作一次性气氛名词"
+        ],
+        "combat_role_profile": {
+          "primary_role": "control",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选说明会召唤一个控制装置并产生作用，但没有说明装置如何离场、被替换或受到约束。",
+        "declared_facts": [
+          "明确行动会召唤控制装置",
+          "控制装置会改变敌方行动关系",
+          "候选未声明装置销毁、替换或存在约束"
+        ]
+      }
+    },
+    {
+      "case_id": "case_07",
+      "request": {
+        "brief": "设计一个以主要直接输出为核心贡献的 main_dps 技能组概念。",
+        "hard_constraints": [
+          "main_dps 的核心能力表达必须承担主要直接输出职责"
+        ],
+        "forbidden_elements": [
+          "把主要能力全部改成队伍保护而没有直接输出职责"
+        ],
+        "combat_role_profile": {
+          "primary_role": "main_dps",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选所有核心能力都只提供队伍护持，没有主要直接输出关系。",
+        "declared_facts": [
+          "核心能力只改变队友承受风险",
+          "未声明角色承担主要直接输出"
+        ]
+      }
+    },
+    {
+      "case_id": "case_08",
+      "request": {
+        "brief": "设计一个在队友行动后提供持续场外输出的 sub_dps 技能组概念。",
+        "hard_constraints": [
+          "sub_dps 的核心能力表达必须承担场外跟进输出职责"
+        ],
+        "forbidden_elements": [
+          "把主要能力全部改成个人站场防护而没有跟进输出"
+        ],
+        "combat_role_profile": {
+          "primary_role": "sub_dps",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选只让角色承担站场防护，没有队友行动后的跟进输出关系。",
+        "declared_facts": [
+          "核心能力只建立个人防护状态",
+          "未声明队友行动后的跟进输出"
+        ]
+      }
+    },
+    {
+      "case_id": "case_09",
+      "request": {
+        "brief": "设计一个以队友增益与行动协助为核心贡献的 support 技能组概念。",
+        "hard_constraints": [
+          "support 的核心能力表达必须改变队友的行动条件或收益"
+        ],
+        "forbidden_elements": [
+          "把主要能力全部改成个人输出而没有队友协助"
+        ],
+        "combat_role_profile": {
+          "primary_role": "support",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选只有个人直接输出，没有作用于队友行动条件的关系。",
+        "declared_facts": [
+          "核心能力只改变敌方承受的个人输出",
+          "未声明队友获得行动协助"
+        ]
+      }
+    },
+    {
+      "case_id": "case_10",
+      "request": {
+        "brief": "设计一个以恢复或缓解队友伤害后果为核心贡献的 healer 技能组概念。",
+        "hard_constraints": [
+          "healer 的核心能力表达必须改变队友的受损后果"
+        ],
+        "forbidden_elements": [
+          "把主要能力全部改成敌方限制而没有队友恢复或缓解"
+        ],
+        "combat_role_profile": {
+          "primary_role": "healer",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选只限制敌方行动，没有恢复或缓解队友受损后果的关系。",
+        "declared_facts": [
+          "核心能力只改变敌方行动",
+          "未声明队友恢复或伤害后果缓解"
+        ]
+      }
+    },
+    {
+      "case_id": "case_11",
+      "request": {
+        "brief": "设计一个以改变敌方行动或位置为核心贡献的 control 技能组概念。",
+        "hard_constraints": [
+          "control 的核心能力表达必须改变敌方行动、位置或可用性"
+        ],
+        "forbidden_elements": [
+          "把主要能力全部改成直接输出而没有敌方行为改变"
+        ],
+        "combat_role_profile": {
+          "primary_role": "control",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选只提高角色个人直接输出，没有敌方行动、位置或可用性的改变。",
+        "declared_facts": [
+          "核心能力只改变个人输出结果",
+          "未声明敌方行动或位置被改变"
+        ]
+      }
+    },
+    {
+      "case_id": "case_12",
+      "request": {
+        "brief": "设计一个以保护、承受或转移队伍威胁为核心贡献的 defense 技能组概念。",
+        "hard_constraints": [
+          "defense 的核心能力表达必须保护、承受或转移队伍威胁"
+        ],
+        "forbidden_elements": [
+          "把主要能力全部改成直接输出而没有威胁处理"
+        ],
+        "combat_role_profile": {
+          "primary_role": "defense",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选只提供直接输出，没有保护、承受或转移队伍威胁的关系。",
+        "declared_facts": [
+          "核心能力只改变敌方受击结果",
+          "未声明队伍威胁被保护、承受或转移"
+        ]
+      }
+    },
+    {
+      "case_id": "case_13",
+      "request": {
+        "brief": "设计一个围绕队友事件回响机制展开的技能组概念。",
+        "hard_constraints": [
+          "队友事件回响必须形成明确触发、作用和反馈关系"
+        ],
+        "forbidden_elements": [
+          "只使用回响、共鸣等修辞而不说明关系"
+        ],
+        "combat_role_profile": {
+          "primary_role": "support",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选反复使用回响与共鸣的修辞，但没有具体 trigger→effect 因果/时序关系，也没有反馈关系；请求的机制骨架不存在。",
+        "declared_facts": [
+          "候选宣称队伍会产生回响",
+          "未声明具体 trigger subject",
+          "未声明具体 effect subject",
+          "未声明 trigger→effect 因果或时序关系",
+          "未声明反馈关系，candidate 只有机制名称和修辞"
+        ]
+      }
+    },
+    {
+      "case_id": "case_14",
+      "request": {
+        "brief": "设计一个具有场上输出和群体控制表达的角色技能组概念。",
+        "hard_constraints": [
+          "combat_role_profile 只能表达 canonical combat role",
+          "场上输出与群体控制只能作为能力关系描述"
+        ],
+        "forbidden_elements": [
+          "把 Reference Corpus taxonomy 标签写成 combat_role_profile 的角色值"
+        ],
+        "combat_role_profile": {
+          "primary_role": "support",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选把 on_field_dps 与 crowd_control 当作角色 profile 的额外角色值；这是 canonical taxonomy boundary 违规，legacy flat alias seam 不适用于 combat_role_profile，不能自动 normalization。",
+        "declared_facts": [
+          "候选声明 on_field_dps 为角色值",
+          "候选声明 crowd_control 为角色值",
+          "两个词未被限制在能力关系描述中",
+          "request.combat_role_profile 保持 canonical support profile，非法值不能写入该 canonical profile",
+          "该 canonical taxonomy boundary 不适用 legacy flat alias seam，禁止自动 normalization"
+        ]
+      }
+    },
+    {
+      "case_id": "case_15",
+      "request": {
+        "brief": "设计一个原创 control 角色的召唤与敌方行为关系。",
+        "hard_constraints": [
+          "只能借鉴抽象机制先例，必须用原创关系表达",
+          "不得复制 Reference Corpus 特定角色的技能关系原文"
+        ],
+        "forbidden_elements": [
+          "逐字或近乎逐字复用特定角色技能关系"
+        ],
+        "combat_role_profile": {
+          "primary_role": "control",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选把 Reference Corpus 中某个特定角色的召唤与敌方行为关系逐字或近乎逐字搬入原创角色。",
+        "declared_facts": [
+          "候选声称使用抽象先例",
+          "候选实际复用了特定角色技能关系的原句结构和关键关系",
+          "候选未提供新的角色因果语境"
+        ]
+      }
+    },
+    {
+      "case_id": "case_16",
+      "request": {
+        "brief": "设计一个完全不产生召唤物、状态、资源或队友事件依赖的个人技能组，同时以召唤物离场事件作为核心触发。",
+        "hard_constraints": [
+          "技能组不得产生召唤物、状态、资源或任何队友事件依赖",
+          "核心机制必须由召唤物离场事件触发"
+        ],
+        "forbidden_elements": [
+          "为了消解矛盾而默许任一被禁止的机制"
+        ],
+        "combat_role_profile": {
+          "primary_role": "control",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "请求同时禁止召唤物存在，又要求召唤物离场事件作为核心触发；候选无法在不违反任一硬约束的情况下成立。",
+        "declared_facts": [
+          "请求禁止产生召唤物",
+          "请求要求召唤物离场事件作为核心触发",
+          "两条硬约束需要同一被禁止主体同时存在和不存在"
+        ]
+      }
+    },
+    {
+      "case_id": "case_17",
+      "request": {
+        "brief": "设计一组围绕同一专属标记协同运作的多个能力概念。",
+        "hard_constraints": [
+          "至少一个关系负责产生标记，另一个关系负责消耗标记",
+          "技能之间的触发顺序必须能被复述"
+        ],
+        "forbidden_elements": [
+          "让每个能力都声称自己是唯一的标记来源"
+        ],
+        "combat_role_profile": {
+          "primary_role": "sub_dps",
+          "secondary_roles": [
+            "support"
+          ]
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选能力甲消耗唯一标记，能力乙只有在持有标记时才触发，但没有任何能力产生标记。",
+        "declared_facts": [
+          "能力甲读取并消耗专属标记",
+          "能力乙要求已持有专属标记才能触发",
+          "所有能力都缺少专属标记产生关系",
+          "能力之间不存在可开始的读写顺序"
+        ]
+      }
+    },
+    {
+      "case_id": "case_18",
+      "request": {
+        "brief": "设计一个 control 角色：在明确队友事件后召唤控制装置，装置改变敌方行动并在离场或替换时结束作用。",
+        "hard_constraints": [
+          "触发主体必须明确为队友的特定事件类别",
+          "作用主体必须明确为敌方行动关系",
+          "召唤物必须有出现、作用、离场或替换关系"
+        ],
+        "forbidden_elements": [
+          "把 on_field_dps 或 crowd_control 写成 combat_role_profile 的角色值",
+          "未声明的专属资源循环"
+        ],
+        "combat_role_profile": {
+          "primary_role": "control",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选明确指定队友完成一次行动为触发主体，召唤装置作用于敌方行动，并说明装置出现、持续作用、离场与被替换关系。",
+        "declared_facts": [
+          "队友完成指定行动是触发主体",
+          "敌方行动是召唤装置的作用主体",
+          "召唤装置会出现并改变敌方行动",
+          "装置离场或被新装置替换时结束作用",
+          "没有引入未请求的专属资源"
+        ]
+      }
+    },
+    {
+      "case_id": "case_19",
+      "request": {
+        "brief": "设计一个围绕队友事件回响机制展开的技能组概念。",
+        "hard_constraints": [
+          "队友事件回响必须形成明确触发、作用和反馈关系"
+        ],
+        "forbidden_elements": [
+          "只使用回响、共鸣等修辞而不说明关系"
+        ],
+        "combat_role_profile": {
+          "primary_role": "support",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选明确指定某类队友事件作为 trigger，并说明回响作用于角色的后续行动，已有 trigger→effect 因果边；但没有说明作用后的反馈关系。",
+        "declared_facts": [
+          "指定队友完成某类行动是 trigger subject",
+          "触发后回响作用于角色的后续行动条件，effect subject 明确",
+          "候选已有 trigger→effect causal edge 与具体设计锚点",
+          "未声明回响结果如何反馈、回写或退出"
+        ]
+      }
+    }
+  ]
+}

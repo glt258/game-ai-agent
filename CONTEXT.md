@@ -61,3 +61,13 @@ _Avoid_: 机制标签、风格文案
 
 **Repairable Defect（可修复缺陷）**：不改变角色技能设计意图、只需补齐或澄清局部关系即可消除的设计缺陷。它与需要推翻请求或拒绝候选的矛盾不同。
 _Avoid_: 小问题、可忽略问题
+
+## 角色技能设计 S0.1（v0.1.1）
+
+**Mechanic Skeleton（机制骨架）**：请求指定机制与具体 trigger→effect 因果/时序关系之间的可复述锚点；仅出现机制名称、回响/共鸣等修辞，不构成机制骨架。
+
+**MECHANIC_SKELETON_ABSENT**：请求核心机制仅剩名称或修辞，没有与请求绑定的具体 trigger→effect 因果/时序关系；`repairable=false`，恢复需要重新创建设计而非局部补齐。
+
+**REQUESTED_MECHANIC_UNREPRESENTED**：仅在已有具体 causal edge/设计锚点、但缺少反馈、退出或替换等一环时使用；该缺环可局部 `REPAIR`，不能只按机制名词计数。
+
+**Canonical taxonomy boundary（canonical taxonomy 边界）**：B1.5 对跨 taxonomy 输入采用 fail closed。非 canonical 角色值进入 `combat_role_profile` 属边界违规；legacy flat alias seam 不适用于该 canonical profile，禁止自动 normalization，非法值不得写入 request 的 canonical profile。

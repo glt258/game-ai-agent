@@ -1,0 +1,1011 @@
+{
+  "schema_version": "character-skill-failure-cases/0.1.1",
+  "outcomes": {
+    "PASS": {
+      "blocking": false,
+      "repair_allowed": false
+    },
+    "REPAIR": {
+      "blocking": true,
+      "repair_allowed": true
+    },
+    "FAIL": {
+      "blocking": true,
+      "repair_allowed": false
+    }
+  },
+  "finding_codes": {
+    "RESOURCE_LOOP_INCOMPLETE": {
+      "meaning": "资源的产生、消耗、转化或清理关系不闭合。",
+      "repairable": true
+    },
+    "FORBIDDEN_RESOURCE_INTRODUCED": {
+      "meaning": "候选引入请求明确禁止的专属资源。",
+      "repairable": false
+    },
+    "STATE_EXIT_MISSING": {
+      "meaning": "状态有建立或生效关系，但没有退出或替换关系。",
+      "repairable": true
+    },
+    "TRIGGER_SUBJECT_AMBIGUOUS": {
+      "meaning": "触发主体无法与队友、敌方、角色或场景主体区分。",
+      "repairable": true
+    },
+    "SUMMON_LIFECYCLE_INCOMPLETE": {
+      "meaning": "召唤物缺少出现、作用、离场、替换或约束中的必要关系。",
+      "repairable": true
+    },
+    "ROLE_EFFECT_MISMATCH": {
+      "meaning": "能力核心效果与请求指定的 canonical 角色职责冲突。",
+      "repairable": false
+    },
+    "REQUESTED_MECHANIC_UNREPRESENTED": {
+      "meaning": "请求的核心机制已有具体 causal edge/设计锚点，但缺少反馈、退出或替换等一环，可通过局部补齐关系修复；不能只按机制名词计数。",
+      "repairable": true
+    },
+    "CROSS_TAXONOMY_ROLE_LABEL": {
+      "meaning": "Reference Corpus 或其他跨域 taxonomy 标签污染 combat_role_profile。",
+      "repairable": false
+    },
+    "REFERENCE_COPYING": {
+      "meaning": "候选逐字或近乎逐字复制 Reference Corpus 的特定技能关系。",
+      "repairable": false
+    },
+    "HARD_CONSTRAINT_CONFLICT": {
+      "meaning": "请求自身的硬约束无法同时满足。",
+      "repairable": false
+    },
+    "MULTI_SKILL_LOOP_INCOHERENT": {
+      "meaning": "多个能力之间的资源读写或触发顺序互相矛盾。",
+      "repairable": true
+    },
+    "MECHANIC_SKELETON_ABSENT": {
+      "meaning": "请求核心机制仅剩名称或修辞，没有与请求绑定的具体 trigger→effect 因果/时序关系；恢复需重新创建设计而非局部补齐。",
+      "repairable": false
+    }
+  },
+  "cases": [
+    {
+      "id": "skill_s0_01_resource_loop_complete",
+      "title": "完整资源循环",
+      "category": "resource_loop",
+      "request": {
+        "brief": "设计一个围绕可回收专属标记展开的角色技能组概念。",
+        "hard_constraints": [
+          "标记必须由角色的明确行动产生并被另一明确行动消耗",
+          "标记离场时必须有清理或转化关系",
+          "没有标记时仍要有可理解的基础行动路径"
+        ],
+        "forbidden_elements": [
+          "未请求的第二套专属资源"
+        ],
+        "combat_role_profile": null
+      },
+      "candidate_observation": {
+        "summary": "候选明确描述了标记如何产生、被消耗、在场景离开时清理，并保留无标记行动。",
+        "declared_facts": [
+          "明确行动会产生专属标记",
+          "另一明确行动消耗专属标记并改变结果",
+          "没有标记时基础行动仍然成立",
+          "场景离开会清理未消耗标记"
+        ],
+        "signals": [
+          "resource_enter_relation_present",
+          "resource_spend_relation_present",
+          "resource_exit_relation_present"
+        ]
+      },
+      "expected": {
+        "outcome": "PASS",
+        "blocking": false,
+        "repair_allowed": false,
+        "findings": []
+      },
+      "coverage_tags": [
+        "resource_loop",
+        "pass_control"
+      ],
+      "rationale": "资源从进入到离开有可追踪关系，且未增加请求外的资源系统。"
+    },
+    {
+      "id": "skill_s0_02_resource_loop_incomplete",
+      "title": "资源循环缺少产出或重置",
+      "category": "resource_loop",
+      "request": {
+        "brief": "设计一个使用专属标记强化后续行动的角色技能组概念。",
+        "hard_constraints": [
+          "标记必须有明确来源、消耗关系和离场处理"
+        ],
+        "forbidden_elements": [
+          "把标记描述成只存在于文案中的气氛词"
+        ],
+        "combat_role_profile": null
+      },
+      "candidate_observation": {
+        "summary": "候选说某行动会消耗标记，但没有说明标记如何产生，也没有无标记或离场处理。",
+        "declared_facts": [
+          "强化行动会消耗专属标记",
+          "候选未声明任何标记产生关系",
+          "候选未声明标记离场或重置关系"
+        ],
+        "signals": [
+          "resource_spend_relation_present",
+          "resource_enter_relation_missing",
+          "resource_exit_relation_missing"
+        ]
+      },
+      "expected": {
+        "outcome": "REPAIR",
+        "blocking": true,
+        "repair_allowed": true,
+        "findings": [
+          {
+            "code": "RESOURCE_LOOP_INCOMPLETE",
+            "field_path": "candidate_observation.declared_facts",
+            "blocking": true,
+            "repairable": true
+          }
+        ]
+      },
+      "coverage_tags": [
+        "resource_loop",
+        "repair_boundary"
+      ],
+      "rationale": "只需补齐产生与离场关系即可保留原设计意图，因此属于可修复缺陷。"
+    },
+    {
+      "id": "skill_s0_03_forbidden_resource",
+      "title": "引入被禁止的专属资源",
+      "category": "resource_loop",
+      "request": {
+        "brief": "设计一个不依赖任何专属资源、直接围绕行动关系展开的角色技能组概念。",
+        "hard_constraints": [
+          "能力之间不得要求角色持有或管理专属资源"
+        ],
+        "forbidden_elements": [
+          "能量、印记、筹码或其他专属资源循环"
+        ],
+        "combat_role_profile": null
+      },
+      "candidate_observation": {
+        "summary": "候选新增了专属能量，并让后续行动读取该能量。",
+        "declared_facts": [
+          "候选引入未被请求的专属能量",
+          "后续行动依赖该专属能量"
+        ],
+        "signals": [
+          "forbidden_resource_present",
+          "resource_read_relation_present"
+        ]
+      },
+      "expected": {
+        "outcome": "FAIL",
+        "blocking": true,
+        "repair_allowed": false,
+        "findings": [
+          {
+            "code": "FORBIDDEN_RESOURCE_INTRODUCED",
+            "field_path": "candidate_observation.declared_facts",
+            "blocking": true,
+            "repairable": false
+          }
+        ]
+      },
+      "coverage_tags": [
+        "resource_loop",
+        "request_boundary"
+      ],
+      "rationale": "候选违反请求的禁止条件；删除资源会改变设计方向，不能视为局部补写。"
+    },
+    {
+      "id": "skill_s0_04_state_exit_missing",
+      "title": "状态没有退出关系",
+      "category": "state_lifecycle",
+      "request": {
+        "brief": "设计一个角色进入专注状态后改变行动表达的技能组概念。",
+        "hard_constraints": [
+          "专注状态必须有建立、生效和退出或替换关系"
+        ],
+        "forbidden_elements": [
+          "把状态写成永久且不可解释的角色常驻标签"
+        ],
+        "combat_role_profile": null
+      },
+      "candidate_observation": {
+        "summary": "候选说明了角色如何进入专注状态及状态中的作用，但没有退出、替换或结束关系。",
+        "declared_facts": [
+          "明确行动会建立专注状态",
+          "专注状态会改变后续行动",
+          "候选未声明专注状态如何退出或被替换"
+        ],
+        "signals": [
+          "state_enter_relation_present",
+          "state_effect_relation_present",
+          "state_exit_relation_missing"
+        ]
+      },
+      "expected": {
+        "outcome": "REPAIR",
+        "blocking": true,
+        "repair_allowed": true,
+        "findings": [
+          {
+            "code": "STATE_EXIT_MISSING",
+            "field_path": "candidate_observation.declared_facts",
+            "blocking": true,
+            "repairable": true
+          }
+        ]
+      },
+      "coverage_tags": [
+        "state_lifecycle",
+        "repair_boundary"
+      ],
+      "rationale": "补充退出或替换关系即可使状态生命周期闭合，不要求重写技能组意图。"
+    },
+    {
+      "id": "skill_s0_05_teammate_trigger_ambiguous",
+      "title": "队友触发主体含混",
+      "category": "team_interaction",
+      "request": {
+        "brief": "设计一个会响应队友事件并改变自身行动的辅助技能组概念。",
+        "hard_constraints": [
+          "必须明确是哪一类队友事件作为触发主体",
+          "必须区分触发主体和实际作用主体"
+        ],
+        "forbidden_elements": [
+          "只用队友这个词覆盖所有队伍事件"
+        ],
+        "combat_role_profile": {
+          "primary_role": "support",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选写成队友受到影响时就会响应，但没有说明是哪类队友事件、由谁触发。",
+        "declared_facts": [
+          "候选使用队友受到影响的概括表达",
+          "未区分队友事件触发主体与能力作用主体",
+          "未说明事件来自任意队友、指定队友还是队伍状态"
+        ],
+        "signals": [
+          "teammate_trigger_phrase_present",
+          "trigger_subject_ambiguous",
+          "effect_subject_unresolved"
+        ]
+      },
+      "expected": {
+        "outcome": "REPAIR",
+        "blocking": true,
+        "repair_allowed": true,
+        "findings": [
+          {
+            "code": "TRIGGER_SUBJECT_AMBIGUOUS",
+            "field_path": "candidate_observation.signals",
+            "blocking": true,
+            "repairable": true
+          }
+        ]
+      },
+      "coverage_tags": [
+        "team_interaction",
+        "trigger_subject",
+        "repair_boundary"
+      ],
+      "rationale": "补充事件主体的边界即可保留队友协同意图，属于局部澄清。"
+    },
+    {
+      "id": "skill_s0_06_summon_lifecycle_incomplete",
+      "title": "召唤物生命周期不完整",
+      "category": "summon_lifecycle",
+      "request": {
+        "brief": "设计一个通过召唤物改变战场关系的角色技能组概念。",
+        "hard_constraints": [
+          "必须说明召唤物如何出现、承担作用以及如何离场或被替换",
+          "必须说明重复召唤时的约束关系"
+        ],
+        "forbidden_elements": [
+          "只把召唤物当作一次性气氛名词"
+        ],
+        "combat_role_profile": {
+          "primary_role": "control",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选说明会召唤一个控制装置并产生作用，但没有说明装置如何离场、被替换或受到约束。",
+        "declared_facts": [
+          "明确行动会召唤控制装置",
+          "控制装置会改变敌方行动关系",
+          "候选未声明装置销毁、替换或存在约束"
+        ],
+        "signals": [
+          "summon_spawn_relation_present",
+          "summon_effect_relation_present",
+          "summon_exit_relation_missing",
+          "summon_replacement_or_limit_missing"
+        ]
+      },
+      "expected": {
+        "outcome": "REPAIR",
+        "blocking": true,
+        "repair_allowed": true,
+        "findings": [
+          {
+            "code": "SUMMON_LIFECYCLE_INCOMPLETE",
+            "field_path": "candidate_observation.declared_facts",
+            "blocking": true,
+            "repairable": true
+          }
+        ]
+      },
+      "coverage_tags": [
+        "summon_lifecycle",
+        "control_role",
+        "repair_boundary"
+      ],
+      "rationale": "补齐召唤物离场与重复召唤关系即可闭合生命周期。"
+    },
+    {
+      "id": "skill_s0_07_main_dps_mismatch",
+      "title": "main_dps 职责与核心效果冲突",
+      "category": "role_alignment",
+      "request": {
+        "brief": "设计一个以主要直接输出为核心贡献的 main_dps 技能组概念。",
+        "hard_constraints": [
+          "main_dps 的核心能力表达必须承担主要直接输出职责"
+        ],
+        "forbidden_elements": [
+          "把主要能力全部改成队伍保护而没有直接输出职责"
+        ],
+        "combat_role_profile": {
+          "primary_role": "main_dps",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选所有核心能力都只提供队伍护持，没有主要直接输出关系。",
+        "declared_facts": [
+          "核心能力只改变队友承受风险",
+          "未声明角色承担主要直接输出"
+        ],
+        "signals": [
+          "hard_role_obligation_main_dps",
+          "core_effect_protection_only"
+        ]
+      },
+      "expected": {
+        "outcome": "FAIL",
+        "blocking": true,
+        "repair_allowed": false,
+        "findings": [
+          {
+            "code": "ROLE_EFFECT_MISMATCH",
+            "field_path": "candidate_observation.declared_facts",
+            "blocking": true,
+            "repairable": false
+          }
+        ]
+      },
+      "coverage_tags": [
+        "role_alignment",
+        "role_mismatch",
+        "role_main_dps"
+      ],
+      "rationale": "候选核心贡献与请求的 main_dps 硬职责相反，改变核心效果才可解决。"
+    },
+    {
+      "id": "skill_s0_08_sub_dps_mismatch",
+      "title": "sub_dps 职责与核心效果冲突",
+      "category": "role_alignment",
+      "request": {
+        "brief": "设计一个在队友行动后提供持续场外输出的 sub_dps 技能组概念。",
+        "hard_constraints": [
+          "sub_dps 的核心能力表达必须承担场外跟进输出职责"
+        ],
+        "forbidden_elements": [
+          "把主要能力全部改成个人站场防护而没有跟进输出"
+        ],
+        "combat_role_profile": {
+          "primary_role": "sub_dps",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选只让角色承担站场防护，没有队友行动后的跟进输出关系。",
+        "declared_facts": [
+          "核心能力只建立个人防护状态",
+          "未声明队友行动后的跟进输出"
+        ],
+        "signals": [
+          "hard_role_obligation_sub_dps",
+          "core_effect_personal_defense_only"
+        ]
+      },
+      "expected": {
+        "outcome": "FAIL",
+        "blocking": true,
+        "repair_allowed": false,
+        "findings": [
+          {
+            "code": "ROLE_EFFECT_MISMATCH",
+            "field_path": "candidate_observation.declared_facts",
+            "blocking": true,
+            "repairable": false
+          }
+        ]
+      },
+      "coverage_tags": [
+        "role_alignment",
+        "role_mismatch",
+        "role_sub_dps"
+      ],
+      "rationale": "候选没有承担 sub_dps 的核心职责，不能靠补一个装饰性关系修复。"
+    },
+    {
+      "id": "skill_s0_09_support_mismatch",
+      "title": "support 职责与核心效果冲突",
+      "category": "role_alignment",
+      "request": {
+        "brief": "设计一个以队友增益与行动协助为核心贡献的 support 技能组概念。",
+        "hard_constraints": [
+          "support 的核心能力表达必须改变队友的行动条件或收益"
+        ],
+        "forbidden_elements": [
+          "把主要能力全部改成个人输出而没有队友协助"
+        ],
+        "combat_role_profile": {
+          "primary_role": "support",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选只有个人直接输出，没有作用于队友行动条件的关系。",
+        "declared_facts": [
+          "核心能力只改变敌方承受的个人输出",
+          "未声明队友获得行动协助"
+        ],
+        "signals": [
+          "hard_role_obligation_support",
+          "core_effect_personal_output_only"
+        ]
+      },
+      "expected": {
+        "outcome": "FAIL",
+        "blocking": true,
+        "repair_allowed": false,
+        "findings": [
+          {
+            "code": "ROLE_EFFECT_MISMATCH",
+            "field_path": "candidate_observation.declared_facts",
+            "blocking": true,
+            "repairable": false
+          }
+        ]
+      },
+      "coverage_tags": [
+        "role_alignment",
+        "role_mismatch",
+        "role_support"
+      ],
+      "rationale": "候选核心效果不承担 support 的队友协助职责，属于不可修复的角色错配。"
+    },
+    {
+      "id": "skill_s0_10_healer_mismatch",
+      "title": "healer 职责与核心效果冲突",
+      "category": "role_alignment",
+      "request": {
+        "brief": "设计一个以恢复或缓解队友伤害后果为核心贡献的 healer 技能组概念。",
+        "hard_constraints": [
+          "healer 的核心能力表达必须改变队友的受损后果"
+        ],
+        "forbidden_elements": [
+          "把主要能力全部改成敌方限制而没有队友恢复或缓解"
+        ],
+        "combat_role_profile": {
+          "primary_role": "healer",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选只限制敌方行动，没有恢复或缓解队友受损后果的关系。",
+        "declared_facts": [
+          "核心能力只改变敌方行动",
+          "未声明队友恢复或伤害后果缓解"
+        ],
+        "signals": [
+          "hard_role_obligation_healer",
+          "core_effect_control_only"
+        ]
+      },
+      "expected": {
+        "outcome": "FAIL",
+        "blocking": true,
+        "repair_allowed": false,
+        "findings": [
+          {
+            "code": "ROLE_EFFECT_MISMATCH",
+            "field_path": "candidate_observation.declared_facts",
+            "blocking": true,
+            "repairable": false
+          }
+        ]
+      },
+      "coverage_tags": [
+        "role_alignment",
+        "role_mismatch",
+        "role_healer"
+      ],
+      "rationale": "敌方控制不能替代 healer 的队友恢复职责，核心方向需要重做。"
+    },
+    {
+      "id": "skill_s0_11_control_mismatch",
+      "title": "control 职责与核心效果冲突",
+      "category": "role_alignment",
+      "request": {
+        "brief": "设计一个以改变敌方行动或位置为核心贡献的 control 技能组概念。",
+        "hard_constraints": [
+          "control 的核心能力表达必须改变敌方行动、位置或可用性"
+        ],
+        "forbidden_elements": [
+          "把主要能力全部改成直接输出而没有敌方行为改变"
+        ],
+        "combat_role_profile": {
+          "primary_role": "control",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选只提高角色个人直接输出，没有敌方行动、位置或可用性的改变。",
+        "declared_facts": [
+          "核心能力只改变个人输出结果",
+          "未声明敌方行动或位置被改变"
+        ],
+        "signals": [
+          "hard_role_obligation_control",
+          "core_effect_damage_only"
+        ]
+      },
+      "expected": {
+        "outcome": "FAIL",
+        "blocking": true,
+        "repair_allowed": false,
+        "findings": [
+          {
+            "code": "ROLE_EFFECT_MISMATCH",
+            "field_path": "candidate_observation.declared_facts",
+            "blocking": true,
+            "repairable": false
+          }
+        ]
+      },
+      "coverage_tags": [
+        "role_alignment",
+        "role_mismatch",
+        "role_control"
+      ],
+      "rationale": "纯输出核心效果与 control 的行为改变职责冲突，必须改变能力核心。"
+    },
+    {
+      "id": "skill_s0_12_defense_mismatch",
+      "title": "defense 职责与核心效果冲突",
+      "category": "role_alignment",
+      "request": {
+        "brief": "设计一个以保护、承受或转移队伍威胁为核心贡献的 defense 技能组概念。",
+        "hard_constraints": [
+          "defense 的核心能力表达必须保护、承受或转移队伍威胁"
+        ],
+        "forbidden_elements": [
+          "把主要能力全部改成直接输出而没有威胁处理"
+        ],
+        "combat_role_profile": {
+          "primary_role": "defense",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选只提供直接输出，没有保护、承受或转移队伍威胁的关系。",
+        "declared_facts": [
+          "核心能力只改变敌方受击结果",
+          "未声明队伍威胁被保护、承受或转移"
+        ],
+        "signals": [
+          "hard_role_obligation_defense",
+          "core_effect_damage_only"
+        ]
+      },
+      "expected": {
+        "outcome": "FAIL",
+        "blocking": true,
+        "repair_allowed": false,
+        "findings": [
+          {
+            "code": "ROLE_EFFECT_MISMATCH",
+            "field_path": "candidate_observation.declared_facts",
+            "blocking": true,
+            "repairable": false
+          }
+        ]
+      },
+      "coverage_tags": [
+        "role_alignment",
+        "role_mismatch",
+        "role_defense"
+      ],
+      "rationale": "直接输出不承担 defense 的威胁处理职责，属于不可修复的核心错配。"
+    },
+    {
+      "id": "skill_s0_13_requested_mechanic_missing",
+      "title": "请求机制骨架缺失",
+      "category": "mechanic_representation",
+      "request": {
+        "brief": "设计一个围绕队友事件回响机制展开的技能组概念。",
+        "hard_constraints": [
+          "队友事件回响必须形成明确触发、作用和反馈关系"
+        ],
+        "forbidden_elements": [
+          "只使用回响、共鸣等修辞而不说明关系"
+        ],
+        "combat_role_profile": {
+          "primary_role": "support",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选反复使用回响与共鸣的修辞，但没有具体 trigger→effect 因果/时序关系，也没有反馈关系；请求的机制骨架不存在。",
+        "declared_facts": [
+          "候选宣称队伍会产生回响",
+          "未声明具体 trigger subject",
+          "未声明具体 effect subject",
+          "未声明 trigger→effect 因果或时序关系",
+          "未声明反馈关系，candidate 只有机制名称和修辞"
+        ],
+        "signals": [
+          "requested_mechanic_phrase_present",
+          "trigger_subject_missing",
+          "effect_subject_missing",
+          "feedback_relation_missing",
+          "mechanic_skeleton_absent"
+        ]
+      },
+      "expected": {
+        "outcome": "FAIL",
+        "blocking": true,
+        "repair_allowed": false,
+        "findings": [
+          {
+            "code": "MECHANIC_SKELETON_ABSENT",
+            "field_path": "candidate_observation.signals",
+            "blocking": true,
+            "repairable": false
+          }
+        ]
+      },
+      "coverage_tags": [
+        "mechanic_relation",
+        "requested_mechanic",
+        "repair_boundary"
+      ],
+      "rationale": "候选只有回响/共鸣名称和修辞，trigger、effect、反馈及其因果或时序关系均缺失，机制骨架不存在；恢复需要重新创建设计，而不是局部补齐。"
+    },
+    {
+      "id": "skill_s0_14_cross_taxonomy_role",
+      "title": "跨 taxonomy 角色标签污染",
+      "category": "taxonomy_boundary",
+      "request": {
+        "brief": "设计一个具有场上输出和群体控制表达的角色技能组概念。",
+        "hard_constraints": [
+          "combat_role_profile 只能表达 canonical combat role",
+          "场上输出与群体控制只能作为能力关系描述"
+        ],
+        "forbidden_elements": [
+          "把 Reference Corpus taxonomy 标签写成 combat_role_profile 的角色值"
+        ],
+        "combat_role_profile": {
+          "primary_role": "support",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选把 on_field_dps 与 crowd_control 当作角色 profile 的额外角色值；这是 canonical taxonomy boundary 违规，legacy flat alias seam 不适用于 combat_role_profile，不能自动 normalization。",
+        "declared_facts": [
+          "候选声明 on_field_dps 为角色值",
+          "候选声明 crowd_control 为角色值",
+          "两个词未被限制在能力关系描述中",
+          "request.combat_role_profile 保持 canonical support profile，非法值不能写入该 canonical profile",
+          "该 canonical taxonomy boundary 不适用 legacy flat alias seam，禁止自动 normalization"
+        ],
+        "signals": [
+          "cross_taxonomy_label_on_field_dps",
+          "cross_taxonomy_label_crowd_control",
+          "role_profile_domain_polluted",
+          "canonical_taxonomy_boundary_violation",
+          "legacy_flat_alias_seam_not_applicable_to_combat_role_profile",
+          "automatic_role_normalization_forbidden"
+        ]
+      },
+      "expected": {
+        "outcome": "FAIL",
+        "blocking": true,
+        "repair_allowed": false,
+        "findings": [
+          {
+            "code": "CROSS_TAXONOMY_ROLE_LABEL",
+            "field_path": "candidate_observation.declared_facts",
+            "blocking": true,
+            "repairable": false
+          }
+        ]
+      },
+      "coverage_tags": [
+        "taxonomy_boundary",
+        "role_profile_isolation",
+        "request_boundary"
+      ],
+      "rationale": "这是 canonical taxonomy boundary 违规：B1.5 已冻结跨 taxonomy 输入 fail closed，非 canonical 角色值进入 combat_role_profile 不能通过 legacy flat alias seam 或自动 normalization 修正。request 的 canonical profile 保持合法，非法值不能写入其中；候选仍然 FAIL。"
+    },
+    {
+      "id": "skill_s0_15_reference_copying",
+      "title": "复制 Reference Corpus 技能关系",
+      "category": "reference_integrity",
+      "request": {
+        "brief": "设计一个原创 control 角色的召唤与敌方行为关系。",
+        "hard_constraints": [
+          "只能借鉴抽象机制先例，必须用原创关系表达",
+          "不得复制 Reference Corpus 特定角色的技能关系原文"
+        ],
+        "forbidden_elements": [
+          "逐字或近乎逐字复用特定角色技能关系"
+        ],
+        "combat_role_profile": {
+          "primary_role": "control",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选把 Reference Corpus 中某个特定角色的召唤与敌方行为关系逐字或近乎逐字搬入原创角色。",
+        "declared_facts": [
+          "候选声称使用抽象先例",
+          "候选实际复用了特定角色技能关系的原句结构和关键关系",
+          "候选未提供新的角色因果语境"
+        ],
+        "signals": [
+          "reference_relation_copy_detected",
+          "original_context_missing"
+        ]
+      },
+      "expected": {
+        "outcome": "FAIL",
+        "blocking": true,
+        "repair_allowed": false,
+        "findings": [
+          {
+            "code": "REFERENCE_COPYING",
+            "field_path": "candidate_observation.signals",
+            "blocking": true,
+            "repairable": false
+          }
+        ]
+      },
+      "coverage_tags": [
+        "reference_integrity",
+        "abstraction_boundary"
+      ],
+      "rationale": "复制特定角色关系破坏原创边界，不能仅靠补充一句背景说明修复。"
+    },
+    {
+      "id": "skill_s0_16_hard_constraint_conflict",
+      "title": "请求硬约束互相冲突",
+      "category": "constraint_consistency",
+      "request": {
+        "brief": "设计一个完全不产生召唤物、状态、资源或队友事件依赖的个人技能组，同时以召唤物离场事件作为核心触发。",
+        "hard_constraints": [
+          "技能组不得产生召唤物、状态、资源或任何队友事件依赖",
+          "核心机制必须由召唤物离场事件触发"
+        ],
+        "forbidden_elements": [
+          "为了消解矛盾而默许任一被禁止的机制"
+        ],
+        "combat_role_profile": {
+          "primary_role": "control",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "请求同时禁止召唤物存在，又要求召唤物离场事件作为核心触发；候选无法在不违反任一硬约束的情况下成立。",
+        "declared_facts": [
+          "请求禁止产生召唤物",
+          "请求要求召唤物离场事件作为核心触发",
+          "两条硬约束需要同一被禁止主体同时存在和不存在"
+        ],
+        "signals": [
+          "hard_constraint_conflict_detected",
+          "required_subject_forbidden"
+        ]
+      },
+      "expected": {
+        "outcome": "FAIL",
+        "blocking": true,
+        "repair_allowed": false,
+        "findings": [
+          {
+            "code": "HARD_CONSTRAINT_CONFLICT",
+            "field_path": "request.hard_constraints",
+            "blocking": true,
+            "repairable": false
+          }
+        ]
+      },
+      "coverage_tags": [
+        "constraint_consistency",
+        "request_boundary"
+      ],
+      "rationale": "矛盾位于请求本身，必须先修改请求约束而不是修补候选。"
+    },
+    {
+      "id": "skill_s0_17_multi_skill_loop",
+      "title": "多技能资源读写顺序不一致",
+      "category": "multi_skill_coherence",
+      "request": {
+        "brief": "设计一组围绕同一专属标记协同运作的多个能力概念。",
+        "hard_constraints": [
+          "至少一个关系负责产生标记，另一个关系负责消耗标记",
+          "技能之间的触发顺序必须能被复述"
+        ],
+        "forbidden_elements": [
+          "让每个能力都声称自己是唯一的标记来源"
+        ],
+        "combat_role_profile": {
+          "primary_role": "sub_dps",
+          "secondary_roles": [
+            "support"
+          ]
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选能力甲消耗唯一标记，能力乙只有在持有标记时才触发，但没有任何能力产生标记。",
+        "declared_facts": [
+          "能力甲读取并消耗专属标记",
+          "能力乙要求已持有专属标记才能触发",
+          "所有能力都缺少专属标记产生关系",
+          "能力之间不存在可开始的读写顺序"
+        ],
+        "signals": [
+          "resource_consumer_present",
+          "resource_gate_present",
+          "resource_producer_missing",
+          "multi_skill_order_incoherent"
+        ]
+      },
+      "expected": {
+        "outcome": "REPAIR",
+        "blocking": true,
+        "repair_allowed": true,
+        "findings": [
+          {
+            "code": "MULTI_SKILL_LOOP_INCOHERENT",
+            "field_path": "candidate_observation.signals",
+            "blocking": true,
+            "repairable": true
+          }
+        ]
+      },
+      "coverage_tags": [
+        "multi_skill_coherence",
+        "resource_loop",
+        "repair_boundary"
+      ],
+      "rationale": "补充一个明确且唯一的产生关系或调整读写顺序即可保留多技能协同意图。"
+    },
+    {
+      "id": "skill_s0_18_control_near_neighbor_pass",
+      "title": "control 近邻正例：队友事件与完整召唤生命周期",
+      "category": "team_interaction",
+      "request": {
+        "brief": "设计一个 control 角色：在明确队友事件后召唤控制装置，装置改变敌方行动并在离场或替换时结束作用。",
+        "hard_constraints": [
+          "触发主体必须明确为队友的特定事件类别",
+          "作用主体必须明确为敌方行动关系",
+          "召唤物必须有出现、作用、离场或替换关系"
+        ],
+        "forbidden_elements": [
+          "把 on_field_dps 或 crowd_control 写成 combat_role_profile 的角色值",
+          "未声明的专属资源循环"
+        ],
+        "combat_role_profile": {
+          "primary_role": "control",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选明确指定队友完成一次行动为触发主体，召唤装置作用于敌方行动，并说明装置出现、持续作用、离场与被替换关系。",
+        "declared_facts": [
+          "队友完成指定行动是触发主体",
+          "敌方行动是召唤装置的作用主体",
+          "召唤装置会出现并改变敌方行动",
+          "装置离场或被新装置替换时结束作用",
+          "没有引入未请求的专属资源"
+        ],
+        "signals": [
+          "trigger_subject_ally_event_explicit",
+          "effect_subject_enemy_action_explicit",
+          "summon_spawn_relation_present",
+          "summon_effect_relation_present",
+          "summon_exit_or_replacement_present",
+          "control_role_obligation_met"
+        ]
+      },
+      "expected": {
+        "outcome": "PASS",
+        "blocking": false,
+        "repair_allowed": false,
+        "findings": []
+      },
+      "coverage_tags": [
+        "team_interaction",
+        "trigger_subject",
+        "effect_subject",
+        "summon_lifecycle",
+        "role_control",
+        "pass_control",
+        "near_neighbor_control"
+      ],
+      "rationale": "这是 05 与 06 的结构性近邻正例：队友触发主体、敌方作用主体和召唤物生命周期均清楚，control 职责也被满足。"
+    },
+    {
+      "id": "skill_s0_19_requested_mechanic_near_neighbor_repair",
+      "title": "请求机制近邻：已有骨架但缺少反馈",
+      "category": "mechanic_representation",
+      "request": {
+        "brief": "设计一个围绕队友事件回响机制展开的技能组概念。",
+        "hard_constraints": [
+          "队友事件回响必须形成明确触发、作用和反馈关系"
+        ],
+        "forbidden_elements": [
+          "只使用回响、共鸣等修辞而不说明关系"
+        ],
+        "combat_role_profile": {
+          "primary_role": "support",
+          "secondary_roles": []
+        }
+      },
+      "candidate_observation": {
+        "summary": "候选明确指定某类队友事件作为 trigger，并说明回响作用于角色的后续行动，已有 trigger→effect 因果边；但没有说明作用后的反馈关系。",
+        "declared_facts": [
+          "指定队友完成某类行动是 trigger subject",
+          "触发后回响作用于角色的后续行动条件，effect subject 明确",
+          "候选已有 trigger→effect causal edge 与具体设计锚点",
+          "未声明回响结果如何反馈、回写或退出"
+        ],
+        "signals": [
+          "requested_mechanic_phrase_present",
+          "trigger_subject_explicit",
+          "effect_subject_explicit",
+          "mechanic_causal_edge_present",
+          "mechanic_skeleton_present",
+          "feedback_relation_missing"
+        ]
+      },
+      "expected": {
+        "outcome": "REPAIR",
+        "blocking": true,
+        "repair_allowed": true,
+        "findings": [
+          {
+            "code": "REQUESTED_MECHANIC_UNREPRESENTED",
+            "field_path": "candidate_observation.signals",
+            "blocking": true,
+            "repairable": true
+          }
+        ]
+      },
+      "coverage_tags": [
+        "mechanic_relation",
+        "requested_mechanic",
+        "repair_boundary",
+        "near_neighbor_mechanic"
+      ],
+      "rationale": "候选已有具体 trigger→effect causal edge 和设计锚点，机制骨架存在，原请求意图可以保留；只需补齐反馈/回写或退出关系，因此属于 REQUESTED_MECHANIC_UNREPRESENTED 的局部 REPAIR，而不是机制骨架缺失。"
+    }
+  ]
+}

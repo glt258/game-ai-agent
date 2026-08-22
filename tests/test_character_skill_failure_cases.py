@@ -8,10 +8,13 @@ from combat_semantics.roles import CANONICAL_COMBAT_ROLES
 
 
 ROOT = Path(__file__).resolve().parents[1]
-FIXTURE_PATH = ROOT / "evals" / "fixtures" / "character_skill_failure_cases_v0.1.json"
-SPEC_PATH = ROOT / "docs" / "character_generation" / "character_skill_failure_cases_v0.1.md"
+FIXTURE_PATH = ROOT / "evals" / "fixtures" / "character_skill_failure_cases_v0.1.1.json"
+LEGACY_FIXTURE_PATH = ROOT / "evals" / "fixtures" / "character_skill_failure_cases_v0.1.json"
+BLIND_FIXTURE_PATH = ROOT / "evals" / "fixtures" / "hermes_character_skill_s0_blind_cases_v0.1.1.json"
+SPEC_PATH = ROOT / "docs" / "character_generation" / "character_skill_failure_cases_v0.1.1.md"
 
-SCHEMA_VERSION = "character-skill-failure-cases/0.1"
+SCHEMA_VERSION = "character-skill-failure-cases/0.1.1"
+BLIND_SCHEMA_VERSION = "character-skill-blind-review-input/0.1.1"
 OUTCOMES = ("PASS", "REPAIR", "FAIL")
 ROLE_SET = frozenset(CANONICAL_COMBAT_ROLES)
 EXPECTED_CODES = frozenset(
@@ -23,6 +26,7 @@ EXPECTED_CODES = frozenset(
         "SUMMON_LIFECYCLE_INCOMPLETE",
         "ROLE_EFFECT_MISMATCH",
         "REQUESTED_MECHANIC_UNREPRESENTED",
+        "MECHANIC_SKELETON_ABSENT",
         "CROSS_TAXONOMY_ROLE_LABEL",
         "REFERENCE_COPYING",
         "HARD_CONSTRAINT_CONFLICT",
@@ -48,6 +52,7 @@ EXPECTED_IDS = (
     "skill_s0_16_hard_constraint_conflict",
     "skill_s0_17_multi_skill_loop",
     "skill_s0_18_control_near_neighbor_pass",
+    "skill_s0_19_requested_mechanic_near_neighbor_repair",
 )
 
 CASE_KEYS = {
@@ -183,11 +188,11 @@ def test_cases_have_exact_nested_contract() -> None:
             assert isinstance(finding["repairable"], bool)
 
 
-def test_case_ids_are_exactly_eighteen_unique_and_ordered() -> None:
+def test_case_ids_are_exactly_nineteen_unique_and_ordered() -> None:
     ids = tuple(case["id"] for case in _cases(_load_fixture()))
 
     assert ids == EXPECTED_IDS
-    assert len(ids) == 18
+    assert len(ids) == 19
     assert len(set(ids)) == len(ids)
 
 
@@ -281,6 +286,136 @@ def test_six_roles_have_one_fail_mismatch_case_each_and_control_has_pass_neighbo
     assert "summon_lifecycle" in near_neighbor["coverage_tags"]
 
 
+def test_case_05_content_and_repair_verdict_are_unchanged_from_v0_1() -> None:
+    current = next(
+        case
+        for case in _cases(_load_fixture())
+        if case["id"] == "skill_s0_05_teammate_trigger_ambiguous"
+    )
+    legacy_payload = json.loads(LEGACY_FIXTURE_PATH.read_text(encoding="utf-8"))
+    legacy = next(
+        case
+        for case in legacy_payload["cases"]
+        if case["id"] == "skill_s0_05_teammate_trigger_ambiguous"
+    )
+
+    assert current == legacy
+    assert current["expected"]["outcome"] == "REPAIR"
+    assert current["expected"]["repair_allowed"] is True
+
+
+def test_case_13_requires_absent_mechanic_skeleton_and_is_not_repairable() -> None:
+    case = next(
+        case
+        for case in _cases(_load_fixture())
+        if case["id"] == "skill_s0_13_requested_mechanic_missing"
+    )
+    expected = case["expected"]
+    signals = set(case["candidate_observation"]["signals"])
+
+    assert expected["outcome"] == "FAIL"
+    assert expected["blocking"] is True
+    assert expected["repair_allowed"] is False
+    assert [finding["code"] for finding in expected["findings"]] == [
+        "MECHANIC_SKELETON_ABSENT"
+    ]
+    assert {
+        "trigger_subject_missing",
+        "effect_subject_missing",
+        "feedback_relation_missing",
+        "mechanic_skeleton_absent",
+    } <= signals
+    assert "trigger→effect" in case["candidate_observation"]["summary"]
+    assert "因果" in case["candidate_observation"]["summary"]
+    assert "机制骨架不存在" in case["rationale"]
+
+
+def test_case_14_is_canonical_taxonomy_fail_closed_without_profile_normalization() -> None:
+    case = next(
+        case
+        for case in _cases(_load_fixture())
+        if case["id"] == "skill_s0_14_cross_taxonomy_role"
+    )
+    profile = case["request"]["combat_role_profile"]
+    signals = set(case["candidate_observation"]["signals"])
+
+    assert case["expected"]["outcome"] == "FAIL"
+    assert [finding["code"] for finding in case["expected"]["findings"]] == [
+        "CROSS_TAXONOMY_ROLE_LABEL"
+    ]
+    assert profile == {"primary_role": "support", "secondary_roles": []}
+    assert "on_field_dps" not in {
+        profile["primary_role"],
+        *profile["secondary_roles"],
+    }
+    assert "crowd_control" not in {
+        profile["primary_role"],
+        *profile["secondary_roles"],
+    }
+    assert {
+        "canonical_taxonomy_boundary_violation",
+        "legacy_flat_alias_seam_not_applicable_to_combat_role_profile",
+        "automatic_role_normalization_forbidden",
+    } <= signals
+    assert "canonical taxonomy boundary" in case["rationale"]
+    assert "legacy flat alias seam" in case["rationale"]
+
+
+def test_case_19_is_a_repairable_near_neighbor_with_present_mechanic_skeleton() -> None:
+    case = next(
+        case
+        for case in _cases(_load_fixture())
+        if case["id"] == "skill_s0_19_requested_mechanic_near_neighbor_repair"
+    )
+    expected = case["expected"]
+    signals = set(case["candidate_observation"]["signals"])
+
+    assert expected["outcome"] == "REPAIR"
+    assert expected["blocking"] is True
+    assert expected["repair_allowed"] is True
+    assert [finding["code"] for finding in expected["findings"]] == [
+        "REQUESTED_MECHANIC_UNREPRESENTED"
+    ]
+    assert {
+        "trigger_subject_explicit",
+        "effect_subject_explicit",
+        "mechanic_causal_edge_present",
+        "mechanic_skeleton_present",
+        "feedback_relation_missing",
+    } <= signals
+    assert "trigger_subject_missing" not in signals
+    assert "effect_subject_missing" not in signals
+
+
+def test_blind_fixture_is_oracle_free_projection_without_fake_commit() -> None:
+    authority = _load_fixture()
+    blind = json.loads(BLIND_FIXTURE_PATH.read_text(encoding="utf-8"))
+    assert set(blind) == {"schema_version", "cases"}
+    assert blind["schema_version"] == BLIND_SCHEMA_VERSION
+    assert [case["case_id"] for case in blind["cases"]] == [
+        f"case_{index:02d}" for index in range(1, 20)
+    ]
+
+    serialized = json.dumps(blind, ensure_ascii=False, sort_keys=True).casefold()
+    assert "source_commit" not in serialized
+    for leaked_key in ("expected", "finding", "signals", "rationale"):
+        assert f'"{leaked_key}"' not in serialized
+
+    for index, (case, authority_case) in enumerate(
+        zip(blind["cases"], _cases(authority), strict=True), start=1
+    ):
+        assert set(case) == {"case_id", "request", "candidate_observation"}
+        assert set(case["candidate_observation"]) == {"summary", "declared_facts"}
+        assert case == {
+            "case_id": f"case_{index:02d}",
+            "request": authority_case["request"],
+            "candidate_observation": {
+                "summary": authority_case["candidate_observation"]["summary"],
+                "declared_facts": authority_case["candidate_observation"]["declared_facts"],
+            },
+        }
+
+
 def test_fixture_avoids_numeric_balance_contract_and_corpus_identifiers() -> None:
     serialized = json.dumps(_load_fixture(), ensure_ascii=False, sort_keys=True).casefold()
     for term in FORBIDDEN_BALANCE_TERMS:
@@ -325,3 +460,11 @@ def test_spec_documents_the_frozen_contract_and_case_matrix() -> None:
     assert "不接入 provider" in specification
     assert "Reference Corpus 只能提供抽象先例" in specification
     assert "未来生产 `SkillKit` schema" in specification
+    assert "v0.1.1" in specification
+    assert "MECHANIC_SKELETON_ABSENT" in specification
+    assert "canonical taxonomy boundary" in specification
+    assert "legacy flat alias seam" in specification
+    assert "`deepseek-v4-flash`" in specification
+    assert "MiMo v2.5" in specification
+    assert "same non-oracle projection" in specification
+    assert "Ox Alpha" not in specification
