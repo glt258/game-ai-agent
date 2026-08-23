@@ -1,0 +1,209 @@
+{
+  "schema_version": "character-skill-interface-blind-review-output/0.1.1",
+  "source_commit": "c578b091f47dee3a0410fbc4bb5d1176bc2e28d4",
+  "reviewer": "deepseek-v4-flash",
+  "input_files": [
+    {
+      "path": "evals/fixtures/character_skill_interface_prototype_cases_v0.1.1.public.json",
+      "sha256": "11e936df853927154ace426c3a22e073b739b9b1dce536817851f70cf855ec04"
+    },
+    {
+      "path": "evals/fixtures/character_skill_s1_blind_review_prompt_v0.1.1.md",
+      "sha256": "1df9184f9bd681e814a54abbdd9f63c137887897ed4faec7937f7e5fd4954435"
+    },
+    {
+      "path": "evals/fixtures/character_skill_s1_blind_review_output_schema_v0.1.1.json",
+      "sha256": "9989ea7c20feadbbd2c54b8cd18cfcdbcb18b8047711df511c8beb5ade46e661"
+    }
+  ],
+  "provenance": {
+    "provider": "opencode-go",
+    "model_requested": "deepseek-v4-flash",
+    "model_reported": "deepseek-v4-flash",
+    "generated_at": "2026-08-23T14:10:45Z",
+    "request_id": "redacted:manual-hermes-review",
+    "normalization": "none"
+  },
+  "results": [
+    {
+      "case_id": "case_01",
+      "verdict": "PASS",
+      "primary_finding": "NONE",
+      "reason": "Resource lease for mark is complete: opened_by resolves to resource/open/gain (self/owner resource_gain), used_or_transformed_by to resource/use/spend, closed_by to resource/clear/clear triggered on scene/scene scene_exited; every effect ref exists in the candidate and every typed reference resolves within the resource namespace. Intent declares no mechanic requirements, no forbidden families, and no conflicts; combat_role_profile is null, so no role evidence is required. No numerical balance fields or alternate taxonomy are introduced."
+    },
+    {
+      "case_id": "case_02",
+      "verdict": "REPAIR",
+      "primary_finding": "INCOMPLETE_RESOURCE_LIFECYCLE",
+      "reason": "The only protocol is use (self/owner ability_invoked -> resource_use on mark, ref resource/use/spend resolves). The resource lease record declares opened_by: [] and closed_by: [], so mark can never be gained and never cleared: the lifecycle has no entry and no exit path. The concrete causal skeleton (a spend effect on a declared, typed resource) is present, so the defect is bounded to the missing open/close paths.",
+      "repair_plan": {
+        "preserve": [
+          "the use/spend protocol keyed on self/owner ability_invoked",
+          "the resource lease record id mark and the used_or_transformed_by ref resource/use/spend",
+          "the typed resource refs (kind resource, id mark)"
+        ],
+        "changes": [
+          "add an open protocol whose effect performs resource_gain on mark and list it in opened_by",
+          "add a clear protocol whose effect performs resource_clear on mark (e.g. on scene_exited) and list it in closed_by"
+        ]
+      }
+    },
+    {
+      "case_id": "case_03",
+      "verdict": "FAIL",
+      "primary_finding": "FORBIDDEN_MECHANIC_FAMILY",
+      "reason": "context.intent.forbidden_mechanic_families contains \"resource\", yet the candidate implements exactly that family: a declared resource lease mark with resource_gain (open), resource_use (spend), and resource_clear (clear) effects, all typed and resolving. The forbidden mechanic family is introduced, which the decision standard classifies as FAIL; no repair can preserve the core design while satisfying the prohibition."
+    },
+    {
+      "case_id": "case_04",
+      "verdict": "REPAIR",
+      "primary_finding": "INCOMPLETE_STATE_LIFECYCLE",
+      "reason": "State focus is established_by focus/enter/enter (self/owner state_enter) and has active_effects focus/apply/apply (state_apply); both typed refs resolve and the state_enter/state_apply skeleton is concrete. However ended_or_replaced_by is empty: the lease has no exit, replacement, or reset path, so the state can never be left. The gap is a single missing end-path effect plus its ref in ended_or_replaced_by, a bounded local change.",
+      "repair_plan": {
+        "preserve": [
+          "the enter/establish and apply/active_effects refs for state focus",
+          "the typed state refs (kind state, id focus) and the ability metadata",
+          "the established_by and active_effects entries already present"
+        ],
+        "changes": [
+          "add an end/replace protocol (e.g. state_exit on scene_exited or an explicit end trigger) for state focus",
+          "reference the new effect in ended_or_replaced_by so the lease has an exit path"
+        ]
+      }
+    },
+    {
+      "case_id": "case_05",
+      "verdict": "REPAIR",
+      "primary_finding": "NULL_TRIGGER_EVENT",
+      "reason": "The trigger protocol's when has event: null and only a bare prose qualifier \"after a teammate event\"; a trigger must record a typed event to form a concrete trigger-to-effect relation, and a null event cannot be stably generated, serialized, or matched by an ordinary provider. The remainder of the skeleton is valid: the support protocol (self/owner ability_invoked -> ally/ally ally_enablement) resolves, role_evidence marks support/support as core, and primary_role support is consistent. The support path is preservable, so the defect is confined to the untyped trigger.",
+      "repair_plan": {
+        "preserve": [
+          "the support protocol (self/owner ability_invoked -> ally/ally ally_enablement)",
+          "role_evidence core ref ambiguous/support/support and the primary_role support alignment",
+          "the ally subject/selector of the trigger protocol"
+        ],
+        "changes": [
+          "replace the null event plus prose qualifier with a concrete typed event (e.g. ally/action_completed) and a typed source/qualifier",
+          "keep or drop the prose qualifier only after the event is typed; do not rely on untyped text as the trigger condition"
+        ]
+      }
+    },
+    {
+      "case_id": "case_06",
+      "verdict": "REPAIR",
+      "primary_finding": "INCOMPLETE_SUMMON_LIFECYCLE",
+      "reason": "Summon field has spawned_by control/spawn/spawn (summon_spawn) and active_effects control/active/active (summon_act), both refs resolving, and the act effect (enemy/affected enemy_action_control with object summon:field) matches primary_role control with core role_evidence. But departed_or_replaced_by is empty and repeat_policy is null: the summon lease has no departure or replacement path and re-cast behavior on a further ability_invoked is undefined. The missing exit/replacement path is a bounded addition preserving the existing spawn/act structure.",
+      "repair_plan": {
+        "preserve": [
+          "the spawn, act, and active protocols and their resolving effect refs",
+          "the summon lease record field and role_evidence core on control/act/act",
+          "the typed summon refs (kind summon, id field)"
+        ],
+        "changes": [
+          "add a departure/replacement protocol (e.g. scene_exited -> summon_replace on summon field) and reference it in departed_or_replaced_by",
+          "set repeat_policy explicitly (e.g. replace) so repeated invocation has defined lease semantics"
+        ]
+      }
+    },
+    {
+      "case_id": "case_07",
+      "verdict": "FAIL",
+      "primary_finding": "ROLE_PROFILE_MISMATCH",
+      "reason": "combat_role_profile primary_role is main_dps, but the candidate's only effect is support/protocol/effect: subject ally/ally with operation ally_enablement, labeled core in role_evidence. Judging from the concrete effect subject and operation, the candidate expresses ally enablement, not main-DPS output; there is no damage/output effect on an enemy and no field that can satisfy the declared primary role. Supplying main_dps semantics would require adding a new output trajectory, i.e. redesign rather than a bounded local correction."
+    },
+    {
+      "case_id": "case_08",
+      "verdict": "FAIL",
+      "primary_finding": "ROLE_PROFILE_MISMATCH",
+      "reason": "combat_role_profile primary_role is sub_dps, but the candidate's sole effect support/protocol/effect is ally/ally ally_enablement marked core. The concrete subject and operation express support enablement, not follow-up or off-hand DPS output; no attack/follow-up effect exists that could ground a sub_dps profile. Satisfying the role requires a new output effect trajectory, which is redesign, not a bounded repair."
+    },
+    {
+      "case_id": "case_09",
+      "verdict": "FAIL",
+      "primary_finding": "ROLE_PROFILE_MISMATCH",
+      "reason": "combat_role_profile primary_role is support, yet the candidate's core effect direct/protocol/effect targets enemy/enemy with operation direct_output, labeled core. A direct damage output on an enemy provides no ally-enablement or enabling operation that support semantics require; the declared role is unrepresented by any concrete effect. Repair would require replacing or adding the core effect family, i.e. redesign."
+    },
+    {
+      "case_id": "case_10",
+      "verdict": "FAIL",
+      "primary_finding": "ROLE_PROFILE_MISMATCH",
+      "reason": "combat_role_profile primary_role is healer, but the candidate's only effect direct/protocol/effect is enemy/enemy direct_output marked core. The intersection of the enemy subject and direct_output operation expresses damage output, not any healing/restore operation; no effect in the case represents the healer role. Adding a healing trajectory would change the core design, so the mismatch is not locally repairable."
+    },
+    {
+      "case_id": "case_11",
+      "verdict": "FAIL",
+      "primary_finding": "ROLE_PROFILE_MISMATCH",
+      "reason": "combat_role_profile primary_role is control, but the candidate's core effect direct/protocol/effect is enemy/enemy direct_output. The control role is represented in the interface by action-control operations (e.g. enemy_action_control) over enemy subjects; direct_output is a damage output and no control operation appears anywhere in the candidate. The required role skeleton is absent, so the correction is not a bounded edit."
+    },
+    {
+      "case_id": "case_12",
+      "verdict": "FAIL",
+      "primary_finding": "ROLE_PROFILE_MISMATCH",
+      "reason": "combat_role_profile primary_role is defense, but the candidate's only effect direct/protocol/effect is enemy/enemy direct_output marked core. An offensive direct-output effect on an enemy does not express defensive mechanics (mitigation, protection, or self/ally defensive operations); no defensive operation is present. Expressing the declared role requires a different core effect family, i.e. redesign."
+    },
+    {
+      "case_id": "case_13",
+      "verdict": "FAIL",
+      "primary_finding": "MECHANIC_REQUIREMENT_UNMET",
+      "reason": "mechanic requirement req_echo demands trigger ally/action_completed with effect self/ally_enablement and required feedback effect_resolved/enables. The candidate's only protocol triggers on self/owner ability_invoked (wrong subject kind and event) and its effect targets ally/ally (wrong subject kind); feedback_relations is empty, so the required feedback path is entirely absent. The effect description literally reads \"unrelated\" and display_summary \"echo echo resonance\" is prose that does not describe the candidate's structure. The required echo causal skeleton is absent, so the mismatch is not a bounded local change to an existing echo path (this case is judged strictly from its own fields, independently of case_19)."
+    },
+    {
+      "case_id": "case_14",
+      "verdict": "FAIL",
+      "primary_finding": "EMPTY_CANDIDATE",
+      "reason": "The candidate is completely empty: entries, feedback_relations, resources, states, summons, and role_evidence are all empty arrays. combat_role_profile declares primary_role support with secondary_roles on_field_dps and crowd_control; read literally, none of these roles is represented by any ability, effect, or role_evidence entry, and per fail-closed review the labels must not be normalized into other accepted roles or inferred from the profile alone. No causal skeleton exists for any declared role, so the verdict is FAIL with no repair possible short of building the candidate."
+    },
+    {
+      "case_id": "case_15",
+      "verdict": "PASS",
+      "primary_finding": "NONE",
+      "reason": "Summon field lifecycle is complete: spawned_by control/spawn/spawn (summon_spawn), active_effects control/active/active (summon_act on enemy/enemy), departed_or_replaced_by control/replace/replace (scene_exited -> summon_replace), and repeat_policy replace; every typed ref resolves within the summon namespace. The reaction path ally/action_completed -> enemy_action_control (control/act/act) is a concrete trigger-to-effect relation matching primary_role control with core role_evidence. reference_review_context is metadata used only as represented (no external record is fetched or assumed); intent imposes no requirements, forbidden families, or conflicts. No numerical balance or secondary taxonomy is introduced."
+    },
+    {
+      "case_id": "case_16",
+      "verdict": "FAIL",
+      "primary_finding": "REQUIRED_SUBJECT_FORBIDDEN",
+      "reason": "context.intent.hard_constraint_conflicts declares required_subject_forbidden. The candidate's control mechanic is built on required subjects: enemy_action_control and summon_act effects on enemy/enemy (with summon:field object refs) and a summon subject for spawn/active. The constraint states that a required subject is forbidden, so the mechanic's core subject path conflicts with the declared hard constraint; honoring the constraint would strip the enemy-targeting core of the control skeleton. Because the constraint and the required mechanic cannot both hold, this is a constraint conflict (FAIL) rather than a bounded repair."
+    },
+    {
+      "case_id": "case_17",
+      "verdict": "REPAIR",
+      "primary_finding": "INCOMPLETE_RESOURCE_LIFECYCLE",
+      "reason": "Role structure is coherent: role_evidence marks first/follow/follow (ally/action_completed -> enemy/enemy follow_up_output) as core, matching primary_role sub_dps, and first/support/support (ally_enablement) as secondary, matching secondary_role support. The resource lease for mark, however, is incomplete: second/use/use performs resource_use on mark and first/follow's follow_up_output carries a typed object ref to mark, but opened_by and closed_by are both empty, so mark can never be gained or cleared and the follow-up path's dependency on it is ungrounded. The skeleton is otherwise present, so the repair is bounded to completing the mark lease.",
+      "repair_plan": {
+        "preserve": [
+          "the first/follow and first/support protocols with their role_evidence core/secondary labels",
+          "the second/use protocol and the used_or_transformed_by ref second/use/use",
+          "the typed ref to resource mark carried by follow_up_output"
+        ],
+        "changes": [
+          "add an opener effect (resource_gain on mark) and list it in opened_by so the lease has an entry path",
+          "add a closer effect (resource_clear on mark) and list it in closed_by so the lease has an exit path"
+        ]
+      }
+    },
+    {
+      "case_id": "case_18",
+      "verdict": "PASS",
+      "primary_finding": "NONE",
+      "reason": "Identical structural evidence to the complete summon case: field is spawned_by control/spawn/spawn, has active_effects control/active/active (summon_act on enemy/enemy), departed_or_replaced_by control/replace/replace (scene_exited -> summon_replace), and repeat_policy replace; all typed refs resolve. The act protocol (ally/action_completed -> enemy/enemy enemy_action_control) is a concrete reaction-to-effect path consistent with primary_role control and core role_evidence. Intent is empty (no requirements, forbidden families, or conflicts), so nothing else is demanded. No numerical balance or extra taxonomy appears."
+    },
+    {
+      "case_id": "case_19",
+      "verdict": "REPAIR",
+      "primary_finding": "REQUIRED_FEEDBACK_ABSENT",
+      "reason": "req_echo's trigger (ally/action_completed -> self/ally_enablement) is satisfied by the trigger/apply protocol, whose effect echo/trigger/apply resolves, and the support protocol adds a preservable enablement path. However the requirement's feedback (required: true, event effect_resolved, operation enables) is unrepresented: feedback_relations is empty, and the only feedback protocol is keyed on event feedback_received with operation ally_enablement rather than effect_resolved/enables. The echo causal skeleton exists, so the defect is bounded to formalizing the feedback relation (this case is judged strictly from its own fields, independently of case_13).",
+      "repair_plan": {
+        "preserve": [
+          "the trigger protocol (ally/action_completed -> self/ally_enablement) and its effect echo/trigger/apply",
+          "the support protocol and the resolving source_ref chain",
+          "the ability's reaction mode and typed subject refs"
+        ],
+        "changes": [
+          "add a feedback_relations entry connecting source effect echo/trigger/apply to the feedback target protocol with event effect_resolved and operation enables",
+          "align the feedback protocol's event/operation with the required effect_resolved/enables values instead of feedback_received/ally_enablement"
+        ]
+      }
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 # Character Skill Design CS-S1.1: Frozen SkillKit Interface Contract (v0.1.1)
 
+Status: **CS-S1 FROZEN**
+
 ## Status and authority
 
 This document supersedes `character_skill_interface_options_v0.1.md` as the
@@ -621,5 +623,8 @@ through `parse_candidate`, `evaluate`, `apply_patch`, and the one-way renderer:
 - CI-B1.5 remains fail closed and legacy `ability_concept` remains non-PASS; and
 - multiple independent findings accumulate in deterministic priority order.
 
-The prototype remains under `evals/` with contract tests under `tests/`. No CS-S1.1
-result authorizes production integration under `src/` or marks `CS-S1 FROZEN`.
+The prototype remains under `evals/` with contract tests under `tests/`. The
+independent DeepSeek/MiMo evidence and Sol adjudication are frozen in
+`evals/results/character_skill_s1_blind_review_report_v0.1.1.md`. CS-S1 is
+**FROZEN**, but this result does not authorize production integration under
+`src/`; that work belongs to the separately reviewed CS-S2 milestone.
