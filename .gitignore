@@ -27,3 +27,7 @@ build/
 
 # Logs
 *.log
+
+# Protected local working files
+/IDEA.md
+/manual_character_test.py
