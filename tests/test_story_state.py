@@ -39,6 +39,242 @@ def _advance(runtime: StoryRuntime, count: int = 5) -> StoryState:
     return state
 
 
+INVALID_ID_COLLECTION_SHAPES = [
+    pytest.param(None, id="none"),
+    pytest.param(42, id="integer"),
+    pytest.param(True, id="bool"),
+    pytest.param(1.5, id="float"),
+    pytest.param("case_id", id="string"),
+    pytest.param(b"case_id", id="bytes"),
+    pytest.param({"case_id": "case_id"}, id="mapping"),
+    pytest.param(lambda: (item for item in ("case_id",)), id="generator"),
+]
+INVALID_ID_ELEMENTS = [
+    pytest.param(42, id="integer"),
+    pytest.param(True, id="bool"),
+    pytest.param(None, id="none"),
+    pytest.param("", id="empty-string"),
+    pytest.param(["nested"], id="nested-list"),
+]
+ASSIGNMENT_FIELDS = [
+    "character_case_assignments",
+    "character_incident_assignments",
+]
+ID_COLLECTION_FIELDS = [
+    "completed_node_ids",
+    "active_case_ids",
+    "active_incident_ids",
+]
+
+
+def _fresh_test_value(value):
+    return value() if callable(value) else value
+
+
+def _minimal_state_kwargs() -> dict:
+    return {"story_id": STORY_ID, "current_node_id": "node_pre_close"}
+
+
+@pytest.mark.parametrize("field", ID_COLLECTION_FIELDS)
+@pytest.mark.parametrize("value", INVALID_ID_COLLECTION_SHAPES)
+def test_story_state_rejects_invalid_id_collection_shapes(field, value):
+    kwargs = _minimal_state_kwargs()
+    kwargs[field] = _fresh_test_value(value)
+    with pytest.raises(
+        StoryStateValidationError,
+        match=rf"{field} must be an ID collection",
+    ):
+        StoryState(**kwargs)
+
+
+@pytest.mark.parametrize("field", ID_COLLECTION_FIELDS)
+@pytest.mark.parametrize("element", INVALID_ID_ELEMENTS)
+def test_story_state_rejects_invalid_id_collection_elements(field, element):
+    kwargs = _minimal_state_kwargs()
+    kwargs[field] = [element]
+    with pytest.raises(
+        StoryStateValidationError,
+        match=rf"{field} contains an invalid ID",
+    ):
+        StoryState(**kwargs)
+
+
+@pytest.mark.parametrize("field", ASSIGNMENT_FIELDS)
+@pytest.mark.parametrize("value", INVALID_ID_COLLECTION_SHAPES)
+def test_story_state_rejects_invalid_assignment_value_shapes(field, value):
+    kwargs = _minimal_state_kwargs()
+    kwargs[field] = {"char_launch_001": _fresh_test_value(value)}
+    with pytest.raises(
+        StoryStateValidationError,
+        match=rf"{field} values must be ID collections",
+    ):
+        StoryState(**kwargs)
+
+
+@pytest.mark.parametrize("field", ASSIGNMENT_FIELDS)
+@pytest.mark.parametrize("element", INVALID_ID_ELEMENTS)
+def test_story_state_rejects_invalid_assignment_value_elements(field, element):
+    kwargs = _minimal_state_kwargs()
+    kwargs[field] = {"char_launch_001": [element]}
+    with pytest.raises(
+        StoryStateValidationError,
+        match=rf"{field} contains an invalid ID",
+    ):
+        StoryState(**kwargs)
+
+
+@pytest.mark.parametrize("field", ASSIGNMENT_FIELDS)
+@pytest.mark.parametrize("value", [None, 42, [], (), set(), "assignments"])
+def test_story_state_rejects_non_mapping_assignments(field, value):
+    kwargs = _minimal_state_kwargs()
+    kwargs[field] = value
+    with pytest.raises(
+        StoryStateValidationError,
+        match=rf"{field} must be a mapping",
+    ):
+        StoryState(**kwargs)
+
+
+@pytest.mark.parametrize("field", ASSIGNMENT_FIELDS)
+@pytest.mark.parametrize("key", [None, "", 42, True])
+def test_story_state_rejects_invalid_assignment_keys(field, key):
+    kwargs = _minimal_state_kwargs()
+    kwargs[field] = {key: ["case_id"]}
+    with pytest.raises(
+        StoryStateValidationError,
+        match=rf"{field} requires non-empty character IDs",
+    ):
+        StoryState(**kwargs)
+
+
+@pytest.mark.parametrize("collection_type", [list, tuple, set, frozenset])
+def test_story_state_accepts_all_id_collection_types_and_normalizes_them(collection_type):
+    values = collection_type(("id_b", "id_a", "id_a"))
+    state = StoryState(
+        story_id=STORY_ID,
+        current_node_id="node_pre_close",
+        completed_node_ids=values,
+        active_case_ids=values,
+        active_incident_ids=values,
+        character_case_assignments={"char_launch_001": values},
+        character_incident_assignments={"char_launch_007": values},
+    )
+    assert state.completed_node_ids == {"id_a", "id_b"}
+    assert state.active_case_ids == {"id_a", "id_b"}
+    assert state.active_incident_ids == {"id_a", "id_b"}
+    assert state.character_case_assignments["char_launch_001"] == {"id_a", "id_b"}
+    assert state.character_incident_assignments["char_launch_007"] == {"id_a", "id_b"}
+    assert state.to_dict()["completed_node_ids"] == ["id_a", "id_b"]
+
+
+def test_story_state_allows_empty_id_collections_and_drops_empty_assignments():
+    state = StoryState(
+        story_id=STORY_ID,
+        current_node_id="node_pre_close",
+        completed_node_ids=[],
+        active_case_ids=(),
+        active_incident_ids=set(),
+        character_case_assignments={"char_launch_001": frozenset()},
+        character_incident_assignments={"char_launch_007": []},
+    )
+    assert state.completed_node_ids == set()
+    assert state.active_case_ids == set()
+    assert state.active_incident_ids == set()
+    assert dict(state.character_case_assignments) == {}
+    assert dict(state.character_incident_assignments) == {}
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("active_case_ids", 42, "active_case_ids must be an ID collection"),
+        (
+            "character_case_assignments",
+            {"char_launch_001": 42},
+            "character_case_assignments values must be ID collections",
+        ),
+    ],
+)
+def test_exact_invalid_inputs_fail_at_direct_constructor_and_restore(field, value, message):
+    kwargs = _minimal_state_kwargs()
+    kwargs[field] = value
+    with pytest.raises(StoryStateValidationError, match=message):
+        StoryState(**kwargs)
+
+    runtime = StoryRuntime()
+    payload = runtime.initial_state(STORY_ID).to_dict()
+    payload[field] = value
+    with pytest.raises(StoryStateValidationError, match=message):
+        runtime.restore(payload)
+
+
+@pytest.mark.parametrize("payload", [None, 42, [], "state"])
+def test_story_state_from_dict_requires_a_mapping(payload):
+    with pytest.raises(StoryStateValidationError, match="payload must be a mapping"):
+        StoryState.from_dict(payload)
+
+
+@pytest.mark.parametrize("key", [42, None, True])
+def test_story_state_from_dict_rejects_non_string_field_names(key):
+    payload = StoryState(
+        story_id=STORY_ID,
+        current_node_id="node_pre_close",
+    ).to_dict()
+    payload[key] = "unexpected"
+    with pytest.raises(StoryStateValidationError, match="StoryState field names must be strings"):
+        StoryState.from_dict(payload)
+
+
+def test_story_state_from_dict_rejects_heterogeneous_keys_before_sorting_them():
+    payload = StoryState(
+        story_id=STORY_ID,
+        current_node_id="node_pre_close",
+    ).to_dict()
+    payload[42] = "unexpected"
+    payload["also_unexpected"] = "unexpected"
+    with pytest.raises(StoryStateValidationError, match="StoryState field names must be strings"):
+        StoryState.from_dict(payload)
+
+
+def test_story_state_flags_keep_bool_values_and_reject_explicit_none():
+    state = StoryState(
+        story_id=STORY_ID,
+        current_node_id="node_pre_close",
+        story_flags={"is_ready": True},
+    )
+    assert state.story_flags["is_ready"] is True
+    with pytest.raises(StoryStateValidationError, match="story flag is_ready"):
+        StoryState(story_id=STORY_ID, current_node_id="node_pre_close", story_flags={"is_ready": None})
+
+
+def test_representative_story_state_error_has_no_python_exception_cause():
+    with pytest.raises(StoryStateValidationError) as caught:
+        StoryState(story_id=STORY_ID, current_node_id="node_pre_close", active_case_ids=42)
+    assert caught.value.__cause__ is None
+
+
+@pytest.mark.parametrize("state", [None, {}])
+def test_runtime_validate_rejects_non_story_state(state):
+    with pytest.raises(StoryStateValidationError, match="state must be a StoryState"):
+        StoryRuntime().validate(state)
+
+
+def test_runtime_transition_rejects_non_story_state_before_transition_lookup():
+    with pytest.raises(StoryStateValidationError, match="state must be a StoryState"):
+        StoryRuntime().transition(None, TRANSITIONS[0])
+
+
+@pytest.mark.parametrize("story_id", [None, 42, True, 1.5, b"story", ""])
+def test_initial_state_rejects_invalid_story_ids_before_repository_lookup(story_id):
+    with pytest.raises(StoryStateValidationError, match="story_id must be a non-empty string"):
+        StoryRuntime().initial_state(story_id)
+
+
+def test_initial_state_keeps_unknown_valid_story_id_as_domain_error():
+    with pytest.raises(UnknownStoryError, match="Unknown story"):
+        StoryRuntime().initial_state("missing_story")
+
+
 def test_story_definition_and_registered_instance_refs_load():
     repository = load_story_repository()
     resolver = KnowledgeResolver()

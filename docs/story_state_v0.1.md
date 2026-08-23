@@ -43,6 +43,31 @@ Assignments 使用集合语义；重复 assign 不会产生重复值。每次 tr
 
 `StoryState.to_dict()` 对集合和 mapping keys 做稳定排序。`StoryRuntime.restore()` 通过严格 schema 恢复并重新验证 Story、Node、Case、Incident、Character 和 active-assignment invariants。未知字段不会被静默保留。
 
+序列化形状固定为以下 mapping；八个字段都必须存在，且所有 field name 必须是字符串：
+
+```json
+{
+  "story_id": "non-empty-story-id",
+  "current_node_id": "non-empty-node-id",
+  "completed_node_ids": ["node-id"],
+  "active_case_ids": ["case-id"],
+  "active_incident_ids": ["incident-id"],
+  "character_case_assignments": {
+    "character-id": ["case-id"]
+  },
+  "character_incident_assignments": {
+    "character-id": ["incident-id"]
+  },
+  "story_flags": {
+    "flag-name": true
+  }
+}
+```
+
+`to_dict()` 总是输出排序后的数组和 mapping；空 ID 集合输出 `[]`，空 assignment 条目不输出。构造 `StoryState` 或 restore 时，三个 ID 字段及 assignment value 可接受 `list`、`tuple`、`set`、`frozenset`，但每个元素必须是非空字符串；重复值按集合语义合并。`story_flags` 的 value 只能是 `bool`、`str` 或 `int`，显式 `None` 不会被当作默认值。
+
+payload 形状、ID 集合、assignment、story flag、runtime state 类型和初始 story ID 的输入边界错误统一抛出 `StoryStateValidationError`，不会泄露 Python 原生 `TypeError` 或 `AttributeError`。合法但未注册的字符串 story ID 仍抛出 `UnknownStoryError`。
+
 这个 round trip 为未来 Save System 与 Agent Memory 提供确定性基础，但本轮没有实现这些系统。
 
 ## 5. Runtime Assignment is not Character Identity

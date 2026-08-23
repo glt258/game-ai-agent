@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import Any, Mapping
 
-from .errors import IllegalStoryTransitionError, UnknownStoryError, UnknownTransitionError
+from .errors import (
+    IllegalStoryTransitionError,
+    StoryStateValidationError,
+    UnknownStoryError,
+    UnknownTransitionError,
+)
 from .loader import StoryRepository, load_story_repository
 from .models import StoryState
 from .validation import validate_story_state
@@ -13,17 +19,21 @@ class StoryRuntime:
         self.repository = repository or load_story_repository()
 
     def initial_state(self, story_id: str) -> StoryState:
+        if not isinstance(story_id, str) or not story_id:
+            raise StoryStateValidationError("story_id must be a non-empty string")
         definition = self.repository.definitions.get(story_id)
         if definition is None:
             raise UnknownStoryError(f"Unknown story: {story_id}")
         return StoryState(story_id=story_id, current_node_id=definition.initial_node_id)
 
-    def restore(self, payload: dict) -> StoryState:
+    def restore(self, payload: Mapping[str, Any]) -> StoryState:
         state = StoryState.from_dict(payload)
         self.validate(state)
         return state
 
     def validate(self, state: StoryState) -> None:
+        if not isinstance(state, StoryState):
+            raise StoryStateValidationError("state must be a StoryState")
         definition = self.repository.definitions.get(state.story_id)
         if definition is None:
             raise UnknownStoryError(f"Unknown story: {state.story_id}")

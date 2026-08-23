@@ -55,18 +55,30 @@ class StoryDefinition:
         object.__setattr__(self, "transitions", MappingProxyType(dict(self.transitions)))
 
 
-def _assignment_map(value: Mapping[str, Any], field_name: str) -> Mapping[str, frozenset[str]]:
+_ID_COLLECTION_TYPES = (list, tuple, set, frozenset)
+
+
+def _normalize_id_collection(value: Any, field_name: str) -> frozenset[str]:
+    if not isinstance(value, _ID_COLLECTION_TYPES):
+        raise StoryStateValidationError(f"{field_name} must be an ID collection")
+    normalized: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not item:
+            raise StoryStateValidationError(f"{field_name} contains an invalid ID")
+        normalized.append(item)
+    return frozenset(normalized)
+
+
+def _assignment_map(value: Any, field_name: str) -> Mapping[str, frozenset[str]]:
     if not isinstance(value, Mapping):
         raise StoryStateValidationError(f"{field_name} must be a mapping")
     result: dict[str, frozenset[str]] = {}
     for character_id, refs in value.items():
         if not isinstance(character_id, str) or not character_id:
             raise StoryStateValidationError(f"{field_name} requires non-empty character IDs")
-        if isinstance(refs, (str, bytes)):
+        if not isinstance(refs, _ID_COLLECTION_TYPES):
             raise StoryStateValidationError(f"{field_name} values must be ID collections")
-        normalized = frozenset(refs)
-        if any(not isinstance(ref, str) or not ref for ref in normalized):
-            raise StoryStateValidationError(f"{field_name} contains an invalid ID")
+        normalized = _normalize_id_collection(refs, field_name)
         if normalized:
             result[character_id] = normalized
     return MappingProxyType(result)
@@ -88,13 +100,11 @@ class StoryState:
             if not isinstance(getattr(self, name), str) or not getattr(self, name):
                 raise StoryStateValidationError(f"{name} must be a non-empty string")
         for name in ("completed_node_ids", "active_case_ids", "active_incident_ids"):
-            values = getattr(self, name)
-            if isinstance(values, (str, bytes)):
-                raise StoryStateValidationError(f"{name} must be an ID collection")
-            normalized = frozenset(values)
-            if any(not isinstance(value, str) or not value for value in normalized):
-                raise StoryStateValidationError(f"{name} contains an invalid ID")
-            object.__setattr__(self, name, normalized)
+            object.__setattr__(
+                self,
+                name,
+                _normalize_id_collection(getattr(self, name), name),
+            )
         object.__setattr__(
             self,
             "character_case_assignments",
@@ -138,8 +148,12 @@ class StoryState:
     def from_dict(cls, payload: Mapping[str, Any]) -> "StoryState":
         if not isinstance(payload, Mapping):
             raise StoryStateValidationError("StoryState payload must be a mapping")
-        unknown = set(payload) - STORY_STATE_FIELDS
-        missing = STORY_STATE_FIELDS - set(payload)
+        payload_keys = tuple(payload)
+        if any(not isinstance(key, str) for key in payload_keys):
+            raise StoryStateValidationError("StoryState field names must be strings")
+        payload_fields = set(payload_keys)
+        unknown = payload_fields - STORY_STATE_FIELDS
+        missing = STORY_STATE_FIELDS - payload_fields
         if unknown:
             raise StoryStateValidationError(f"unknown StoryState field(s): {sorted(unknown)}")
         if missing:
