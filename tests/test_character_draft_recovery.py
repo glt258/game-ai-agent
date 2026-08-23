@@ -16,6 +16,16 @@ from agents import (
 
 
 FIXTURE = Path(__file__).resolve().parents[1] / "evals" / "fixtures" / "canon_checker_good.json"
+_RECOVERED_DESIGN_ELEMENTS = [
+    "new_design:occupation: 原始草稿中的职业为新设计",
+    "new_design:social_role: 原始草稿中的社会角色为新设计",
+    "new_design:design_pitch: 原始草稿中的角色概念为新设计",
+    "new_design:personality: 原始草稿中的性格为新设计",
+    "new_design:background: 原始草稿中的背景为新设计",
+    "new_design:story_hook: 原始草稿中的故事钩子为新设计",
+    "new_design:ability_concept: 原始草稿中的能力概念为新设计",
+    "new_design:knowledge_scope: 原始草稿中的知识范围为新设计",
+]
 
 
 def _payload() -> dict:
@@ -24,6 +34,11 @@ def _payload() -> dict:
     # grounding; no retrieval turn is part of these fixtures.
     payload["faction_id"] = None
     payload["canon_basis"] = []
+    payload["new_design_elements"] = [
+        *payload["new_design_elements"],
+        "new_design:occupation: 职业为新设计",
+        "new_design:social_role: 社会角色为新设计",
+    ]
     return payload
 
 
@@ -64,9 +79,18 @@ def _run(original: dict, recovery: dict | None = None):
 def test_missing_one_core_field_uses_one_bounded_recovery_call(missing: str):
     original = _payload()
     original.pop(missing)
-    result = _run(original, {missing: [] if missing == "canon_basis" else ["原始草稿中的新设计内容"]})
+    result = _run(
+        original,
+        {
+            missing: []
+            if missing == "canon_basis"
+            else list(_RECOVERED_DESIGN_ELEMENTS)
+        },
+    )
 
-    assert result.draft.to_dict()[missing] == ([] if missing == "canon_basis" else ["原始草稿中的新设计内容"])
+    assert result.draft.to_dict()[missing] == (
+        [] if missing == "canon_basis" else _RECOVERED_DESIGN_ELEMENTS
+    )
     recovery = result.audit.contract_recovery
     assert recovery.status == "applied"
     assert recovery.attempted is True
@@ -81,7 +105,10 @@ def test_missing_both_core_fields_are_recovered_in_one_attempt():
     original.pop("new_design_elements")
     result = _run(
         original,
-        {"canon_basis": [], "new_design_elements": ["原始草稿中的新设计内容"]},
+        {
+            "canon_basis": [],
+            "new_design_elements": list(_RECOVERED_DESIGN_ELEMENTS),
+        },
     )
 
     assert result.audit.contract_recovery.recovered_fields == (

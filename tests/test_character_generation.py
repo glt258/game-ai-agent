@@ -52,7 +52,17 @@ def _payload(**overrides):
         "ability_concept": "有限的个人规则概念",
         "knowledge_scope": "公开信息",
         "canon_basis": [{"source_id": "world_rules", "supports": ["world_rules"]}],
-        "new_design_elements": ["姓名与性格是新设计"],
+        "new_design_elements": [
+            "new_design:occupation: 职业是新设计",
+            "new_design:social_role: 社会角色是新设计",
+            "new_design:design_pitch: 角色概念是新设计",
+            "new_design:personality: 性格是新设计",
+            "new_design:background: 背景是新设计",
+            "new_design:story_hook: 故事钩子是新设计",
+            "new_design:ability_concept: 能力概念是新设计",
+            "new_design:knowledge_scope: 知识范围是新设计",
+            "姓名与性格是新设计",
+        ],
         "open_questions": [],
         "constraint_notes": [],
         "story_link": None,
@@ -94,6 +104,56 @@ def test_fake_faction_id_is_rejected():
     agent = CharacterGenerationAgent(model)
     with pytest.raises(AgentExecutionError, match="not grounded"):
         agent.generate("设计一个角色")
+
+
+def test_generation_rejects_natural_language_canon_id_without_field_evidence():
+    model = ScriptedAgentModel(
+        [
+            ModelTurn(tool_calls=(ToolCall("world", "get_world_rules", {}),)),
+            ModelTurn(text="FINALIZE"),
+            ModelTurn(
+                text=json.dumps(
+                    _payload(background="她掌握了 lore_001 的全部秘密。"),
+                    ensure_ascii=False,
+                )
+            ),
+        ]
+    )
+
+    with pytest.raises(AgentExecutionError, match="field 'background'"):
+        CharacterGenerationAgent(model).generate("设计一个角色")
+
+
+def test_generation_accepts_field_level_canon_evidence_for_an_id_claim():
+    model = ScriptedAgentModel(
+        [
+            ModelTurn(
+                tool_calls=(
+                    ToolCall("lore", "get_lore", {"lore_id": "lore_001"}),
+                )
+            ),
+            ModelTurn(text="FINALIZE"),
+            ModelTurn(
+                text=json.dumps(
+                    _payload(
+                        background="她掌握了 lore_001 的全部秘密。",
+                        canon_basis=[
+                            {
+                                "source_id": "lore_001",
+                                "supports": ["background"],
+                            }
+                        ],
+                    ),
+                    ensure_ascii=False,
+                )
+            ),
+        ]
+    )
+
+    result = CharacterGenerationAgent(model).generate("设计一个角色")
+
+    assert result.draft.background == "她掌握了 lore_001 的全部秘密。"
+    assert result.sources == ("lore_001",)
 
 
 def test_canon_dependent_faction_uses_tool_evidence_before_grounded_draft():
@@ -243,6 +303,17 @@ def test_live_character_draft_missing_canon_and_design_fields_still_fail_closed(
 
 def test_live_character_draft_explicit_empty_arrays_are_safe():
     payload = _payload(canon_basis=[], new_design_elements=[], open_questions=[])
+    for field in (
+        "occupation",
+        "social_role",
+        "design_pitch",
+        "background",
+        "story_hook",
+        "ability_concept",
+        "knowledge_scope",
+    ):
+        payload[field] = ""
+    payload["personality"] = []
     agent, _ = live_agent(
         [
             ProviderCompletion(text="FINALIZE"),

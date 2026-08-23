@@ -20,11 +20,16 @@
     "knowledge_scope": "仅凭学生与志愿协作者身份接触公开信息和被明确交付的现场事项。",
     "canon_basis": [
       {"source_id": "world_rules", "supports": ["world_rules"]},
-      {"source_id": "faction_002", "supports": ["faction_id", "occupation"]},
+      {"source_id": "faction_002", "supports": ["faction_id", "occupation", "social_role"]},
       {"source_id": "lore_006", "supports": ["world_context"]},
       {"source_id": "incident_nanzhan_postshow_route_conflict_001", "supports": ["story_hook"]}
     ],
     "new_design_elements": [
+      "new_design:design_pitch: 辅助角色概念为新设计。",
+      "new_design:personality: 性格为新设计。",
+      "new_design:background: 南栈观察项目为新设计。",
+      "new_design:ability_concept: 能力表现为新设计。",
+      "new_design:knowledge_scope: 具体知识边界表达为新设计。",
       "南栈观察项目",
       "时间线记录被复盘引用"
     ],

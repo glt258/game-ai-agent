@@ -20,9 +20,17 @@
     "knowledge_scope": "仅接触公开信息和被明确交付的现场事项。",
     "canon_basis": [
       {"source_id": "world_rules", "supports": ["world_rules"]},
-      {"source_id": "faction_002", "supports": ["faction_id", "occupation"]}
+      {"source_id": "faction_002", "supports": ["faction_id", "occupation", "social_role"]}
     ],
-    "new_design_elements": ["姓名、性格和个人经历均为新角色设计。"],
+    "new_design_elements": [
+      "new_design:design_pitch: 角色概念为新设计。",
+      "new_design:personality: 性格为新设计。",
+      "new_design:background: 个人经历为新设计。",
+      "new_design:story_hook: 后续校园活动为新设计。",
+      "new_design:ability_concept: 能力表现为新设计。",
+      "new_design:knowledge_scope: 具体知识边界表达为新设计。",
+      "姓名、性格和个人经历均为新角色设计。"
+    ],
     "open_questions": ["是否参与后续校园支线？"],
     "constraint_notes": ["不承担既有事件核心职位。"],
     "story_link": null,

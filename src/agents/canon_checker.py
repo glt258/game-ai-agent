@@ -19,6 +19,7 @@ from .character_generation import (
     CharacterAuthoringToolbox,
     CharacterDesignRequest,
     CharacterDraft,
+    canon_field_grounding_violations,
 )
 from .grounding import GroundingValidator
 
@@ -450,6 +451,7 @@ class CanonChecker:
         self._toolbox = toolbox
         self._rules = (
             self._check_references,
+            self._check_field_grounding,
             self._check_canon_support,
             self._check_proposal_separation,
             self._check_world_rules,
@@ -459,6 +461,33 @@ class CanonChecker:
             self._check_hard_constraints,
             self._check_existing_character_collision,
         )
+
+    def _check_field_grounding(
+        self,
+        draft: CharacterDraft,
+        request: CharacterDesignRequest | None,
+    ) -> Iterable[CanonFinding]:
+        del request
+        source_ids = {
+            "world_rules",
+            *self.context.resolver.factions,
+            *self.context.resolver.lore,
+            *self.context.resolver.characters,
+            *self.context.resolver.projects,
+            *self.context.resolver.cases,
+            *self.context.resolver.incidents,
+            *self.context.story_repository.canon,
+        }
+        for field_path, evidence_ids, reason in canon_field_grounding_violations(
+            draft, source_ids
+        ):
+            yield self._finding(
+                CanonFindingCode.UNSUPPORTED_CANON_CLAIM,
+                FindingSeverity.ERROR,
+                field_path,
+                reason,
+                evidence_ids,
+            )
 
     def check(
         self,

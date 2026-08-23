@@ -57,6 +57,89 @@ def test_fake_lore_reference_fails():
     assert CanonFindingCode.INVALID_CANON_REFERENCE in _codes(report)
 
 
+def test_natural_language_canon_claim_without_field_evidence_fails():
+    draft, request = _case("good")
+    changed = replace(draft, background="她掌握了 lore_001 的全部秘密。")
+
+    report = CanonChecker().check(changed, request=request)
+
+    assert report.status == CanonCheckStatus.FAIL
+    assert CanonFindingCode.UNSUPPORTED_CANON_CLAIM in _codes(report)
+
+
+def test_field_level_canon_evidence_can_support_a_narrative_field():
+    draft, request = _case("good")
+    design = tuple(
+        item
+        for item in draft.new_design_elements
+        if not item.startswith("new_design:background")
+    )
+    changed = replace(
+        draft,
+        background="临洲存在合法的协理职业。",
+        new_design_elements=design,
+        canon_basis=(*draft.canon_basis, CanonBasisEntry("lore_001", ("background",))),
+    )
+
+    report = CanonChecker().check(changed, request=request)
+
+    assert report.status == CanonCheckStatus.PASS
+
+
+def test_explicit_field_level_new_design_can_support_original_narrative():
+    draft, request = _case("good")
+    changed = replace(draft, background="她未来可能参与社区项目。")
+
+    report = CanonChecker().check(changed, request=request)
+
+    assert report.status == CanonCheckStatus.PASS
+
+
+def test_canon_id_in_one_field_cannot_use_basis_from_another_field():
+    draft, request = _case("good")
+    changed = replace(
+        draft,
+        background="她掌握了 lore_001 的全部秘密。",
+        canon_basis=(*draft.canon_basis, CanonBasisEntry("lore_001", ("story_hook",))),
+    )
+
+    report = CanonChecker().check(changed, request=request)
+
+    assert report.status == CanonCheckStatus.FAIL
+    assert CanonFindingCode.UNSUPPORTED_CANON_CLAIM in _codes(report)
+
+
+def test_field_level_canon_evidence_covers_an_explicit_canon_id_claim():
+    draft, request = _case("good")
+    changed = replace(
+        draft,
+        background="她掌握了 lore_001 的全部秘密。",
+        canon_basis=(*draft.canon_basis, CanonBasisEntry("lore_001", ("background",))),
+    )
+
+    report = CanonChecker().check(changed, request=request)
+
+    assert report.status == CanonCheckStatus.PASS
+
+
+def test_unmarked_narrative_field_fails_closed():
+    draft, request = _case("good")
+    changed = replace(
+        draft,
+        background="她未来可能参与社区项目。",
+        new_design_elements=tuple(
+            item
+            for item in draft.new_design_elements
+            if not item.startswith("new_design:background")
+        ),
+    )
+
+    report = CanonChecker().check(changed, request=request)
+
+    assert report.status == CanonCheckStatus.FAIL
+    assert CanonFindingCode.UNSUPPORTED_CANON_CLAIM in _codes(report)
+
+
 def test_fake_story_link_fails():
     draft, _ = _case("good")
     changed = replace(draft, story_link=StoryLink("incident_not_exist", status="proposed"))

@@ -751,12 +751,30 @@ class DeterministicCharacterRepairModel:
             draft["occupation"] = "校园消防安全志愿活动参与者"
         if "FORBIDDEN_PATTERN" in codes or "HARD_CONSTRAINT_VIOLATION" in codes:
             draft["background"] = "她参与公开的信息整理工作，负责记录与传递现场信息，不建立或领导任何新机构。"
-            draft["new_design_elements"] = ["个人经历与有限辅助能力均为新角色设计。"]
+            draft["new_design_elements"] = [
+                "new_design:occupation: 职业表达为新设计。",
+                "new_design:social_role: 社会角色表达为新设计。",
+                "new_design:design_pitch: 角色概念为新设计。",
+                "new_design:personality: 性格表达为新设计。",
+                "new_design:background: 个人经历与有限辅助能力均为新设计。",
+                "new_design:story_hook: 叙事钩子为新设计。",
+                "new_design:ability_concept: 能力表现为新设计。",
+                "new_design:knowledge_scope: 知识边界表达为新设计。",
+            ]
             draft["proposed_new_content"] = []
         if "INVALID_FACTION_ROLE" in codes and "HARD_CONSTRAINT_VIOLATION" not in codes:
             draft["canon_basis"] = [item for item in draft.get("canon_basis", []) if item.get("source_id") != draft.get("faction_id") or "occupation" not in item.get("supports", [])]
         if "CANON_PRESENTED_AS_PROPOSAL" in codes:
-            draft["new_design_elements"] = ["与已有事件的间接关系仍是待审核的新角色设计。"]
+            draft["new_design_elements"] = [
+                "new_design:occupation: 职业表达为新设计。",
+                "new_design:social_role: 社会角色表达为新设计。",
+                "new_design:design_pitch: 角色概念为新设计。",
+                "new_design:personality: 性格表达为新设计。",
+                "new_design:background: 与已有事件的间接关系仍是待审核的新角色设计。",
+                "new_design:story_hook: 叙事钩子为新设计。",
+                "new_design:ability_concept: 能力表现为新设计。",
+                "new_design:knowledge_scope: 知识边界表达为新设计。",
+            ]
 
 
 __all__ = [

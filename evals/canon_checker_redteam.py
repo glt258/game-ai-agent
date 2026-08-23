@@ -50,7 +50,7 @@ def redteam_cases() -> list[tuple[RedTeamCase, CharacterDraft, CharacterDesignRe
     cases: list[tuple[RedTeamCase, CharacterDraft, CharacterDesignRequest | None]] = [
         (RedTeamCase("A", passed, description="conservative valid draft"), base, request),
         (RedTeamCase("B", passed, description="ordinary cross-department coordination"), replace(base, background="她协调警方、消防与急救交换信息，但各机构独立作出专业决定。"), None),
-        (RedTeamCase("C", passed, description="new personal proposal"), replace(base, new_design_elements=("拟议一段个人经历",), background="她可能在未来参与社区项目。"), None),
+        (RedTeamCase("C", passed, description="new personal proposal"), replace(base, proposed_new_content=("拟议一段个人经历",), background="她可能在未来参与社区项目。"), None),
         (RedTeamCase("D", passed, description="ordinary observation role"), replace(base, background="她记录现场信息，但不参与关键决定。"), None),
         (RedTeamCase("E", passed, description="minor student"), replace(base, age=16, occupation="高中生"), None),
         (RedTeamCase("F", passed, description="single bounded physical effect"), replace(base, ability_concept="她能短暂提高某物表面温度。"), None),

@@ -407,6 +407,157 @@ class CharacterDraft:
         }
 
 
+CANON_GROUNDING_TEXT_FIELDS = (
+    "occupation",
+    "social_role",
+    "design_pitch",
+    "personality",
+    "background",
+    "story_hook",
+    "ability_concept",
+    "knowledge_scope",
+)
+
+_CANON_ID_PATTERN = re.compile(
+    r"\b(?:lore(?:_secret)?_[A-Za-z0-9_.:-]+|faction_[A-Za-z0-9_.:-]+|"
+    r"char_[A-Za-z0-9_.:-]+|(?:story|case|incident|project)_[A-Za-z0-9_.:-]+)\b"
+)
+_NEW_DESIGN_FIELD_PATTERN = re.compile(
+    r"^new_design:(?P<field>[A-Za-z_][A-Za-z0-9_.]*)(?::|$)"
+)
+_NEGATED_CANON_ID_CLAIM_PATTERN = re.compile(
+    r"(?:不了解|不知道|不掌握)"
+    r"|(?:不|并不|不能|无法|无权|没有|并未|未)\s*"
+    r"(?:默认)?(?:访问|读取|调阅|查阅|调取|查看|检索|掌握|知道|了解)"
+    r"|(?:无访问权|没有访问权限|无权访问|不具备(?:对.{0,24})?访问权限)"
+)
+
+
+def declared_new_design_fields(draft: CharacterDraft) -> frozenset[str]:
+    """Return fields explicitly classified as new design by the draft.
+
+    The prefix is intentionally machine-readable.  A free-form
+    ``new_design_elements`` sentence must not silently authorize every other
+    narrative field in a Canon-dependent draft.
+    """
+
+    fields: set[str] = set()
+    for item in draft.new_design_elements:
+        match = _NEW_DESIGN_FIELD_PATTERN.match(item.strip())
+        if match:
+            fields.add(match.group("field"))
+    return frozenset(fields)
+
+
+def _canon_id_references(
+    text: str, source_ids: set[str] | frozenset[str]
+) -> tuple[tuple[str, int, int], ...]:
+    """Return namespace-shaped and known Canon ID references in text."""
+
+    references = [
+        (match.group(0), match.start(), match.end())
+        for match in _CANON_ID_PATTERN.finditer(text)
+    ]
+    for source_id in sorted(set(source_ids), key=lambda item: (-len(item), item)):
+        if not source_id:
+            continue
+        pattern = re.compile(
+            rf"(?<![A-Za-z0-9_.:-]){re.escape(source_id)}(?![A-Za-z0-9_.:-])"
+        )
+        references.extend(
+            (source_id, match.start(), match.end())
+            for match in pattern.finditer(text)
+        )
+    return tuple(sorted(set(references), key=lambda item: (item[1], item[2], item[0])))
+
+
+def _is_negated_canon_id_reference(text: str, start: int, end: int) -> bool:
+    """Keep explicit negative knowledge references out of positive grounding."""
+
+    sentence_start = max(
+        text.rfind(marker, 0, start) for marker in "。！？；!?;\n"
+    ) + 1
+    sentence_end_candidates = [
+        text.find(marker, end)
+        for marker in "。！？；!?;\n"
+        if text.find(marker, end) >= 0
+    ]
+    sentence_end = min(sentence_end_candidates, default=len(text))
+    before = text[sentence_start:start]
+    after = text[end:sentence_end]
+    local_before = re.split(r"[，,、]|但|但是|而|不过|同时", before)[-1]
+    if _NEGATED_CANON_ID_CLAIM_PATTERN.search(local_before):
+        return True
+    return bool(_NEGATED_CANON_ID_CLAIM_PATTERN.search(after))
+
+
+def canon_field_grounding_violations(
+    draft: CharacterDraft,
+    source_ids: set[str] | frozenset[str],
+    *,
+    available_source_ids: set[str] | frozenset[str] | None = None,
+) -> tuple[tuple[str, tuple[str, ...], str], ...]:
+    """Find narrative fields lacking an explicit Canon/design classification.
+
+    ``canon_basis.supports`` is the field-level edge in the evidence graph.
+    A field may instead be explicitly marked with ``new_design:<field>``.  An
+    existing Canon ID in prose always requires the Canon edge, even when the
+    field also has a new-design declaration.
+    """
+
+    available = set(source_ids if available_source_ids is None else available_source_ids)
+    basis_by_field: dict[str, set[str]] = {}
+    for entry in draft.canon_basis:
+        for support in entry.supports:
+            if support in CANON_GROUNDING_TEXT_FIELDS:
+                basis_by_field.setdefault(support, set()).add(entry.source_id)
+
+    declared = declared_new_design_fields(draft)
+    violations: list[tuple[str, tuple[str, ...], str]] = []
+    for field in CANON_GROUNDING_TEXT_FIELDS:
+        value = getattr(draft, field)
+        text = " ".join(value) if isinstance(value, tuple) else str(value)
+        if not text.strip():
+            continue
+
+        referenced_ids = tuple(
+            dict.fromkeys(
+                source_id
+                for source_id, start, end in _canon_id_references(text, source_ids)
+                if not _is_negated_canon_id_reference(text, start, end)
+            )
+        )
+        if referenced_ids:
+            unsupported: list[str] = []
+            for source_id in referenced_ids:
+                entries = [
+                    entry
+                    for entry in draft.canon_basis
+                    if entry.source_id == source_id and field in entry.supports
+                ]
+                if source_id not in available or not entries:
+                    unsupported.append(source_id)
+            if unsupported:
+                violations.append(
+                    (
+                        field,
+                        tuple(unsupported),
+                        "Narrative field references Canon IDs without a field-level canon_basis edge.",
+                    )
+                )
+            continue
+
+        if field not in basis_by_field and field not in declared:
+            violations.append(
+                (
+                    field,
+                    (),
+                    "Narrative field must be backed by canon_basis or an explicit new_design field declaration.",
+                )
+            )
+    return tuple(violations)
+
+
 def _normalize_character_draft_payload(
     payload: Any,
 ) -> tuple[Any, tuple[str, ...]]:
@@ -928,7 +1079,7 @@ Canon grounding is conditional on Canon dependency, not a requirement to call a 
 
 If the brief uses or depends on an existing Canon entity, identifier, fact, rule or context—including an existing faction, lore fact, character, world rule, story, case or incident—you must first search for or retrieve it with the appropriate listed read-only authoring tool before producing the final CharacterDraft. Do not treat a name or ID in the brief as verified evidence. For an existing faction, search/retrieve the faction, use the returned stable ID and evidence, and only then set faction_id or cite that faction in canon_basis. The same rule applies to every other existing Canon claim. Use only facts returned by successful authoring-tool observations.
 
-Every existing Canon claim must be represented by a canon_basis source ID returned by a successful tool observation. canon_basis.supports is a machine-validated contract: prefer defined generic support keys, field paths, or short extractive phrases copied from the cited Canon source; do not freely paraphrase Canon claims in supports. New personal details must be placed in new_design_elements or proposed_new_content and must never be presented as existing Canon. Never create organizations, IDs, files or Canon records. If required Canon cannot be found or verified, do not invent or guess it; leave the Canon-dependent field unresolved and surface the uncertainty through open_questions and constraint_notes. Respect hard constraints. Keep combat_role_profile canonical and high-level; do not emit a flat combat-role field. Do not invent numeric balance values.""" + "\n\n" + character_draft_prompt_contract()
+Every existing Canon claim must be represented by a canon_basis source ID returned by a successful tool observation. canon_basis.supports is a machine-validated contract: prefer defined generic support keys, field paths, or short extractive phrases copied from the cited Canon source; do not freely paraphrase Canon claims in supports. Every non-empty Canon-bearing text field must either include its exact field path in a canon_basis.supports entry or have an explicit new_design:<field> declaration in new_design_elements. A free-form new_design_elements sentence does not authorize unrelated fields. If a narrative field names an existing Canon ID, it must have a field-level basis edge even when the surrounding idea is new design. New personal details must be placed in new_design_elements or proposed_new_content and must never be presented as existing Canon. Never create organizations, IDs, files or Canon records. If required Canon cannot be found or verified, do not invent or guess it; leave the Canon-dependent field unresolved and surface the uncertainty through open_questions and constraint_notes. Respect hard constraints. Keep combat_role_profile canonical and high-level; do not emit a flat combat-role field. Do not invent numeric balance values.""" + "\n\n" + character_draft_prompt_contract()
 
 
 CHARACTER_SYSTEM_CONTRACT += """
@@ -960,7 +1111,7 @@ Reference context requirements:
 """
 
 
-CHARACTER_DRAFT_RECOVERY_SYSTEM_CONTRACT = """You are a bounded provider-neutral CharacterDraft contract recovery step. The original provider response is a partially valid draft. Complete only the explicitly listed missing core fields. Return one JSON object only. Do not rewrite, improve, summarize, or reinterpret any existing field. Do not add fields outside the CharacterDraft schema. Do not call tools. `canon_basis` is a proposal for later Canon Checker validation, not proof of Canon truth. `new_design_elements` must classify only new design material already evidenced by the original draft; do not invent lore, organizations, identities, or major concepts. If the missing field cannot be completed from the original draft and available context, return the field in a schema-valid unresolved form only when the original contract semantics permit it; otherwise return the best structurally valid proposal and let normal validation decide."""
+CHARACTER_DRAFT_RECOVERY_SYSTEM_CONTRACT = """You are a bounded provider-neutral CharacterDraft contract recovery step. The original provider response is a partially valid draft. Complete only the explicitly listed missing core fields. Return one JSON object only. Do not rewrite, improve, summarize, or reinterpret any existing field. Do not add fields outside the CharacterDraft schema. Do not call tools. `canon_basis` is a proposal for later Canon Checker validation, not proof of Canon truth. Every non-empty Canon-bearing text field must retain an exact field-level `canon_basis.supports` edge or an explicit `new_design:<field>:` declaration; a free-form design sentence is not a substitute. `new_design_elements` must classify only new design material already evidenced by the original draft; do not invent lore, organizations, identities, or major concepts. If the missing field cannot be completed from the original draft and available context, return the field in a schema-valid unresolved form only when the original contract semantics permit it; otherwise return the best structurally valid proposal and let normal validation decide."""
 
 CHARACTER_AUTHORING_ACTION_SYSTEM_CONTRACT = (
     """You are a read-only game character authoring retrieval agent. Inspect the design brief and gather only the existing Canon evidence needed to create a reviewable CharacterDraft. This is a retrieval/action phase, not the final draft response.
@@ -1146,7 +1297,13 @@ class CharacterGenerationAgent:
                 source_types=source_types,
             )
             draft = CharacterDraft.from_mapping(payload)
-            self._validate_draft(draft, request, source_ids, source_types)
+            self._validate_draft(
+                draft,
+                request,
+                source_ids,
+                source_types,
+                known_source_ids=self._known_canon_source_ids(),
+            )
             audit = CharacterGenerationAudit(
                 request.request_id,
                 len(audits),
@@ -1369,8 +1526,27 @@ class CharacterGenerationAgent:
             f"invalid fields={list(inspection.invalid_fields)}"
         )
 
+    def _known_canon_source_ids(self) -> set[str]:
+        return {
+            "world_rules",
+            *self.resolver.factions,
+            *self.resolver.lore,
+            *self.resolver.characters,
+            *self.resolver.projects,
+            *self.resolver.cases,
+            *self.resolver.incidents,
+            *self.story_repository.canon,
+        }
+
     @staticmethod
-    def _validate_draft(draft: CharacterDraft, request: CharacterDesignRequest, source_ids: set[str], source_types: Mapping[str, str]) -> None:
+    def _validate_draft(
+        draft: CharacterDraft,
+        request: CharacterDesignRequest,
+        source_ids: set[str],
+        source_types: Mapping[str, str],
+        *,
+        known_source_ids: set[str] | frozenset[str] | None = None,
+    ) -> None:
         age_bounds = CharacterGenerationAgent._age_bounds(request)
         canon_age_supported = any(
             entry.source_id in source_ids
@@ -1398,6 +1574,17 @@ class CharacterGenerationAgent:
         for entry in draft.canon_basis:
             if entry.source_id not in source_ids:
                 raise AgentExecutionError(f"Draft cites Canon source not returned this turn: {entry.source_id}")
+        field_violations = canon_field_grounding_violations(
+            draft,
+            source_ids if known_source_ids is None else known_source_ids,
+            available_source_ids=source_ids,
+        )
+        if field_violations:
+            field, evidence_ids, reason = field_violations[0]
+            evidence = f" ({', '.join(evidence_ids)})" if evidence_ids else ""
+            raise AgentExecutionError(
+                f"Draft field {field!r} is not canon-grounded{evidence}: {reason}"
+            )
         if draft.story_link is not None and (
             draft.story_link.status == "canon_backed"
             and (draft.story_link.target_id not in source_ids or source_types.get(draft.story_link.target_id) not in {"story", "case", "incident"})
@@ -1501,7 +1688,7 @@ class DeterministicCharacterGenerationModel:
             age = 23
         basis = [{"source_id": "world_rules", "supports": ["world_rules"]}]
         if selected_faction:
-            basis.append({"source_id": selected_faction, "supports": ["faction_id", "occupation"]})
+            basis.append({"source_id": selected_faction, "supports": ["faction_id", "occupation", "social_role"]})
         for lore_id in dict.fromkeys(lore_sources[:2]):
             basis.append({"source_id": lore_id, "supports": ["world_context"]})
         if selected_story:
@@ -1526,7 +1713,17 @@ class DeterministicCharacterGenerationModel:
             "ability_concept": "能够在自己明确标记过的安全范围内短暂稳定注意与行动节奏；作用有限，不能替代训练或专业处置。",
             "knowledge_scope": "仅凭学生与志愿协作者身份接触公开信息和被明确交付的现场事项。",
             "canon_basis": basis,
-            "new_design_elements": ["姓名、性格、个人习惯与高层能力表现均为新角色设计。"],
+            "new_design_elements": [
+                "new_design:occupation: 具体职业表达为新设计。",
+                "new_design:social_role: 具体社会角色表达为新设计。",
+                "new_design:design_pitch: 高层角色概念为新设计。",
+                "new_design:personality: 性格表达为新设计。",
+                "new_design:background: 个人经历为新设计。",
+                "new_design:story_hook: 个人叙事钩子为新设计。",
+                "new_design:ability_concept: 能力表现为新设计。",
+                "new_design:knowledge_scope: 具体知识边界表达为新设计。",
+                "姓名、性格、个人习惯与高层能力表现均为新角色设计。",
+            ],
             "open_questions": ["是否将她与后续校园活动支线建立更长期的个人关系？"],
             "constraint_notes": ["与既有事件保持间接联系，不承担事件核心负责人身份。"],
             "story_link": {"target_id": selected_story, "relation": "indirect_connection", "status": "canon_backed"} if selected_story else None,
