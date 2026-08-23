@@ -175,25 +175,72 @@ claim of general model performance.
 Run the main checks with:
 
 ```bash
-py -m pytest -q
-py scripts/run_character_generation_evals.py
-py -m pytest -q tests/test_character_generation_benchmark.py
-py -m pytest -q tests/test_provider_contracts.py tests/test_openai_provider.py tests/test_live_llm_adapter.py tests/test_live_llm_errors.py
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe scripts/run_character_generation_evals.py
+.\.venv\Scripts\python.exe -m pytest -q tests/test_character_generation_benchmark.py
+.\.venv\Scripts\python.exe -m pytest -q tests/test_provider_contracts.py tests/test_openai_provider.py tests/test_live_llm_adapter.py tests/test_live_llm_errors.py
+```
+
+### Windows CLI and editable source checkout
+
+In PowerShell, create or activate a project virtual environment before using
+the commands below.  This workflow installs the source checkout in editable
+mode; it does not build a wheel or package the data directory.
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+.\.venv\Scripts\python.exe -m ensurepip --upgrade
+.\.venv\Scripts\python.exe -m pip install --editable .
+```
+
+If the virtual environment has no working `pip`, use `uv` for the editable
+install instead:
+
+```powershell
+uv venv .venv
+uv pip install --python .\.venv\Scripts\python.exe --editable .
+```
+
+The production CLI is registered by the PEP 621 `project.scripts` entry:
+
+```powershell
+.\.venv\Scripts\along-street-character-author.exe --scenario valid --model offline
+```
+
+The same production entry point can be run as a module:
+
+```powershell
+.\.venv\Scripts\python.exe -m agents.official_character_authoring --scenario valid --model offline
+```
+
+The legacy source-script commands remain supported for demos and evaluations:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/demo_character_generation_v0_1.py --model offline --json
+.\.venv\Scripts\python.exe scripts/demo_canon_checker_v0_1.py --case good --json
+.\.venv\Scripts\python.exe scripts/demo_character_repair_v0_1.py --case pass --model offline --json
+.\.venv\Scripts\python.exe scripts/run_canon_checker_evals.py
+.\.venv\Scripts\python.exe scripts/run_canon_checker_live_language_evals.py
+.\.venv\Scripts\python.exe scripts/run_canon_checker_redteam.py
+.\.venv\Scripts\python.exe scripts/run_character_generation_evals.py
+.\.venv\Scripts\python.exe scripts/run_character_repair_evals.py
+.\.venv\Scripts\python.exe scripts/run_character_repair_redteam.py
 ```
 
 For an offline generation demo:
 
 ```bash
-py scripts/demo_character_generation_v0_1.py --model offline
-py scripts/demo_character_generation_v0_1.py --model offline --json
+.\.venv\Scripts\python.exe scripts/demo_character_generation_v0_1.py --model offline
+.\.venv\Scripts\python.exe scripts/demo_character_generation_v0_1.py --model offline --json
 ```
 
 For the official end-to-end authoring demo:
 
 ```bash
-py -m agents.official_character_authoring --scenario valid --model offline
-py -m agents.official_character_authoring --scenario conflict --model offline
-py -m agents.official_character_authoring --brief "设计一个新的都市辅助角色。" --model offline
+.\.venv\Scripts\python.exe -m agents.official_character_authoring --scenario valid --model offline
+.\.venv\Scripts\python.exe -m agents.official_character_authoring --scenario conflict --model offline
+.\.venv\Scripts\python.exe -m agents.official_character_authoring --brief "设计一个新的都市辅助角色。" --model offline
 ```
 
 See [Official Character Authoring Demo v0.1](docs/official_character_authoring_demo_v0.1.md).
@@ -203,7 +250,7 @@ authoring run with a fresh brief, configure `NPC_LLM_API_KEY` and
 `NPC_LLM_MODEL`, then run:
 
 ```bash
-py -m agents.official_character_authoring --brief-file .\demo_brief.txt --model live
+.\.venv\Scripts\python.exe -m agents.official_character_authoring --brief-file .\demo_brief.txt --model live
 ```
 
 Use `--provider` and `--model-name` for one-off live overrides. Live

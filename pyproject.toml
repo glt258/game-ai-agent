@@ -9,6 +9,9 @@ description = "Default-deny NPC knowledge boundary resolver for Along the Street
 requires-python = ">=3.10"
 dependencies = ["PyYAML>=6.0", "openai>=1.0,<3"]
 
+[project.scripts]
+along-street-character-author = "agents.official_character_authoring:main"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
