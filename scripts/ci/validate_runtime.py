@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import json
 import sys
-from importlib.abc import Traversable
+
+try:
+    from importlib.resources.abc import Traversable  # type: ignore[import-not-found]
+except ModuleNotFoundError:  # Python 3.10
+    from importlib.abc import Traversable
 from pathlib import Path
 
 EXPECTED_RESOURCE_COUNT = 69

@@ -14,7 +14,11 @@ import os
 import re
 import sys
 from dataclasses import asdict, dataclass
-from importlib.abc import Traversable
+
+try:
+    from importlib.resources.abc import Traversable
+except ModuleNotFoundError:  # Python 3.10
+    from importlib.abc import Traversable
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 

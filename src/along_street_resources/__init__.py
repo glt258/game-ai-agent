@@ -1,6 +1,9 @@
 """Packaged runtime data for Along the Street."""
 
-from importlib.abc import Traversable
+try:
+    from importlib.resources.abc import Traversable  # type: ignore[import-not-found]
+except ModuleNotFoundError:  # Python 3.10
+    from importlib.abc import Traversable
 from importlib.resources import files
 
 

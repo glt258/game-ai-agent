@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import re
 from pathlib import Path
 
@@ -30,6 +31,15 @@ def _steps(job: dict) -> list[dict]:
 
 def _step_with_name(job: dict, name: str) -> dict:
     return next(step for step in _steps(job) if step.get("name") == name)
+
+
+def _has_import(nodes: list[ast.AST], module: str) -> bool:
+    return any(
+        isinstance(node, ast.ImportFrom)
+        and node.module == module
+        and any(alias.name == "Traversable" for alias in node.names)
+        for node in nodes
+    )
 
 
 def test_pyproject_has_explicit_p2_quality_boundaries() -> None:
@@ -135,6 +145,56 @@ def test_workflow_has_gated_quality_matrix_build_and_installed_smoke() -> None:
     success_text = "\n".join(step.get("if", "") for step in _steps(success))
     for job_name in ("quality", "test", "build", "installed-smoke"):
         assert f"needs.{job_name}.result" in success_text
+
+
+def test_traversable_import_has_python_310_compatibility_fallback() -> None:
+    paths = (
+        "src/along_street_resources/__init__.py",
+        "src/knowledge/loader.py",
+        "src/reference_corpus/loader.py",
+        "src/agents/official_character_authoring.py",
+        "scripts/ci/validate_runtime.py",
+    )
+
+    for relative_path in paths:
+        tree = ast.parse((ROOT / relative_path).read_text(encoding="utf-8"))
+        compatibility_blocks = [
+            node
+            for node in tree.body
+            if isinstance(node, ast.Try)
+            and _has_import(node.body, "importlib.resources.abc")
+            and any(
+                isinstance(handler.type, ast.Name)
+                and handler.type.id == "ModuleNotFoundError"
+                and _has_import(handler.body, "importlib.abc")
+                for handler in node.handlers
+            )
+        ]
+        assert len(compatibility_blocks) == 1, relative_path
+
+        compatibility_block = compatibility_blocks[0]
+        fallback_imports = [
+            node
+            for handler in compatibility_block.handlers
+            if isinstance(handler.type, ast.Name)
+            and handler.type.id == "ModuleNotFoundError"
+            for node in ast.walk(handler)
+            if isinstance(node, ast.ImportFrom) and node.module == "importlib.abc"
+        ]
+        all_legacy_imports = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module == "importlib.abc"
+        ]
+        assert len(fallback_imports) == 1, relative_path
+        assert all_legacy_imports == fallback_imports, relative_path
+
+
+def test_test_job_checkout_fetches_full_history_for_provenance() -> None:
+    workflow = _yaml(".github/workflows/ci.yml")
+    checkout = _step_with_name(workflow["jobs"]["test"], "Check out repository")
+    assert checkout["uses"] == "actions/checkout@v6"
+    assert checkout["with"]["fetch-depth"] == "0"
 
 
 def test_pre_commit_is_scoped_and_runs_offline_local_guards() -> None:
