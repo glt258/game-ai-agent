@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "character-skill-interface-blind-review-output/0.1.1",
+  "title": "Character Skill Interface CS-S1 blind review output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source_commit",
+    "reviewer",
+    "input_files",
+    "provenance",
+    "results"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "character-skill-interface-blind-review-output/0.1.1"
+    },
+    "source_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "reviewer": {
+      "type": "string",
+      "enum": [
+        "deepseek-v4-flash",
+        "mimo-v2.5"
+      ]
+    },
+    "input_files": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/input_file"
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "model_requested",
+        "model_reported",
+        "generated_at",
+        "request_id",
+        "normalization"
+      ],
+      "properties": {
+        "provider": {
+          "$ref": "#/$defs/non_empty_string"
+        },
+        "model_requested": {
+          "$ref": "#/$defs/non_empty_string"
+        },
+        "model_reported": {
+          "$ref": "#/$defs/non_empty_string"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "minLength": 1
+        },
+        "request_id": {
+          "$ref": "#/$defs/non_empty_string"
+        },
+        "normalization": {
+          "$ref": "#/$defs/non_empty_string"
+        }
+      }
+    },
+    "results": {
+      "type": "array",
+      "minItems": 19,
+      "maxItems": 19,
+      "items": {
+        "$ref": "#/$defs/result"
+      }
+    }
+  },
+  "$defs": {
+    "non_empty_string": {
+      "type": "string",
+      "minLength": 1
+    },
+    "input_file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "enum": [
+            "evals/fixtures/character_skill_interface_prototype_cases_v0.1.1.public.json",
+            "evals/fixtures/character_skill_s1_blind_review_prompt_v0.1.1.md",
+            "evals/fixtures/character_skill_s1_blind_review_output_schema_v0.1.1.json"
+          ]
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "verdict",
+        "primary_finding",
+        "reason"
+      ],
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "pattern": "^case_(0[1-9]|1[0-9])$"
+        },
+        "verdict": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "REPAIR",
+            "FAIL"
+          ]
+        },
+        "primary_finding": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$"
+        },
+        "reason": {
+          "$ref": "#/$defs/non_empty_string"
+        },
+        "repair_plan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "preserve",
+            "changes"
+          ],
+          "properties": {
+            "preserve": {
+              "$ref": "#/$defs/non_empty_string_array"
+            },
+            "changes": {
+              "$ref": "#/$defs/non_empty_string_array"
+            }
+          }
+        },
+        "interface_risks": {
+          "$ref": "#/$defs/non_empty_string_array"
+        },
+        "provider_difficulty": {
+          "$ref": "#/$defs/non_empty_string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "verdict": {
+                "const": "REPAIR"
+              }
+            },
+            "required": [
+              "verdict"
+            ]
+          },
+          "then": {
+            "required": [
+              "repair_plan"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "repair_plan"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "verdict": {
+                "const": "PASS"
+              }
+            },
+            "required": [
+              "verdict"
+            ]
+          },
+          "then": {
+            "properties": {
+              "primary_finding": {
+                "const": "NONE"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "verdict": {
+                "enum": [
+                  "REPAIR",
+                  "FAIL"
+                ]
+              }
+            },
+            "required": [
+              "verdict"
+            ]
+          },
+          "then": {
+            "properties": {
+              "primary_finding": {
+                "not": {
+                  "const": "NONE"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "non_empty_string_array": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/non_empty_string"
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+/.gitattributes text eol=lf
+/evals/fixtures/character_skill_interface_prototype_cases_v0.1.1.public.json text eol=lf
+/evals/fixtures/character_skill_s1_blind_review_prompt_v0.1.1.md text eol=lf
+/evals/fixtures/character_skill_s1_blind_review_output_schema_v0.1.1.json text eol=lf
+/evals/fixtures/character_skill_s1_blind_review_input_manifest_v0.1.1.json text eol=lf
+/tests/test_character_skill_s1_blind_review_contract.py text eol=lf
