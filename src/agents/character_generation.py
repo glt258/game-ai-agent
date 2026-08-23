@@ -15,10 +15,10 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Mapping, Sequence
 
+from along_street_resources import data_resource
 from character_intelligence.planner import CharacterDesignPlan
 from combat_semantics import CombatRoleProfile, resolve_legacy_combat_role_profile
 from knowledge import KnowledgeResolver
-from knowledge.loader import default_data_dir
 from story import StoryRepository, load_story_repository
 
 from .errors import (
@@ -1057,7 +1057,7 @@ class CharacterAuthoringToolbox:
 
     @staticmethod
     def _world_rules() -> dict[str, Any]:
-        path = default_data_dir() / "canon" / "world_bible.md"
+        path = data_resource("canon", "world_bible.md")
         text = path.read_text(encoding="utf-8")
         rules = re.findall(r"- \*\*(RULE-\d+)：\*\*\s*(.+)", text)
         forbidden_section = text.split("## 13. Forbidden Patterns", 1)

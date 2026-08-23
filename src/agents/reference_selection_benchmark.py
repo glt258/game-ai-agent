@@ -13,7 +13,14 @@ from itertools import combinations
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from reference_corpus.loader import load_corpus_manifest, load_game_catalog
+from along_street_resources import data_resource
+from reference_corpus.loader import (
+    Resource,
+    join_resource,
+    load_corpus_manifest,
+    load_game_catalog,
+    normalize_resource,
+)
 from reference_corpus.repository import CharacterReferenceRepository
 from reference_corpus.features import (
     FEATURE_VOCABULARY_VERSION,
@@ -25,7 +32,6 @@ from reference_corpus.features import (
 )
 
 from .official_character_authoring import (
-    DEFAULT_CORPUS_ROOT,
     _reference_summary,
     load_reference_grounding,
     rank_reference_summaries,
@@ -561,14 +567,18 @@ def _rank_differences(
 
 def run_historical_replays(
     *,
-    corpus_root: Path = DEFAULT_CORPUS_ROOT,
+    corpus_root: Resource | str | None = None,
     top_k: int = TOP_K,
 ) -> list[dict[str, Any]]:
     """Replay preserved historical cases without generation or live providers."""
 
-    corpus_root = Path(corpus_root)
-    catalog = load_game_catalog(corpus_root / "_catalog" / "games.yaml")
-    repository = CharacterReferenceRepository(corpus_root, catalog=catalog)
+    root = (
+        data_resource("reference_corpus", "characters")
+        if corpus_root is None
+        else normalize_resource(corpus_root)
+    )
+    catalog = load_game_catalog(join_resource(root, "_catalog", "games.yaml"))
+    repository = CharacterReferenceRepository(root, catalog=catalog)
     references = repository.list_all()
     summaries = [_reference_summary(reference) for reference in references]
     feature_profiles = {
@@ -585,7 +595,7 @@ def run_historical_replays(
         )
         production_grounding = load_reference_grounding(
             brief,
-            corpus_root=corpus_root,
+            corpus_root=root,
             limit=top_k,
         )
         direct_ranking = rank_reference_summaries(
@@ -661,17 +671,21 @@ def _classify(summary: Mapping[str, Any], order_test: Mapping[str, Any], coverag
 
 def run_benchmark(
     *,
-    corpus_root: Path = DEFAULT_CORPUS_ROOT,
+    corpus_root: Resource | str | None = None,
     top_k: int = TOP_K,
 ) -> dict[str, Any]:
     """Run the complete offline benchmark and return deterministic JSON data."""
 
     if top_k < 1:
         raise ValueError("top_k must be positive")
-    corpus_root = Path(corpus_root)
-    catalog = load_game_catalog(corpus_root / "_catalog" / "games.yaml")
-    manifest = load_corpus_manifest(corpus_root / "_catalog" / "corpus_manifest.yaml")
-    repository = CharacterReferenceRepository(corpus_root, catalog=catalog)
+    root = (
+        data_resource("reference_corpus", "characters")
+        if corpus_root is None
+        else normalize_resource(corpus_root)
+    )
+    catalog = load_game_catalog(join_resource(root, "_catalog", "games.yaml"))
+    manifest = load_corpus_manifest(join_resource(root, "_catalog", "corpus_manifest.yaml"))
+    repository = CharacterReferenceRepository(root, catalog=catalog)
     references = repository.list_all()
     summaries = [_reference_summary(reference) for reference in references]
     summaries_by_id = {str(item["reference_id"]): item for item in summaries}
@@ -800,7 +814,7 @@ def run_benchmark(
         [feature_profiles[reference_id] for reference_id in sorted(feature_profiles)],
     )
     classification, classification_reasons = _classify(summary, order_test, coverage)
-    historical_replays = run_historical_replays(corpus_root=corpus_root, top_k=top_k)
+    historical_replays = run_historical_replays(corpus_root=root, top_k=top_k)
 
     review_packet = {
         "status": "PENDING_MIMO_REVIEW",

@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from .enums import NormalizedRole
 from .errors import DuplicateReferenceError, ReferenceNotFoundError
-from .loader import CharacterReferenceLoader, load_game_catalog
+from .loader import (
+    CharacterReferenceLoader,
+    Resource,
+    join_resource,
+    load_game_catalog,
+    normalize_resource,
+)
 from .models import CharacterReference, GameCatalog
 
 
@@ -13,32 +17,32 @@ class CharacterReferenceRepository:
 
     def __init__(
         self,
-        root: Path,
+        root: Resource | str,
         *,
         catalog: GameCatalog | None = None,
         loader: CharacterReferenceLoader | None = None,
     ):
-        self.root = Path(root)
+        self.root = normalize_resource(root)
         self.catalog = catalog or self._discover_catalog()
         self.loader = loader or CharacterReferenceLoader(self.catalog)
 
-    def _characters_root(self) -> Path:
-        candidate = self.root / "characters"
+    def _characters_root(self) -> Resource:
+        candidate = join_resource(self.root, "characters")
         return candidate if candidate.is_dir() else self.root
 
     def _discover_catalog(self) -> GameCatalog | None:
         candidates = [
-            self.root / "_catalog" / "games.yaml",
-            self.root.parent / "_catalog" / "games.yaml",
+            join_resource(self.root, "_catalog", "games.yaml"),
+            join_resource(self.root, "characters", "_catalog", "games.yaml"),
         ]
         for path in candidates:
-            if path.exists():
+            if path.is_file():
                 return load_game_catalog(path)
         return None
 
-    def _character_dirs(self) -> list[Path]:
+    def _character_dirs(self) -> list[Resource]:
         root = self._characters_root()
-        if not root.exists():
+        if not root.is_dir():
             return []
         return sorted(
             (

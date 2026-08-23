@@ -4,12 +4,13 @@ from pathlib import Path
 
 import pytest
 
+from along_street_resources import data_resource
 from reference_corpus.errors import ReferenceValidationError
 from reference_corpus.loader import CharacterReferenceLoader, load_game_catalog
 from reference_corpus.validator import validate_character_reference
 
 
-CATALOG_PATH = Path("data/reference_corpus/characters/_catalog/games.yaml")
+CATALOG_PATH = data_resource("reference_corpus", "characters", "_catalog", "games.yaml")
 CATALOG = load_game_catalog(CATALOG_PATH)
 
 PRODUCTION_GAMES = {
@@ -61,9 +62,12 @@ games:
 def test_committed_golden_records_pass_catalog_backed_validation(
     game_id: str, character_id: str
 ) -> None:
-    character_dir = Path("data/reference_corpus/characters") / game_id.replace(
-        "-", "_"
-    ) / character_id.replace("-", "_")
+    character_dir = data_resource(
+        "reference_corpus",
+        "characters",
+        game_id.replace("-", "_"),
+        character_id.replace("-", "_"),
+    )
     reference = CharacterReferenceLoader(CATALOG).load(character_dir)
     report = validate_character_reference(reference, CATALOG)
 

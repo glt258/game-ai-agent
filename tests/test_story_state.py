@@ -14,6 +14,7 @@ from story import (
     UnknownTransitionError,
     load_story_repository,
 )
+from along_street_resources import data_resource
 from story.loader import StoryRepository
 from story.models import StoryDefinition, StoryTransition
 from story.validation import validate_story_canon, validate_story_definitions
@@ -228,9 +229,9 @@ def test_runtime_assignments_cannot_bypass_knowledge_subjects():
 
 def test_definition_validator_rejects_unknown_refs_and_arbitrary_effects():
     repository = load_story_repository()
-    from knowledge.loader import default_data_dir, load_yaml
+    from knowledge.loader import load_yaml
 
-    raw = load_yaml(default_data_dir() / "stories" / "story_definitions.yaml")
+    raw = load_yaml(data_resource("stories", "story_definitions.yaml"))
     unknown_case = deepcopy(raw)
     unknown_case["story_definitions"][0]["transitions"][2]["effects"][0]["case_id"] = "missing"
     with pytest.raises(StoryConfigurationError, match="unknown case"):
@@ -257,9 +258,9 @@ def test_definition_validator_rejects_unknown_refs_and_arbitrary_effects():
 
 
 def test_story_canon_validator_rejects_unknown_character_and_district_id():
-    from knowledge.loader import default_data_dir, load_yaml
+    from knowledge.loader import load_yaml
 
-    raw = load_yaml(default_data_dir() / "stories" / "story_canon.yaml")
+    raw = load_yaml(data_resource("stories", "story_canon.yaml"))
     bad_character = deepcopy(raw)
     bad_character["stories"][0]["featured_character_ids"].append("missing")
     with pytest.raises(StoryConfigurationError, match="unknown character"):

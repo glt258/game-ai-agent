@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from along_street_resources import data_resource
 from reference_corpus.combat_vocabulary import CombatVocabulary
 from reference_corpus.combat_taxonomy import (
     LEGACY_COMBAT_CROSSWALK,
@@ -16,8 +17,10 @@ from reference_corpus.models import CombatDesignAnalysis, PrimaryLoop
 from reference_corpus.provenance import validate_combat_analysis
 
 
-JANE_DIR = Path("data/reference_corpus/characters/zenless_zone_zero/jane_doe")
-VOCABULARY_PATH = Path("data/reference_corpus/combat_vocabulary.yaml")
+JANE_DIR = data_resource(
+    "reference_corpus", "characters", "zenless_zone_zero", "jane_doe"
+)
+VOCABULARY_PATH = data_resource("reference_corpus", "combat_vocabulary.yaml")
 
 
 def test_jane_doe_structured_combat_profile_loads_and_preserves_legacy_analysis() -> None:

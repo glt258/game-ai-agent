@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from along_street_resources import data_resource
 from reference_corpus.combat_vocabulary import (
     COMBAT_VOCABULARY_DOMAINS,
     COMBAT_VOCABULARY_SCHEMA_VERSION,
@@ -13,7 +14,7 @@ from reference_corpus.combat_vocabulary import (
 from reference_corpus.loader import load_combat_vocabulary
 
 
-VOCABULARY_PATH = Path("data/reference_corpus/combat_vocabulary.yaml")
+VOCABULARY_PATH = data_resource("reference_corpus", "combat_vocabulary.yaml")
 
 
 def test_combat_vocabulary_loads_with_all_controlled_domains() -> None:

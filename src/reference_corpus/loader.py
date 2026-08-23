@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import Any
 
 import yaml
 from pydantic import ValidationError
+
+from along_street_resources import data_resource
 
 from .errors import (
     ReferenceLoadError,
@@ -51,7 +54,21 @@ _UniqueKeyLoader.add_constructor(
 )
 
 
-def _read_yaml(path: Path) -> dict[str, Any]:
+Resource = Path | Traversable
+
+
+def normalize_resource(value: Resource | str) -> Resource:
+    if isinstance(value, (Path, Traversable)):
+        return value
+    return Path(value)
+
+
+def join_resource(root: Resource, *parts: str) -> Resource:
+    return root.joinpath(*parts)
+
+
+def _read_yaml(path: Resource | str) -> dict[str, Any]:
+    path = normalize_resource(path)
     try:
         with path.open("r", encoding="utf-8") as stream:
             value = yaml.load(stream, Loader=_UniqueKeyLoader)
@@ -66,7 +83,8 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     return value
 
 
-def _model(path: Path, model_type):
+def _model(path: Resource | str, model_type):
+    path = normalize_resource(path)
     try:
         return model_type.model_validate(_read_yaml(path))
     except ValidationError as exc:
@@ -90,23 +108,25 @@ class CharacterReferenceLoader:
         self.combat_vocabulary = combat_vocabulary
 
     @staticmethod
-    def _discover_combat_vocabulary(character_dir: Path) -> CombatVocabulary | None:
-        candidates = [Path("data/reference_corpus/combat_vocabulary.yaml")]
-        if len(character_dir.parents) >= 3:
+    def _discover_combat_vocabulary(character_dir: Resource) -> CombatVocabulary | None:
+        character_dir = normalize_resource(character_dir)
+        candidates: list[Resource] = []
+        if isinstance(character_dir, Path) and len(character_dir.parents) >= 3:
             candidates.append(character_dir.parents[2] / "combat_vocabulary.yaml")
+        candidates.append(data_resource("reference_corpus", "combat_vocabulary.yaml"))
         for candidate in candidates:
-            if candidate.exists():
+            if candidate.is_file():
                 return load_combat_vocabulary(candidate)
         return None
 
-    def load(self, character_dir: Path) -> CharacterReference:
-        character_dir = Path(character_dir)
-        facts_path = character_dir / "facts.yaml"
-        sources_path = character_dir / "sources.yaml"
-        analysis_path = character_dir / "analysis.yaml"
-        if not facts_path.exists():
+    def load(self, character_dir: Resource | str) -> CharacterReference:
+        character_dir = normalize_resource(character_dir)
+        facts_path = join_resource(character_dir, "facts.yaml")
+        sources_path = join_resource(character_dir, "sources.yaml")
+        analysis_path = join_resource(character_dir, "analysis.yaml")
+        if not facts_path.is_file():
             raise ReferenceNotFoundError(f"missing required file: {facts_path}")
-        if not sources_path.exists():
+        if not sources_path.is_file():
             raise ReferenceNotFoundError(f"missing required file: {sources_path}")
 
         facts = _model(facts_path, CharacterFacts)
@@ -119,7 +139,7 @@ class CharacterReferenceLoader:
         provenance = _model(sources_path, CharacterProvenance)
         _require_schema_version(provenance.schema_version, "character-sources/0.2", sources_path)
         analysis = None
-        if analysis_path.exists():
+        if analysis_path.is_file():
             analysis = _model(analysis_path, CharacterAnalysis)
             _require_schema_version(analysis.schema_version, "character-analysis/0.1", analysis_path)
 
@@ -165,35 +185,39 @@ class CharacterReferenceLoader:
             ) from exc
 
 
-def load_game_catalog(path: Path) -> GameCatalog:
-    catalog = _model(Path(path), GameCatalog)
-    _require_schema_version(catalog.schema_version, "game-catalog/0.1", Path(path))
+def load_game_catalog(path: Resource | str) -> GameCatalog:
+    path = normalize_resource(path)
+    catalog = _model(path, GameCatalog)
+    _require_schema_version(catalog.schema_version, "game-catalog/0.1", path)
     return catalog
 
 
-def load_corpus_manifest(path: Path) -> CorpusManifest:
-    manifest = _model(Path(path), CorpusManifest)
+def load_corpus_manifest(path: Resource | str) -> CorpusManifest:
+    path = normalize_resource(path)
+    manifest = _model(path, CorpusManifest)
     _require_schema_version(
-        manifest.corpus_version, "character-reference-corpus/0.1", Path(path)
+        manifest.corpus_version, "character-reference-corpus/0.1", path
     )
     return manifest
 
 
-def load_fixture_plan(path: Path) -> FixturePlan:
-    plan = _model(Path(path), FixturePlan)
+def load_fixture_plan(path: Resource | str) -> FixturePlan:
+    path = normalize_resource(path)
+    plan = _model(path, FixturePlan)
     _require_schema_version(
-        plan.corpus_version, "character-reference-corpus/0.1", Path(path)
+        plan.corpus_version, "character-reference-corpus/0.1", path
     )
     return plan
 
 
-def load_combat_vocabulary(path: Path) -> CombatVocabulary:
+def load_combat_vocabulary(path: Resource | str) -> CombatVocabulary:
     """Load and validate the standalone v0.6.2-A combat vocabulary."""
 
-    vocabulary = _model(Path(path), CombatVocabulary)
+    path = normalize_resource(path)
+    vocabulary = _model(path, CombatVocabulary)
     _require_schema_version(
         vocabulary.schema_version,
         "combat-vocabulary/0.6.2-A",
-        Path(path),
+        path,
     )
     return vocabulary

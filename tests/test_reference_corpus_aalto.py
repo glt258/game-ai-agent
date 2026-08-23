@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from along_street_resources import data_resource
 from agents.official_character_authoring import load_reference_grounding
 from agents.reference_selection_benchmark import TOP_K, benchmark_cases, run_benchmark
 from reference_corpus.features import reference_feature_profile, validate_feature_provenance
@@ -11,9 +12,9 @@ from reference_corpus.provenance import validate_provenance
 from reference_corpus.repository import CharacterReferenceRepository
 
 
-CORPUS_ROOT = Path("data/reference_corpus/characters")
-AALTO_DIR = CORPUS_ROOT / "wuthering_waves" / "aalto"
-CATALOG = load_game_catalog(CORPUS_ROOT / "_catalog" / "games.yaml")
+CORPUS_ROOT = data_resource("reference_corpus", "characters")
+AALTO_DIR = CORPUS_ROOT.joinpath("wuthering_waves", "aalto")
+CATALOG = load_game_catalog(CORPUS_ROOT.joinpath("_catalog", "games.yaml"))
 EXPECTED_EXISTING_IDS = {
     "genshin-impact:furina",
     "genshin-impact:keqing",

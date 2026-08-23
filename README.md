@@ -181,26 +181,32 @@ Run the main checks with:
 .\.venv\Scripts\python.exe -m pytest -q tests/test_provider_contracts.py tests/test_openai_provider.py tests/test_live_llm_adapter.py tests/test_live_llm_errors.py
 ```
 
-### Windows CLI and editable source checkout
+### Windows install and wheel smoke
 
 In PowerShell, create or activate a project virtual environment before using
-the commands below.  This workflow installs the source checkout in editable
-mode; it does not build a wheel or package the data directory.
+the commands below.  A normal install builds and installs the package with its
+runtime resources included:
 
 ```powershell
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 .\.venv\Scripts\python.exe -m ensurepip --upgrade
-.\.venv\Scripts\python.exe -m pip install --editable .
+.\.venv\Scripts\python.exe -m pip install .
 ```
 
-If the virtual environment has no working `pip`, use `uv` for the editable
-install instead:
+To inspect the actual release artifact and verify it from outside the
+repository checkout:
 
 ```powershell
-uv venv .venv
-uv pip install --python .\.venv\Scripts\python.exe --editable .
+.\.venv\Scripts\python.exe -m pip wheel . --no-deps --wheel-dir .\dist
+.\.venv\Scripts\python.exe scripts\verify_wheel_runtime_resources.py `
+  --wheel (Get-ChildItem .\dist\*.whl | Select-Object -First 1).FullName
 ```
+
+The smoke verifier compares the wheel's resource set with the source set,
+installs the wheel into an isolated target, changes to a non-repository CWD,
+and calls the default Canon, story, reference-grounding, and deterministic
+intent-parser entry points.  It also exercises explicit filesystem overrides.
 
 The production CLI is registered by the PEP 621 `project.scripts` entry:
 
@@ -269,12 +275,24 @@ The corpus is a precedent, evaluation, and design-reference oracle for authoring
 analysis. It is not a few-shot answer bank, copying source, commercial
 imitation dataset, or automatic template material.
 
-The corpus is separate from runtime `data/characters/characters.yaml`, which
-contains active world characters and may have a different record count.
+The corpus is packaged with the other runtime resources under
+`src/along_street_resources/data/reference_corpus/`; it is separate from the
+active world-character records under
+`src/along_street_resources/data/characters/characters.yaml`.
 Expansion is gap-driven: a concrete Generator, Canon, Repair, or evaluation
 failure must show that the existing corpus lacks a useful precedent before a
 new record is considered. See
 [the production baseline](docs/reference_corpus/production_baseline_v0.1.md).
+
+All runtime data is maintained in the single
+`src/along_street_resources/data/` tree.  Production code resolves packaged
+resources through `along_street_resources.data_root()` and
+`along_street_resources.data_resource(...)`, which return Python 3.10-compatible
+`Traversable` objects and do not depend on the checkout CWD.  Use an explicit
+`Path` only when a caller intentionally supplies an external data or corpus
+directory, for example `load_canon(data_dir=path)`,
+`load_story_repository(data_dir=path)`, or
+`load_reference_grounding(brief, corpus_root=path)`.
 
 ## Safety and Failure Boundaries
 
@@ -311,7 +329,8 @@ src/agents/             Character generation, Canon checking, repair, providers
 src/knowledge/          Scoped knowledge resolution and authorization
 src/story/              Story and StoryState loading / validation
 src/reference_corpus/   Reference-corpus models, loading, and validation
-data/                   Canon, world, story, runtime characters, and corpus data
+src/along_street_resources/data/
+                        Packaged Canon, world, story, character, and corpus data
 evals/                  Evaluation cases and fixtures
 scripts/                Offline demos, validators, and evaluation runners
 tests/                  Deterministic unit, integration, red-team, and corpus tests

@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from along_street_resources import data_resource
 from reference_corpus.enums import NormalizedRole
 from reference_corpus.errors import DuplicateReferenceError, ReferenceNotFoundError
 from reference_corpus.loader import load_game_catalog
@@ -12,7 +13,9 @@ from reference_corpus.repository import CharacterReferenceRepository
 
 
 FIXTURES = Path(__file__).parent / "fixtures" / "valid"
-CATALOG = load_game_catalog(Path("data/reference_corpus/characters/_catalog/games.yaml"))
+CATALOG = load_game_catalog(
+    data_resource("reference_corpus", "characters", "_catalog", "games.yaml")
+)
 
 
 def _repository_root(tmp_path: Path) -> Path:

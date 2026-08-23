@@ -22,3 +22,6 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+along_street_resources = ["data/**/*.yaml", "data/**/*.yml", "data/**/*.md"]

@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from along_street_resources import data_resource
 from reference_corpus.errors import ProvenanceValidationError
 from reference_corpus.loader import CharacterReferenceLoader, load_game_catalog
 from reference_corpus.provenance import resolve_fact_field_path, validate_provenance
@@ -12,7 +13,9 @@ from reference_corpus.models import CharacterProvenance
 from reference_corpus.validator import validate_corpus
 
 
-CATALOG = load_game_catalog(Path("data/reference_corpus/characters/_catalog/games.yaml"))
+CATALOG = load_game_catalog(
+    data_resource("reference_corpus", "characters", "_catalog", "games.yaml")
+)
 FIXTURE = Path(__file__).parent / "fixtures" / "valid" / "complete_valid"
 
 

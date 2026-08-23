@@ -6,6 +6,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
+from along_street_resources import data_resource
 from reference_corpus.errors import ReferenceValidationError
 from reference_corpus.loader import CharacterReferenceLoader, load_game_catalog
 from reference_corpus.models import (
@@ -17,7 +18,9 @@ from reference_corpus.models import (
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "valid" / "complete_valid"
-CATALOG = load_game_catalog(Path("data/reference_corpus/characters/_catalog/games.yaml"))
+CATALOG = load_game_catalog(
+    data_resource("reference_corpus", "characters", "_catalog", "games.yaml")
+)
 
 
 def _payloads() -> tuple[dict, dict, dict]:

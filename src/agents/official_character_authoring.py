@@ -14,10 +14,17 @@ import os
 import re
 import sys
 from dataclasses import asdict, dataclass
+from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from reference_corpus.loader import load_corpus_manifest, load_game_catalog
+from along_street_resources import data_resource
+from reference_corpus.loader import (
+    join_resource,
+    load_corpus_manifest,
+    load_game_catalog,
+    normalize_resource,
+)
 from reference_corpus.repository import CharacterReferenceRepository
 from reference_corpus.features import extract_brief_features, reference_feature_profile
 
@@ -39,8 +46,7 @@ from .model_factory import character_model_from_environment
 from .reference_feature_ordering import ready_feature_score_trace
 
 
-ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_CORPUS_ROOT = ROOT / "data" / "reference_corpus" / "characters"
+DEFAULT_CORPUS_ROOT = data_resource("reference_corpus", "characters")
 
 
 @dataclass(frozen=True)
@@ -128,7 +134,7 @@ class _RecordingGenerationAgent:
 def load_reference_grounding(
     brief: str,
     *,
-    corpus_root: Path = DEFAULT_CORPUS_ROOT,
+    corpus_root: Path | Traversable | str | None = None,
     limit: int = 3,
 ) -> ReferenceGrounding:
     """Load and select bounded reference summaries from the real corpus.
@@ -140,10 +146,14 @@ def load_reference_grounding(
 
     if limit < 1:
         raise ValueError("limit must be positive")
-    corpus_root = Path(corpus_root)
-    catalog = load_game_catalog(corpus_root / "_catalog" / "games.yaml")
-    manifest = load_corpus_manifest(corpus_root / "_catalog" / "corpus_manifest.yaml")
-    repository = CharacterReferenceRepository(corpus_root, catalog=catalog)
+    root = (
+        data_resource("reference_corpus", "characters")
+        if corpus_root is None
+        else normalize_resource(corpus_root)
+    )
+    catalog = load_game_catalog(join_resource(root, "_catalog", "games.yaml"))
+    manifest = load_corpus_manifest(join_resource(root, "_catalog", "corpus_manifest.yaml"))
+    repository = CharacterReferenceRepository(root, catalog=catalog)
     references = repository.list_all()
     summaries = [_reference_summary(reference) for reference in references]
     feature_profiles = {

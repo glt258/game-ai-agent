@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import pytest
 
+from along_street_resources import data_resource
 from combat_semantics import CombatRoleProfile
 from reference_corpus.loader import load_combat_vocabulary
 
 
-VOCABULARY = load_combat_vocabulary("data/reference_corpus/combat_vocabulary.yaml")
+VOCABULARY = load_combat_vocabulary(data_resource("reference_corpus", "combat_vocabulary.yaml"))
 
 
 @pytest.mark.parametrize(

@@ -1,8 +1,14 @@
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Mapping
 
-from knowledge.loader import default_data_dir, load_canon, load_yaml
+from knowledge.loader import (
+    Resource,
+    default_data_dir,
+    join_resource,
+    load_canon,
+    load_yaml,
+    normalize_resource,
+)
 from knowledge.registries import registry_ids
 
 from .models import StoryDefinition
@@ -18,10 +24,10 @@ class StoryRepository:
     incident_ids: frozenset[str]
 
 
-def load_story_repository(data_dir: Path | None = None) -> StoryRepository:
-    root = Path(data_dir) if data_dir else default_data_dir()
+def load_story_repository(data_dir: Resource | str | None = None) -> StoryRepository:
+    root = default_data_dir() if data_dir is None else normalize_resource(data_dir)
     raw = load_canon(root)
-    city_data = load_yaml(root / "locations" / "cities.yaml")
+    city_data = load_yaml(join_resource(root, "locations", "cities.yaml"))
     cities = city_data.get("cities", []) if isinstance(city_data, Mapping) else []
     character_ids = {record["id"] for record in raw["characters"]}
     faction_ids = {record["id"] for record in raw["factions"]}

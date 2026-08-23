@@ -2,6 +2,7 @@ import pytest
 
 from knowledge import KnowledgeContext, KnowledgeResolver
 from knowledge.errors import KnowledgeAccessDenied, KnowledgeConfigurationError
+from along_street_resources import data_resource
 
 
 def datasets(*, with_scope_bindings=True):
@@ -208,10 +209,11 @@ def test_lore_reference_mismatch_fails_fast():
 
 
 def test_active_registry_does_not_contain_known_fake_responsibilities():
-    from pathlib import Path
     import yaml
 
-    registry = yaml.safe_load(Path("data/knowledge/condition_scopes.yaml").read_text(encoding="utf-8"))
+    registry = yaml.safe_load(
+        data_resource("knowledge", "condition_scopes.yaml").read_text(encoding="utf-8")
+    )
     fake_values = {
         "insurance_claims_context",
         "model_review_context",

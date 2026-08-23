@@ -11,9 +11,9 @@ import argparse
 import json
 from collections import Counter
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Mapping
 
+from along_street_resources import data_resource
 from reference_corpus.features import (
     FeatureDomain,
     DiagnosticFeatureProfile,
@@ -21,13 +21,14 @@ from reference_corpus.features import (
     extract_brief_features,
     reference_feature_profile,
 )
+from reference_corpus.loader import Resource, normalize_resource
 from reference_corpus.repository import CharacterReferenceRepository
 
 from .reference_selection_benchmark import run_benchmark
 
 
 DIAGNOSTIC_VERSION = "reference-feature-discrimination-diagnostic/0.4.2b"
-DEFAULT_CORPUS_ROOT = Path(__file__).resolve().parents[2] / "data" / "reference_corpus"
+DEFAULT_CORPUS_ROOT = data_resource("reference_corpus")
 
 DOMAINS: tuple[FeatureDomain, ...] = (
     "personality",
@@ -420,10 +421,14 @@ def _shadow_overlap(
     }
 
 
-def run_diagnostic(*, corpus_root: Path | None = None) -> dict[str, Any]:
+def run_diagnostic(*, corpus_root: Resource | str | None = None) -> dict[str, Any]:
     """Run only the feature-discrimination extension against production data."""
 
-    root = Path(corpus_root) if corpus_root is not None else DEFAULT_CORPUS_ROOT
+    root = (
+        data_resource("reference_corpus")
+        if corpus_root is None
+        else normalize_resource(corpus_root)
+    )
     repository = CharacterReferenceRepository(root)
     references = repository.list_all()
     profiles = {

@@ -5,19 +5,24 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import replace
 from itertools import combinations
-from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from along_street_resources import data_resource
 from reference_corpus.features import (
     DiagnosticFeatureProfile,
     extract_brief_features,
     reference_feature_profile,
 )
-from reference_corpus.loader import load_corpus_manifest, load_game_catalog
+from reference_corpus.loader import (
+    Resource,
+    join_resource,
+    load_corpus_manifest,
+    load_game_catalog,
+    normalize_resource,
+)
 from reference_corpus.repository import CharacterReferenceRepository
 
 from .official_character_authoring import (
-    DEFAULT_CORPUS_ROOT,
     _reference_summary,
     load_reference_grounding,
     rank_reference_summaries,
@@ -186,14 +191,18 @@ def _diagnostic_pair_report(
 
 def run_activation_report(
     *,
-    corpus_root: Path = DEFAULT_CORPUS_ROOT,
+    corpus_root: Resource | str | None = None,
     top_k: int = TOP_K,
 ) -> dict[str, Any]:
     """Run the complete offline v0.4.3b activation gate."""
 
-    root = Path(corpus_root)
-    catalog = load_game_catalog(root / "_catalog" / "games.yaml")
-    manifest = load_corpus_manifest(root / "_catalog" / "corpus_manifest.yaml")
+    root = (
+        data_resource("reference_corpus", "characters")
+        if corpus_root is None
+        else normalize_resource(corpus_root)
+    )
+    catalog = load_game_catalog(join_resource(root, "_catalog", "games.yaml"))
+    manifest = load_corpus_manifest(join_resource(root, "_catalog", "corpus_manifest.yaml"))
     references = CharacterReferenceRepository(root, catalog=catalog).list_all()
     summaries = [_reference_summary(reference) for reference in references]
     profiles = {

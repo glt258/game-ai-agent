@@ -3,23 +3,28 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from along_street_resources import data_resource
 from reference_corpus.loader import load_corpus_manifest, load_fixture_plan
 from reference_corpus.errors import ReferenceValidationError
 from reference_corpus.validator import validate_corpus
 from reference_corpus.loader import CharacterReferenceLoader, load_game_catalog
 
 
-CATALOG_PATH = Path("data/reference_corpus/characters/_catalog/games.yaml")
+CATALOG_PATH = data_resource("reference_corpus", "characters", "_catalog", "games.yaml")
 CATALOG = load_game_catalog(CATALOG_PATH)
 FIXTURE_ROOT = Path(__file__).parent / "fixtures"
 
 
 def test_catalog_manifest_and_fixture_plan_load() -> None:
     manifest = load_corpus_manifest(
-        Path("data/reference_corpus/characters/_catalog/corpus_manifest.yaml")
+        data_resource(
+            "reference_corpus", "characters", "_catalog", "corpus_manifest.yaml"
+        )
     )
     plan = load_fixture_plan(
-        Path("data/reference_corpus/characters/_catalog/fixture_plan.yaml")
+        data_resource(
+            "reference_corpus", "characters", "_catalog", "fixture_plan.yaml"
+        )
     )
     assert manifest.games == ["test-game-alpha", "test-game-beta"]
     assert plan.target_count == 20

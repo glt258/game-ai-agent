@@ -1,6 +1,7 @@
 import pytest
 
 from knowledge import KnowledgeContext, KnowledgeResolver
+from along_street_resources import data_resource
 from knowledge.errors import KnowledgeConfigurationError, KnowledgeContextValidationError
 from knowledge.registries import (
     validate_authorizations,
@@ -589,9 +590,10 @@ def test_unknown_formal_project_runtime_id_is_rejected():
 
 def test_support_registry_does_not_require_new_responsibility_or_assignment_vocabulary():
     import yaml
-    from pathlib import Path
 
-    document = yaml.safe_load(Path("data/knowledge/knowledge_rules.yaml").read_text(encoding="utf-8"))
+    document = yaml.safe_load(
+        data_resource("knowledge", "knowledge_rules.yaml").read_text(encoding="utf-8")
+    )
     responsibility_types = set(document["vocabulary"]["responsibility_types"])
     assignment_types = set(document["vocabulary"]["assignment_types"])
     assert not responsibility_types & {
@@ -607,9 +609,10 @@ def test_support_registry_does_not_require_new_responsibility_or_assignment_voca
 
 def test_removed_project_reopens_project_scope_gaps():
     import yaml
-    from pathlib import Path
 
-    document = yaml.safe_load(Path("data/knowledge/condition_scopes.yaml").read_text(encoding="utf-8"))
+    document = yaml.safe_load(
+        data_resource("knowledge", "condition_scopes.yaml").read_text(encoding="utf-8")
+    )
     bindings = {(item["rule_id"], item["condition"]): item for item in document["bindings"]}
     for key in (("knowledge_rule_010", "relevant_project"), ("knowledge_rule_011", "assigned_to_related_project")):
         binding = bindings[key]

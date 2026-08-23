@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
-from pathlib import Path
 
+from along_street_resources import data_resource
 from combat_semantics import CombatRoleProfile
 from reference_corpus.loader import load_combat_vocabulary
 
@@ -108,8 +108,7 @@ class DeterministicCharacterDesignIntentParser:
 
     @staticmethod
     def _default_vocabulary():
-        root = Path(__file__).resolve().parents[3]
-        return load_combat_vocabulary(root / "data" / "reference_corpus" / "combat_vocabulary.yaml")
+        return load_combat_vocabulary(data_resource("reference_corpus", "combat_vocabulary.yaml"))
 
     def _combat_role_mentions(self, text: str) -> list[tuple[int, int, str, bool]]:
         matches: list[tuple[int, int, str, bool]] = []

@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from along_street_resources import data_resource
 from reference_corpus.errors import (
     ReferenceLoadError,
     ReferenceNotFoundError,
@@ -15,7 +16,9 @@ from reference_corpus.loader import CharacterReferenceLoader, load_game_catalog
 
 
 ROOT = Path(__file__).parent / "fixtures"
-CATALOG = load_game_catalog(Path("data/reference_corpus/characters/_catalog/games.yaml"))
+CATALOG = load_game_catalog(
+    data_resource("reference_corpus", "characters", "_catalog", "games.yaml")
+)
 
 
 def test_valid_three_file_load() -> None:
@@ -102,9 +105,13 @@ def test_v03_graph_fixture_and_golden_records_load() -> None:
         for relation in graph.facts.combat.relations
     )
 
-    data_root = Path("data/reference_corpus/characters")
-    keqing = CharacterReferenceLoader().load(data_root / "genshin_impact" / "keqing")
-    jinhsi = CharacterReferenceLoader().load(data_root / "wuthering_waves" / "jinhsi")
+    data_root = data_resource("reference_corpus", "characters")
+    keqing = CharacterReferenceLoader().load(
+        data_root.joinpath("genshin_impact", "keqing")
+    )
+    jinhsi = CharacterReferenceLoader().load(
+        data_root.joinpath("wuthering_waves", "jinhsi")
+    )
     assert keqing.facts.combat.mechanics.states[0].subject_scope == "self"
     assert {
         state.state_id: state.subject_scope for state in jinhsi.facts.combat.mechanics.states

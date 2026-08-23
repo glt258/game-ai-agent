@@ -2,16 +2,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from along_street_resources import data_resource
 from reference_corpus.loader import CharacterReferenceLoader, load_game_catalog
 from reference_corpus.validator import validate_character_reference
 
 
 def test_shinku_golden_record_semantics() -> None:
     catalog = load_game_catalog(
-        Path("data/reference_corpus/characters/_catalog/games.yaml")
+        data_resource("reference_corpus", "characters", "_catalog", "games.yaml")
     )
     shinku = CharacterReferenceLoader(catalog).load(
-        Path("data/reference_corpus/characters/neverness_to_everness/shinku")
+        data_resource(
+            "reference_corpus", "characters", "neverness_to_everness", "shinku"
+        )
     )
     states = {
         state.state_id: state.subject_scope

@@ -12,6 +12,7 @@ from itertools import combinations
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from along_street_resources import data_resource
 from reference_corpus.features import (
     DiagnosticFeatureProfile,
     FeatureDomain,
@@ -19,10 +20,10 @@ from reference_corpus.features import (
     feature_coverage,
     reference_feature_profile,
 )
+from reference_corpus.loader import Resource, normalize_resource
 from reference_corpus.repository import CharacterReferenceRepository
 
 from .official_character_authoring import (
-    DEFAULT_CORPUS_ROOT,
     _reference_summary,
     rank_reference_summaries,
 )
@@ -537,12 +538,17 @@ def _hook_experiments(references: Sequence[Any]) -> dict[str, Any]:
 
 def run_shadow_simulation(
     *,
-    corpus_root: Path = DEFAULT_CORPUS_ROOT,
+    corpus_root: Resource | str | None = None,
     top_k: int = TOP_K,
 ) -> dict[str, Any]:
     """Run all shadow models and diagnostic experiments without production writes."""
 
-    repository = CharacterReferenceRepository(corpus_root)
+    root = (
+        data_resource("reference_corpus", "characters")
+        if corpus_root is None
+        else normalize_resource(corpus_root)
+    )
+    repository = CharacterReferenceRepository(root)
     references = repository.list_all()
     core_cases = benchmark_cases()
     model_results: dict[str, Any] = {}

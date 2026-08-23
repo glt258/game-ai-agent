@@ -1,12 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
-
+from along_street_resources import data_resource
 from agents.character_generation import CHARACTER_SYSTEM_CONTRACT, CharacterDraft
 from agents.response_contracts import CHARACTER_DRAFT_JSON_SCHEMA
-
-
-ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_character_generation_has_no_fixed_weapon_type_contract() -> None:
@@ -31,9 +27,7 @@ def test_character_generation_prompt_does_not_require_weapon_categories() -> Non
 
 
 def test_formal_character_schema_has_no_fixed_weapon_enum_or_mechanic_tag_contract() -> None:
-    schema = (ROOT / "data" / "characters" / "character_schema.yaml").read_text(
-        encoding="utf-8"
-    )
+    schema = data_resource("characters", "character_schema.yaml").read_text(encoding="utf-8")
     assert "weapon_type:" not in schema
     assert "WeaponType" not in schema
     assert "weapon_class:" not in schema
