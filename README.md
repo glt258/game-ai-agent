@@ -15,10 +15,18 @@ non-student status.
 
 ## Current Status
 
-- **Public Release:** `v0.7.0 — Canon-Grounded Character Authoring` (latest public release)
-- **Development Version:** `0.8.0.dev0`
-- **Runtime Baseline:** `v0.6.6` — earlier frozen runtime milestone, not the current overall project version
-- **Reference Corpus Baseline:** `v0.1` — independent namespace; frozen 10-record production baseline
+### Version Matrix
+
+| Namespace | Current Identifier | Meaning |
+|---|---|---|
+| Project | `0.8.0.dev0` | Current development version |
+| Public Release | `v0.7.0` | Latest public project release |
+| Runtime Baseline | `runtime-v0.6.6` | Frozen runtime baseline |
+| Reference Corpus | `reference-corpus-v0.5` | Current 16-record expanded corpus baseline |
+| Character Intelligence | `CI-B1.5` | Current canonical combat-role compatibility milestone |
+| Character Skill | `CS-S1.1` | Current frozen interface-design milestone |
+
+The full naming policy is documented in [Versioning and Namespace Policy](docs/versioning.md).
 
 ## What This Project Is
 
@@ -208,7 +216,7 @@ described in [the provider capability layer](docs/provider_capability_layer.md).
 
 ## Reference Corpus
 
-The Reference Corpus Production Baseline v0.1 is frozen at 10 production
+The historical Reference Corpus Production Baseline v0.1 is frozen at 10 production
 characters. Here, “production” refers to accepted and frozen corpus records, not production-readiness of the overall Agent system.
 The corpus is a precedent, evaluation, and design-reference oracle for authoring-quality
 analysis. It is not a few-shot answer bank, copying source, commercial
@@ -237,7 +245,8 @@ new record is considered. See
 ## Current Status and Limitations
 
 The earlier runtime baseline is documented separately as **Character Authoring
-Pipeline v0.6.6**, with status `READY_FOR_DEMO`. The Reference Corpus production
+Pipeline runtime-v0.6.6**, with status `READY_FOR_DEMO`. The current expanded
+Reference Corpus baseline is `reference-corpus-v0.5`; the historical production
 baseline v0.1 is also frozen. Current work is centered on Agent quality,
 evaluation, and demo readiness rather than speculative platform features.
 
@@ -273,11 +282,12 @@ capabilities.
 ## Further Reading
 
 - [Character Generation Agent](docs/character_generation_agent_v0.1.md)
-- [Runtime Freeze v0.6.6](docs/runtime_freeze_v0.6.6.md)
+- [Runtime Freeze runtime-v0.6.6](docs/runtime_freeze_v0.6.6.md)
 - [Canon Checker](docs/canon_checker_v0.1.md)
 - [Character Repair Loop](docs/character_repair_loop_v0.1.md)
 - [Provider Capability Layer](docs/provider_capability_layer.md)
 - [Reference Corpus Production Baseline v0.1](docs/reference_corpus/production_baseline_v0.1.md)
+- [Reference Corpus Baseline reference-corpus-v0.5](docs/reference_corpus_expanded_baseline_v0.5.md)
 
 ## Acknowledgements
 

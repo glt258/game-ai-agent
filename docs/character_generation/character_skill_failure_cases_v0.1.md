@@ -1,14 +1,14 @@
-# Character Skill Design S0: Failure Cases and Specification Freeze
+# Character Skill Design CS-S0: Failure Cases and Specification Freeze
 
 ## Status and Purpose
 
-S0 is the specification-asset stage for character skill design. It freezes the observable domain language, failure boundaries, and acceptance cases used by later model collaboration and S1 interface design. It does not claim that current character generation already has a structured production skill kit.
+CS-S0 is the specification-asset stage for character skill design. It freezes the observable domain language, failure boundaries, and acceptance cases used by later model collaboration and CS-S1 interface design. It does not claim that current character generation already has a structured production skill kit.
 
-The current production character output still expresses ability concepts through the free-text `ability_concept` field. S0 does not replace it with new production fields or decide the future production schema, provider, validator, or repair interface for `SkillKit`.
+The current production character output still expresses ability concepts through the free-text `ability_concept` field. CS-S0 does not replace it with new production fields or decide the future production schema, provider, validator, or repair interface for `SkillKit`.
 
 ## Scope
 
-S0 covers only the following:
+CS-S0 covers only the following:
 
 - Describe observable causal relationships in skill design through `Skill Kit Concept`, `Ability Entry`, `Trigger Subject`, `Effect Subject`, `Resource Loop`, `State Lifecycle`, `Summon Lifecycle`, `Team Interaction`, and `Mechanic Relation`.
 - Freeze the meanings of the three specification outcomes, `PASS`, `REPAIR`, and `FAIL`, and their finding codes.
@@ -17,7 +17,7 @@ S0 covers only the following:
 
 ## Non-goals
 
-S0 does not:
+CS-S0 does not:
 
 - Change the current production ability representation; `ability_concept` remains the current contract.
 - Freeze or implement a future production `SkillKit` schema, add a production validator, connect a provider, or change the repair loop.
@@ -47,7 +47,7 @@ Each case has exactly the following fields:
 
 | Field | Meaning |
 | --- | --- |
-| `id` | Stable, ordered case identifier. S0 uses `skill_s0_01_...` through `skill_s0_18_...`. |
+| `id` | Stable, ordered case identifier. CS-S0 uses the retained `skill_s0_01_...` through `skill_s0_18_...` case IDs. |
 | `title` | Reviewer-facing case title. |
 | `category` | Domain coverage category, such as `resource_loop` or `role_alignment`. |
 | `request` | Production-decoupled request observation: `brief`, `hard_constraints`, `forbidden_elements`, and `combat_role_profile`. |
@@ -119,13 +119,13 @@ DeepSeek reads the `request`, domain glossary, and non-oracle case observation t
 
 MiMo v2.5 receives only the request, candidate observation, and necessary domain definitions after the `expected` outcome and finding codes have been removed. It independently assigns `PASS`, `REPAIR`, or `FAIL` and provides a reason. It does not modify the repository, decide the production schema, or serve as the final specification authority. Its purpose is to identify an oracle that is too broad or too narrow and cases where stylistic differences are incorrectly treated as structural defects.
 
-### Codex/Sol: Specification Reconciliation and the S1 Gate
+### Codex/Sol: Specification Reconciliation and the CS-S1 Gate
 
-Codex compares the DeepSeek candidate, MiMo v2.5 blind review, and S0 oracle to confirm that the domain vocabulary and case boundaries do not conflict with production reality. S1 begins only when all of the following are true:
+Codex compares the DeepSeek candidate, MiMo v2.5 blind review, and CS-S0 oracle to confirm that the domain vocabulary and case boundaries do not conflict with production reality. CS-S1 begins only when all of the following are true:
 
 1. Every oracle/reviewer disagreement across the 18 cases has been explained, especially ensuring that the case 18 positive `control` example is not universally rejected.
 2. Every finding code, all six role responsibilities, and cross-taxonomy isolation have stable evidence.
 3. Domain discussion has confirmed the minimum observable ability relationships needed in the future without prematurely expressing them as production fields.
-4. S1 interface candidates can evolve incrementally through the existing `ability_concept` compatibility path and clearly separate provider, repair, and evaluation responsibilities.
+4. CS-S1 interface candidates can evolve incrementally through the existing `ability_concept` compatibility path and clearly separate provider, repair, and evaluation responsibilities.
 
-The first S1 deliverable must be interface candidates plus a migration and compatibility strategy. Only then should a Luna worker implement it test-first. S0 itself does not commit production code.
+The first CS-S1 deliverable must be interface candidates plus a migration and compatibility strategy. Only then should a Luna worker implement it test-first. CS-S0 itself does not commit production code.

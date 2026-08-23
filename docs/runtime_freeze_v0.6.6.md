@@ -1,4 +1,7 @@
-# Character Authoring Pipeline v0.6.6 — Runtime Freeze
+# Character Authoring Pipeline Runtime Baseline runtime-v0.6.6 — Freeze
+
+Namespace: Runtime Baseline
+Identifier: `runtime-v0.6.6`
 
 ## Status
 
@@ -284,7 +287,9 @@ non-blocking provider transients do not automatically unfreeze the Runtime.
 
 ## Release and Tag Policy
 
-Version remains `0.6.6`; freeze does not bump the Runtime version. If `v0.6.6`
+The canonical Runtime Baseline remains `runtime-v0.6.6`; this freeze does not
+bump the Runtime version. The legacy identifier `v0.6.6` is retained for
+compatibility. If the legacy tag `v0.6.6`
 is absent, the freeze commit receives this annotated tag:
 
 ```text

@@ -14,7 +14,7 @@ def _draft_payload(**overrides: Any) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "draft_id": "draft_b15",
         "status": "draft",
-        "name": "B1.5角色",
+        "name": "CI-B1.5角色",
         "canonical_character_id": None,
         "age": None,
         "age_range": None,

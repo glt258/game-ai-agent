@@ -1,9 +1,9 @@
-# Character Skill S0.1 Blind Review Report
+# Character Skill CS-S0.1 Blind Review Report
 
 ## Freeze metadata
 
 This report records the blind-review evidence used to freeze the Character Skill
-S0.1 contract (v0.1.1).
+CS-S0.1 contract (v0.1.1).
 
 - Commit A: `f96b45023e844e501a07b4426ef7fa963285a054`
 - Authority fixture: `evals/fixtures/character_skill_failure_cases_v0.1.1.json`
@@ -48,12 +48,12 @@ the focused tests provide the retained semantic provenance.
 
 | Comparison | Agreement |
 | --- | ---: |
-| DeepSeek vs S0.1 oracle | 19/19 |
-| MiMo vs S0.1 oracle | 18/19 |
+| DeepSeek vs CS-S0.1 oracle | 19/19 |
+| MiMo vs CS-S0.1 oracle | 18/19 |
 | DeepSeek vs MiMo | 18/19 |
 | All three agree | 18/19 |
 
-The only reviewer disagreement is `case_05`. The S0.1 boundary cases introduced
+The only reviewer disagreement is `case_05`. The CS-S0.1 boundary cases introduced
 or clarified by the revision are stable across the review:
 
 - `case_13`: all three classify the absent mechanism skeleton as
@@ -69,7 +69,7 @@ or clarified by the revision are stable across the review:
 
 | Source | Verdict |
 | --- | --- |
-| S0.1 oracle | `REPAIR / TRIGGER_SUBJECT_AMBIGUOUS` |
+| CS-S0.1 oracle | `REPAIR / TRIGGER_SUBJECT_AMBIGUOUS` |
 | deepseek-v4-flash | `REPAIR` |
 | MiMo v2.5 | `FAIL` |
 
@@ -88,11 +88,11 @@ Final adjudication: `case_05 = REPAIR / TRIGGER_SUBJECT_AMBIGUOUS`.
 
 ## Freeze decision
 
-The blind review supports the S0.1 semantic revision. There is no evidence that
+The blind review supports the CS-S0.1 semantic revision. There is no evidence that
 the authority fixture needs another content change. The authority fixture,
 frozen specification, and blind input are verified to be byte-identical to their
 Commit A versions after Commit A was created.
 
-S0.1 v0.1.1 is frozen by Commit B once this report, the normalized reviewer
-outputs, and the provenance test are committed together. S1 must begin from
+CS-S0.1 contract v0.1.1 is frozen by Commit B once this report, the normalized reviewer
+outputs, and the provenance test are committed together. CS-S1 must begin from
 that frozen commit.

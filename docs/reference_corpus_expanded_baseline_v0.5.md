@@ -1,4 +1,7 @@
-# Reference Corpus v0.5 — Expanded Baseline Freeze
+# Reference Corpus Baseline reference-corpus-v0.5 — Expanded Baseline Freeze
+
+Namespace: Reference Corpus Baseline
+Identifier: `reference-corpus-v0.5`
 
 Status: **FROZEN**
 

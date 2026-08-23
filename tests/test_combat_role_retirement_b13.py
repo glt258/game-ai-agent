@@ -23,7 +23,7 @@ def _payload(*, profile: dict[str, Any] | None = None, legacy: str | None = None
     payload: dict[str, Any] = {
         "draft_id": "draft_b13",
         "status": "draft",
-        "name": "B1.3角色",
+        "name": "CI-B1.3角色",
         "canonical_character_id": None,
         "age": None,
         "age_range": None,
