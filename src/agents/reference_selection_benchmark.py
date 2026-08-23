@@ -17,11 +17,10 @@ from along_street_resources import data_resource
 from reference_corpus.loader import (
     Resource,
     join_resource,
-    load_corpus_manifest,
     load_game_catalog,
     normalize_resource,
 )
-from reference_corpus.repository import CharacterReferenceRepository
+from reference_corpus.repository import CharacterReferenceRepository, ManifestPolicy
 from reference_corpus.features import (
     FEATURE_VOCABULARY_VERSION,
     DiagnosticFeatureProfile,
@@ -569,6 +568,7 @@ def run_historical_replays(
     *,
     corpus_root: Resource | str | None = None,
     top_k: int = TOP_K,
+    manifest_policy: ManifestPolicy = "required",
 ) -> list[dict[str, Any]]:
     """Replay preserved historical cases without generation or live providers."""
 
@@ -578,7 +578,9 @@ def run_historical_replays(
         else normalize_resource(corpus_root)
     )
     catalog = load_game_catalog(join_resource(root, "_catalog", "games.yaml"))
-    repository = CharacterReferenceRepository(root, catalog=catalog)
+    repository = CharacterReferenceRepository(
+        root, catalog=catalog, manifest_policy=manifest_policy
+    )
     references = repository.list_all()
     summaries = [_reference_summary(reference) for reference in references]
     feature_profiles = {
@@ -597,6 +599,7 @@ def run_historical_replays(
             brief,
             corpus_root=root,
             limit=top_k,
+            manifest_policy=manifest_policy,
         )
         direct_ranking = rank_reference_summaries(
             brief,
@@ -673,6 +676,7 @@ def run_benchmark(
     *,
     corpus_root: Resource | str | None = None,
     top_k: int = TOP_K,
+    manifest_policy: ManifestPolicy = "required",
 ) -> dict[str, Any]:
     """Run the complete offline benchmark and return deterministic JSON data."""
 
@@ -684,8 +688,9 @@ def run_benchmark(
         else normalize_resource(corpus_root)
     )
     catalog = load_game_catalog(join_resource(root, "_catalog", "games.yaml"))
-    manifest = load_corpus_manifest(join_resource(root, "_catalog", "corpus_manifest.yaml"))
-    repository = CharacterReferenceRepository(root, catalog=catalog)
+    repository = CharacterReferenceRepository(
+        root, catalog=catalog, manifest_policy=manifest_policy
+    )
     references = repository.list_all()
     summaries = [_reference_summary(reference) for reference in references]
     summaries_by_id = {str(item["reference_id"]): item for item in summaries}
@@ -814,7 +819,15 @@ def run_benchmark(
         [feature_profiles[reference_id] for reference_id in sorted(feature_profiles)],
     )
     classification, classification_reasons = _classify(summary, order_test, coverage)
-    historical_replays = run_historical_replays(corpus_root=root, top_k=top_k)
+    historical_replays = run_historical_replays(
+        corpus_root=root, top_k=top_k, manifest_policy=manifest_policy
+    )
+
+    manifest = repository.manifest
+    corpus_baseline_id = manifest.baseline_id if manifest is not None else "unmanaged"
+    manifest_schema_version = (
+        manifest.schema_version if manifest is not None else "unmanaged"
+    )
 
     review_packet = {
         "status": "PENDING_MIMO_REVIEW",
@@ -846,7 +859,9 @@ def run_benchmark(
 
     return {
         "benchmark_version": BENCHMARK_VERSION,
-        "corpus_version": manifest.corpus_version,
+        "corpus_baseline_id": corpus_baseline_id,
+        "manifest_schema_version": manifest_schema_version,
+        "corpus_version": corpus_baseline_id,
         "selector": {
             "entry_point": "agents.official_character_authoring.load_reference_grounding",
             "candidate_count": len(summaries),

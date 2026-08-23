@@ -14,7 +14,7 @@ from reference_corpus.validator import validate_corpus
 
 
 CATALOG = load_game_catalog(
-    data_resource("reference_corpus", "characters", "_catalog", "games.yaml")
+    Path(__file__).parent / "fixtures" / "test_games.yaml"
 )
 FIXTURE = Path(__file__).parent / "fixtures" / "valid" / "complete_valid"
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -12,6 +13,7 @@ from along_street_resources import data_resource, data_root
 from character_intelligence.intent.parser import DeterministicCharacterDesignIntentParser
 from knowledge.loader import load_canon
 from story import load_story_repository
+from reference_corpus.loader import load_corpus_manifest, load_game_catalog
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -45,9 +47,21 @@ def test_packaged_resources_match_the_source_checkout() -> None:
     expected = _source_resource_names()
     actual = _traversable_resource_names(data_root())
 
-    assert len(expected) == 70
+    assert len(expected) == 69
     assert actual == expected
     assert data_resource("characters", "characters.yaml").is_file()
+    manifest = load_corpus_manifest(
+        data_resource(
+            "reference_corpus", "characters", "_catalog", "corpus_manifest.yaml"
+        )
+    )
+    assert manifest.baseline_id == "reference-corpus-v0.5"
+    assert manifest.record_count == len(manifest.records) == 16
+    assert "fixture_plan.yaml" not in "\n".join(sorted(expected))
+    catalog = load_game_catalog(
+        data_resource("reference_corpus", "characters", "_catalog", "games.yaml")
+    )
+    assert not {"test-game-alpha", "test-game-beta"} & set(catalog.games)
 
 
 def test_default_runtime_entries_work_without_repository_cwd() -> None:
@@ -69,6 +83,8 @@ parsed = parser.parse("a support character")
 assert canon["characters"]
 assert story.definitions
 assert grounding.total_records > 0
+assert grounding.corpus_baseline_id == "reference-corpus-v0.5"
+assert grounding.manifest_schema_version == "character-reference-corpus-manifest/0.2"
 assert parsed.combat_role_profile is not None
 print("runtime defaults ok")
 """
@@ -107,8 +123,16 @@ def test_explicit_filesystem_overrides_remain_supported(tmp_path: Path) -> None:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(data_resource(*relative.split("/")).read_text(encoding="utf-8"), encoding="utf-8")
 
+    shutil.copytree(SOURCE_DATA_ROOT / "reference_corpus", data_dir / "reference_corpus")
+
     assert load_canon(data_dir)["characters"]
     assert load_story_repository(data_dir).definitions
+    override_grounding = load_reference_grounding(
+        "ordinary urban support character",
+        corpus_root=data_dir / "reference_corpus" / "characters",
+    )
+    assert override_grounding.total_records == 16
+    assert override_grounding.corpus_baseline_id == "reference-corpus-v0.5"
 
 
 def test_runtime_resource_smoke_output_is_json_serializable() -> None:

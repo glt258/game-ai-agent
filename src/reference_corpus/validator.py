@@ -8,6 +8,7 @@ from .errors import DuplicateReferenceError
 from .models import (
     CharacterReference,
     CorpusValidationReport,
+    CorpusManifest,
     GameCatalog,
     RELATION_TYPE_RE,
     ValidationIssue,
@@ -50,6 +51,32 @@ def _provenance_issue_code(exc: Exception) -> str:
     if separator and candidate and candidate.replace("_", "").isalnum() and candidate.isupper():
         return candidate
     return "provenance_invalid"
+
+
+def validate_manifest_boundary(
+    manifest: CorpusManifest,
+    actual_paths: Iterable[str],
+    catalog: GameCatalog | None = None,
+) -> list[str]:
+    """Return deterministic errors for a manifest's filesystem collection boundary."""
+
+    expected = {record.path for record in manifest.records}
+    actual = list(actual_paths)
+    errors: list[str] = []
+    if len(actual) != len(set(actual)):
+        duplicates = sorted(
+            path for path in set(actual) if actual.count(path) > 1
+        )
+        errors.extend(f"duplicate actual path: {path}" for path in duplicates)
+
+    actual_set = set(actual)
+    errors.extend(f"extra directory: {path}" for path in sorted(actual_set - expected))
+    errors.extend(f"missing directory: {path}" for path in sorted(expected - actual_set))
+
+    if catalog is not None:
+        unknown_games = sorted(set(manifest.games) - set(catalog.games))
+        errors.extend(f"game missing from catalog: {game_id}" for game_id in unknown_games)
+    return sorted(errors)
 
 
 def _mechanic_integrity_issues(reference: CharacterReference) -> list[ValidationIssue]:

@@ -16,11 +16,10 @@ from reference_corpus.features import (
 from reference_corpus.loader import (
     Resource,
     join_resource,
-    load_corpus_manifest,
     load_game_catalog,
     normalize_resource,
 )
-from reference_corpus.repository import CharacterReferenceRepository
+from reference_corpus.repository import CharacterReferenceRepository, ManifestPolicy
 
 from .official_character_authoring import (
     _reference_summary,
@@ -193,6 +192,7 @@ def run_activation_report(
     *,
     corpus_root: Resource | str | None = None,
     top_k: int = TOP_K,
+    manifest_policy: ManifestPolicy = "required",
 ) -> dict[str, Any]:
     """Run the complete offline v0.4.3b activation gate."""
 
@@ -202,8 +202,10 @@ def run_activation_report(
         else normalize_resource(corpus_root)
     )
     catalog = load_game_catalog(join_resource(root, "_catalog", "games.yaml"))
-    manifest = load_corpus_manifest(join_resource(root, "_catalog", "corpus_manifest.yaml"))
-    references = CharacterReferenceRepository(root, catalog=catalog).list_all()
+    repository = CharacterReferenceRepository(
+        root, catalog=catalog, manifest_policy=manifest_policy
+    )
+    references = repository.list_all()
     summaries = [_reference_summary(reference) for reference in references]
     profiles = {
         reference.reference_id: reference_feature_profile(reference)
@@ -265,10 +267,22 @@ def run_activation_report(
         first_brief, summaries, feature_profiles=feature_order_profiles
     )
     repeat = rank_reference_summaries(first_brief, summaries, feature_profiles=profiles)
-    production_grounding = load_reference_grounding(first_brief, corpus_root=root, limit=top_k)
+    production_grounding = load_reference_grounding(
+        first_brief,
+        corpus_root=root,
+        limit=top_k,
+        manifest_policy=manifest_policy,
+    )
+    manifest = repository.manifest
+    corpus_baseline_id = manifest.baseline_id if manifest is not None else "unmanaged"
+    manifest_schema_version = (
+        manifest.schema_version if manifest is not None else "unmanaged"
+    )
     return {
         "activation_version": ACTIVATION_VERSION,
-        "corpus_version": manifest.corpus_version,
+        "corpus_baseline_id": corpus_baseline_id,
+        "manifest_schema_version": manifest_schema_version,
+        "corpus_version": corpus_baseline_id,
         "corpus_count": len(references),
         "ready_domains": list(READY_DOMAINS),
         "non_active_domains": [

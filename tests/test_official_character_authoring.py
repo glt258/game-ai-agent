@@ -205,6 +205,17 @@ def test_audit_summary_keeps_reference_and_canon_evidence() -> None:
     assert "chain_of_thought" not in json.dumps(payload, ensure_ascii=False)
 
 
+def test_reference_grounding_exposes_manifest_identity_and_legacy_alias() -> None:
+    grounding = load_reference_grounding("ordinary urban support character")
+
+    assert grounding.corpus_baseline_id == "reference-corpus-v0.5"
+    assert grounding.manifest_schema_version == "character-reference-corpus-manifest/0.2"
+    assert grounding.corpus_version == grounding.corpus_baseline_id
+    payload = grounding.to_dict()
+    assert payload["corpus_baseline_id"] == "reference-corpus-v0.5"
+    assert payload["manifest_schema_version"] == "character-reference-corpus-manifest/0.2"
+
+
 def test_live_factory_path_keeps_custom_provider_and_model_in_the_existing_contract(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

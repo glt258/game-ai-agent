@@ -1,9 +1,47 @@
-corpus_version: "character-reference-corpus/0.1"
-schema_versions:
+schema_version: "character-reference-corpus-manifest/0.2"
+baseline_id: "reference-corpus-v0.5"
+record_schema_versions:
   facts: "character-facts/0.3"
   analysis: "character-analysis/0.1"
   sources: "character-sources/0.2"
+record_count: 16
 games:
-  - test-game-alpha
-  - test-game-beta
-status: development
+  - genshin-impact
+  - honkai-impact-3rd
+  - neverness-to-everness
+  - wuthering-waves
+  - zenless-zone-zero
+status: frozen
+records:
+  - reference_id: "genshin-impact:furina"
+    path: "genshin_impact/furina"
+  - reference_id: "genshin-impact:keqing"
+    path: "genshin_impact/keqing"
+  - reference_id: "genshin-impact:nahida"
+    path: "genshin_impact/nahida"
+  - reference_id: "honkai-impact-3rd:songque"
+    path: "honkai_impact_3rd/songque"
+  - reference_id: "honkai-impact-3rd:vita"
+    path: "honkai_impact_3rd/vita"
+  - reference_id: "neverness-to-everness:fadia"
+    path: "neverness_to_everness/fadia"
+  - reference_id: "neverness-to-everness:shinku"
+    path: "neverness_to_everness/shinku"
+  - reference_id: "wuthering-waves:aalto"
+    path: "wuthering_waves/aalto"
+  - reference_id: "wuthering-waves:jinhsi"
+    path: "wuthering_waves/jinhsi"
+  - reference_id: "wuthering-waves:mortefi"
+    path: "wuthering_waves/mortefi"
+  - reference_id: "wuthering-waves:shorekeeper"
+    path: "wuthering_waves/shorekeeper"
+  - reference_id: "zenless-zone-zero:astra-yao"
+    path: "zenless_zone_zero/astra_yao"
+  - reference_id: "zenless-zone-zero:jane-doe"
+    path: "zenless_zone_zero/jane_doe"
+  - reference_id: "zenless-zone-zero:nicole"
+    path: "zenless_zone_zero/nicole"
+  - reference_id: "zenless-zone-zero:piper-wheel"
+    path: "zenless_zone_zero/piper_wheel"
+  - reference_id: "zenless-zone-zero:qingyi"
+    path: "zenless_zone_zero/qingyi"

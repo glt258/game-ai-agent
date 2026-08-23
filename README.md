@@ -269,7 +269,7 @@ described in [the provider capability layer](docs/provider_capability_layer.md).
 
 ## Reference Corpus
 
-The historical Reference Corpus Production Baseline v0.1 is frozen at 10 production
+The Reference Corpus baseline `reference-corpus-v0.5` is frozen at 16 production
 characters. Here, “production” refers to accepted and frozen corpus records, not production-readiness of the overall Agent system.
 The corpus is a precedent, evaluation, and design-reference oracle for authoring-quality
 analysis. It is not a few-shot answer bank, copying source, commercial
@@ -279,6 +279,24 @@ The corpus is packaged with the other runtime resources under
 `src/along_street_resources/data/reference_corpus/`; it is separate from the
 active world-character records under
 `src/along_street_resources/data/characters/characters.yaml`.
+
+The production boundary is declared by
+`src/along_street_resources/data/reference_corpus/characters/_catalog/corpus_manifest.yaml`.
+Manifest schema `character-reference-corpus-manifest/0.2` records the frozen
+baseline ID, record schema versions, games, and exact record ID-to-directory
+paths. `games.yaml` is the production game catalog and retains only the five
+commercial games; synthetic test games live in
+`tests/reference_corpus/fixtures/test_games.yaml`.
+
+`CharacterReferenceRepository` uses `manifest_policy="required"` by default:
+it verifies the filesystem collection and loads only the declared records.
+Temporary synthetic or external corpora without a manifest must opt into
+`manifest_policy="unmanaged"`; that mode preserves directory scanning and
+cannot be combined with an explicit manifest. The superseded fixture planning
+file remains loadable at
+`docs/reference_corpus/archive/fixture_plan_v0.1.yaml` and is not a packaged
+runtime resource.
+
 Expansion is gap-driven: a concrete Generator, Canon, Repair, or evaluation
 failure must show that the existing corpus lacks a useful precedent before a
 new record is considered. See

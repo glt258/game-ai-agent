@@ -10,6 +10,8 @@ from pydantic import ValidationError
 from along_street_resources import data_resource
 
 from .errors import (
+    CorpusManifestError,
+    CorpusManifestNotFoundError,
     ReferenceLoadError,
     ReferenceNotFoundError,
     ReferenceValidationError,
@@ -194,11 +196,21 @@ def load_game_catalog(path: Resource | str) -> GameCatalog:
 
 def load_corpus_manifest(path: Resource | str) -> CorpusManifest:
     path = normalize_resource(path)
-    manifest = _model(path, CorpusManifest)
-    _require_schema_version(
-        manifest.corpus_version, "character-reference-corpus/0.1", path
-    )
-    return manifest
+    if not path.is_file():
+        raise CorpusManifestNotFoundError(f"corpus manifest not found: {path}")
+    raw = _read_yaml(path)
+    actual_schema = raw.get("schema_version")
+    if actual_schema != "character-reference-corpus-manifest/0.2":
+        raise UnsupportedSchemaVersionError(
+            f"unsupported schema version in {path}: {actual_schema!r}; "
+            "expected 'character-reference-corpus-manifest/0.2'"
+        )
+    try:
+        return CorpusManifest.model_validate(raw)
+    except ValidationError as exc:
+        raise CorpusManifestError(
+            f"corpus manifest validation failed for {path}: {exc}"
+        ) from exc
 
 
 def load_fixture_plan(path: Resource | str) -> FixturePlan:

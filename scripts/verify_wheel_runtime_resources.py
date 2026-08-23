@@ -110,6 +110,9 @@ parsed = parser.parse("a support character")
 assert canon["characters"]
 assert story.definitions
 assert grounding.total_records > 0
+assert grounding.total_records == 16
+assert grounding.corpus_baseline_id == "reference-corpus-v0.5"
+assert grounding.manifest_schema_version == "character-reference-corpus-manifest/0.2"
 assert parsed.combat_role_profile is not None
 
 with tempfile.TemporaryDirectory(prefix="along-street-explicit-data-") as override_name:
@@ -120,7 +123,7 @@ with tempfile.TemporaryDirectory(prefix="along-street-explicit-data-") as overri
     assert load_reference_grounding(
         "ordinary urban support character",
         corpus_root=override / "reference_corpus" / "characters",
-    ).total_records == grounding.total_records
+    ).to_dict()["corpus_baseline_id"] == "reference-corpus-v0.5"
     assert KnowledgeResolver(data_dir=override).characters
 
 print(json.dumps({{
@@ -160,6 +163,10 @@ def main() -> int:
 
     source_names = _source_resource_names(args.source_root.resolve())
     wheel_names = _wheel_resource_names(args.wheel.resolve())
+    if len(source_names) != 69:
+        raise SystemExit(f"unexpected source runtime resource count: {len(source_names)}")
+    if any("fixture_plan" in name for name in source_names | wheel_names):
+        raise SystemExit("fixture_plan must remain outside packaged runtime resources")
     if source_names != wheel_names:
         missing = sorted(source_names - wheel_names)
         unexpected = sorted(wheel_names - source_names)

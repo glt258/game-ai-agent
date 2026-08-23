@@ -27,6 +27,9 @@ from .combat_taxonomy import (
 )
 from .errors import (
     CatalogValidationError,
+    CorpusBoundaryError,
+    CorpusManifestError,
+    CorpusManifestNotFoundError,
     DuplicateReferenceError,
     ProvenanceValidationError,
     ReferenceCorpusError,
@@ -78,6 +81,9 @@ __all__ = [
     "ReferenceLoadError",
     "ReferenceNotFoundError",
     "ReferenceValidationError",
+    "CorpusManifestError",
+    "CorpusManifestNotFoundError",
+    "CorpusBoundaryError",
     "UnsupportedSchemaVersionError",
     "ProvenanceValidationError",
     "DuplicateReferenceError",
@@ -113,6 +119,8 @@ __all__ = [
     "CharacterReferenceQuality",
     "CompletenessScore",
     "CorpusManifest",
+    "CorpusManifestRecord",
+    "CorpusRecordSchemaVersions",
     "CorpusValidationReport",
     "FixturePlan",
     "GameCatalog",

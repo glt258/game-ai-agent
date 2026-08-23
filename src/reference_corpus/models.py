@@ -21,13 +21,17 @@ from .enums import (
 
 
 REFERENCE_ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*(?::[a-z0-9]+(?:-[a-z0-9]+)*)?$")
+BASELINE_ID_RE = re.compile(r"^reference-corpus-v[0-9]+\.[0-9]+$")
+CORPUS_PATH_RE = re.compile(
+    r"^[a-z][a-z0-9]*(?:_[a-z0-9]+)*/[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+)
 RELATION_TYPE_RE = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
 SUPPORTED_SCHEMA_VERSIONS = {
     "character-facts/0.3",
     "character-analysis/0.1",
     "character-sources/0.2",
     "game-catalog/0.1",
-    "character-reference-corpus/0.1",
+    "character-reference-corpus-manifest/0.2",
 }
 
 
@@ -43,6 +47,13 @@ def _text(value: str, field_name: str = "value") -> str:
 
 def _optional_text(value: str | None) -> str | None:
     return None if value is None else _text(value)
+
+
+def _manifest_schema_version(value: str) -> str:
+    value = _text(value, "schema_version")
+    if value != "character-reference-corpus-manifest/0.2":
+        raise ValueError("schema_version must be character-reference-corpus-manifest/0.2")
+    return value
 
 
 def _string_list(value: list[str], field_name: str = "list") -> list[str]:
@@ -988,20 +999,110 @@ class GameCatalog(ReferenceModel):
             raise KeyError(f"unknown game_id: {game_id}") from exc
 
 
-class CorpusManifest(ReferenceModel):
-    corpus_version: str
-    schema_versions: dict[str, str]
-    games: list[str]
-    status: str
+class CorpusManifestRecord(ReferenceModel):
+    reference_id: str
+    path: str
 
-    _corpus_version = field_validator("corpus_version")(lambda value: _text(value, "corpus_version"))
-    @field_validator("schema_versions")
+    @field_validator("reference_id")
     @classmethod
-    def valid_schema_versions(cls, value: dict[str, str]) -> dict[str, str]:
-        return {_text(key, "schema version key"): _text(item, "schema version") for key, item in value.items()}
+    def valid_reference_id(cls, value: str) -> str:
+        value = _text(value, "reference_id")
+        if not REFERENCE_ID_RE.fullmatch(value) or ":" not in value:
+            raise ValueError(
+                "reference_id must use lowercase game-id:character-id format"
+            )
+        return value
 
-    _games = field_validator("games")(_string_list)
-    _status = field_validator("status")(lambda value: _text(value, "status"))
+    @field_validator("path")
+    @classmethod
+    def valid_path(cls, value: str) -> str:
+        value = _text(value, "path")
+        if not CORPUS_PATH_RE.fullmatch(value):
+            raise ValueError(
+                "path must be exactly two snake_case relative directory segments"
+            )
+        return value
+
+
+class CorpusRecordSchemaVersions(ReferenceModel):
+    facts: str
+    analysis: str
+    sources: str
+
+    _facts = field_validator("facts")(lambda value: _text(value, "facts schema version"))
+    _analysis = field_validator("analysis")(
+        lambda value: _text(value, "analysis schema version")
+    )
+    _sources = field_validator("sources")(
+        lambda value: _text(value, "sources schema version")
+    )
+
+    @model_validator(mode="after")
+    def require_frozen_schema_versions(self) -> "CorpusRecordSchemaVersions":
+        expected = {
+            "facts": "character-facts/0.3",
+            "analysis": "character-analysis/0.1",
+            "sources": "character-sources/0.2",
+        }
+        if self.model_dump() != expected:
+            raise ValueError(f"record_schema_versions must equal {expected}")
+        return self
+
+
+class CorpusManifest(ReferenceModel):
+    schema_version: str
+    baseline_id: str
+    status: Literal["development", "frozen"]
+    record_schema_versions: CorpusRecordSchemaVersions
+    record_count: int = Field(ge=0)
+    games: list[str]
+    records: list[CorpusManifestRecord]
+
+    _schema_version = field_validator("schema_version")(
+        lambda value: _manifest_schema_version(value)
+    )
+
+    @field_validator("baseline_id")
+    @classmethod
+    def valid_baseline_id(cls, value: str) -> str:
+        value = _text(value, "baseline_id")
+        if not BASELINE_ID_RE.fullmatch(value):
+            raise ValueError("baseline_id must use reference-corpus-vX.Y format")
+        return value
+
+    @field_validator("games")
+    @classmethod
+    def valid_games(cls, value: list[str]) -> list[str]:
+        value = _string_list(value, "games")
+        if value != sorted(value):
+            raise ValueError("games must be deterministically sorted")
+        return value
+
+    @model_validator(mode="after")
+    def validate_boundary_shape(self) -> "CorpusManifest":
+        if self.record_count != len(self.records):
+            raise ValueError("record_count must equal len(records)")
+        if self.record_count != 16:
+            raise ValueError("record_count must equal 16 for the frozen corpus")
+
+        reference_ids = [record.reference_id for record in self.records]
+        paths = [record.path for record in self.records]
+        if len(reference_ids) != len(set(reference_ids)):
+            raise ValueError("records must not contain duplicate reference_id values")
+        if len(paths) != len(set(paths)):
+            raise ValueError("records must not contain duplicate path values")
+        if reference_ids != sorted(reference_ids):
+            raise ValueError("records must be deterministically sorted by reference_id")
+        if paths != sorted(paths):
+            raise ValueError("records paths must be deterministically sorted")
+
+        manifest_games = set(self.games)
+        record_games = {record.reference_id.split(":", 1)[0] for record in self.records}
+        if record_games != manifest_games:
+            raise ValueError(
+                "manifest games must equal the games represented by record reference_ids"
+            )
+        return self
 
 
 class FixturePlan(ReferenceModel):

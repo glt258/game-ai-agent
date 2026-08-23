@@ -21,11 +21,10 @@ from typing import Any, Mapping, Sequence
 from along_street_resources import data_resource
 from reference_corpus.loader import (
     join_resource,
-    load_corpus_manifest,
     load_game_catalog,
     normalize_resource,
 )
-from reference_corpus.repository import CharacterReferenceRepository
+from reference_corpus.repository import CharacterReferenceRepository, ManifestPolicy
 from reference_corpus.features import extract_brief_features, reference_feature_profile
 
 from .canon_checker import CanonCheckStatus, CanonChecker, CanonFindingCode
@@ -51,10 +50,17 @@ DEFAULT_CORPUS_ROOT = data_resource("reference_corpus", "characters")
 
 @dataclass(frozen=True)
 class ReferenceGrounding:
-    corpus_version: str
+    corpus_baseline_id: str
+    manifest_schema_version: str
     total_records: int
     selected: tuple[Mapping[str, Any], ...]
     selection_audit: tuple[Mapping[str, Any], ...] = ()
+
+    @property
+    def corpus_version(self) -> str:
+        """Deprecated compatibility alias for corpus_baseline_id."""
+
+        return self.corpus_baseline_id
 
     @property
     def reference_ids(self) -> tuple[str, ...]:
@@ -66,6 +72,8 @@ class ReferenceGrounding:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "corpus_baseline_id": self.corpus_baseline_id,
+            "manifest_schema_version": self.manifest_schema_version,
             "corpus_version": self.corpus_version,
             "total_records": self.total_records,
             "selected": [dict(item) for item in self.selected],
@@ -136,6 +144,7 @@ def load_reference_grounding(
     *,
     corpus_root: Path | Traversable | str | None = None,
     limit: int = 3,
+    manifest_policy: ManifestPolicy = "required",
 ) -> ReferenceGrounding:
     """Load and select bounded reference summaries from the real corpus.
 
@@ -152,8 +161,9 @@ def load_reference_grounding(
         else normalize_resource(corpus_root)
     )
     catalog = load_game_catalog(join_resource(root, "_catalog", "games.yaml"))
-    manifest = load_corpus_manifest(join_resource(root, "_catalog", "corpus_manifest.yaml"))
-    repository = CharacterReferenceRepository(root, catalog=catalog)
+    repository = CharacterReferenceRepository(
+        root, catalog=catalog, manifest_policy=manifest_policy
+    )
     references = repository.list_all()
     summaries = [_reference_summary(reference) for reference in references]
     feature_profiles = {
@@ -165,11 +175,15 @@ def load_reference_grounding(
         summaries,
         feature_profiles=feature_profiles,
     )
+    manifest = repository.manifest
+    baseline_id = manifest.baseline_id if manifest is not None else "unmanaged"
+    schema_version = manifest.schema_version if manifest is not None else "unmanaged"
     return ReferenceGrounding(
-        manifest.corpus_version,
-        len(references),
-        tuple(item["summary"] for item in ranked[:limit]),
-        tuple(_selection_audit(item) for item in ranked),
+        corpus_baseline_id=baseline_id,
+        manifest_schema_version=schema_version,
+        total_records=len(references),
+        selected=tuple(item["summary"] for item in ranked[:limit]),
+        selection_audit=tuple(_selection_audit(item) for item in ranked),
     )
 
 

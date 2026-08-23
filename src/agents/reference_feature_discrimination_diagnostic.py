@@ -22,7 +22,7 @@ from reference_corpus.features import (
     reference_feature_profile,
 )
 from reference_corpus.loader import Resource, normalize_resource
-from reference_corpus.repository import CharacterReferenceRepository
+from reference_corpus.repository import CharacterReferenceRepository, ManifestPolicy
 
 from .reference_selection_benchmark import run_benchmark
 
@@ -421,7 +421,11 @@ def _shadow_overlap(
     }
 
 
-def run_diagnostic(*, corpus_root: Resource | str | None = None) -> dict[str, Any]:
+def run_diagnostic(
+    *,
+    corpus_root: Resource | str | None = None,
+    manifest_policy: ManifestPolicy = "required",
+) -> dict[str, Any]:
     """Run only the feature-discrimination extension against production data."""
 
     root = (
@@ -429,7 +433,7 @@ def run_diagnostic(*, corpus_root: Resource | str | None = None) -> dict[str, An
         if corpus_root is None
         else normalize_resource(corpus_root)
     )
-    repository = CharacterReferenceRepository(root)
+    repository = CharacterReferenceRepository(root, manifest_policy=manifest_policy)
     references = repository.list_all()
     profiles = {
         reference.reference_id: reference_feature_profile(reference)

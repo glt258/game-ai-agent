@@ -19,7 +19,7 @@ from reference_corpus.models import (
 
 FIXTURE = Path(__file__).parent / "fixtures" / "valid" / "complete_valid"
 CATALOG = load_game_catalog(
-    data_resource("reference_corpus", "characters", "_catalog", "games.yaml")
+    Path(__file__).parent / "fixtures" / "test_games.yaml"
 )
 
 

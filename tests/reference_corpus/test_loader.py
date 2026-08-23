@@ -17,7 +17,7 @@ from reference_corpus.loader import CharacterReferenceLoader, load_game_catalog
 
 ROOT = Path(__file__).parent / "fixtures"
 CATALOG = load_game_catalog(
-    data_resource("reference_corpus", "characters", "_catalog", "games.yaml")
+    ROOT / "test_games.yaml"
 )
 
 

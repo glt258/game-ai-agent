@@ -21,7 +21,7 @@ from reference_corpus.features import (
     reference_feature_profile,
 )
 from reference_corpus.loader import Resource, normalize_resource
-from reference_corpus.repository import CharacterReferenceRepository
+from reference_corpus.repository import CharacterReferenceRepository, ManifestPolicy
 
 from .official_character_authoring import (
     _reference_summary,
@@ -540,6 +540,7 @@ def run_shadow_simulation(
     *,
     corpus_root: Resource | str | None = None,
     top_k: int = TOP_K,
+    manifest_policy: ManifestPolicy = "required",
 ) -> dict[str, Any]:
     """Run all shadow models and diagnostic experiments without production writes."""
 
@@ -548,7 +549,7 @@ def run_shadow_simulation(
         if corpus_root is None
         else normalize_resource(corpus_root)
     )
-    repository = CharacterReferenceRepository(root)
+    repository = CharacterReferenceRepository(root, manifest_policy=manifest_policy)
     references = repository.list_all()
     core_cases = benchmark_cases()
     model_results: dict[str, Any] = {}
