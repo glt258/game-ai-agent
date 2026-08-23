@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import importlib.util
 import re
 from pathlib import Path
 
@@ -244,6 +245,8 @@ def test_ci_scripts_lock_runtime_and_wheel_smoke_contracts() -> None:
         assert marker in runtime
 
     smoke = (ROOT / "scripts/ci/installed_smoke.py").read_text(encoding="utf-8")
+    assert "sysconfig.get_path" in smoke
+    assert "Path(sys.executable).resolve().parent" not in smoke
     for marker in (
         "from validate_runtime import validate_runtime",
         "relative_to(SOURCE_ROOT)",
@@ -254,3 +257,27 @@ def test_ci_scripts_lock_runtime_and_wheel_smoke_contracts() -> None:
         "outside the repository checkout",
     ):
         assert marker in smoke
+
+
+def test_installed_smoke_finds_console_script_in_installation_scripts_directory(
+    tmp_path, monkeypatch
+) -> None:
+    smoke_path = ROOT / "scripts/ci/installed_smoke.py"
+    spec = importlib.util.spec_from_file_location("installed_smoke", smoke_path)
+    assert spec is not None
+    assert spec.loader is not None
+    installed_smoke = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(installed_smoke)
+
+    base_interpreter_dir = tmp_path / "base-interpreter"
+    scripts_dir = tmp_path / "venv" / "Scripts"
+    base_interpreter_dir.mkdir()
+    scripts_dir.mkdir(parents=True)
+    base_interpreter = base_interpreter_dir / "python"
+    console_script = scripts_dir / "along-street-character-author"
+    console_script.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+
+    monkeypatch.setattr(installed_smoke.sys, "executable", str(base_interpreter))
+    monkeypatch.setattr(installed_smoke.sysconfig, "get_path", lambda name: str(scripts_dir))
+
+    assert installed_smoke._console_command() == [str(console_script)]

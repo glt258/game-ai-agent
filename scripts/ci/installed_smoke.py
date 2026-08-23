@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import sysconfig
 import tempfile
 from pathlib import Path
 from types import ModuleType
@@ -44,11 +45,11 @@ def _assert_installed_module_sources() -> None:
 
 
 def _console_command() -> list[str]:
-    executable_dir = Path(sys.executable).resolve().parent
+    scripts_dir = Path(sysconfig.get_path("scripts"))
     candidates = (
-        executable_dir / "along-street-character-author",
-        executable_dir / "along-street-character-author.exe",
-        executable_dir / "along-street-character-author.cmd",
+        scripts_dir / "along-street-character-author",
+        scripts_dir / "along-street-character-author.exe",
+        scripts_dir / "along-street-character-author.cmd",
     )
     for candidate in candidates:
         if candidate.is_file():
@@ -56,8 +57,8 @@ def _console_command() -> list[str]:
                 return [os.environ.get("COMSPEC", "cmd.exe"), "/d", "/c", str(candidate)]
             return [str(candidate)]
     raise RuntimeError(
-        "console script not found beside the smoke interpreter: "
-        "along-street-character-author"
+        "console script not found in installation scripts directory "
+        f"{scripts_dir}: along-street-character-author"
     )
 
 
