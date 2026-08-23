@@ -492,7 +492,7 @@ The current prototype contract tests pass 9/9 and independently read the expecte
 
 ## 11. Independent Review and the CS-S1 Freeze Gate
 
-After the Luna prototype passes, DeepSeek and MiMo v2.5 each read the same non-oracle projection and review only:
+After the Luna prototype passes, `deepseek-v4-flash` and Mimo v2.5 each read the same non-oracle projection and review only:
 
 - whether all 19 boundaries are expressible;
 - whether cases 13/19 remain strictly separated;

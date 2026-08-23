@@ -9,22 +9,22 @@ CS-S0.1 contract (v0.1.1).
 - Authority fixture: `evals/fixtures/character_skill_failure_cases_v0.1.1.json`
 - Blind input: `evals/fixtures/hermes_character_skill_s0_blind_cases_v0.1.1.json`
 - Frozen specification: `docs/character_generation/character_skill_failure_cases_v0.1.1.md`
-- DeepSeek output: `evals/results/character_skill_s0_blind_review_deepseek_v0.1.1.json`
-- MiMo output: `evals/results/character_skill_s0_blind_review_mimo_v0.1.1.json`
+- `deepseek-v4-flash` output: `evals/results/character_skill_s0_blind_review_deepseek_v0.1.1.json`
+- Mimo v2.5 output: `evals/results/character_skill_s0_blind_review_mimo_v0.1.1.json`
 
-The reviewer IDs are `deepseek-v4-flash` and `mimo-v2.5` (MiMo v2.5).
+The reviewer IDs are `deepseek-v4-flash` and `mimo-v2.5` (Mimo v2.5).
 Both result files carry the same full Commit A SHA.
 
 ## Review method
 
-`deepseek-v4-flash` and MiMo v2.5 independently judged the same exact
+`deepseek-v4-flash` and Mimo v2.5 independently judged the same exact
 non-oracle projection. The projection contains each request, candidate summary,
 and declared facts, while omitting expected outcomes, finding codes, signals,
 and rationale. Neither reviewer is the final specification judge. Codex/Sol
 adjudicates against the frozen oracle, reproducible case evidence, and focused
 tests.
 
-The MiMo response contained presentation-layer escaping errors in the raw
+The Mimo response contained presentation-layer escaping errors in the raw
 transport (including an escaped underscore and an incorrectly escaped quotation
 in the case_05 reason). The stored result applies syntax-only normalization.
 No verdict, reason meaning, or repair plan was changed.
@@ -36,7 +36,7 @@ the focused tests provide the retained semantic provenance.
 
 ## Validation
 
-| Check | DeepSeek | MiMo |
+| Check | `deepseek-v4-flash` | Mimo v2.5 |
 | --- | ---: | ---: |
 | Cases present, unique, and ordered | 19/19 | 19/19 |
 | Verdict vocabulary valid | 19/19 | 19/19 |
@@ -48,9 +48,9 @@ the focused tests provide the retained semantic provenance.
 
 | Comparison | Agreement |
 | --- | ---: |
-| DeepSeek vs CS-S0.1 oracle | 19/19 |
-| MiMo vs CS-S0.1 oracle | 18/19 |
-| DeepSeek vs MiMo | 18/19 |
+| `deepseek-v4-flash` vs CS-S0.1 oracle | 19/19 |
+| Mimo v2.5 vs CS-S0.1 oracle | 18/19 |
+| `deepseek-v4-flash` vs Mimo v2.5 | 18/19 |
 | All three agree | 18/19 |
 
 The only reviewer disagreement is `case_05`. The CS-S0.1 boundary cases introduced
@@ -71,7 +71,7 @@ or clarified by the revision are stable across the review:
 | --- | --- |
 | CS-S0.1 oracle | `REPAIR / TRIGGER_SUBJECT_AMBIGUOUS` |
 | deepseek-v4-flash | `REPAIR` |
-| MiMo v2.5 | `FAIL` |
+| Mimo v2.5 | `FAIL` |
 
 The candidate already states a causal direction in which a teammate-related
 event triggers the character's response. That is a preservable mechanism
@@ -79,7 +79,7 @@ skeleton. The defect is that “teammate is affected” does not identify the
 concrete event class or distinguish the trigger subject from the effect subject.
 Those relations can be clarified locally.
 
-MiMo v2.5 treated the ambiguous trigger subject as if no trigger-to-effect
+Mimo v2.5 treated the ambiguous trigger subject as if no trigger-to-effect
 relation existed. That collapses the distinction between
 `TRIGGER_SUBJECT_AMBIGUOUS` and `MECHANIC_SKELETON_ABSENT`, so the `FAIL`
 verdict is rejected.

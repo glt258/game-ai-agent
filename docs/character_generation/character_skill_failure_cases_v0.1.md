@@ -13,7 +13,7 @@ CS-S0 covers only the following:
 - Describe observable causal relationships in skill design through `Skill Kit Concept`, `Ability Entry`, `Trigger Subject`, `Effect Subject`, `Resource Loop`, `State Lifecycle`, `Summon Lifecycle`, `Team Interaction`, and `Mechanic Relation`.
 - Freeze the meanings of the three specification outcomes, `PASS`, `REPAIR`, and `FAIL`, and their finding codes.
 - Validate resources, states, summons, teammate interactions, role responsibilities, mechanic representation, and request consistency through 18 observation/oracle cases that are independent of any production skill-field shape.
-- Give DeepSeek and MiMo v2.5 the same domain boundaries and comparable acceptance criteria for candidate generation and anonymous blind review.
+- Give `deepseek-v4-flash` and Mimo v2.5 the same domain boundaries and comparable acceptance criteria for candidate generation and anonymous blind review.
 
 ## Non-goals
 
@@ -111,17 +111,17 @@ Cases 07–12 must use `main_dps`, `sub_dps`, `support`, `healer`, `control`, an
 
 ## Multi-model Collaboration
 
-### DeepSeek: Candidate Generation
+### `deepseek-v4-flash`: Candidate Generation
 
-DeepSeek reads the `request`, domain glossary, and non-oracle case observation to generate a candidate skill-kit concept for each case. A candidate only needs to describe observable subjects, relationships, lifecycles, and constraints. It must not invent new role vocabulary, numerical balance fields, verbatim Corpus content, or future production fields. The output must retain the case ID for later blind-review pairing.
+`deepseek-v4-flash` reads the `request`, domain glossary, and non-oracle case observation to generate a candidate skill-kit concept for each case. A candidate only needs to describe observable subjects, relationships, lifecycles, and constraints. It must not invent new role vocabulary, numerical balance fields, verbatim Corpus content, or future production fields. The output must retain the case ID for later blind-review pairing.
 
-### MiMo v2.5: Anonymous Blind Review
+### Mimo v2.5: Anonymous Blind Review
 
-MiMo v2.5 receives only the request, candidate observation, and necessary domain definitions after the `expected` outcome and finding codes have been removed. It independently assigns `PASS`, `REPAIR`, or `FAIL` and provides a reason. It does not modify the repository, decide the production schema, or serve as the final specification authority. Its purpose is to identify an oracle that is too broad or too narrow and cases where stylistic differences are incorrectly treated as structural defects.
+Mimo v2.5 receives only the request, candidate observation, and necessary domain definitions after the `expected` outcome and finding codes have been removed. It independently assigns `PASS`, `REPAIR`, or `FAIL` and provides a reason. It does not modify the repository, decide the production schema, or serve as the final specification authority. Its purpose is to identify an oracle that is too broad or too narrow and cases where stylistic differences are incorrectly treated as structural defects.
 
 ### Codex/Sol: Specification Reconciliation and the CS-S1 Gate
 
-Codex compares the DeepSeek candidate, MiMo v2.5 blind review, and CS-S0 oracle to confirm that the domain vocabulary and case boundaries do not conflict with production reality. CS-S1 begins only when all of the following are true:
+Codex compares the `deepseek-v4-flash` candidate, Mimo v2.5 blind review, and CS-S0 oracle to confirm that the domain vocabulary and case boundaries do not conflict with production reality. CS-S1 begins only when all of the following are true:
 
 1. Every oracle/reviewer disagreement across the 18 cases has been explained, especially ensuring that the case 18 positive `control` example is not universally rejected.
 2. Every finding code, all six role responsibilities, and cross-taxonomy isolation have stable evidence.

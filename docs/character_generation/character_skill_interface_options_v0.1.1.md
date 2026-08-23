@@ -9,7 +9,7 @@ validator-owned `Derived Graph Core`; it is still an `evals/` prototype contract
 and does not authorize changes under `src/`.
 
 The contract inherits the CS-S0.1 v0.1.1 19-case oracle and CI-B1.5 canonical combat
-role boundary. It incorporates the independent DeepSeek and MiMo v2.5 reviews.
+role boundary. It incorporates the independent `deepseek-v4-flash` and Mimo v2.5 reviews.
 They agreed on 18/19 cases and on the critical case 13, 14, 18, and 19
 boundaries. For case 05, Sol retains the frozen adjudication
 `REPAIR / TRIGGER_SUBJECT_AMBIGUOUS`: a causal direction exists, while the event
