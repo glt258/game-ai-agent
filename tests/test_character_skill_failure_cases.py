@@ -447,6 +447,7 @@ def test_spec_documents_the_frozen_contract_and_case_matrix() -> None:
     payload = _load_fixture()
     specification = SPEC_PATH.read_text(encoding="utf-8")
 
+    assert not re.search(r"[\u3400-\u9fff]", specification)
     for outcome in OUTCOMES:
         assert f"`{outcome}`" in specification
     for code in EXPECTED_CODES:
@@ -455,15 +456,15 @@ def test_spec_documents_the_frozen_contract_and_case_matrix() -> None:
         assert f"`{case['id']}`" in specification
 
     assert "`ability_concept`" in specification
-    assert "S0 不把它替换成新的生产字段" in specification
-    assert "不新增 production validator" in specification
-    assert "不接入 provider" in specification
-    assert "Reference Corpus 只能提供抽象先例" in specification
-    assert "未来生产 `SkillKit` schema" in specification
+    assert "does not replace it with a new production field" in specification
+    assert "add a production validator" in specification
+    assert "connect a provider" in specification
+    assert "Reference Corpus may provide abstract precedents" in specification
+    assert "future production `SkillKit` schema" in specification
     assert "v0.1.1" in specification
     assert "MECHANIC_SKELETON_ABSENT" in specification
     assert "canonical taxonomy boundary" in specification
-    assert "legacy flat alias seam" in specification
+    assert "legacy flat-alias seam" in specification
     assert "`deepseek-v4-flash`" in specification
     assert "MiMo v2.5" in specification
     assert "same non-oracle projection" in specification

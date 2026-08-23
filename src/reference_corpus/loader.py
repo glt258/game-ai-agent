@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from importlib.resources.abc import Traversable
+from importlib.abc import Traversable
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from along_street_resources import data_resource
 
+from .combat_vocabulary import CombatVocabulary
 from .errors import (
     CorpusManifestError,
     CorpusManifestNotFoundError,
@@ -17,15 +18,14 @@ from .errors import (
     ReferenceValidationError,
     UnsupportedSchemaVersionError,
 )
-from .combat_vocabulary import CombatVocabulary
 from .models import (
     CharacterAnalysis,
     CharacterFacts,
     CharacterProvenance,
     CharacterReference,
-    GameCatalog,
     CorpusManifest,
     FixturePlan,
+    GameCatalog,
 )
 from .normalizer import build_quality
 from .provenance import validate_combat_analysis, validate_provenance

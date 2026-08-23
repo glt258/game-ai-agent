@@ -1,11 +1,10 @@
+from importlib.abc import Traversable
 from pathlib import Path
 from typing import Any, Mapping
-from importlib.resources.abc import Traversable
 
 import yaml
 
 from along_street_resources import data_root
-
 
 Resource = Path | Traversable
 

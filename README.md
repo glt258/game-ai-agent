@@ -181,6 +181,56 @@ Run the main checks with:
 .\.venv\Scripts\python.exe -m pytest -q tests/test_provider_contracts.py tests/test_openai_provider.py tests/test_live_llm_adapter.py tests/test_live_llm_errors.py
 ```
 
+### P2 local development quality checks
+
+Install the development tools into the active virtual environment:
+
+```powershell
+py -m pip install -e ".[dev]"
+```
+
+Run the scoped quality checks and offline runtime smoke:
+
+```powershell
+py -m pre_commit run --all-files
+py -m ruff check src/along_street_resources src/agents/official_character_authoring.py src/knowledge/loader.py src/reference_corpus/loader.py scripts/ci tests/test_ci_quality.py tests/test_cli_startup.py
+py -m mypy src/along_street_resources scripts/ci
+py scripts/ci/validate_runtime.py
+py -m agents.official_character_authoring --scenario valid --model offline --json
+```
+
+Run the staged runtime-boundary coverage gate locally:
+
+```powershell
+py -m pytest tests/test_runtime_resources.py tests/test_story_state.py tests/test_knowledge_resolver.py tests/test_knowledge_resolver_integration.py tests/test_knowledge_registries.py tests/reference_corpus --cov=along_street_resources --cov=knowledge --cov=story --cov=reference_corpus --cov-branch --cov-report=term-missing --cov-report=xml
+```
+
+The fixed `tool.coverage.report.fail_under = 81` value gates the runtime
+boundary modules (`along_street_resources`, `knowledge`, `story`, and
+`reference_corpus`). The measured branch-coverage baseline is 82.25%; the
+gate is its floored value minus one percentage point, not a moving runtime
+calculation. The full suite still runs independently on every CI Python.
+Build and inspect the release artifacts with:
+
+```powershell
+py -m build
+py -m twine check dist/*
+```
+
+To run the installed-wheel smoke outside the checkout on Windows:
+
+```powershell
+$repoRoot = (Get-Location).Path
+$smokeVenv = Join-Path $env:TEMP "along-street-smoke-venv"
+$smokeCwd = Join-Path $env:TEMP "along-street-smoke-cwd"
+py -m venv $smokeVenv
+& "$smokeVenv\Scripts\python.exe" -m pip install (Get-ChildItem .\dist\*.whl).FullName
+New-Item -ItemType Directory -Force $smokeCwd | Out-Null
+Push-Location $smokeCwd
+& "$smokeVenv\Scripts\python.exe" (Join-Path $repoRoot "scripts\ci\installed_smoke.py")
+Pop-Location
+```
+
 ### Windows install and wheel smoke
 
 In PowerShell, create or activate a project virtual environment before using

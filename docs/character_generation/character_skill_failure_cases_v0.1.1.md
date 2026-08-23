@@ -13,7 +13,7 @@ S0 covers only the following:
 - Describe observable causal relationships in skill design using `Skill Kit Concept`, `Ability Entry`, `Trigger Subject`, `Effect Subject`, `Resource Loop`, `State Lifecycle`, `Summon Lifecycle`, `Team Interaction`, and `Mechanic Relation`.
 - Freeze the meanings of `PASS`, `REPAIR`, and `FAIL`, together with their finding codes.
 - Use 19 observation/oracle cases independent of the production skill-field shape to verify resources, states, summons, teammate interactions, role duties, mechanic expression, and request consistency.
-- Give `deepseek-v4-flash` candidate-generation and Mimo v2.5 anonymous blind-review runs the same domain boundaries and comparable acceptance criteria.
+- Give `deepseek-v4-flash` candidate-generation and MiMo v2.5 anonymous blind-review runs the same domain boundaries and comparable acceptance criteria.
 
 ## Non-goals
 
@@ -129,15 +129,15 @@ The `REPAIR` content and verdict for `skill_s0_05_teammate_trigger_ambiguous` re
 
 `deepseek-v4-flash` reads the `request`, domain glossary, and non-oracle case observation to generate a candidate skill-kit concept for each case. A candidate only needs to describe observable subjects, relationships, lifecycles, and constraints. It must not invent new role vocabulary, numerical balance fields, verbatim Corpus content, or future production fields. The output must retain the case ID for later blind-review pairing.
 
-### Mimo v2.5: anonymous blind review
+### MiMo v2.5: anonymous blind review
 
-The actual S0.1 review flow uses `deepseek-v4-flash` and Mimo v2.5 (reviewer ID `mimo-v2.5`) to independently judge the same non-oracle projection. Mimo receives only the request and candidate observation with `expected`, finding codes, signals, and rationale removed, and returns `PASS`, `REPAIR`, or `FAIL` with a reason.
+The actual S0.1 review flow uses `deepseek-v4-flash` and MiMo v2.5 (reviewer ID `mimo-v2.5`) to independently judge the same non-oracle projection. MiMo receives only the request and candidate observation with `expected`, finding codes, signals, and rationale removed, and returns `PASS`, `REPAIR`, or `FAIL` with a reason.
 
 Both reviewers are evidence sources, not the final specification judge. Codex/Sol applies the frozen oracle, reproducible case evidence, and focused tests to adjudicate disagreements; neither reviewer changes the repository, production schema, or repair loop.
 
 ### Codex/Sol: specification merge and S1 entry point
 
-Codex/Sol compares the `deepseek-v4-flash` candidates, Mimo v2.5 blind review, and the S0 oracle to confirm that domain vocabulary, case boundaries, and the production state do not conflict. S1 begins only when all of the following are true:
+Codex/Sol compares the `deepseek-v4-flash` candidates, MiMo v2.5 blind review, and the S0 oracle to confirm that domain vocabulary, case boundaries, and the production state do not conflict. S1 begins only when all of the following are true:
 
 1. Oracle and blind-review disagreements for all 19 cases have been explained case by case, especially the mechanic-skeleton boundaries for cases 13/19, the canonical-taxonomy fail-closed boundary for case 14, and the positive control example in case 18.
 2. Stable evidence exists for every finding code, all six role duties, and cross-taxonomy isolation.

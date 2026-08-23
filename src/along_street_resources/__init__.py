@@ -1,7 +1,7 @@
 """Packaged runtime data for Along the Street."""
 
+from importlib.abc import Traversable
 from importlib.resources import files
-from importlib.resources.abc import Traversable
 
 
 def data_root() -> Traversable:

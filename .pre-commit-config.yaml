@@ -1,0 +1,43 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-ast
+      - id: check-toml
+      - id: check-yaml
+      - id: check-merge-conflict
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.4
+    hooks:
+      - id: ruff-check
+        name: ruff (P2 CI scope)
+        files: ^(?:src/along_street_resources/|src/agents/official_character_authoring\.py$|src/knowledge/loader\.py$|src/reference_corpus/loader\.py$|scripts/ci/|tests/test_(?:ci_quality|cli_startup)\.py$)
+        args: [--config=pyproject.toml]
+
+  - repo: local
+    hooks:
+      - id: mypy-ci-scope
+        name: mypy (P2 CI scope)
+        entry: python -m mypy src/along_street_resources scripts/ci
+        language: python
+        additional_dependencies: ["mypy>=1.13,<2"]
+        pass_filenames: false
+        always_run: true
+      - id: runtime-data-validation
+        name: packaged runtime data validation
+        entry: python scripts/ci/validate_runtime.py
+        language: python
+        additional_dependencies: ["PyYAML>=6.0", "openai>=1.0,<3"]
+        pass_filenames: false
+        always_run: true
+      - id: offline-cli-source-smoke
+        name: offline CLI source smoke
+        entry: >-
+          python -c "import sys; sys.path.insert(0, 'src'); from
+          agents.official_character_authoring import main; raise
+          SystemExit(main(['--scenario', 'valid', '--model', 'offline', '--json']))"
+        language: python
+        additional_dependencies: ["PyYAML>=6.0", "openai>=1.0,<3"]
+        pass_filenames: false
+        always_run: true

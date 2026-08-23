@@ -1,0 +1,150 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install development environment
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[dev]"
+      - name: Run pre-commit checks
+        run: python -m pre_commit run --all-files
+      - name: Validate packaged runtime data
+        run: python scripts/ci/validate_runtime.py
+
+  test:
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13", "3.14"]
+    env:
+      NPC_RUN_LIVE_SMOKE: "0"
+      NPC_LLM_API_KEY: ""
+      OPENAI_API_KEY: ""
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install development environment
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[dev]"
+      - name: Run runtime boundary coverage on Python 3.13
+        if: matrix.python-version == '3.13'
+        run: >-
+          python -m pytest
+          tests/test_runtime_resources.py
+          tests/test_story_state.py
+          tests/test_knowledge_resolver.py
+          tests/test_knowledge_resolver_integration.py
+          tests/test_knowledge_registries.py
+          tests/reference_corpus
+          --cov=along_street_resources
+          --cov=knowledge
+          --cov=story
+          --cov=reference_corpus
+          --cov-branch
+          --cov-report=term-missing
+          --cov-report=xml
+      - name: Run full test suite
+        run: python -m pytest
+
+  build:
+    needs: [quality, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[dev]"
+      - name: Build distribution
+        run: python -m build
+      - name: Validate distribution metadata
+        run: python -m twine check dist/*
+      - name: Upload distribution artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-dist
+          path: dist/*
+          if-no-files-found: error
+
+  installed-smoke:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Download distribution artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: python-dist
+          path: dist
+      - name: Create isolated smoke environment
+        run: python -m venv "$RUNNER_TEMP/along-street-smoke-venv"
+      - name: Install wheel into isolated environment
+        run: |
+          "$RUNNER_TEMP/along-street-smoke-venv/bin/python" -m pip install --upgrade pip
+          "$RUNNER_TEMP/along-street-smoke-venv/bin/python" -m pip install dist/*.whl
+      - name: Run installed smoke outside repository
+        run: |
+          smoke_cwd="$(mktemp -d "$RUNNER_TEMP/along-street-smoke-cwd.XXXXXX")"
+          cd "$smoke_cwd"
+          "$RUNNER_TEMP/along-street-smoke-venv/bin/python" "$GITHUB_WORKSPACE/scripts/ci/installed_smoke.py"
+
+  ci-success:
+    if: ${{ always() }}
+    needs: [quality, test, build, installed-smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every CI job to pass
+        if: ${{ needs.quality.result != 'success' || needs.test.result != 'success' || needs.build.result != 'success' || needs.installed-smoke.result != 'success' }}
+        run: exit 1
+      - name: Report successful CI chain
+        run: echo "quality, test, build, and installed-smoke all passed"

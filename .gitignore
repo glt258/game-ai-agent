@@ -25,6 +25,14 @@ dist/
 build/
 *.egg-info/
 
+# Coverage
+.coverage
+.coverage.*
+.coverage-runtime*
+coverage.xml
+coverage-runtime.xml
+htmlcov/
+
 # Logs
 *.log
 

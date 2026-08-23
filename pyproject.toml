@@ -9,6 +9,19 @@ description = "Default-deny NPC knowledge boundary resolver for Along the Street
 requires-python = ">=3.10"
 dependencies = ["PyYAML>=6.0", "openai>=1.0,<3"]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<9",
+    "pytest-cov>=6,<8",
+    "coverage[toml]>=7.6,<8",
+    "ruff>=0.16.1,<0.17",
+    "mypy>=1.13,<2",
+    "pre-commit>=4,<5",
+    "build>=1.2,<2",
+    "twine>=6,<7",
+    "tomli>=2; python_version < '3.11'",
+]
+
 [project.scripts]
 along-street-character-author = "agents.official_character_authoring:main"
 
@@ -25,3 +38,43 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 along_street_resources = ["data/**/*.yaml", "data/**/*.yml", "data/**/*.md"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+include = [
+    "src/along_street_resources/**/*.py",
+    "src/agents/official_character_authoring.py",
+    "src/knowledge/loader.py",
+    "src/reference_corpus/loader.py",
+    "scripts/ci/**/*.py",
+    "tests/test_ci_quality.py",
+    "tests/test_cli_startup.py",
+]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.mypy]
+python_version = "3.10"
+check_untyped_defs = true
+mypy_path = "src"
+follow_imports = "skip"
+no_implicit_optional = true
+show_error_codes = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+[tool.coverage.run]
+branch = true
+source = [
+    "along_street_resources",
+    "knowledge",
+    "reference_corpus",
+    "story",
+]
+
+[tool.coverage.report]
+fail_under = 81
+precision = 2
+show_missing = true

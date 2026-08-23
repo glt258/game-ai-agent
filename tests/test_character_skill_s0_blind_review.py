@@ -142,6 +142,7 @@ def test_agreement_counts_and_case_05_oracle_adjudication_are_frozen(
 
 def test_blind_review_report_is_english_and_records_freeze_evidence() -> None:
     report = REPORT_PATH.read_text(encoding="utf-8")
+    normalized_report = " ".join(report.split())
 
     assert not re.search(r"[\u3400-\u9fff]", report)
     assert "Ox Alpha" not in report
@@ -160,16 +161,22 @@ def test_blind_review_report_is_english_and_records_freeze_evidence() -> None:
         "syntax-only normalization",
         "raw transport artifact",
         "not included in the repository",
+        "machine-readable inputs frozen against Commit A",
+        "byte-identical to their Commit A versions",
+        "input provenance recorded by both reviewer outputs through `source_commit`",
+        "English specification is a later translation of the Commit A Chinese specification",
+        "semantically frozen, not byte-frozen",
+        "case IDs, outcomes, finding codes, and boundary statements",
+        "without claiming byte identity with Commit A's Chinese version",
     ):
-        assert required in report
+        assert required in normalized_report
 
 
-def test_commit_a_source_assets_are_unchanged_after_freeze() -> None:
-    source_assets = (
+def test_commit_a_machine_readable_inputs_are_unchanged_after_freeze() -> None:
+    machine_readable_inputs = (
         "evals/fixtures/character_skill_failure_cases_v0.1.1.json",
-        "docs/character_generation/character_skill_failure_cases_v0.1.1.md",
         "evals/fixtures/hermes_character_skill_s0_blind_cases_v0.1.1.json",
     )
 
-    for relative_path in source_assets:
+    for relative_path in machine_readable_inputs:
         assert (ROOT / relative_path).read_bytes() == _git_show(COMMIT_A, relative_path)

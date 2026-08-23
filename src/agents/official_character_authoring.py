@@ -14,20 +14,20 @@ import os
 import re
 import sys
 from dataclasses import asdict, dataclass
-from importlib.resources.abc import Traversable
+from importlib.abc import Traversable
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from along_street_resources import data_resource
+from reference_corpus.features import extract_brief_features, reference_feature_profile
 from reference_corpus.loader import (
     join_resource,
     load_game_catalog,
     normalize_resource,
 )
 from reference_corpus.repository import CharacterReferenceRepository, ManifestPolicy
-from reference_corpus.features import extract_brief_features, reference_feature_profile
 
-from .canon_checker import CanonCheckStatus, CanonChecker, CanonFindingCode
+from .canon_checker import CanonChecker, CanonCheckStatus, CanonFindingCode
 from .character_generation import (
     CharacterDesignRequest,
     CharacterGenerationAgent,
@@ -43,7 +43,6 @@ from .character_repair import (
 from .errors import AgentError, ModelError, ModelMalformedResponseError
 from .model_factory import character_model_from_environment
 from .reference_feature_ordering import ready_feature_score_trace
-
 
 DEFAULT_CORPUS_ROOT = data_resource("reference_corpus", "characters")
 
