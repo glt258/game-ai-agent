@@ -1,0 +1,17 @@
+{
+  "schema_version": "character-skill-interface-blind-review-input-manifest/0.1.1",
+  "input_files": [
+    {
+      "path": "evals/fixtures/character_skill_interface_prototype_cases_v0.1.1.public.json",
+      "sha256": "11e936df853927154ace426c3a22e073b739b9b1dce536817851f70cf855ec04"
+    },
+    {
+      "path": "evals/fixtures/character_skill_s1_blind_review_prompt_v0.1.1.md",
+      "sha256": "1df9184f9bd681e814a54abbdd9f63c137887897ed4faec7937f7e5fd4954435"
+    },
+    {
+      "path": "evals/fixtures/character_skill_s1_blind_review_output_schema_v0.1.1.json",
+      "sha256": "9989ea7c20feadbbd2c54b8cd18cfcdbcb18b8047711df511c8beb5ade46e661"
+    }
+  ]
+}
