@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from evals.canon_checker_live_language import live_language_cases
 from agents import (
     CanonChecker,
     CanonFindingCode,
@@ -33,6 +34,23 @@ def _good_request() -> CharacterDesignRequest:
 
 def _codes(draft: CharacterDraft):
     return {finding.code for finding in CanonChecker().check(draft).findings}
+
+
+def test_live_language_case_matrix_matches_expectations():
+    checker = CanonChecker()
+    for case in live_language_cases():
+        report = checker.check(case.draft, request=case.request)
+        actual_codes = {finding.code for finding in report.findings}
+
+        assert report.status == case.expected_status, (
+            f"{case.case_id}: expected status {case.expected_status}, got {report.status}"
+        )
+        assert case.expected_codes <= actual_codes, (
+            f"{case.case_id}: expected codes {case.expected_codes}, got {actual_codes}"
+        )
+        assert not case.forbidden_codes & actual_codes, (
+            f"{case.case_id}: forbidden codes {case.forbidden_codes} in {actual_codes}"
+        )
 
 
 @pytest.mark.parametrize(

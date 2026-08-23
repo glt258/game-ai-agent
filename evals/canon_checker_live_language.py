@@ -206,7 +206,7 @@ def live_language_cases() -> tuple[LiveLanguageCase, ...]:
         ),
         LiveLanguageCase(
             "mixed_clause_shared_scope_boundary",
-            replace(base, constraint_notes=("无秘密政府机构或秘密行政机构，但存在秘密监管机构",)),
+            replace(base, background="无秘密政府机构或秘密行政机构，但存在秘密监管机构"),
             literal_request,
             CanonCheckStatus.FAIL,
             expected_codes=hard_fail,
