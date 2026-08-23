@@ -1,0 +1,116 @@
+{
+  "schema_version": "character-skill-interface-cases/0.1.1",
+  "candidates": {
+    "empty": {
+      "schema_version": "skill-kit-candidate/0.1.1",
+      "entries": [], "feedback_relations": [], "resources": [], "states": [], "summons": [], "role_evidence": [], "display_summary": ""
+    },
+    "resource_complete": {
+      "schema_version": "skill-kit-candidate/0.1.1",
+      "entries": [{"ability_id":"resource","name":"Resource","mode":"active","display_text":"","protocols":[
+        {"protocol_id":"open","when":{"subject":{"kind":"self","selector":"owner","entity_ref":null},"event":"ability_invoked","source_ref":null,"qualifier":null},"causes":[{"effect_id":"gain","subject":{"kind":"self","selector":"owner","entity_ref":null},"operation":"resource_gain","object_ref":{"kind":"resource","id":"mark"},"description":""}]},
+        {"protocol_id":"use","when":{"subject":{"kind":"self","selector":"owner","entity_ref":null},"event":"ability_invoked","source_ref":null,"qualifier":null},"causes":[{"effect_id":"spend","subject":{"kind":"self","selector":"owner","entity_ref":null},"operation":"resource_use","object_ref":{"kind":"resource","id":"mark"},"description":""}]},
+        {"protocol_id":"clear","when":{"subject":{"kind":"scene","selector":"scene","entity_ref":null},"event":"scene_exited","source_ref":null,"qualifier":null},"causes":[{"effect_id":"clear","subject":{"kind":"self","selector":"owner","entity_ref":null},"operation":"resource_clear","object_ref":{"kind":"resource","id":"mark"},"description":""}]}
+      ]}],
+      "feedback_relations": [], "resources":[{"resource_id":"mark","opened_by":[{"kind":"effect","id":"resource/open/gain"}],"used_or_transformed_by":[{"kind":"effect","id":"resource/use/spend"}],"closed_by":[{"kind":"effect","id":"resource/clear/clear"}]}],"states":[],"summons":[],"role_evidence":[],"display_summary":""
+    },
+    "resource_incomplete": {
+      "schema_version": "skill-kit-candidate/0.1.1",
+      "entries": [{"ability_id":"resource","name":"Resource","mode":"active","display_text":"","protocols":[{"protocol_id":"use","when":{"subject":{"kind":"self","selector":"owner","entity_ref":null},"event":"ability_invoked","source_ref":null,"qualifier":null},"causes":[{"effect_id":"spend","subject":{"kind":"self","selector":"owner","entity_ref":null},"operation":"resource_use","object_ref":{"kind":"resource","id":"mark"},"description":""}]}]}],"feedback_relations":[],"resources":[{"resource_id":"mark","opened_by":[],"used_or_transformed_by":[{"kind":"effect","id":"resource/use/spend"}],"closed_by":[]}],"states":[],"summons":[],"role_evidence":[],"display_summary":""
+    },
+    "state_missing_exit": {
+      "schema_version": "skill-kit-candidate/0.1.1",
+      "entries": [{"ability_id":"focus","name":"Focus","mode":"active","display_text":"","protocols":[
+        {"protocol_id":"enter","when":{"subject":{"kind":"self","selector":"owner","entity_ref":null},"event":"ability_invoked","source_ref":null,"qualifier":null},"causes":[{"effect_id":"enter","subject":{"kind":"self","selector":"owner","entity_ref":null},"operation":"state_enter","object_ref":{"kind":"state","id":"focus"},"description":""}]},
+        {"protocol_id":"apply","when":{"subject":{"kind":"self","selector":"owner","entity_ref":null},"event":"ability_invoked","source_ref":null,"qualifier":null},"causes":[{"effect_id":"apply","subject":{"kind":"self","selector":"owner","entity_ref":null},"operation":"state_apply","object_ref":{"kind":"state","id":"focus"},"description":""}]}
+      ]}],"feedback_relations":[],"resources":[],"states":[{"state_id":"focus","established_by":[{"kind":"effect","id":"focus/enter/enter"}],"active_effects":[{"kind":"effect","id":"focus/apply/apply"}],"ended_or_replaced_by":[]}],"summons":[],"role_evidence":[],"display_summary":""
+    },
+    "trigger_ambiguous": {
+      "schema_version": "skill-kit-candidate/0.1.1",
+      "entries": [{"ability_id":"ambiguous","name":"Ambiguous","mode":"reaction","display_text":"","protocols":[
+        {"protocol_id":"trigger","when":{"subject":{"kind":"ally","selector":null,"entity_ref":null},"event":null,"source_ref":null,"qualifier":"after a teammate event"},"causes":[{"effect_id":"enable","subject":{"kind":"ally","selector":"ally","entity_ref":null},"operation":"ally_enablement","object_ref":null,"description":""}]},
+        {"protocol_id":"support","when":{"subject":{"kind":"self","selector":"owner","entity_ref":null},"event":"ability_invoked","source_ref":null,"qualifier":null},"causes":[{"effect_id":"support","subject":{"kind":"ally","selector":"ally","entity_ref":null},"operation":"ally_enablement","object_ref":null,"description":""}]}
+      ]}],"feedback_relations":[],"resources":[],"states":[],"summons":[],"role_evidence":[{"effect_refs":[{"kind":"effect","id":"ambiguous/support/support"}],"centrality":"core"}],"display_summary":""
+    },
+    "summon_missing_exit": {
+      "schema_version": "skill-kit-candidate/0.1.1",
+      "entries": [{"ability_id":"control","name":"Control","mode":"active","display_text":"","protocols":[
+        {"protocol_id":"spawn","when":{"subject":{"kind":"self","selector":"owner","entity_ref":null},"event":"ability_invoked","source_ref":null,"qualifier":null},"causes":[{"effect_id":"spawn","subject":{"kind":"summon","selector":"field","entity_ref":{"kind":"summon","id":"field"}},"operation":"summon_spawn","object_ref":{"kind":"summon","id":"field"},"description":""}]},
+        {"protocol_id":"act","when":{"subject":{"kind":"self","selector":"owner","entity_ref":null},"event":"ability_invoked","source_ref":null,"qualifier":null},"causes":[{"effect_id":"act","subject":{"kind":"enemy","selector":"affected","entity_ref":null},"operation":"enemy_action_control","object_ref":{"kind":"summon","id":"field"},"description":""}]},
+        {"protocol_id":"active","when":{"subject":{"kind":"summon","selector":"field","entity_ref":{"kind":"summon","id":"field"}},"event":"summon_acted","source_ref":null,"qualifier":null},"causes":[{"effect_id":"active","subject":{"kind":"enemy","selector":"affected","entity_ref":null},"operation":"summon_act","object_ref":{"kind":"summon","id":"field"},"description":""}]}
+      ]}],"feedback_relations":[],"resources":[],"states":[],"summons":[{"summon_id":"field","spawned_by":[{"kind":"effect","id":"control/spawn/spawn"}],"active_effects":[{"kind":"effect","id":"control/active/active"}],"departed_or_replaced_by":[],"repeat_policy":null}],"role_evidence":[{"effect_refs":[{"kind":"effect","id":"control/act/act"}],"centrality":"core"}],"display_summary":""
+    },
+    "support_only": {
+      "schema_version": "skill-kit-candidate/0.1.1",
+      "entries": [{"ability_id":"support","name":"Support","mode":"active","display_text":"","protocols":[{"protocol_id":"protocol","when":{"subject":{"kind":"self","selector":"owner","entity_ref":null},"event":"ability_invoked","source_ref":null,"qualifier":null},"causes":[{"effect_id":"effect","subject":{"kind":"ally","selector":"ally","entity_ref":null},"operation":"ally_enablement","object_ref":null,"description":""}]}]}],"feedback_relations":[],"resources":[],"states":[],"summons":[],"role_evidence":[{"effect_refs":[{"kind":"effect","id":"support/protocol/effect"}],"centrality":"core"}],"display_summary":""
+    },
+    "direct_only": {
+      "schema_version": "skill-kit-candidate/0.1.1",
+      "entries": [{"ability_id":"direct","name":"Direct","mode":"active","display_text":"","protocols":[{"protocol_id":"protocol","when":{"subject":{"kind":"self","selector":"owner","entity_ref":null},"event":"ability_invoked","source_ref":null,"qualifier":null},"causes":[{"effect_id":"effect","subject":{"kind":"enemy","selector":"enemy","entity_ref":null},"operation":"direct_output","object_ref":null,"description":""}]}]}],"feedback_relations":[],"resources":[],"states":[],"summons":[],"role_evidence":[{"effect_refs":[{"kind":"effect","id":"direct/protocol/effect"}],"centrality":"core"}],"display_summary":""
+    },
+    "mechanic_absent": {
+      "schema_version": "skill-kit-candidate/0.1.1",
+      "entries": [{"ability_id":"base","name":"Base","mode":"active","display_text":"","protocols":[{"protocol_id":"protocol","when":{"subject":{"kind":"self","selector":"owner","entity_ref":null},"event":"ability_invoked","source_ref":null,"qualifier":null},"causes":[{"effect_id":"effect","subject":{"kind":"ally","selector":"ally","entity_ref":null},"operation":"ally_enablement","object_ref":null,"description":"unrelated"}]}]}],"feedback_relations":[],"resources":[],"states":[],"summons":[],"role_evidence":[{"effect_refs":[{"kind":"effect","id":"base/protocol/effect"}],"centrality":"core"}],"display_summary":"echo echo resonance"
+    },
+    "mechanic_repair": {
+      "schema_version": "skill-kit-candidate/0.1.1",
+      "entries": [{"ability_id":"echo","name":"Echo","mode":"reaction","display_text":"","protocols":[
+        {"protocol_id":"trigger","when":{"subject":{"kind":"ally","selector":"ally","entity_ref":null},"event":"action_completed","source_ref":null,"qualifier":null},"causes":[{"effect_id":"apply","subject":{"kind":"self","selector":"owner","entity_ref":null},"operation":"ally_enablement","object_ref":null,"description":""}]},
+        {"protocol_id":"feedback","when":{"subject":{"kind":"self","selector":"owner","entity_ref":null},"event":"feedback_received","source_ref":{"kind":"effect","id":"echo/trigger/apply"},"qualifier":null},"causes":[{"effect_id":"feedback","subject":{"kind":"ally","selector":"ally","entity_ref":null},"operation":"ally_enablement","object_ref":null,"description":""}]},
+        {"protocol_id":"support","when":{"subject":{"kind":"self","selector":"owner","entity_ref":null},"event":"ability_invoked","source_ref":null,"qualifier":null},"causes":[{"effect_id":"support","subject":{"kind":"ally","selector":"ally","entity_ref":null},"operation":"ally_enablement","object_ref":null,"description":""}]}
+      ]}],"feedback_relations":[],"resources":[],"states":[],"summons":[],"role_evidence":[{"effect_refs":[{"kind":"effect","id":"echo/support/support"}],"centrality":"core"}],"display_summary":""
+    },
+    "control_pass": {
+      "schema_version": "skill-kit-candidate/0.1.1",
+      "entries": [{"ability_id":"control","name":"Control","mode":"reaction","display_text":"","protocols":[
+        {"protocol_id":"spawn","when":{"subject":{"kind":"self","selector":"owner","entity_ref":null},"event":"ability_invoked","source_ref":null,"qualifier":null},"causes":[{"effect_id":"spawn","subject":{"kind":"summon","selector":"field","entity_ref":{"kind":"summon","id":"field"}},"operation":"summon_spawn","object_ref":{"kind":"summon","id":"field"},"description":""}]},
+        {"protocol_id":"act","when":{"subject":{"kind":"ally","selector":"ally","entity_ref":null},"event":"action_completed","source_ref":null,"qualifier":null},"causes":[{"effect_id":"act","subject":{"kind":"enemy","selector":"enemy","entity_ref":null},"operation":"enemy_action_control","object_ref":{"kind":"summon","id":"field"},"description":""}]},
+        {"protocol_id":"active","when":{"subject":{"kind":"summon","selector":"field","entity_ref":{"kind":"summon","id":"field"}},"event":"summon_acted","source_ref":null,"qualifier":null},"causes":[{"effect_id":"active","subject":{"kind":"enemy","selector":"enemy","entity_ref":null},"operation":"summon_act","object_ref":{"kind":"summon","id":"field"},"description":""}]},
+        {"protocol_id":"replace","when":{"subject":{"kind":"scene","selector":"scene","entity_ref":null},"event":"scene_exited","source_ref":null,"qualifier":null},"causes":[{"effect_id":"replace","subject":{"kind":"summon","selector":"field","entity_ref":{"kind":"summon","id":"field"}},"operation":"summon_replace","object_ref":{"kind":"summon","id":"field"},"description":""}]}
+      ]}],"feedback_relations":[],"resources":[],"states":[],"summons":[{"summon_id":"field","spawned_by":[{"kind":"effect","id":"control/spawn/spawn"}],"active_effects":[{"kind":"effect","id":"control/active/active"}],"departed_or_replaced_by":[{"kind":"effect","id":"control/replace/replace"}],"repeat_policy":"replace"}],"role_evidence":[{"effect_refs":[{"kind":"effect","id":"control/act/act"}],"centrality":"core"}],"display_summary":""
+    },
+    "multi_skill_incoherent": {
+      "schema_version": "skill-kit-candidate/0.1.1",
+      "entries": [{"ability_id":"first","name":"First","mode":"reaction","display_text":"","protocols":[
+        {"protocol_id":"follow","when":{"subject":{"kind":"ally","selector":"ally","entity_ref":null},"event":"action_completed","source_ref":null,"qualifier":null},"causes":[{"effect_id":"follow","subject":{"kind":"enemy","selector":"enemy","entity_ref":null},"operation":"follow_up_output","object_ref":{"kind":"resource","id":"mark"},"description":""}]},
+        {"protocol_id":"support","when":{"subject":{"kind":"self","selector":"owner","entity_ref":null},"event":"ability_invoked","source_ref":null,"qualifier":null},"causes":[{"effect_id":"support","subject":{"kind":"ally","selector":"ally","entity_ref":null},"operation":"ally_enablement","object_ref":null,"description":""}]}
+      ]},{"ability_id":"second","name":"Second","mode":"active","display_text":"","protocols":[{"protocol_id":"use","when":{"subject":{"kind":"self","selector":"owner","entity_ref":null},"event":"ability_invoked","source_ref":null,"qualifier":null},"causes":[{"effect_id":"use","subject":{"kind":"self","selector":"owner","entity_ref":null},"operation":"resource_use","object_ref":{"kind":"resource","id":"mark"},"description":""}]}]}],"feedback_relations":[],"resources":[{"resource_id":"mark","opened_by":[],"used_or_transformed_by":[{"kind":"effect","id":"second/use/use"}],"closed_by":[]}],"states":[],"summons":[],"role_evidence":[{"effect_refs":[{"kind":"effect","id":"first/follow/follow"}],"centrality":"core"},{"effect_refs":[{"kind":"effect","id":"first/support/support"}],"centrality":"secondary"}],"display_summary":""
+    }
+  },
+  "contexts": {
+    "none": {"intent":{"mechanic_requirements":[],"forbidden_mechanic_families":[],"hard_constraint_conflicts":[]},"combat_role_profile":null,"reference_review_context":null},
+    "forbidden_resource": {"intent":{"mechanic_requirements":[],"forbidden_mechanic_families":["resource"],"hard_constraint_conflicts":[]},"combat_role_profile":null,"reference_review_context":null},
+    "support": {"intent":{"mechanic_requirements":[],"forbidden_mechanic_families":[],"hard_constraint_conflicts":[]},"combat_role_profile":{"primary_role":"support","secondary_roles":[]},"reference_review_context":null},
+    "control": {"intent":{"mechanic_requirements":[],"forbidden_mechanic_families":[],"hard_constraint_conflicts":[]},"combat_role_profile":{"primary_role":"control","secondary_roles":[]},"reference_review_context":null},
+    "main_dps": {"intent":{"mechanic_requirements":[],"forbidden_mechanic_families":[],"hard_constraint_conflicts":[]},"combat_role_profile":{"primary_role":"main_dps","secondary_roles":[]},"reference_review_context":null},
+    "sub_dps": {"intent":{"mechanic_requirements":[],"forbidden_mechanic_families":[],"hard_constraint_conflicts":[]},"combat_role_profile":{"primary_role":"sub_dps","secondary_roles":[]},"reference_review_context":null},
+    "healer": {"intent":{"mechanic_requirements":[],"forbidden_mechanic_families":[],"hard_constraint_conflicts":[]},"combat_role_profile":{"primary_role":"healer","secondary_roles":[]},"reference_review_context":null},
+    "defense": {"intent":{"mechanic_requirements":[],"forbidden_mechanic_families":[],"hard_constraint_conflicts":[]},"combat_role_profile":{"primary_role":"defense","secondary_roles":[]},"reference_review_context":null},
+    "echo": {"intent":{"mechanic_requirements":[{"requirement_id":"req_echo","trigger":{"subject_kinds":["ally"],"events":["action_completed"],"source_kinds":[]},"effect":{"subject_kinds":["self"],"operations":["ally_enablement"],"object_kinds":[]},"feedback":{"required":true,"events":["effect_resolved"],"operations":["enables"]}}],"forbidden_mechanic_families":[],"hard_constraint_conflicts":[]},"combat_role_profile":{"primary_role":"support","secondary_roles":[]},"reference_review_context":null},
+    "invalid_taxonomy": {"intent":{"mechanic_requirements":[],"forbidden_mechanic_families":[],"hard_constraint_conflicts":[]},"combat_role_profile":{"primary_role":"support","secondary_roles":["on_field_dps","crowd_control"]},"reference_review_context":null},
+    "copying": {"intent":{"mechanic_requirements":[],"forbidden_mechanic_families":[],"hard_constraint_conflicts":[]},"combat_role_profile":{"primary_role":"control","secondary_roles":[]},"reference_review_context":{"corpus_version":"reference/1","corpus_digest":"0000000000000000000000000000000000000000000000000000000000000000","structural_fingerprints":[{"record_id":"external/control","scope":"connected_component","sha256":"4fcd9f45d9231869bd6097bc2db50cd974db12fe5001a5c47d43e0198b61b974"}]}},
+    "conflict": {"intent":{"mechanic_requirements":[],"forbidden_mechanic_families":[],"hard_constraint_conflicts":["required_subject_forbidden"]},"combat_role_profile":{"primary_role":"control","secondary_roles":[]},"reference_review_context":null},
+    "multi": {"intent":{"mechanic_requirements":[],"forbidden_mechanic_families":[],"hard_constraint_conflicts":[]},"combat_role_profile":{"primary_role":"sub_dps","secondary_roles":["support"]},"reference_review_context":null}
+  },
+  "cases": [
+    {"id":"skill_s0_01_resource_loop_complete","candidate_ref":"resource_complete","context_ref":"none","expected":{"outcome":"PASS","primary":""}},
+    {"id":"skill_s0_02_resource_loop_incomplete","candidate_ref":"resource_incomplete","context_ref":"none","expected":{"outcome":"REPAIR","primary":"RESOURCE_LOOP_INCOMPLETE"}},
+    {"id":"skill_s0_03_forbidden_resource","candidate_ref":"resource_complete","context_ref":"forbidden_resource","expected":{"outcome":"FAIL","primary":"FORBIDDEN_RESOURCE_INTRODUCED"}},
+    {"id":"skill_s0_04_state_exit_missing","candidate_ref":"state_missing_exit","context_ref":"none","expected":{"outcome":"REPAIR","primary":"STATE_EXIT_MISSING"}},
+    {"id":"skill_s0_05_teammate_trigger_ambiguous","candidate_ref":"trigger_ambiguous","context_ref":"support","expected":{"outcome":"REPAIR","primary":"TRIGGER_SUBJECT_AMBIGUOUS"}},
+    {"id":"skill_s0_06_summon_lifecycle_incomplete","candidate_ref":"summon_missing_exit","context_ref":"control","expected":{"outcome":"REPAIR","primary":"SUMMON_LIFECYCLE_INCOMPLETE"}},
+    {"id":"skill_s0_07_main_dps_mismatch","candidate_ref":"support_only","context_ref":"main_dps","expected":{"outcome":"FAIL","primary":"ROLE_EFFECT_MISMATCH"}},
+    {"id":"skill_s0_08_sub_dps_mismatch","candidate_ref":"support_only","context_ref":"sub_dps","expected":{"outcome":"FAIL","primary":"ROLE_EFFECT_MISMATCH"}},
+    {"id":"skill_s0_09_support_mismatch","candidate_ref":"direct_only","context_ref":"support","expected":{"outcome":"FAIL","primary":"ROLE_EFFECT_MISMATCH"}},
+    {"id":"skill_s0_10_healer_mismatch","candidate_ref":"direct_only","context_ref":"healer","expected":{"outcome":"FAIL","primary":"ROLE_EFFECT_MISMATCH"}},
+    {"id":"skill_s0_11_control_mismatch","candidate_ref":"direct_only","context_ref":"control","expected":{"outcome":"FAIL","primary":"ROLE_EFFECT_MISMATCH"}},
+    {"id":"skill_s0_12_defense_mismatch","candidate_ref":"direct_only","context_ref":"defense","expected":{"outcome":"FAIL","primary":"ROLE_EFFECT_MISMATCH"}},
+    {"id":"skill_s0_13_requested_mechanic_missing","candidate_ref":"mechanic_absent","context_ref":"echo","expected":{"outcome":"FAIL","primary":"MECHANIC_SKELETON_ABSENT"}},
+    {"id":"skill_s0_14_cross_taxonomy_role","candidate_ref":"empty","context_ref":"invalid_taxonomy","expected":{"outcome":"FAIL","primary":"CROSS_TAXONOMY_ROLE_LABEL"}},
+    {"id":"skill_s0_15_reference_copying","candidate_ref":"control_pass","context_ref":"copying","expected":{"outcome":"FAIL","primary":"REFERENCE_COPYING"}},
+    {"id":"skill_s0_16_hard_constraint_conflict","candidate_ref":"control_pass","context_ref":"conflict","expected":{"outcome":"FAIL","primary":"HARD_CONSTRAINT_CONFLICT"}},
+    {"id":"skill_s0_17_multi_skill_loop","candidate_ref":"multi_skill_incoherent","context_ref":"multi","expected":{"outcome":"REPAIR","primary":"MULTI_SKILL_LOOP_INCOHERENT"}},
+    {"id":"skill_s0_18_control_near_neighbor_pass","candidate_ref":"control_pass","context_ref":"control","expected":{"outcome":"PASS","primary":""}},
+    {"id":"skill_s0_19_requested_mechanic_near_neighbor_repair","candidate_ref":"mechanic_repair","context_ref":"echo","expected":{"outcome":"REPAIR","primary":"REQUESTED_MECHANIC_UNREPRESENTED"}}
+  ]
+}
