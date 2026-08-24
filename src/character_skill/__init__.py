@@ -1,7 +1,19 @@
 """Public Character Skill domain contract."""
 
 from .contract import parse_candidate
+from .context import (
+    EffectPredicate,
+    FeedbackPredicate,
+    MechanicRequirement,
+    ReferenceFingerprint,
+    ReferenceReviewContext,
+    SkillIntent,
+    SkillValidationContext,
+    TriggerPredicate,
+    VALIDATOR_CONTRACT,
+)
 from .errors import SkillKitShapeError
+from .evaluation import evaluate
 from .models import (
     AbilityEntry,
     BehaviorProtocol,
@@ -12,6 +24,8 @@ from .models import (
     ResourceLease,
     RoleEvidence,
     SCHEMA_VERSION,
+    SkillFinding,
+    SkillValidationReport,
     StateLease,
     Subject,
     SummonLease,
@@ -29,11 +43,23 @@ __all__ = [
     "ResourceLease",
     "RoleEvidence",
     "SCHEMA_VERSION",
+    "VALIDATOR_CONTRACT",
     "StateLease",
     "SkillKitShapeError",
+    "SkillFinding",
+    "SkillValidationReport",
+    "SkillValidationContext",
+    "SkillIntent",
+    "MechanicRequirement",
+    "TriggerPredicate",
+    "EffectPredicate",
+    "FeedbackPredicate",
+    "ReferenceFingerprint",
+    "ReferenceReviewContext",
     "Subject",
     "SummonLease",
     "Trigger",
     "TypedRef",
     "parse_candidate",
+    "evaluate",
 ]
