@@ -33,6 +33,13 @@ from .models import (
     TypedRef,
 )
 from .rendering import render_ability_concept
+from ._repair import (
+    SkillKitPatch,
+    SkillKitPatchError,
+    SkillKitRepairRequest,
+    SkillKitRepairResult,
+    repair_once,
+)
 
 __all__ = [
     "ProtocolSkillKitCandidate",
@@ -64,4 +71,9 @@ __all__ = [
     "parse_candidate",
     "evaluate",
     "render_ability_concept",
+    "SkillKitPatch",
+    "SkillKitPatchError",
+    "SkillKitRepairRequest",
+    "SkillKitRepairResult",
+    "repair_once",
 ]

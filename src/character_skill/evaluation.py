@@ -1,9 +1,8 @@
-"""Structural-only SkillKit evaluation over the public domain contract.
+"""Bounded SkillKit evaluation over the public domain contract.
 
-This module intentionally reports representation and lifecycle findings only.
-Mechanic matching, role alignment, reference copying, repair, rendering, and
-runtime integration belong to later independently reviewed commits.  No
-production caller is connected here yet.
+The evaluator is deliberately request-owned and deterministic.  It validates
+the structural graph and the reviewed S1 mechanic, role, and reference
+dimensions; repair remains a separate public seam in ``_repair``.
 """
 
 from __future__ import annotations
@@ -16,15 +15,132 @@ from typing import Any
 
 from ._graph import DerivedGraph, build_graph, exists_in_other_namespace, resolve_ref
 from .context import VALIDATOR_CONTRACT, SkillValidationContext
+from .context import MechanicRequirement
 from .models import (
     AbilityEntry,
     BehaviorProtocol,
     Effect,
+    FeedbackRelation,
+    RoleEvidence,
     ProtocolSkillKitCandidate,
     SkillFinding,
     SkillValidationReport,
     TypedRef,
 )
+
+
+_FEEDBACK_DOWNSTREAM_OPERATIONS: dict[str, frozenset[str]] = {
+    "enables": frozenset(
+        {
+            "direct_output",
+            "follow_up_output",
+            "ally_enablement",
+            "recover_or_mitigate",
+            "enemy_action_control",
+            "threat_protection",
+            "resource_gain",
+            "state_enter",
+            "summon_spawn",
+        }
+    ),
+    "modifies": frozenset(
+        {
+            "direct_output",
+            "follow_up_output",
+            "ally_enablement",
+            "recover_or_mitigate",
+            "enemy_action_control",
+            "threat_protection",
+            "resource_transform",
+            "state_apply",
+            "summon_act",
+        }
+    ),
+    "terminates": frozenset(
+        {
+            "resource_clear",
+            "state_exit",
+            "state_replace",
+            "summon_exit",
+            "summon_replace",
+        }
+    ),
+}
+
+_LIFECYCLE_OPERATION_KINDS: dict[str, str] = {
+    "resource_gain": "resource",
+    "resource_transform": "resource",
+    "resource_clear": "resource",
+    "state_enter": "state",
+    "state_apply": "state",
+    "state_exit": "state",
+    "state_replace": "state",
+    "summon_spawn": "summon",
+    "summon_act": "summon",
+    "summon_exit": "summon",
+    "summon_replace": "summon",
+}
+
+_CANONICAL_ROLES = frozenset(
+    {"main_dps", "sub_dps", "support", "healer", "control", "defense"}
+)
+_ROLE_ROWS: dict[str, dict[str, object]] = {
+    "main_dps": {
+        "duty": "direct_output",
+        "subjects": frozenset({"enemy"}),
+        "triggers": frozenset({("self", "ability_invoked")}),
+    },
+    "sub_dps": {
+        "duty": "follow_up_output",
+        "subjects": frozenset({"enemy"}),
+        "triggers": frozenset({("ally", "action_completed"), ("team", "action_completed")}),
+    },
+    "support": {
+        "duty": "ally_enablement",
+        "subjects": frozenset({"ally", "team"}),
+        "triggers": frozenset(
+            {
+                ("self", "ability_invoked"),
+                ("ally", "action_completed"),
+                ("team", "action_completed"),
+            }
+        ),
+    },
+    "healer": {
+        "duty": "recover_or_mitigate",
+        "subjects": frozenset({"ally", "team"}),
+        "triggers": frozenset(
+            {
+                ("self", "ability_invoked"),
+                ("ally", "damage_received"),
+                ("team", "damage_received"),
+            }
+        ),
+    },
+    "control": {
+        "duty": "enemy_action_control",
+        "subjects": frozenset({"enemy"}),
+        "triggers": frozenset(
+            {
+                ("self", "ability_invoked"),
+                ("ally", "action_completed"),
+                ("summon", "summon_acted"),
+                ("scene", "scene_entered"),
+            }
+        ),
+    },
+    "defense": {
+        "duty": "threat_protection",
+        "subjects": frozenset({"ally", "team"}),
+        "triggers": frozenset(
+            {
+                ("self", "ability_invoked"),
+                ("ally", "damage_received"),
+                ("team", "damage_received"),
+            }
+        ),
+    },
+}
 
 
 def _plain(value: object) -> object:
@@ -423,24 +539,721 @@ def _lifecycle_findings(
             )
 
 
+def _profile_or_finding(
+    profile: Mapping[str, object] | object | None,
+) -> tuple[tuple[str | None, tuple[str, ...]] | None, SkillFinding | None]:
+    """Parse only the canonical role-profile mapping, without aliasing it."""
+
+    if profile is None:
+        return None, None
+    if not isinstance(profile, Mapping):
+        return None, _finding(
+            "CROSS_TAXONOMY_ROLE_LABEL",
+            "context.combat_role_profile",
+            repairable=False,
+        )
+    if set(profile) != {"primary_role", "secondary_roles"}:
+        return None, _finding(
+            "CROSS_TAXONOMY_ROLE_LABEL",
+            "context.combat_role_profile",
+            repairable=False,
+        )
+    primary = profile.get("primary_role")
+    secondary = profile.get("secondary_roles")
+    if primary is not None and (
+        not isinstance(primary, str) or primary not in _CANONICAL_ROLES
+    ):
+        return None, _finding(
+            "CROSS_TAXONOMY_ROLE_LABEL",
+            "context.combat_role_profile",
+            repairable=False,
+        )
+    if not isinstance(secondary, Sequence) or isinstance(secondary, (str, bytes, bytearray)):
+        return None, _finding(
+            "CROSS_TAXONOMY_ROLE_LABEL",
+            "context.combat_role_profile",
+            repairable=False,
+        )
+    secondary_values = tuple(secondary)
+    if any(
+        not isinstance(role, str) or role not in _CANONICAL_ROLES
+        for role in secondary_values
+    ):
+        return None, _finding(
+            "CROSS_TAXONOMY_ROLE_LABEL",
+            "context.combat_role_profile",
+            repairable=False,
+        )
+    if (
+        len(set(secondary_values)) != len(secondary_values)
+        or (primary is not None and primary in secondary_values)
+    ):
+        return None, _finding(
+            "CROSS_TAXONOMY_ROLE_LABEL",
+            "context.combat_role_profile",
+            repairable=False,
+        )
+    return (primary, secondary_values), None
+
+
+def _role_findings(
+    candidate: ProtocolSkillKitCandidate,
+    profile: tuple[str | None, tuple[str, ...]] | None,
+    graph: DerivedGraph,
+    findings: list[SkillFinding],
+) -> None:
+    if profile is None:
+        return
+    primary, secondary = profile
+    requested: list[tuple[str, str]] = []
+    if primary is not None:
+        requested.append((primary, "core"))
+    requested.extend((role, "secondary") for role in secondary)
+    for role, centrality in requested:
+        row = _ROLE_ROWS[role]
+        valid = False
+        for evidence in candidate.role_evidence:
+            if evidence.centrality != centrality:
+                continue
+            for ref in evidence.effect_refs:
+                location = graph.effects.get(ref.id) if ref.kind == "effect" else None
+                if location is None:
+                    continue
+                trigger = location.protocol.when
+                pair = (
+                    (trigger.subject.kind, trigger.event)
+                    if trigger is not None and trigger.subject is not None
+                    else (None, None)
+                )
+                effect = location.effect
+                if (
+                    effect.operation == row["duty"]
+                    and effect.subject is not None
+                    and effect.subject.kind in row["subjects"]
+                    and pair in row["triggers"]
+                ):
+                    valid = True
+                    break
+            if valid:
+                break
+        if not valid:
+            findings.append(_finding("ROLE_EFFECT_MISMATCH", "/role_evidence", repairable=False))
+
+
+def _skeletons(
+    candidate: ProtocolSkillKitCandidate,
+    requirement: MechanicRequirement,
+    graph: DerivedGraph,
+) -> list[tuple[BehaviorProtocol, object]]:
+    matches: list[tuple[BehaviorProtocol, object]] = []
+    for _, _, entry, protocol in _all_protocols(candidate):
+        trigger = protocol.when
+        if (
+            trigger is None
+            or trigger.subject is None
+            or trigger.subject.kind not in requirement.trigger.subject_kinds
+            or trigger.event not in requirement.trigger.events
+        ):
+            continue
+        if requirement.trigger.source_kinds:
+            source = trigger.source_ref
+            if (
+                source is None
+                or source.kind not in requirement.trigger.source_kinds
+                or resolve_ref(source, graph) is None
+            ):
+                continue
+        for effect in protocol.causes:
+            if (
+                effect.subject is None
+                or effect.subject.kind not in requirement.effect.subject_kinds
+                or effect.operation not in requirement.effect.operations
+            ):
+                continue
+            if requirement.effect.object_kinds:
+                object_ref = effect.object_ref
+                if (
+                    object_ref is None
+                    or object_ref.kind not in requirement.effect.object_kinds
+                    or resolve_ref(object_ref, graph) is None
+                ):
+                    continue
+            location = graph.effects.get(
+                f"{entry.ability_id}/{protocol.protocol_id}/{effect.effect_id}"
+            )
+            if location is not None:
+                matches.append((protocol, location))
+    return matches
+
+
+def _feedback_downstream_valid(
+    effect: Effect,
+    relation: FeedbackRelation,
+    graph: DerivedGraph,
+) -> bool:
+    if effect.subject is None:
+        return False
+    if effect.operation not in _FEEDBACK_DOWNSTREAM_OPERATIONS.get(
+        relation.operation, frozenset()
+    ):
+        return False
+    expected_kind = _LIFECYCLE_OPERATION_KINDS.get(effect.operation or "")
+    if expected_kind is not None:
+        object_ref = effect.object_ref
+        if (
+            object_ref is None
+            or object_ref.kind != expected_kind
+            or f"{expected_kind}/{object_ref.id}" not in graph.leases
+        ):
+            return False
+    return True
+
+
+def _feedback_attached_to_skeleton(
+    relation: FeedbackRelation,
+    source: object,
+    graph: DerivedGraph,
+    requirement: MechanicRequirement | None,
+) -> bool:
+    source_effect = source.effect_ref
+    if relation.source_effect.kind != "effect" or relation.source_effect != source_effect:
+        return False
+    if relation.target_protocol.kind != "protocol":
+        return False
+    target = graph.protocols.get(relation.target_protocol.id)
+    if target is None or relation.target_protocol.id == source.protocol_ref.id:
+        return False
+    if (
+        target.when is None
+        or target.when.event != "feedback_received"
+        or target.when.source_ref != relation.source_effect
+    ):
+        return False
+    if requirement is not None and (
+        relation.event not in requirement.feedback.events
+        or relation.operation not in requirement.feedback.operations
+    ):
+        return False
+    source_subject = source.effect.subject
+    target_subject = target.when.subject
+    if source_subject is None or target_subject is None or source_subject.kind != target_subject.kind:
+        return False
+    if source_subject.kind == "summon" and source_subject.entity_ref != target_subject.entity_ref:
+        return False
+    return True
+
+
+def _feedback_valid_for(
+    relation: FeedbackRelation,
+    source: object,
+    graph: DerivedGraph,
+    requirement: MechanicRequirement | None,
+) -> bool:
+    if not _feedback_attached_to_skeleton(relation, source, graph, requirement):
+        return False
+    target = graph.protocols[relation.target_protocol.id]
+    return any(_feedback_downstream_valid(effect, relation, graph) for effect in target.causes)
+
+
+def _feedback_authorized_paths(
+    candidate: ProtocolSkillKitCandidate,
+    rows: Sequence[tuple[BehaviorProtocol, object]],
+    requirement: MechanicRequirement,
+    graph: DerivedGraph,
+) -> tuple[str, ...]:
+    paths = {"/feedback_relations/-"}
+    requested_operations = tuple(requirement.feedback.operations)
+    requested_event = next(iter(requirement.feedback.events), "effect_resolved")
+    for _, source in rows:
+        source_subject = source.effect.subject
+        for entry_index, protocol_index, entry, target in _all_protocols(candidate):
+            target_id = f"{entry.ability_id}/{target.protocol_id}"
+            if target_id == source.protocol_ref.id or target.when is None:
+                continue
+            if target.when.event != "feedback_received" or target.when.source_ref != source.effect_ref:
+                continue
+            target_subject = target.when.subject
+            if source_subject is None or target_subject is None or source_subject.kind != target_subject.kind:
+                continue
+            if source_subject.kind == "summon" and source_subject.entity_ref != target_subject.entity_ref:
+                continue
+            has_compatible_cause = any(
+                _feedback_downstream_valid(
+                    effect,
+                    FeedbackRelation(
+                        "authorized",
+                        source.effect_ref,
+                        TypedRef("protocol", target_id),
+                        requested_event,
+                        operation,
+                    ),
+                    graph,
+                )
+                for operation in requested_operations
+                for effect in target.causes
+            )
+            if not has_compatible_cause:
+                paths.add(f"/entries/{entry_index}/protocols/{protocol_index}/causes/-")
+    return tuple(sorted(paths))
+
+
+def _mechanic_findings(
+    candidate: ProtocolSkillKitCandidate,
+    context: SkillValidationContext,
+    graph: DerivedGraph,
+    findings: list[SkillFinding],
+) -> dict[str, list[tuple[BehaviorProtocol, object]]]:
+    matched: dict[str, list[tuple[BehaviorProtocol, object]]] = {}
+    for requirement in context.intent.mechanic_requirements:
+        rows = _skeletons(candidate, requirement, graph)
+        matched[requirement.requirement_id] = rows
+        if not rows:
+            findings.append(_finding("MECHANIC_SKELETON_ABSENT", "/entries", repairable=False))
+            continue
+        if requirement.feedback.required:
+            valid_feedback = any(
+                _feedback_valid_for(relation, source, graph, requirement)
+                for relation in candidate.feedback_relations
+                for _, source in rows
+            )
+            locally_attached_feedback = any(
+                _feedback_attached_to_skeleton(relation, source, graph, requirement)
+                for relation in candidate.feedback_relations
+                for _, source in rows
+            )
+            if not valid_feedback and not locally_attached_feedback:
+                findings.append(
+                    _finding(
+                        "REQUESTED_MECHANIC_UNREPRESENTED",
+                        "/feedback_relations/-",
+                        repairable=True,
+                        authorized_paths=_feedback_authorized_paths(
+                            candidate, rows, requirement, graph
+                        ),
+                    )
+                )
+    return matched
+
+
+def _feedback_findings(
+    candidate: ProtocolSkillKitCandidate,
+    matched: Mapping[str, list[tuple[BehaviorProtocol, object]]],
+    requirements: Sequence[MechanicRequirement],
+    graph: DerivedGraph,
+    findings: list[SkillFinding],
+) -> None:
+    requirements_by_id = {
+        requirement.requirement_id: requirement for requirement in requirements
+    }
+    for index, relation in enumerate(candidate.feedback_relations):
+        path = f"/feedback_relations/{index}"
+        if (
+            relation.source_effect.kind != "effect"
+            or relation.target_protocol.kind != "protocol"
+            or relation.source_effect.id not in graph.effects
+            or relation.target_protocol.id not in graph.protocols
+        ):
+            findings.append(
+                _finding(
+                    "FEEDBACK_REFERENCE_DANGLING",
+                    path,
+                    repairable=False,
+                    evidence_refs=(relation.source_effect.id, relation.target_protocol.id),
+                )
+            )
+            continue
+        valid = any(
+            _feedback_valid_for(
+                relation,
+                source,
+                graph,
+                requirements_by_id[requirement_id],
+            )
+            for requirement_id, rows in matched.items()
+            if requirement_id in requirements_by_id
+            for _, source in rows
+        )
+        if not valid:
+            locally_repairable = any(
+                _feedback_attached_to_skeleton(
+                    relation,
+                    source,
+                    graph,
+                    requirements_by_id[requirement_id],
+                )
+                and graph.protocols[relation.target_protocol.id].causes == ()
+                for requirement_id, rows in matched.items()
+                if requirement_id in requirements_by_id
+                for _, source in rows
+            )
+            findings.append(
+                _finding(
+                    "FEEDBACK_RELATION_INVALID",
+                    path,
+                    repairable=locally_repairable,
+                    evidence_refs=(relation.source_effect.id, relation.target_protocol.id),
+                )
+            )
+
+
+def _candidate_mechanic_families(candidate: ProtocolSkillKitCandidate) -> frozenset[str]:
+    families: set[str] = set()
+    if candidate.resources or any(
+        effect.operation is not None
+        and effect.operation.startswith("resource_")
+        for entry in candidate.entries
+        for protocol in entry.protocols
+        for effect in protocol.causes
+    ):
+        families.add("resource")
+    if candidate.states or any(
+        effect.operation is not None
+        and effect.operation.startswith("state_")
+        for entry in candidate.entries
+        for protocol in entry.protocols
+        for effect in protocol.causes
+    ):
+        families.add("state")
+    if candidate.summons or any(
+        effect.operation is not None
+        and effect.operation.startswith("summon_")
+        for entry in candidate.entries
+        for protocol in entry.protocols
+        for effect in protocol.causes
+    ):
+        families.add("summon")
+    return frozenset(families)
+
+
+def _graph_payload(
+    candidate: ProtocolSkillKitCandidate,
+) -> tuple[dict[str, dict[str, object]], list[tuple[str, str, str]]]:
+    graph = build_graph(candidate)
+    role_centralities: dict[str, list[str]] = {}
+    for evidence in candidate.role_evidence:
+        for ref in evidence.effect_refs:
+            if ref.kind == "effect":
+                role_centralities.setdefault(ref.id, []).append(evidence.centrality)
+
+    nodes: dict[str, dict[str, object]] = {}
+    edges: list[tuple[str, str, str]] = []
+    for pid, protocol in graph.protocols.items():
+        trigger_subject = (
+            protocol.when.subject.kind
+            if protocol.when is not None and protocol.when.subject is not None
+            else None
+        )
+        trigger_event = protocol.when.event if protocol.when is not None else None
+        nodes[f"p:{pid}"] = {
+            "kind": "protocol",
+            "tags": [trigger_subject, trigger_event],
+        }
+        for effect in protocol.causes:
+            eid = f"{pid}/{effect.effect_id}"
+            nodes[f"e:{eid}"] = {
+                "kind": "effect",
+                "tags": [
+                    effect.operation,
+                    effect.subject.kind if effect.subject else None,
+                    effect.object_ref.kind if effect.object_ref else None,
+                    sorted(role_centralities.get(eid, [])),
+                ],
+            }
+            edges.append((f"p:{pid}", "causes", f"e:{eid}"))
+            if effect.object_ref is not None and effect.object_ref.kind in {
+                "resource",
+                "state",
+                "summon",
+            }:
+                lease_key = f"{effect.object_ref.kind}/{effect.object_ref.id}"
+                if lease_key in graph.leases:
+                    edges.append((f"e:{eid}", "targets", f"l:{lease_key}"))
+
+    for kind, leases in (
+        ("resource", candidate.resources),
+        ("state", candidate.states),
+        ("summon", candidate.summons),
+    ):
+        for lease in leases:
+            lease_id = getattr(lease, f"{kind}_id")
+            tags: list[object] = [lease.repeat_policy] if kind == "summon" else []
+            nodes[f"l:{kind}/{lease_id}"] = {"kind": kind, "tags": tags}
+
+    for relation in candidate.feedback_relations:
+        source_node = f"e:{relation.source_effect.id}"
+        target_node = f"p:{relation.target_protocol.id}"
+        if source_node in nodes and target_node in nodes:
+            edges.append(
+                (
+                    source_node,
+                    f"feedback:{relation.event}:{relation.operation}",
+                    target_node,
+                )
+            )
+
+    lifecycle_slots = {
+        "resource": {
+            "opened_by": "opened_by",
+            "used_or_transformed_by": "used_or_transformed_by",
+            "closed_by": "closed_by",
+        },
+        "state": {
+            "established_by": "established_by",
+            "active_effects": "active_effects",
+            "ended_or_replaced_by": "ended_or_replaced_by",
+        },
+        "summon": {
+            "spawned_by": "spawned_by",
+            "active_effects": "active_effects",
+            "departed_or_replaced_by": "departed_or_replaced_by",
+        },
+    }
+    for kind, leases in (
+        ("resource", candidate.resources),
+        ("state", candidate.states),
+        ("summon", candidate.summons),
+    ):
+        for lease in leases:
+            lease_node = f"l:{kind}/{getattr(lease, f'{kind}_id')}"
+            for slot, label in lifecycle_slots[kind].items():
+                for ref in getattr(lease, slot):
+                    effect_node = f"e:{ref.id}"
+                    if effect_node in nodes:
+                        edges.append((lease_node, label, effect_node))
+    return nodes, edges
+
+
+def _induced_graph(
+    nodes: Mapping[str, dict[str, object]],
+    edges: Sequence[tuple[str, str, str]],
+    keep: set[str],
+) -> tuple[dict[str, dict[str, object]], list[tuple[str, str, str]]]:
+    return (
+        {node: value for node, value in nodes.items() if node in keep},
+        [edge for edge in edges if edge[0] in keep and edge[2] in keep],
+    )
+
+
+def _weak_components(
+    nodes: Mapping[str, dict[str, object]],
+    edges: Sequence[tuple[str, str, str]],
+) -> list[set[str]]:
+    adjacent: dict[str, set[str]] = {node: set() for node in nodes}
+    for source, _, target in edges:
+        adjacent.setdefault(source, set()).add(target)
+        adjacent.setdefault(target, set()).add(source)
+    components: list[set[str]] = []
+    unseen = set(nodes)
+    while unseen:
+        start = min(unseen)
+        component: set[str] = set()
+        stack = [start]
+        while stack:
+            node = stack.pop()
+            if node not in unseen:
+                continue
+            unseen.remove(node)
+            component.add(node)
+            stack.extend(adjacent[node] & unseen)
+        components.append(component)
+    return components
+
+
+def _fingerprint_graph(
+    nodes: Mapping[str, dict[str, object]],
+    edges: Sequence[tuple[str, str, str]],
+) -> str:
+    colors = {
+        node: hashlib.sha256(
+            _canonical_json({"kind": value["kind"], "tags": value["tags"]}).encode(
+                "utf-8"
+            )
+        ).hexdigest()
+        for node, value in nodes.items()
+    }
+    for _ in range(max(1, len(nodes))):
+        next_colors: dict[str, str] = {}
+        for node, value in nodes.items():
+            incoming = sorted(
+                [[label, colors[source]] for source, label, target in edges if target == node]
+            )
+            outgoing = sorted(
+                [[label, colors[target]] for source, label, target in edges if source == node]
+            )
+            next_colors[node] = hashlib.sha256(
+                _canonical_json(
+                    {
+                        "kind": value["kind"],
+                        "tags": value["tags"],
+                        "incoming": incoming,
+                        "outgoing": outgoing,
+                    }
+                ).encode("utf-8")
+            ).hexdigest()
+        colors = next_colors
+    canonical_nodes = sorted([[value["kind"], colors[node]] for node, value in nodes.items()])
+    canonical_edges = sorted(
+        [[colors[source], label, colors[target]] for source, label, target in edges]
+    )
+    return hashlib.sha256(
+        _canonical_json({"nodes": canonical_nodes, "edges": canonical_edges}).encode("utf-8")
+    ).hexdigest()
+
+
+def _scoped_graphs(
+    candidate: ProtocolSkillKitCandidate,
+    scope: str,
+    protocol_id: str | None = None,
+) -> list[tuple[dict[str, dict[str, object]], list[tuple[str, str, str]]]]:
+    nodes, edges = _graph_payload(candidate)
+    if scope == "protocol":
+        if protocol_id is None:
+            return []
+        protocol_node = f"p:{protocol_id}"
+        keep = {protocol_node}
+        keep.update(
+            dst
+            for source, label, dst in edges
+            if source == protocol_node and label == "causes"
+        )
+        keep.update(
+            dst
+            for source, label, dst in edges
+            if source in keep and label == "targets"
+        )
+        return [_induced_graph(nodes, edges, keep)]
+    if scope == "connected_component":
+        return [_induced_graph(nodes, edges, component) for component in _weak_components(nodes, edges)]
+    raise ValueError(f"unsupported fingerprint scope: {scope}")
+
+
+def _structural_fingerprint(
+    candidate: ProtocolSkillKitCandidate,
+    scope: str,
+    protocol_id: str | None = None,
+) -> str:
+    graphs = _scoped_graphs(candidate, scope, protocol_id)
+    if not graphs:
+        return _fingerprint_graph({}, [])
+    return _fingerprint_graph(*graphs[0])
+
+
+def _reference_copying(
+    candidate: ProtocolSkillKitCandidate,
+    context: SkillValidationContext,
+    findings: list[SkillFinding],
+) -> None:
+    review = context.reference_review_context
+    if review is None:
+        return
+    expected = {
+        "protocol": {
+            item.sha256
+            for item in review.structural_fingerprints
+            if item.scope == "protocol"
+        },
+        "connected_component": {
+            item.sha256
+            for item in review.structural_fingerprints
+            if item.scope == "connected_component"
+        },
+    }
+    protocol_match = any(
+        _structural_fingerprint(
+            candidate,
+            "protocol",
+            f"{entry.ability_id}/{protocol.protocol_id}",
+        )
+        in expected["protocol"]
+        for entry in candidate.entries
+        for protocol in entry.protocols
+    )
+    component_match = any(
+        _fingerprint_graph(*graph) in expected["connected_component"]
+        for graph in _scoped_graphs(candidate, "connected_component")
+    )
+    if protocol_match or component_match:
+        findings.append(
+            _finding(
+                "REFERENCE_COPYING",
+                "/context/reference_review_context",
+                repairable=False,
+            )
+        )
+
+
 def evaluate(
     candidate: ProtocolSkillKitCandidate,
     context: SkillValidationContext | Mapping[str, object],
 ) -> SkillValidationReport:
-    """Accumulate representation/lifecycle findings for a parsed candidate.
-
-    The report scope is structural-only until later reviewed commits; this
-    function intentionally does not perform mechanic, role, or copying
-    evaluation and has no production caller yet.
-    """
+    """Accumulate the frozen structural and bounded S1 semantic findings."""
 
     if not isinstance(candidate, ProtocolSkillKitCandidate):
         raise TypeError("evaluate expects a ProtocolSkillKitCandidate")
     context_value = _coerce_context(context)
     graph = build_graph(candidate)
     findings: list[SkillFinding] = []
+    profile, profile_finding = _profile_or_finding(context_value.combat_role_profile)
+    if profile_finding is not None:
+        findings.append(profile_finding)
+    if context_value.intent.hard_constraint_conflicts:
+        findings.append(
+            _finding(
+                "HARD_CONSTRAINT_CONFLICT",
+                "/context/intent/hard_constraint_conflicts",
+                repairable=False,
+            )
+        )
+    candidate_families = _candidate_mechanic_families(candidate)
+    forbidden_paths = {
+        "resource": "/resources",
+        "state": "/states",
+        "summon": "/summons",
+    }
+    for family in sorted(
+        set(context_value.intent.forbidden_mechanic_families)
+        & candidate_families
+        & set(forbidden_paths)
+    ):
+        findings.append(
+            _finding(
+                f"FORBIDDEN_{family.upper()}_INTRODUCED",
+                forbidden_paths[family],
+                repairable=False,
+            )
+        )
     _validate_general_refs(candidate, graph, findings)
     _lifecycle_findings(candidate, graph, findings)
+    matched = _mechanic_findings(candidate, context_value, graph, findings)
+    _feedback_findings(
+        candidate,
+        matched,
+        context_value.intent.mechanic_requirements,
+        graph,
+        findings,
+    )
+    for entry_index, protocol_index, _, protocol in _all_protocols(candidate):
+        if (
+            protocol.when is not None
+            and protocol.when.subject is not None
+            and protocol.when.subject.kind in {"ally", "team"}
+            and (
+                not protocol.when.subject.selector
+                or protocol.when.event is None
+            )
+        ):
+            findings.append(
+                _finding(
+                    "TRIGGER_SUBJECT_AMBIGUOUS",
+                    f"/entries/{entry_index}/protocols/{protocol_index}/when",
+                    repairable=True,
+                    authorized_paths=(
+                        f"/entries/{entry_index}/protocols/{protocol_index}/when",
+                    ),
+                )
+            )
+    _role_findings(candidate, profile, graph, findings)
+    _reference_copying(candidate, context_value, findings)
     ordered = _dedupe_sort(findings)
     if any(not item.repairable for item in ordered):
         outcome = "FAIL"
