@@ -146,6 +146,267 @@ CHARACTER_DRAFT_CORE_FIELDS = frozenset(
 )
 
 
+_SKILL_KIT_ID_SEGMENT = r"[a-z0-9]+(?:_[a-z0-9]+)*"
+_SKILL_KIT_REF_KINDS = ("protocol", "effect", "resource", "state", "summon")
+_SKILL_KIT_SUBJECT_KINDS = ("self", "ally", "team", "enemy", "scene", "summon")
+_SKILL_KIT_ABILITY_MODES = ("active", "passive", "reaction")
+_SKILL_KIT_TRIGGER_EVENTS = (
+    "ability_invoked",
+    "action_completed",
+    "damage_received",
+    "healing_received",
+    "resource_gained",
+    "resource_spent",
+    "state_entered",
+    "state_exited",
+    "summon_spawned",
+    "summon_acted",
+    "summon_departed",
+    "scene_entered",
+    "scene_exited",
+    "feedback_received",
+)
+_SKILL_KIT_FEEDBACK_EVENTS = (
+    "effect_resolved",
+    "resource_changed",
+    "state_changed",
+    "summon_changed",
+)
+_SKILL_KIT_FEEDBACK_OPERATIONS = ("enables", "modifies", "terminates")
+_SKILL_KIT_EFFECT_OPERATIONS = (
+    "direct_output",
+    "follow_up_output",
+    "ally_enablement",
+    "recover_or_mitigate",
+    "enemy_action_control",
+    "threat_protection",
+    "resource_gain",
+    "resource_use",
+    "resource_transform",
+    "resource_clear",
+    "state_enter",
+    "state_apply",
+    "state_exit",
+    "state_replace",
+    "summon_spawn",
+    "summon_act",
+    "summon_exit",
+    "summon_replace",
+    "emit_event",
+)
+_SKILL_KIT_CENTRALITIES = ("core", "secondary")
+_SKILL_KIT_REPEAT_POLICIES = ("replace", "refresh", "reject")
+
+
+def _skill_kit_id(pattern: str = _SKILL_KIT_ID_SEGMENT) -> dict[str, Any]:
+    return {"type": "string", "pattern": f"^{pattern}$"}
+
+
+def _skill_kit_ref_schema() -> dict[str, Any]:
+    return {
+        "oneOf": [
+            {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "kind": {"type": "string", "enum": ["protocol"]},
+                    "id": _skill_kit_id(rf"{_SKILL_KIT_ID_SEGMENT}/{_SKILL_KIT_ID_SEGMENT}"),
+                },
+                "required": ["kind", "id"],
+            },
+            {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "kind": {"type": "string", "enum": ["effect"]},
+                    "id": _skill_kit_id(
+                        rf"{_SKILL_KIT_ID_SEGMENT}/{_SKILL_KIT_ID_SEGMENT}/{_SKILL_KIT_ID_SEGMENT}"
+                    ),
+                },
+                "required": ["kind", "id"],
+            },
+            {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "kind": {"type": "string", "enum": ["resource", "state", "summon"]},
+                    "id": _skill_kit_id(),
+                },
+                "required": ["kind", "id"],
+            },
+        ]
+    }
+
+
+def _skill_kit_schema() -> dict[str, Any]:
+    ref = {"$ref": "#/$defs/typed_ref"}
+    nullable_ref = {"anyOf": [ref, {"type": "null"}]}
+    subject = {
+        "anyOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/subject_object"},
+        ]
+    }
+    trigger = {
+        "anyOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/trigger_object"},
+        ]
+    }
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "$defs": {
+            "typed_ref": _skill_kit_ref_schema(),
+            "subject_object": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "kind": {"type": "string", "enum": list(_SKILL_KIT_SUBJECT_KINDS)},
+                    "selector": {"type": ["string", "null"]},
+                    "entity_ref": nullable_ref,
+                },
+                "required": ["kind", "selector", "entity_ref"],
+            },
+            "trigger_object": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "subject": subject,
+                    "event": {"type": ["string", "null"], "enum": [* _SKILL_KIT_TRIGGER_EVENTS, None]},
+                    "source_ref": nullable_ref,
+                    "qualifier": {"type": ["string", "null"]},
+                },
+                "required": ["subject", "event", "source_ref", "qualifier"],
+            },
+            "effect": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "effect_id": _skill_kit_id(),
+                    "subject": subject,
+                    "operation": {
+                        "type": ["string", "null"],
+                        "enum": [* _SKILL_KIT_EFFECT_OPERATIONS, None],
+                    },
+                    "object_ref": nullable_ref,
+                    "description": {"type": "string"},
+                },
+                "required": ["effect_id", "subject", "operation", "object_ref", "description"],
+            },
+            "protocol": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "protocol_id": _skill_kit_id(),
+                    "when": trigger,
+                    "causes": {"type": "array", "items": {"$ref": "#/$defs/effect"}},
+                },
+                "required": ["protocol_id", "when", "causes"],
+            },
+            "ability": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "ability_id": _skill_kit_id(),
+                    "name": {"type": "string"},
+                    "mode": {"type": "string", "enum": list(_SKILL_KIT_ABILITY_MODES)},
+                    "protocols": {"type": "array", "items": {"$ref": "#/$defs/protocol"}},
+                    "display_text": {"type": "string"},
+                },
+                "required": ["ability_id", "name", "mode", "protocols", "display_text"],
+            },
+            "feedback": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "feedback_id": _skill_kit_id(),
+                    "source_effect": ref,
+                    "target_protocol": ref,
+                    "event": {"type": "string", "enum": list(_SKILL_KIT_FEEDBACK_EVENTS)},
+                    "operation": {"type": "string", "enum": list(_SKILL_KIT_FEEDBACK_OPERATIONS)},
+                },
+                "required": ["feedback_id", "source_effect", "target_protocol", "event", "operation"],
+            },
+            "resource": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "resource_id": _skill_kit_id(),
+                    "opened_by": {"type": "array", "items": ref},
+                    "used_or_transformed_by": {"type": "array", "items": ref},
+                    "closed_by": {"type": "array", "items": ref},
+                },
+                "required": ["resource_id", "opened_by", "used_or_transformed_by", "closed_by"],
+            },
+            "state": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "state_id": _skill_kit_id(),
+                    "established_by": {"type": "array", "items": ref},
+                    "active_effects": {"type": "array", "items": ref},
+                    "ended_or_replaced_by": {"type": "array", "items": ref},
+                },
+                "required": ["state_id", "established_by", "active_effects", "ended_or_replaced_by"],
+            },
+            "summon": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "summon_id": _skill_kit_id(),
+                    "spawned_by": {"type": "array", "items": ref},
+                    "active_effects": {"type": "array", "items": ref},
+                    "departed_or_replaced_by": {"type": "array", "items": ref},
+                    "repeat_policy": {
+                        "type": ["string", "null"],
+                        "enum": [* _SKILL_KIT_REPEAT_POLICIES, None],
+                    },
+                },
+                "required": [
+                    "summon_id",
+                    "spawned_by",
+                    "active_effects",
+                    "departed_or_replaced_by",
+                    "repeat_policy",
+                ],
+            },
+            "role_evidence": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "effect_refs": {"type": "array", "items": ref},
+                    "centrality": {"type": "string", "enum": list(_SKILL_KIT_CENTRALITIES)},
+                },
+                "required": ["effect_refs", "centrality"],
+            },
+        },
+        "properties": {
+            "schema_version": {"type": "string", "enum": ["skill-kit-candidate/0.1.1"]},
+            "entries": {"type": "array", "items": {"$ref": "#/$defs/ability"}},
+            "feedback_relations": {"type": "array", "items": {"$ref": "#/$defs/feedback"}},
+            "resources": {"type": "array", "items": {"$ref": "#/$defs/resource"}},
+            "states": {"type": "array", "items": {"$ref": "#/$defs/state"}},
+            "summons": {"type": "array", "items": {"$ref": "#/$defs/summon"}},
+            "role_evidence": {"type": "array", "items": {"$ref": "#/$defs/role_evidence"}},
+            "display_summary": {"type": "string"},
+        },
+        "required": [
+            "schema_version",
+            "entries",
+            "feedback_relations",
+            "resources",
+            "states",
+            "summons",
+            "role_evidence",
+            "display_summary",
+        ],
+    }
+
+
+CHARACTER_SKILL_KIT_JSON_SCHEMA: Mapping[str, Any] = MappingProxyType(_skill_kit_schema())
+
+
 GROUNDED_RESPONSE_JSON_SCHEMA: Mapping[str, Any] = MappingProxyType(
     {
         "type": "object",
@@ -178,6 +439,9 @@ GROUNDED_RESPONSE_JSON_SCHEMA: Mapping[str, Any] = MappingProxyType(
 CHARACTER_DRAFT_RESPONSE_CONTRACT = ResponseContract(
     "character_draft", strict=True, json_schema=CHARACTER_DRAFT_JSON_SCHEMA
 )
+CHARACTER_SKILL_KIT_RESPONSE_CONTRACT = ResponseContract(
+    "character_skill_kit", strict=True, json_schema=CHARACTER_SKILL_KIT_JSON_SCHEMA
+)
 GROUNDED_RESPONSE_CONTRACT = ResponseContract(
     "grounded_response", strict=True, json_schema=GROUNDED_RESPONSE_JSON_SCHEMA
 )
@@ -186,6 +450,8 @@ GROUNDED_RESPONSE_CONTRACT = ResponseContract(
 def response_contract_for(response_format: str) -> ResponseContract:
     if response_format == "character_draft":
         return CHARACTER_DRAFT_RESPONSE_CONTRACT
+    if response_format == "character_skill_kit":
+        return CHARACTER_SKILL_KIT_RESPONSE_CONTRACT
     if response_format == "character_authoring_action":
         return CHARACTER_AUTHORING_ACTION_RESPONSE_CONTRACT
     if response_format == "grounded_response":
@@ -245,8 +511,10 @@ def character_draft_prompt_contract() -> str:
 
 __all__ = [
     "CHARACTER_DRAFT_JSON_SCHEMA",
+    "CHARACTER_SKILL_KIT_JSON_SCHEMA",
     "CHARACTER_DRAFT_CORE_FIELDS",
     "CHARACTER_DRAFT_RESPONSE_CONTRACT",
+    "CHARACTER_SKILL_KIT_RESPONSE_CONTRACT",
     "CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL",
     "CHARACTER_AUTHORING_ACTION_RESPONSE_CONTRACT",
     "GROUNDED_RESPONSE_CONTRACT",

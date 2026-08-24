@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import copy
 import json
+import re
 from collections import deque
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -34,6 +38,11 @@ from agents import (
     TransportFamily,
     resolve_provider_profile,
 )
+from agents.response_contracts import (
+    CHARACTER_DRAFT_RESPONSE_CONTRACT,
+    response_contract_for,
+)
+from character_skill import ProtocolSkillKitCandidate, SkillKitShapeError, parse_candidate
 
 
 @dataclass(frozen=True)
@@ -72,6 +81,141 @@ def _provider_contract_cases() -> tuple[ProviderContractCase, ...]:
 
 
 PROVIDER_CONTRACT_CASES = _provider_contract_cases()
+
+
+def _validate_json_schema(value: Any, schema: Mapping[str, Any], root: Mapping[str, Any]) -> None:
+    if "$ref" in schema:
+        reference = schema["$ref"]
+        assert isinstance(reference, str) and reference.startswith("#/$defs/")
+        definition = root["$defs"][reference.removeprefix("#/$defs/")]
+        _validate_json_schema(value, definition, root)
+        return
+    if "oneOf" in schema or "anyOf" in schema:
+        keyword = "oneOf" if "oneOf" in schema else "anyOf"
+        matches = 0
+        for option in schema[keyword]:
+            try:
+                _validate_json_schema(value, option, root)
+            except AssertionError:
+                continue
+            matches += 1
+        assert matches == (1 if keyword == "oneOf" else 1)
+        return
+    if "enum" in schema:
+        assert value in schema["enum"]
+    declared_type = schema.get("type")
+    if declared_type is not None:
+        types = declared_type if isinstance(declared_type, list) else [declared_type]
+        type_matches = {
+            "object": isinstance(value, Mapping),
+            "array": isinstance(value, list),
+            "string": isinstance(value, str),
+            "integer": isinstance(value, int) and not isinstance(value, bool),
+            "null": value is None,
+        }
+        assert any(type_matches.get(item, False) for item in types)
+    if "pattern" in schema:
+        assert isinstance(value, str)
+        assert re.fullmatch(schema["pattern"], value)
+    if isinstance(value, Mapping) and declared_type == "object":
+        required = set(schema.get("required", ()))
+        assert required <= set(value)
+        properties = schema.get("properties", {})
+        if schema.get("additionalProperties") is False:
+            assert set(value) <= set(properties)
+        for key, item in value.items():
+            if key in properties:
+                _validate_json_schema(item, properties[key], root)
+    if isinstance(value, list) and declared_type == "array" and "items" in schema:
+        for item in value:
+            _validate_json_schema(item, schema["items"], root)
+
+
+def _public_skill_candidates() -> tuple[dict[str, Any], ...]:
+    fixture_path = (
+        Path(__file__).resolve().parents[1]
+        / "evals"
+        / "fixtures"
+        / "character_skill_interface_prototype_cases_v0.1.1.public.json"
+    )
+    fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+    return tuple(row["candidate"] for row in fixture["cases"])
+
+
+def test_character_skill_kit_contract_is_independent_and_strict():
+    contract = response_contract_for("character_skill_kit")
+
+    assert contract.name == "character_skill_kit"
+    assert contract.strict is True
+    assert contract.json_schema is not None
+    assert contract is not CHARACTER_DRAFT_RESPONSE_CONTRACT
+    assert contract.json_schema is not CHARACTER_DRAFT_RESPONSE_CONTRACT.json_schema
+
+
+def test_live_adapter_normalizes_character_skill_kit_as_structured_output():
+    payload = {
+        "schema_version": "skill-kit-candidate/0.1.1",
+        "entries": [],
+        "feedback_relations": [],
+        "resources": [],
+        "states": [],
+        "summons": [],
+        "role_evidence": [],
+        "display_summary": "",
+    }
+    client = ContractClient([ProviderCompletion(text=json.dumps(payload))])
+    adapter = LiveLLMAdapter(
+        client,
+        provider="openai",
+        model="skill-kit-model",
+        profile=PROVIDER_PROFILES["openai"],
+    )
+
+    turn = adapter.generate(replace(_prompt(with_tools=False), response_format="character_skill_kit"))
+
+    request = client.requests[0]
+    assert request["response_contract"]["name"] == "character_skill_kit"
+    assert request["response_contract"]["mode"] == ResponseMode.JSON_OBJECT.value
+    assert turn.structured_output == payload
+    assert turn.text == json.dumps(payload)
+
+
+def test_character_skill_kit_schema_and_parser_accept_all_public_cases():
+    contract = response_contract_for("character_skill_kit")
+    assert contract.json_schema is not None
+    schema = contract.json_schema
+
+    for candidate_payload in _public_skill_candidates():
+        _validate_json_schema(candidate_payload, schema, schema)
+        parsed = parse_candidate(candidate_payload)
+        assert isinstance(parsed, ProtocolSkillKitCandidate)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda candidate: candidate.update({"unexpected": True}),
+        lambda candidate: candidate.pop("display_summary"),
+        lambda candidate: candidate["entries"].append({"ability_id": "bad"}),
+        lambda candidate: candidate["entries"][0].update({"mode": "unsupported"}),
+        lambda candidate: candidate["entries"][0].update({"ability_id": "Bad ID"}),
+    ],
+)
+def test_character_skill_kit_schema_and_parser_reject_same_shape_mutations(mutation):
+    candidate = copy.deepcopy(_public_skill_candidates()[0])
+    mutation(candidate)
+    contract = response_contract_for("character_skill_kit")
+    assert contract.json_schema is not None
+
+    with pytest.raises(AssertionError):
+        _validate_json_schema(candidate, contract.json_schema, contract.json_schema)
+    with pytest.raises(SkillKitShapeError):
+        parse_candidate(candidate)
+
+
+def test_character_draft_contract_and_default_routing_remain_unchanged():
+    assert response_contract_for("character_draft") is CHARACTER_DRAFT_RESPONSE_CONTRACT
+    assert response_contract_for("unknown-format").name == "text"
 
 
 @pytest.mark.parametrize(
