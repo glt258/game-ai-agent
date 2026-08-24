@@ -33,7 +33,9 @@ from reference_corpus.repository import CharacterReferenceRepository, ManifestPo
 
 from .canon_checker import CanonChecker, CanonCheckStatus, CanonFindingCode
 from .character_generation import (
+    CANON_GROUNDING_TEXT_FIELDS,
     CharacterDesignRequest,
+    CharacterDraft,
     CharacterGenerationAgent,
     CharacterGenerationResult,
     DeterministicCharacterGenerationModel,
@@ -44,7 +46,20 @@ from .character_repair import (
     CharacterRepairAgent,
     DeterministicCharacterRepairModel,
 )
-from .errors import AgentError, ModelError, ModelMalformedResponseError
+from .errors import (
+    AgentError,
+    AgentExecutionError,
+    AgentToolError,
+    GroundingError,
+    ModelAuthenticationError,
+    ModelCapabilityError,
+    ModelConfigurationError,
+    ModelError,
+    ModelMalformedResponseError,
+    ModelProviderError,
+    ModelRateLimitError,
+    ModelTimeoutError,
+)
 from .model_factory import character_model_from_environment
 from .reference_feature_ordering import ready_feature_score_trace
 
@@ -601,6 +616,112 @@ def _live_failure_audits(error: BaseException) -> tuple[Any, ...]:
     return (audit,) if audit is not None else ()
 
 
+def _safe_draft_validation_reason(error: ModelMalformedResponseError) -> tuple[str, bool]:
+    """Return a schema-only diagnosis without exposing model content.
+
+    The exception text is inspected only to select fixed messages and, for a
+    missing-field contract error, to copy field names from the CharacterDraft
+    schema allowlist.  No arbitrary exception text is returned to the caller.
+    """
+
+    message = str(error)
+    if "CharacterDraft" not in message:
+        return "provider returned a malformed response", False
+    if "missing field(s)" in message:
+        raw_fields = re.findall(r"['\"]([A-Za-z_][A-Za-z0-9_]*)['\"]", message)
+        safe_fields = [
+            field
+            for field in raw_fields
+            if field in CharacterDraft._ACCEPTED_INPUT_FIELDS
+        ]
+        if safe_fields and len(safe_fields) == len(raw_fields):
+            return (
+                "CharacterDraft validation failed: missing required field(s): "
+                + ", ".join(dict.fromkeys(safe_fields)),
+                True,
+            )
+        return "CharacterDraft validation failed: required field contract is incomplete", True
+    if "unknown field(s)" in message or "unknown fields" in message:
+        return "CharacterDraft validation failed: draft contains unknown field(s)", True
+    if "not valid JSON" in message or "invalid JSON" in message:
+        return "CharacterDraft validation failed: response was not valid JSON", True
+    if "contract recovery" in message:
+        return "CharacterDraft contract recovery failed safely", True
+    return "CharacterDraft validation failed", True
+
+
+def _safe_live_failure_reason(error: BaseException) -> tuple[str, bool]:
+    """Map known failures to bounded diagnostics; never return exception text."""
+
+    if isinstance(error, ModelMalformedResponseError):
+        return _safe_draft_validation_reason(error)
+    if isinstance(error, ModelTimeoutError):
+        return "provider request timed out after bounded retries", False
+    if isinstance(error, ModelRateLimitError):
+        return "provider rate limited the request after bounded retries", False
+    if isinstance(error, ModelAuthenticationError):
+        return "provider rejected the configured credentials", False
+    if isinstance(error, ModelCapabilityError):
+        return "configured provider cannot satisfy the authoring contract", False
+    if isinstance(error, ModelConfigurationError):
+        return "live model configuration is invalid", False
+    if isinstance(error, ModelProviderError):
+        return "provider request failed", False
+    if isinstance(error, ModelError):
+        return "provider-neutral model invocation failed", False
+    if isinstance(error, AgentToolError):
+        return "authoring tool call was rejected by the read-only tool contract", False
+    if isinstance(error, GroundingError):
+        return "draft grounding failed", False
+    if isinstance(error, AgentExecutionError):
+        message = str(error)
+        if "finalization model attempted a tool call" in message:
+            return "finalization model attempted a tool call", False
+        if "contract recovery does not permit tool calls" in message:
+            return "CharacterDraft contract recovery attempted a tool call", False
+        if "not grounded" in message or "canon-grounded" in message:
+            return "draft grounding failed", False
+        if "hard constraint" in message or "age-preservation" in message:
+            return "draft violated a hard constraint", False
+        if "forbidden content" in message:
+            return "draft violated a forbidden-content constraint", False
+        if "no CharacterDraft" in message:
+            return "finalization model returned no CharacterDraft", False
+        return "agent loop did not complete safely", False
+    if isinstance(error, AgentError):
+        return "agent failure prevented safe completion", False
+    return "unexpected live authoring failure", False
+
+
+_SAFE_GROUNDING_CHECKS = frozenset(
+    {
+        "faction_id",
+        "canon_basis",
+        "story_link",
+        "relationships",
+        *(f"field:{field}" for field in CANON_GROUNDING_TEXT_FIELDS),
+    }
+)
+
+
+def _safe_grounding_failure_detail(error: BaseException) -> tuple[str | None, str | None]:
+    """Return allowlisted grounding metadata, never exception text."""
+
+    diagnostic = getattr(error, "grounding_failure", None)
+    check = getattr(diagnostic, "check", None)
+    if not isinstance(check, str):
+        return None, None
+    if check not in _SAFE_GROUNDING_CHECKS:
+        return None, None
+    canon_id = getattr(diagnostic, "canon_id", None)
+    if not isinstance(canon_id, str) or not re.fullmatch(
+        r"(?:world_rules|(?:faction|lore|char|story|case|incident|project)_[A-Za-z0-9][A-Za-z0-9_.:-]*)",
+        canon_id,
+    ):
+        canon_id = None
+    return check, canon_id
+
+
 def render_live_failure(
     error: BaseException,
     *,
@@ -614,23 +735,19 @@ def render_live_failure(
     audit_model = audits[-1].model if audits else None
     display_provider = audit_provider or provider or os.environ.get("NPC_LLM_PROVIDER", "openai")
     display_model = audit_model or model_name or os.environ.get("NPC_LLM_MODEL") or "<not configured>"
-    if isinstance(error, ModelError):
-        detail = str(error)
-    elif isinstance(error, AgentError):
-        detail = f"{type(error).__name__}: the live authoring pipeline could not complete safely"
-    else:
-        detail = "Unexpected live authoring failure; the pipeline was not completed"
+    reason, draft_validation_failed = _safe_live_failure_reason(error)
+    detail = f"{type(error).__name__}: {reason}"
     outcome = audits[-1].outcome if audits else "not_started"
     provider_invocation = (
         "SUCCESS" if outcome == "success" else "FAILED" if audits else "NOT_STARTED"
     )
     draft_validation = (
         "FAILED"
-        if isinstance(error, ModelMalformedResponseError)
-        and "CharacterDraft" in str(error)
+        if draft_validation_failed
         else "NOT_RUN"
     )
     recovery = getattr(error, "contract_recovery", None)
+    grounding_check, grounding_id = _safe_grounding_failure_detail(error)
     lines = [
         "OFFICIAL CHARACTER AUTHORING — LIVE MODE",
         "",
@@ -652,13 +769,19 @@ def render_live_failure(
             if recovery is not None
             else "none"
         ),
+    ]
+    if grounding_check is not None:
+        lines.append(f"Grounding check: {grounding_check}")
+        if grounding_id is not None:
+            lines.append(f"Rejected Canon ID: {grounding_id}")
+    lines.extend([
         f"Error: {detail}",
         "",
         "Requested model mode: LIVE",
         f"Invocation: {provider_invocation}",
         "Pipeline status: NOT_COMPLETED",
         "No Character draft or Canon result was fabricated.",
-    ]
+    ])
     if audits:
         lines.append("Audit retained: provider/model and sanitized failure metadata.")
     else:

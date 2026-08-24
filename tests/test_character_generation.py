@@ -608,6 +608,25 @@ def test_live_authoring_action_rejects_non_terminal_finalize_text(action_text):
     assert client.call_count == 1
 
 
+def test_live_finalization_tool_call_fails_closed_and_preserves_success_audit():
+    agent, client = live_agent(
+        [
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(
+                tool_calls=(ProviderToolCall("unexpected", "search_lore", {}),)
+            ),
+        ]
+    )
+
+    with pytest.raises(AgentExecutionError, match="attempted a tool call") as captured:
+        agent.generate("设计一个角色")
+
+    error = captured.value
+    assert client.call_count == 2
+    assert [item.outcome for item in error.model_invocations] == ["success", "success"]
+    assert error.contract_recovery.status == "not_attempted"
+
+
 def test_live_protocol_tool_calls_take_precedence_over_action_text():
     agent, client = live_agent(
         [
@@ -995,6 +1014,84 @@ def test_live_validation_failure_keeps_invocation_trail():
         "success",
     ]
     assert error.model_invocations[2].provider_request_id == "req_draft"
+
+
+@pytest.mark.parametrize(
+    ("label", "overrides", "expected_check", "expected_id"),
+    [
+        (
+            "faction_id",
+            {"faction_id": "faction_999"},
+            "faction_id",
+            "faction_999",
+        ),
+        (
+            "canon_basis",
+            {
+                "canon_basis": [
+                    {"source_id": "world_rules", "supports": ["world_rules"]},
+                    {"source_id": "lore_999", "supports": []},
+                ]
+            },
+            "canon_basis",
+            "lore_999",
+        ),
+        (
+            "story_link",
+            {
+                "story_link": {
+                    "target_id": "story_999",
+                    "relation": "related_context",
+                    "status": "canon_backed",
+                }
+            },
+            "story_link",
+            "story_999",
+        ),
+        (
+            "relationships",
+            {
+                "relationships": [
+                    {
+                        "target_id": "char_999",
+                        "description": "未确认关系",
+                        "status": "canon_backed",
+                    }
+                ]
+            },
+            "relationships",
+            "char_999",
+        ),
+        (
+            "field:background",
+            {"background": "她掌握 lore_001 的秘密。"},
+            "field:background",
+            "lore_001",
+        ),
+    ],
+)
+def test_live_grounding_failure_carries_safe_check_and_canon_id(
+    label, overrides, expected_check, expected_id
+):
+    agent, _client = live_agent(
+        [
+            ProviderCompletion(
+                tool_calls=(ProviderToolCall("world", "get_world_rules", {}),)
+            ),
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(
+                text=json.dumps(_payload(**overrides), ensure_ascii=False)
+            ),
+        ]
+    )
+
+    with pytest.raises(AgentExecutionError) as captured:
+        agent.generate("设计一个角色")
+
+    diagnostic = getattr(captured.value, "grounding_failure", None)
+    assert diagnostic is not None
+    assert diagnostic.check == expected_check
+    assert diagnostic.canon_id == expected_id
 
 
 def test_live_failure_audit_excludes_raw_model_content():

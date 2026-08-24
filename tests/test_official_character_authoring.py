@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from agents import (
+    AgentExecutionError,
     CanonCheckStatus,
     CanonChecker,
     CharacterDesignRequest,
@@ -15,9 +16,11 @@ from agents import (
     CharacterGenerationResult,
     CharacterRepairAgent,
     DeterministicCharacterRepairModel,
+    GroundingError,
     ModelInvocationAudit,
     ModelMalformedResponseError,
     ModelProviderError,
+    ModelTimeoutError,
 )
 import agents.official_character_authoring as official_module
 from agents.official_character_authoring import (
@@ -296,6 +299,147 @@ def test_live_renderer_distinguishes_provider_success_from_draft_validation_fail
     assert "Provider invocation: SUCCESS" in output
     assert "CharacterDraft validation: FAILED" in output
     assert "Invocation: SUCCESS" in output
+    assert "Pipeline status: NOT_COMPLETED" in output
+
+
+@pytest.mark.parametrize(
+    ("error_type", "message", "expected_reason"),
+    [
+        (
+            ModelTimeoutError,
+            "provider timeout includes secret=unit-test-api-key",
+            "provider request timed out after bounded retries",
+        ),
+        (
+            AgentExecutionError,
+            "Character finalization model attempted a tool call",
+            "finalization model attempted a tool call",
+        ),
+        (
+            AgentExecutionError,
+            "Draft faction_id is not grounded: secret_model_output",
+            "draft grounding failed",
+        ),
+        (
+            AgentExecutionError,
+            "Draft age 99 violates hard constraint 20-25",
+            "draft violated a hard constraint",
+        ),
+        (
+            GroundingError,
+            "grounding detail contains secret=unit-test-api-key",
+            "draft grounding failed",
+        ),
+        (
+            ModelMalformedResponseError,
+            "CharacterDraft is missing field(s): ['canon_basis', 'new_design_elements']",
+            "missing required field(s): canon_basis, new_design_elements",
+        ),
+        (
+            RuntimeError,
+            "raw model output contains secret=unit-test-api-key",
+            "unexpected live authoring failure",
+        ),
+    ],
+)
+def test_live_failure_renderer_uses_safe_diagnostic_mapping(
+    error_type: type[BaseException], message: str, expected_reason: str
+) -> None:
+    error = error_type(message)
+
+    output = render_live_failure(error)
+
+    assert f"{error_type.__name__}:" in output
+    assert expected_reason in output
+    assert "Pipeline status: NOT_COMPLETED" in output
+    assert "No Character draft or Canon result was fabricated." in output
+    assert "unit-test-api-key" not in output
+    assert "raw model output" not in output
+
+
+def test_live_failure_renderer_reports_grounding_failure_without_model_content() -> None:
+    secret = "RESTRICTED_MODEL_OUTPUT_123"
+    error = AgentExecutionError(
+        f"Draft field 'background' is not canon-grounded (lore_999): {secret}"
+    )
+
+    output = render_live_failure(error)
+
+    assert "AgentExecutionError: draft grounding failed" in output
+    assert secret not in output
+    assert "lore_999" not in output
+
+
+def test_live_failure_renderer_reports_safe_grounding_check_and_canon_id() -> None:
+    error = AgentExecutionError("Draft faction_id is not grounded: faction_999")
+    error.grounding_failure = type(
+        "GroundingFailure", (), {"check": "faction_id", "canon_id": "faction_999"}
+    )()
+
+    output = render_live_failure(error)
+
+    assert "AgentExecutionError: draft grounding failed" in output
+    assert "Grounding check: faction_id" in output
+    assert "Rejected Canon ID: faction_999" in output
+    assert "Draft faction_id is not grounded" not in output
+
+
+def test_live_failure_renderer_hides_untrusted_grounding_id() -> None:
+    error = AgentExecutionError(
+        "Draft faction_id is not grounded: raw_model_output_with_secret"
+    )
+    error.grounding_failure = type(
+        "GroundingFailure",
+        (),
+        {"check": "faction_id", "canon_id": None},
+    )()
+
+    output = render_live_failure(error)
+
+    assert "Grounding check: faction_id" in output
+    assert "Rejected Canon ID:" not in output
+    assert "raw_model_output_with_secret" not in output
+
+
+def test_live_failure_renderer_keeps_success_invocation_audit_for_agent_failure() -> None:
+    error = AgentExecutionError("Character finalization model attempted a tool call")
+    error.model_invocations = (
+        ModelInvocationAudit(
+            "live-session",
+            2,
+            "opencode_go",
+            "deepseek-v4-flash",
+            "success",
+            12.0,
+            0,
+        ),
+    )
+
+    output = render_live_failure(error)
+
+    assert "Provider invocation: SUCCESS" in output
+    assert "Outcome: success" in output
+    assert "AgentExecutionError: finalization model attempted a tool call" in output
+    assert "Invocation: SUCCESS" in output
+    assert "Audit retained: provider/model and sanitized failure metadata." in output
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        ModelProviderError("provider raw response contains unit-test-api-key"),
+        ModelMalformedResponseError(
+            "provider raw response contains CharacterDraft and unit-test-api-key"
+        ),
+    ],
+)
+def test_live_failure_renderer_never_prints_provider_or_model_error_text(
+    error: BaseException,
+) -> None:
+    output = render_live_failure(error)
+
+    assert "unit-test-api-key" not in output
+    assert "provider raw response" not in output
     assert "Pipeline status: NOT_COMPLETED" in output
 
 

@@ -64,6 +64,7 @@ from .character_generation import (
     CharacterDraftContractInspection,
     CharacterGenerationAgent,
     CharacterGenerationAudit,
+    GroundingFailureDiagnostic,
     CharacterGenerationResult,
     CharacterGenerationResponse,
     CharacterGenerationRuntimeView,

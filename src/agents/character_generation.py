@@ -1169,6 +1169,39 @@ class CharacterGenerationAudit:
 
 
 @dataclass(frozen=True)
+class GroundingFailureDiagnostic:
+    """Sanitized metadata for one fail-closed draft grounding rejection."""
+
+    check: str
+    canon_id: str | None = None
+
+
+_SAFE_GROUNDING_CANON_ID = re.compile(
+    r"(?:world_rules|(?:faction|lore|char|story|case|incident|project)_[A-Za-z0-9][A-Za-z0-9_.:-]*)"
+)
+
+
+def _safe_grounding_canon_id(value: Any) -> str | None:
+    if isinstance(value, str) and _SAFE_GROUNDING_CANON_ID.fullmatch(value):
+        return value
+    return None
+
+
+def _grounding_failure(
+    message: str,
+    *,
+    check: str,
+    canon_id: Any = None,
+) -> AgentExecutionError:
+    error = AgentExecutionError(message)
+    error.grounding_failure = GroundingFailureDiagnostic(
+        check=check,
+        canon_id=_safe_grounding_canon_id(canon_id),
+    )
+    return error
+
+
+@dataclass(frozen=True)
 class CharacterGenerationResult:
     draft: CharacterDraft
     sources: tuple[str, ...]
@@ -1351,7 +1384,7 @@ class CharacterGenerationAgent:
             if isinstance(error, ModelError) and error.audit is not None:
                 invocations.append(error.audit)
             error.model_invocations = tuple(invocations)
-            recovery_audit = getattr(error, "contract_recovery", recovery_audit)
+            recovery_audit = getattr(error, "contract_recovery", None) or recovery_audit
             error.contract_recovery = recovery_audit
             raise
         raise AgentExecutionError("Character generation ended without a draft")
@@ -1779,10 +1812,18 @@ class CharacterGenerationAgent:
             raise AgentExecutionError(f"Draft age {draft.age} violates hard constraint {age_bounds[0]}-{age_bounds[1]}")
         if draft.faction_id is not None:
             if draft.faction_id not in source_ids or source_types.get(draft.faction_id) != "faction":
-                raise AgentExecutionError(f"Draft faction_id is not grounded: {draft.faction_id}")
+                raise _grounding_failure(
+                    f"Draft faction_id is not grounded: {draft.faction_id}",
+                    check="faction_id",
+                    canon_id=draft.faction_id,
+                )
         for entry in draft.canon_basis:
             if entry.source_id not in source_ids:
-                raise AgentExecutionError(f"Draft cites Canon source not returned this turn: {entry.source_id}")
+                raise _grounding_failure(
+                    f"Draft cites Canon source not returned this turn: {entry.source_id}",
+                    check="canon_basis",
+                    canon_id=entry.source_id,
+                )
         field_violations = canon_field_grounding_violations(
             draft,
             source_ids if known_source_ids is None else known_source_ids,
@@ -1791,18 +1832,35 @@ class CharacterGenerationAgent:
         if field_violations:
             field, evidence_ids, reason = field_violations[0]
             evidence = f" ({', '.join(evidence_ids)})" if evidence_ids else ""
-            raise AgentExecutionError(
-                f"Draft field {field!r} is not canon-grounded{evidence}: {reason}"
+            raise _grounding_failure(
+                f"Draft field {field!r} is not canon-grounded{evidence}: {reason}",
+                check=f"field:{field}",
+                canon_id=next(
+                    (
+                        safe_id
+                        for safe_id in (_safe_grounding_canon_id(item) for item in evidence_ids)
+                        if safe_id is not None
+                    ),
+                    None,
+                ),
             )
         if draft.story_link is not None and (
             draft.story_link.status == "canon_backed"
             and (draft.story_link.target_id not in source_ids or source_types.get(draft.story_link.target_id) not in {"story", "case", "incident"})
         ):
-            raise AgentExecutionError(f"Draft story_link is not grounded: {draft.story_link.target_id}")
+            raise _grounding_failure(
+                f"Draft story_link is not grounded: {draft.story_link.target_id}",
+                check="story_link",
+                canon_id=draft.story_link.target_id,
+            )
         for relationship in draft.relationships:
             target_id = relationship.get("target_id")
             if target_id is not None and target_id.startswith(("char_", "faction_")) and target_id not in source_ids:
-                raise AgentExecutionError(f"Draft relationship is not grounded: {target_id}")
+                raise _grounding_failure(
+                    f"Draft relationship is not grounded: {target_id}",
+                    check="relationships",
+                    canon_id=target_id,
+                )
         brief_forbidden = tuple(
             marker
             for marker in ("秘密政府组织", "秘密行政机构", "秘密监察处")
