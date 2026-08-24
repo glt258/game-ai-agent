@@ -205,6 +205,10 @@ class LiveLLMAdapter:
             structured_output = self._parse_structured_object(text or "")
             segments = ()
             rendered_text = text
+        elif prompt.response_format == "character_skill_kit":
+            structured_output = self._parse_skill_kit_object(text or "")
+            segments = ()
+            rendered_text = text
         else:
             structured_output = None
             segments = self._parse_segments(text or "")
@@ -258,6 +262,11 @@ class LiveLLMAdapter:
             protocol_content = (
                 f"{prompt.system_contract}\n\n"
                 "Return only the requested CharacterDraft root JSON object."
+            )
+        elif prompt.response_format == "character_skill_kit":
+            protocol_content = (
+                f"{prompt.system_contract}\n\n"
+                "Return only the requested Character SkillKit candidate root JSON object."
             )
         elif prompt.response_format == "character_authoring_action":
             protocol_content = prompt.system_contract
@@ -482,6 +491,20 @@ class LiveLLMAdapter:
         if not isinstance(document, Mapping):
             raise ModelMalformedResponseError(
                 "CharacterDraft response must be a JSON object"
+            )
+        return dict(document)
+
+    @staticmethod
+    def _parse_skill_kit_object(text: str) -> Mapping[str, Any]:
+        try:
+            document = json.loads(text)
+        except json.JSONDecodeError:
+            raise ModelMalformedResponseError(
+                "Provider final response is not valid Character SkillKit JSON"
+            ) from None
+        if not isinstance(document, Mapping):
+            raise ModelMalformedResponseError(
+                "Character SkillKit response must be a JSON object"
             )
         return dict(document)
 

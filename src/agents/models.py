@@ -64,6 +64,60 @@ class ModelInvocationAudit:
     purpose: str = "generation"
 
 
+@dataclass(frozen=True)
+class SkillShadowConfig:
+    """Explicit feature configuration for the optional SkillKit shadow call."""
+
+    enabled: bool = False
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.enabled, bool):
+            raise TypeError("SkillShadowConfig.enabled must be a boolean")
+
+
+@dataclass(frozen=True)
+class SkillShadowAudit:
+    """Sanitized metadata for one independent SkillKit shadow invocation."""
+
+    provider: str | None = None
+    model: str | None = None
+    request_id: str | None = None
+    provider_request_id: str | None = None
+    response_contract: str = "character_skill_kit"
+    invocation_purpose: str = "character_skill_shadow"
+    session_id: str | None = None
+    turn_number: int | None = None
+    outcome: str | None = None
+    transport: str | None = None
+
+@dataclass(frozen=True)
+class CharacterSkillShadowResult:
+    """Independent, legacy-neutral result of a SkillKit shadow evaluation."""
+
+    draft_id: str
+    response_compliant: bool = False
+    candidate: Any | None = None
+    validation_report: Any | None = None
+    audit: SkillShadowAudit = field(default_factory=SkillShadowAudit)
+    failure_stage: str | None = None
+    error_message: str | None = None
+    rendered_ability_concept: str | None = None
+    legacy_ability_concept: str = ""
+    ability_concept_diff: Mapping[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.draft_id, str) or not self.draft_id:
+            raise ValueError("draft_id must be a non-empty string")
+        if not isinstance(self.response_compliant, bool):
+            raise TypeError("response_compliant must be a boolean")
+        if not isinstance(self.audit, SkillShadowAudit):
+            raise TypeError("audit must be a SkillShadowAudit")
+        object.__setattr__(
+            self,
+            "ability_concept_diff",
+            MappingProxyType(dict(self.ability_concept_diff)),
+        )
+
 class SegmentKind(str, Enum):
     SUPPORTED_CLAIM = "supported_claim"
     UNCERTAIN = "uncertain"

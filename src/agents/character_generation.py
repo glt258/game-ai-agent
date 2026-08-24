@@ -16,6 +16,14 @@ from types import MappingProxyType
 from typing import Any, Mapping, Sequence
 
 from along_street_resources import data_resource
+from character_skill import (
+    ProtocolSkillKitCandidate,
+    SkillKitShapeError,
+    SkillValidationContext,
+    evaluate,
+    parse_candidate,
+    render_ability_concept,
+)
 from character_intelligence.planner import CharacterDesignPlan
 from combat_semantics import CombatRoleProfile, resolve_legacy_combat_role_profile
 from knowledge import KnowledgeResolver
@@ -36,6 +44,9 @@ from .models import (
     GroundingEvidenceType,
     ModelInvocationAudit,
     ModelTurn,
+    CharacterSkillShadowResult,
+    SkillShadowAudit,
+    SkillShadowConfig,
     ToolAuditEntry,
     ToolCall,
     ToolDefinition,
@@ -1163,14 +1174,17 @@ class CharacterGenerationResult:
     sources: tuple[str, ...]
     audit: CharacterGenerationAudit
     design_plan: CharacterDesignPlan | None = None
+    skill_shadow: CharacterSkillShadowResult | None = None
 
 
 class CharacterGenerationAgent:
     """Sibling consumer to NpcConversationAgent for one-shot draft generation."""
 
-    def __init__(self, model: AgentModel, *, resolver: KnowledgeResolver | None = None, story_repository: StoryRepository | None = None, max_tool_rounds: int = 6, authoring_context: CharacterAuthoringKnowledgeContext | None = None, reference_context: Sequence[Mapping[str, Any]] = ()) -> None:
+    def __init__(self, model: AgentModel, *, resolver: KnowledgeResolver | None = None, story_repository: StoryRepository | None = None, max_tool_rounds: int = 6, authoring_context: CharacterAuthoringKnowledgeContext | None = None, reference_context: Sequence[Mapping[str, Any]] = (), shadow_config: SkillShadowConfig | None = None) -> None:
         if max_tool_rounds < 1:
             raise ValueError("max_tool_rounds must be positive")
+        if shadow_config is not None and not isinstance(shadow_config, SkillShadowConfig):
+            raise TypeError("shadow_config must be a SkillShadowConfig or None")
         self.resolver = resolver or KnowledgeResolver()
         self.story_repository = story_repository or load_story_repository()
         self.tools = CharacterAuthoringToolbox(self.resolver, self.story_repository)
@@ -1178,6 +1192,7 @@ class CharacterGenerationAgent:
         self.max_tool_rounds = max_tool_rounds
         self.authoring_context = authoring_context or CharacterAuthoringKnowledgeContext()
         self.reference_context = tuple(dict(item) for item in reference_context)
+        self.shadow_config = shadow_config or SkillShadowConfig()
 
     def generate(
         self,
@@ -1314,11 +1329,18 @@ class CharacterGenerationAgent:
                 normalized_fields,
                 recovery_audit,
             )
+            skill_shadow = self._generate_skill_shadow(
+                request=request,
+                draft=draft,
+                authoring=authoring,
+                runtime=runtime,
+            )
             return CharacterGenerationResult(
                 draft,
                 tuple(sorted(source_ids)),
                 audit,
                 design_plan,
+                skill_shadow,
             )
         except Exception as error:
             # CharacterGenerationAudit only exists on success, so the
@@ -1333,6 +1355,193 @@ class CharacterGenerationAgent:
             error.contract_recovery = recovery_audit
             raise
         raise AgentExecutionError("Character generation ended without a draft")
+
+    def _generate_skill_shadow(
+        self,
+        *,
+        request: CharacterDesignRequest,
+        draft: CharacterDraft,
+        authoring: CharacterAuthoringView,
+        runtime: CharacterGenerationRuntimeView,
+    ) -> CharacterSkillShadowResult | None:
+        """Run the opt-in SkillKit call without entering the legacy pipeline.
+
+        This is deliberately invoked only after a legacy draft has parsed and
+        passed its existing validation.  All shadow failures are contained so
+        the legacy result remains the authoritative generation outcome.
+        """
+
+        if not self.shadow_config.enabled:
+            return None
+
+        legacy_ability_concept = draft.ability_concept
+        stage = "provider"
+        candidate: ProtocolSkillKitCandidate | None = None
+        report = None
+        rendered: str | None = None
+        response_compliant = False
+        audit = SkillShadowAudit(request_id=request.request_id)
+        diff: dict[str, Any] = {
+            "legacy_ability_concept": legacy_ability_concept,
+            "rendered_ability_concept": None,
+            "matches": None,
+        }
+        try:
+            # Keep the shadow request independent of the legacy prose field.
+            # The request is the source of truth for this sidecar invocation;
+            # no CharacterDraft data is interpolated into its prompt/payload.
+            shadow_payload = {
+                "draft_id": draft.draft_id,
+                "request": request.to_dict(),
+                "task": "produce_a_protocol_skill_kit_candidate",
+            }
+            shadow_prompt = AgentPrompt(
+                "Return one direct Character SkillKit candidate root JSON object. "
+                "Do not return a legacy ability_concept or an envelope.",
+                authoring,
+                runtime,
+                (
+                    ConversationMessage(
+                        "user",
+                        json.dumps(
+                            shadow_payload,
+                            ensure_ascii=False,
+                            sort_keys=True,
+                            separators=(",", ":"),
+                        ),
+                    ),
+                ),
+                (),
+                f"character_generation:{request.request_id}:skill_shadow",
+                1,
+                response_format="character_skill_kit",
+                authoring_payload=shadow_payload,
+                invocation_purpose="character_skill_shadow",
+            )
+            shadow_turn = self.model.generate(shadow_prompt)
+            audit = self._skill_shadow_audit(
+                shadow_turn.invocation,
+                request_id=request.request_id,
+            )
+
+            stage = "json"
+            payload = shadow_turn.structured_output
+            if payload is None:
+                if not isinstance(shadow_turn.text, str):
+                    raise ValueError("no structured shadow response")
+                try:
+                    payload = json.loads(shadow_turn.text)
+                except json.JSONDecodeError:
+                    raise ValueError("invalid shadow JSON") from None
+            if not isinstance(payload, Mapping):
+                stage = "shape"
+                raise ValueError("shadow response must be a JSON object")
+
+            stage = "shape"
+            # The provider contract is stricter than the general parser seam:
+            # only a direct candidate root is accepted for this invocation.
+            if "skill_kit" in payload or "ability_concept" in payload:
+                raise SkillKitShapeError(
+                    "UNSUPPORTED_VALUE",
+                    "/",
+                    "shadow response must be a direct ProtocolSkillKitCandidate root",
+                )
+            parsed = parse_candidate(payload)
+            if not isinstance(parsed, ProtocolSkillKitCandidate):
+                raise SkillKitShapeError(
+                    "UNSUPPORTED_VALUE",
+                    "/",
+                    "shadow response must be a ProtocolSkillKitCandidate",
+                )
+            candidate = parsed
+            response_compliant = True
+            rendered = render_ability_concept(candidate)
+            diff = {
+                "legacy_ability_concept": legacy_ability_concept,
+                "rendered_ability_concept": rendered,
+                "matches": legacy_ability_concept == rendered,
+            }
+
+            stage = "validation"
+            role_profile = (
+                request.combat_role_profile.to_dict()
+                if request.combat_role_profile is not None
+                else None
+            )
+            context = SkillValidationContext.from_mapping(
+                {
+                    "intent": {
+                        "mechanic_requirements": [],
+                        "forbidden_mechanic_families": [],
+                        "hard_constraint_conflicts": [],
+                    },
+                    "combat_role_profile": role_profile,
+                    "reference_review_context": None,
+                }
+            )
+            report = evaluate(candidate, context)
+            return CharacterSkillShadowResult(
+                draft_id=draft.draft_id,
+                response_compliant=response_compliant,
+                candidate=candidate,
+                validation_report=report,
+                audit=audit,
+                rendered_ability_concept=rendered,
+                legacy_ability_concept=legacy_ability_concept,
+                ability_concept_diff=diff,
+            )
+        except Exception as error:
+            # Shadow failures must never alter the successful legacy result or
+            # its model invocation audit.  Store only a fixed, sanitized stage
+            # marker; provider payloads and exception text stay private.
+            error_audit = getattr(error, "audit", None)
+            if isinstance(error_audit, ModelInvocationAudit):
+                audit = self._skill_shadow_audit(
+                    error_audit,
+                    request_id=request.request_id,
+                )
+            return CharacterSkillShadowResult(
+                draft_id=draft.draft_id,
+                response_compliant=response_compliant,
+                candidate=candidate,
+                validation_report=report,
+                audit=audit,
+                failure_stage=stage,
+                error_message=self._skill_shadow_error_message(stage),
+                rendered_ability_concept=rendered,
+                legacy_ability_concept=legacy_ability_concept,
+                ability_concept_diff=diff,
+            )
+
+    @staticmethod
+    def _skill_shadow_audit(
+        invocation: ModelInvocationAudit | None,
+        *,
+        request_id: str | None = None,
+    ) -> SkillShadowAudit:
+        if invocation is None:
+            return SkillShadowAudit(request_id=request_id)
+        return SkillShadowAudit(
+            provider=invocation.provider,
+            model=invocation.model,
+            request_id=request_id,
+            provider_request_id=invocation.provider_request_id,
+            response_contract=invocation.response_contract or "character_skill_kit",
+            invocation_purpose="character_skill_shadow",
+            session_id=invocation.session_id,
+            turn_number=invocation.turn_number,
+            outcome=invocation.outcome,
+            transport=invocation.transport,
+        )
+
+    @staticmethod
+    def _skill_shadow_error_message(stage: str) -> str:
+        return {
+            "provider": "SkillKit shadow provider invocation failed",
+            "json": "SkillKit shadow response was not valid JSON",
+            "shape": "SkillKit shadow candidate failed the strict shape contract",
+            "validation": "SkillKit shadow structural validation failed",
+        }.get(stage, "SkillKit shadow invocation failed")
 
     def generate_with_intent(
         self,
@@ -1819,10 +2028,13 @@ __all__ = [
     "CharacterGenerationAudit",
     "CharacterGenerationResult",
     "CharacterGenerationResponse",
+    "CharacterSkillShadowResult",
     "CharacterGenerationRuntimeView",
     "CharacterAuthoringView",
     "CharacterDraftContractInspection",
     "DeterministicCharacterGenerationModel",
+    "SkillShadowConfig",
+    "SkillShadowAudit",
     "StoryLink",
     "age_information_preservation_violations",
     "age_must_remain_unspecified",

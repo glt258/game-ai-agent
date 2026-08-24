@@ -44,6 +44,35 @@ class RepresentationCompletenessValidator:
                     message=f"CharacterDraft field {field_path!r} is missing or empty.",
                 )
             )
+        report = context.skill_validation_report
+        if report is not None:
+            seen = {
+                (finding.code, finding.field_path, finding.severity, finding.blocking)
+                for finding in findings
+            }
+            for skill_finding in report.findings:
+                blocking = bool(skill_finding.blocking and not skill_finding.repairable)
+                severity = "ERROR" if blocking else "WARNING"
+                key = (
+                    skill_finding.code,
+                    skill_finding.field_path,
+                    severity,
+                    blocking,
+                )
+                if key in seen:
+                    continue
+                seen.add(key)
+                findings.append(
+                    EvaluationFinding(
+                        validator_id=self.validator_id,
+                        code=skill_finding.code,
+                        severity=severity,
+                        blocking=blocking,
+                        stage="representation",
+                        field_path=skill_finding.field_path,
+                        message=f"SkillKit structural finding {skill_finding.code}.",
+                    )
+                )
         return findings
 
     @staticmethod
