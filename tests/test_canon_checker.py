@@ -5,6 +5,8 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
+import pytest
+
 from agents import (
     CanonBasisEntry,
     CanonCheckStatus,
@@ -167,6 +169,66 @@ def test_forbidden_pattern_fails():
     changed = replace(draft, background="她建立了秘密政府能力监管机构。")
     report = CanonChecker().check(changed)
     assert CanonFindingCode.FORBIDDEN_PATTERN in _codes(report)
+
+
+@pytest.mark.parametrize(
+    "background",
+    [
+        "她不是任何秘密组织成员。",
+        "未加入任何新秘密组织。",
+        "不建立秘密机构。",
+        "不属于政府能力管理局。",
+        "不建立秘密实验室。",
+        "不把能力简单拆成火、水、雷、风、光、暗等世界观属性。",
+    ],
+)
+def test_forbidden_patterns_are_not_triggered_by_supported_negation_forms(background):
+    draft, request = _case("good")
+
+    report = CanonChecker().check(replace(draft, background=background), request=request)
+
+    assert _codes(report).isdisjoint(
+        {
+            CanonFindingCode.FORBIDDEN_PATTERN,
+            CanonFindingCode.WORLD_RULE_VIOLATION,
+            CanonFindingCode.HARD_CONSTRAINT_VIOLATION,
+        }
+    )
+
+
+@pytest.mark.parametrize(
+    ("background", "expected_codes"),
+    [
+        (
+            "她隶属于秘密政府能力管理局。",
+            {CanonFindingCode.FORBIDDEN_PATTERN, CanonFindingCode.WORLD_RULE_VIOLATION},
+        ),
+        (
+            "政府建立统一能力管理机构并长期隐藏事件。",
+            {CanonFindingCode.FORBIDDEN_PATTERN, CanonFindingCode.WORLD_RULE_VIOLATION},
+        ),
+        (
+            "她建立秘密实验室并负责统一能力监管全市。",
+            {CanonFindingCode.FORBIDDEN_PATTERN},
+        ),
+    ],
+)
+def test_positive_secret_governance_claims_still_trigger(background, expected_codes):
+    draft, request = _case("good")
+
+    report = CanonChecker().check(replace(draft, background=background), request=request)
+
+    assert expected_codes <= _codes(report)
+
+
+def test_negated_secret_claim_does_not_hide_later_positive_claim():
+    draft, request = _case("good")
+    background = "她不是秘密组织成员，但她隶属于秘密政府能力管理局。"
+
+    report = CanonChecker().check(replace(draft, background=background), request=request)
+
+    assert CanonFindingCode.FORBIDDEN_PATTERN in _codes(report)
+    assert CanonFindingCode.WORLD_RULE_VIOLATION in _codes(report)
 
 
 def test_authority_overreach_fails():

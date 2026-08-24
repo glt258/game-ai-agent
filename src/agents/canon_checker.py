@@ -235,6 +235,18 @@ _SECRECY_MARKERS = (
 _ABSENCE_DENIAL_PATTERNS = (
     r"(?:无|没有)(?:任何|一个|此类|相关)?$",
     r"(?:不|未)(?:使用|包含|采用|涉及)(?:任何|一个|一项|此类|相关)?$",
+    # Some formal patterns begin with the denied action itself, e.g.
+    # ``不把能力简单拆成……``.  In that shape the regex match starts after
+    # the negator, so the relation-specific forms below cannot see it.
+    r"(?:不|未|没有|并非|禁止|避免)$",
+    # These predicates deny the relationship/action represented by the
+    # forbidden target.  Keep them explicit instead of treating every
+    # preceding "不" or "未" as a negation; otherwise a positive claim in a
+    # sentence such as "不属于旧机构，但隶属于秘密管理局" could be hidden.
+    r"(?:不是|并非|不属于|不隶属于|未加入|未曾加入|从未加入|没有加入|不加入"
+    r"|未建立|未曾建立|从未建立|没有建立|不建立|未设立|未曾设立|从未设立|没有设立|不设立"
+    r"|未创建|未曾创建|从未创建|没有创建|不创建|未组建|未曾组建|从未组建|没有组建|不组建)"
+    r"(?:任何|一个|一项|此类|相关)?(?:新的|新)?$",
 )
 _ABSENCE_PREDICATE_PATTERN = (
     r"(?:不(?:使用|包含|采用|涉及)(?:任何|一个|一项|此类|相关)?"
@@ -412,6 +424,10 @@ _ELEMENT_SYSTEM_MARKERS = (
     "雷系",
     "属性克制",
     "元素分类",
+)
+_ELEMENTAL_NEGATION_PATTERN = (
+    r"(?:不|未|没有|并非|禁止|避免)[^，,。！？；!?\n]{0,16}"
+    r"(?:拆成|分成|划分为|归类为|归为|视为)"
 )
 _FRONTLINE_OCCUPATIONS = (
     "消防员",
@@ -1260,12 +1276,28 @@ class CanonChecker:
 
     @classmethod
     def _has_elemental_system_claim(cls, text: str) -> bool:
-        categories = {
-            category
-            for category, markers in _ELEMENT_CATEGORIES.items()
-            if cls._contains_any(text, markers)
-        }
-        return len(categories) >= 2 and cls._contains_any(text, _ELEMENT_SYSTEM_MARKERS)
+        for clause in cls._sentence_clauses(text):
+            categories = {
+                category
+                for category, markers in _ELEMENT_CATEGORIES.items()
+                if cls._contains_any(clause, markers)
+            }
+            if len(categories) < 2:
+                continue
+            system_match = next(
+                (
+                    match
+                    for marker in _ELEMENT_SYSTEM_MARKERS
+                    for match in re.finditer(re.escape(marker), clause)
+                ),
+                None,
+            )
+            if system_match is None:
+                continue
+            if re.search(_ELEMENTAL_NEGATION_PATTERN, clause[: system_match.start()]):
+                continue
+            return True
+        return False
 
     @classmethod
     def _minor_frontline_occupation(cls, draft: CharacterDraft) -> bool:
@@ -1686,11 +1718,11 @@ class CanonChecker:
                 or cls._has_secret_central_authority_claim(text)
             ):
                 return field
-            if secret_facility_detector and cls._positive_match(
+            if secret_facility_detector and cls._positive_forbidden_match(
                 text, r"(?:互不相干|不断增加|新增).{0,12}(?:秘密机构|实验室|收容设施)|秘密(?:实验室|收容设施)"
             ):
                 return field
-            if conspiracy_detector and cls._positive_match(
+            if conspiracy_detector and cls._positive_forbidden_match(
                 text, r"(?:所有|一切|每个).{0,12}(?:事件|事故).{0,12}(?:幕后|邪恶).{0,8}组织"
             ):
                 return field
