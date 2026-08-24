@@ -541,6 +541,7 @@ def test_public_package_exports_only_the_contract_surface() -> None:
         "TypedRef",
         "parse_candidate",
         "evaluate",
+        "render_ability_concept",
     }
     assert set(character_skill.__all__) == expected
     assert all(not name.startswith("_") for name in character_skill.__all__)

@@ -32,6 +32,7 @@ from .models import (
     Trigger,
     TypedRef,
 )
+from .rendering import render_ability_concept
 
 __all__ = [
     "ProtocolSkillKitCandidate",
@@ -62,4 +63,5 @@ __all__ = [
     "TypedRef",
     "parse_candidate",
     "evaluate",
+    "render_ability_concept",
 ]

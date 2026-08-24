@@ -22,6 +22,7 @@ from character_skill import (
     SkillValidationContext,
     evaluate,
     parse_candidate,
+    render_ability_concept,
 )
 from character_intelligence.planner import CharacterDesignPlan
 from combat_semantics import CombatRoleProfile, resolve_legacy_combat_role_profile
@@ -1454,7 +1455,7 @@ class CharacterGenerationAgent:
                 )
             candidate = parsed
             response_compliant = True
-            rendered = self._render_skill_shadow(candidate)
+            rendered = render_ability_concept(candidate)
             diff = {
                 "legacy_ability_concept": legacy_ability_concept,
                 "rendered_ability_concept": rendered,
@@ -1541,18 +1542,6 @@ class CharacterGenerationAgent:
             "shape": "SkillKit shadow candidate failed the strict shape contract",
             "validation": "SkillKit shadow structural validation failed",
         }.get(stage, "SkillKit shadow invocation failed")
-
-    @staticmethod
-    def _render_skill_shadow(candidate: ProtocolSkillKitCandidate) -> str:
-        """Render only forward from structured display fields.
-
-        This renderer intentionally has no parser for ``ability_concept``;
-        compatibility is reported as a diff beside the legacy text.
-        """
-
-        parts = [candidate.display_summary.strip()]
-        parts.extend(entry.display_text.strip() for entry in candidate.entries)
-        return "\n".join(part for part in parts if part)
 
     def generate_with_intent(
         self,

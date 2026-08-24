@@ -120,7 +120,9 @@ def test_enabled_shadow_parses_and_structurally_validates_without_changing_draft
     assert shadow.validation_report is not None
     assert shadow.validation_report.outcome == "PASS"
     assert shadow.failure_stage is None
-    assert shadow.rendered_ability_concept == "A concise structured summary.\nA structured signal."
+    assert shadow.rendered_ability_concept == (
+        "A concise structured summary. Signal: no protocols"
+    )
     assert shadow.legacy_ability_concept == result.draft.ability_concept
     assert shadow.ability_concept_diff["matches"] is False
     assert len([prompt for prompt in model.prompts if prompt.response_format == "character_skill_kit"]) == 1
