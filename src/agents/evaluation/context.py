@@ -7,6 +7,7 @@ from types import MappingProxyType
 from typing import Any, Mapping
 
 from character_intelligence import CharacterDesignIntent
+from character_skill import ProtocolSkillKitCandidate, SkillValidationContext, SkillValidationReport
 from combat_semantics import CombatRoleProfile
 
 from ..character_generation import CharacterDesignRequest, CharacterDraft, CharacterGenerationResult
@@ -28,6 +29,7 @@ class EvaluationSubject:
     authoring_result: CharacterAuthoringResult | None = None
     generation_error: BaseException | None = None
     case_metadata: Mapping[str, Any] | None = None
+    skill_validation_context: SkillValidationContext | Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.request, CharacterDesignRequest):
@@ -52,6 +54,15 @@ class EvaluationSubject:
                 "case_metadata",
                 MappingProxyType(dict(self.case_metadata)),
             )
+        if self.skill_validation_context is not None:
+            context = self.skill_validation_context
+            if isinstance(context, Mapping):
+                context = SkillValidationContext.from_mapping(context)
+            elif not isinstance(context, SkillValidationContext):
+                raise TypeError(
+                    "skill_validation_context must be a SkillValidationContext, mapping, or None"
+                )
+            object.__setattr__(self, "skill_validation_context", context)
 
 
 @dataclass(frozen=True)
@@ -61,6 +72,9 @@ class EvaluationContext:
     subject: EvaluationSubject
     intent: CharacterDesignIntent | None
     draft: CharacterDraft | None = None
+    skill_validation_context: SkillValidationContext | None = None
+    skill_candidate: ProtocolSkillKitCandidate | None = None
+    skill_validation_report: SkillValidationReport | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.subject, EvaluationSubject):
@@ -71,6 +85,31 @@ class EvaluationContext:
             raise TypeError("draft must be a CharacterDraft or None")
         if self.draft is None and self.subject.generation_result is not None:
             object.__setattr__(self, "draft", self.subject.generation_result.draft)
+        if self.skill_validation_context is None:
+            object.__setattr__(
+                self,
+                "skill_validation_context",
+                self.subject.skill_validation_context,
+            )
+        if self.skill_validation_context is not None and not isinstance(
+            self.skill_validation_context, SkillValidationContext
+        ):
+            raise TypeError(
+                "skill_validation_context must be a SkillValidationContext or None"
+            )
+        shadow = (
+            self.subject.generation_result.skill_shadow
+            if self.subject.generation_result is not None
+            else None
+        )
+        if self.skill_candidate is None and shadow is not None:
+            candidate = getattr(shadow, "candidate", None)
+            if isinstance(candidate, ProtocolSkillKitCandidate):
+                object.__setattr__(self, "skill_candidate", candidate)
+        if self.skill_validation_report is None and shadow is not None:
+            report = getattr(shadow, "validation_report", None)
+            if isinstance(report, SkillValidationReport):
+                object.__setattr__(self, "skill_validation_report", report)
         if self.intent is not None and not isinstance(
             self.intent.combat_role_profile, CombatRoleProfile
         ):
@@ -92,7 +131,12 @@ class EvaluationContext:
         else:
             intent = None
         draft = generation_result.draft if generation_result is not None else None
-        return cls(subject=subject, intent=intent, draft=draft)
+        return cls(
+            subject=subject,
+            intent=intent,
+            draft=draft,
+            skill_validation_context=subject.skill_validation_context,
+        )
 
     @property
     def request(self) -> CharacterDesignRequest:
