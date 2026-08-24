@@ -9,3 +9,8 @@
 /evals/results/character_skill_s1_blind_review_report_v0.1.1.md text eol=lf
 /tests/test_character_skill_s1_blind_review.py text eol=lf
 /docs/character_generation/character_skill_interface_options_v0.1.1.md text eol=lf
+/evals/character_skill_s2_shadow_evidence.py text eol=lf
+/evals/fixtures/character_skill_s2_shadow_evidence_manifest_v0.2.1.json text eol=lf
+/evals/fixtures/character_skill_s2_shadow_evidence_output_schema_v0.2.1.json text eol=lf
+/scripts/run_character_skill_s2_shadow_evidence.py text eol=lf
+/tests/test_character_skill_s2_shadow_evidence.py text eol=lf

@@ -95,6 +95,7 @@ def test_character_generation_demo_starts_from_source_checkout_as_json() -> None
         ("scripts/run_character_generation_evals.py", ()),
         ("scripts/run_character_repair_evals.py", ()),
         ("scripts/run_character_repair_redteam.py", ()),
+        ("scripts/run_character_skill_s2_shadow_evidence.py", ()),
     ),
 )
 def test_problem_scripts_bootstrap_before_top_level_business_imports(
