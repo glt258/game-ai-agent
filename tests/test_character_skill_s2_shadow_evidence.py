@@ -134,6 +134,7 @@ def test_router_rebuilds_remote_prompt_from_only_four_frozen_projection_fields()
         1,
         response_format="character_skill_kit",
         authoring_payload={"private": "should not survive"},
+        invocation_purpose="character_skill_shadow",
     )
 
     router.generate(prompt)

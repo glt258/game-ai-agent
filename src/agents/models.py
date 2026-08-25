@@ -108,6 +108,9 @@ class SkillShadowAudit:
     turn_number: int | None = None
     outcome: str | None = None
     transport: str | None = None
+    context_digest: str | None = None
+    request_alignment_measured: bool = False
+    reference_review_measured: bool = False
 
 @dataclass(frozen=True)
 class CharacterSkillShadowResult:

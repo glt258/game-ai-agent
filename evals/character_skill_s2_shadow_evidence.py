@@ -242,7 +242,10 @@ class ShadowEvidenceModelRouter:
         return self._shadow_response_compliant
 
     def generate(self, prompt: AgentPrompt) -> ModelTurn:
-        if prompt.response_format != RESPONSE_CONTRACT:
+        if (
+            prompt.invocation_purpose != "character_skill_shadow"
+            or prompt.response_format != RESPONSE_CONTRACT
+        ):
             return self.legacy_model.generate(prompt)
 
         self._shadow_invocation = None
@@ -1032,18 +1035,18 @@ class ShadowEvidenceRunner:
                 if model_factory is not None:
                     provider_model = model_factory()
                 else:
-                    environment = dict(os.environ)
-                    environment.update(
-                        {
-                            "NPC_AGENT_MODEL": "live",
-                            "NPC_LLM_PROVIDER": PROVIDER_NAME,
-                            "NPC_LLM_MODEL": MODEL_REQUESTED,
-                            "NPC_LLM_TRANSPORT": TRANSPORT,
-                            "NPC_LLM_STRUCTURED_OUTPUT": STRUCTURED_OUTPUT_MODE,
-                            "NPC_LLM_TIMEOUT_SECONDS": str(TIMEOUT_SECONDS),
-                            "NPC_LLM_MAX_RETRIES": str(MAX_TRANSPORT_RETRIES),
-                        }
-                    )
+                    environment = {
+                        "NPC_AGENT_MODEL": "live",
+                        "NPC_LLM_PROVIDER": PROVIDER_NAME,
+                        "NPC_LLM_MODEL": MODEL_REQUESTED,
+                        "NPC_LLM_TRANSPORT": TRANSPORT,
+                        "NPC_LLM_STRUCTURED_OUTPUT": STRUCTURED_OUTPUT_MODE,
+                        "NPC_LLM_TIMEOUT_SECONDS": str(TIMEOUT_SECONDS),
+                        "NPC_LLM_MAX_RETRIES": str(MAX_TRANSPORT_RETRIES),
+                    }
+                    api_key = os.environ.get("NPC_LLM_API_KEY")
+                    if api_key:
+                        environment["NPC_LLM_API_KEY"] = api_key
                     provider_model = character_model_from_environment(
                         environment=environment,
                         mode_override="live",
@@ -1062,6 +1065,7 @@ class ShadowEvidenceRunner:
         agent = CharacterGenerationAgent(
             router,
             shadow_config=SkillShadowConfig(enabled=True),
+            retrieval_strategy="deterministic",
         )
         records = list(existing)
         reported_models = {existing_reported_model} if existing_reported_model else set()

@@ -1993,6 +1993,7 @@ class CharacterGenerationAgent:
         request: CharacterDesignRequest | str,
         *,
         use_intent_layer: bool = False,
+        skill_shadow_context: SkillValidationContext | None = None,
     ) -> CharacterGenerationResult:
         if isinstance(request, str):
             request = CharacterDesignRequest(request)
@@ -2193,6 +2194,7 @@ class CharacterGenerationAgent:
                 draft=draft,
                 authoring=authoring,
                 runtime=runtime,
+                skill_shadow_context=skill_shadow_context,
             )
             return CharacterGenerationResult(
                 draft,
@@ -2361,6 +2363,7 @@ class CharacterGenerationAgent:
         draft: CharacterDraft,
         authoring: CharacterAuthoringView,
         runtime: CharacterGenerationRuntimeView,
+        skill_shadow_context: SkillValidationContext | None,
     ) -> CharacterSkillShadowResult | None:
         """Run the opt-in SkillKit call without entering the legacy pipeline.
 
@@ -2373,18 +2376,56 @@ class CharacterGenerationAgent:
             return None
 
         legacy_ability_concept = draft.ability_concept
-        stage = "provider"
+        stage = "context"
         candidate: ProtocolSkillKitCandidate | None = None
         report = None
         rendered: str | None = None
         response_compliant = False
         audit = SkillShadowAudit(request_id=request.request_id)
+        context: SkillValidationContext | None = None
+        context_digest: str | None = None
+        request_alignment_measured = False
+        reference_review_measured = False
         diff: dict[str, Any] = {
             "legacy_ability_concept": legacy_ability_concept,
             "rendered_ability_concept": None,
             "matches": None,
         }
         try:
+            if skill_shadow_context is None:
+                role_profile = (
+                    request.combat_role_profile.to_dict()
+                    if request.combat_role_profile is not None
+                    else None
+                )
+                context = SkillValidationContext.from_mapping(
+                    {
+                        "intent": {
+                            "mechanic_requirements": [],
+                            "forbidden_mechanic_families": [],
+                            "hard_constraint_conflicts": [],
+                        },
+                        "combat_role_profile": role_profile,
+                        "reference_review_context": None,
+                    }
+                )
+            else:
+                if not isinstance(skill_shadow_context, SkillValidationContext):
+                    raise TypeError(
+                        "skill_shadow_context must be a SkillValidationContext or None"
+                    )
+                context = skill_shadow_context
+                request_alignment_measured = True
+
+            context_digest = context.digest
+            reference_review_measured = context.reference_review_context is not None
+            audit = SkillShadowAudit(
+                request_id=request.request_id,
+                context_digest=context_digest,
+                request_alignment_measured=request_alignment_measured,
+                reference_review_measured=reference_review_measured,
+            )
+            stage = "provider"
             # Keep the shadow request independent of the legacy prose field.
             # The request is the source of truth for this sidecar invocation;
             # no CharacterDraft data is interpolated into its prompt/payload.
@@ -2420,6 +2461,9 @@ class CharacterGenerationAgent:
             audit = self._skill_shadow_audit(
                 shadow_turn.invocation,
                 request_id=request.request_id,
+                context_digest=context_digest,
+                request_alignment_measured=request_alignment_measured,
+                reference_review_measured=reference_review_measured,
             )
 
             stage = "json"
@@ -2461,22 +2505,7 @@ class CharacterGenerationAgent:
             }
 
             stage = "validation"
-            role_profile = (
-                request.combat_role_profile.to_dict()
-                if request.combat_role_profile is not None
-                else None
-            )
-            context = SkillValidationContext.from_mapping(
-                {
-                    "intent": {
-                        "mechanic_requirements": [],
-                        "forbidden_mechanic_families": [],
-                        "hard_constraint_conflicts": [],
-                    },
-                    "combat_role_profile": role_profile,
-                    "reference_review_context": None,
-                }
-            )
+            assert context is not None
             report = evaluate(candidate, context)
             return CharacterSkillShadowResult(
                 draft_id=draft.draft_id,
@@ -2497,6 +2526,9 @@ class CharacterGenerationAgent:
                 audit = self._skill_shadow_audit(
                     error_audit,
                     request_id=request.request_id,
+                    context_digest=context_digest,
+                    request_alignment_measured=request_alignment_measured,
+                    reference_review_measured=reference_review_measured,
                 )
             return CharacterSkillShadowResult(
                 draft_id=draft.draft_id,
@@ -2516,9 +2548,17 @@ class CharacterGenerationAgent:
         invocation: ModelInvocationAudit | None,
         *,
         request_id: str | None = None,
+        context_digest: str | None = None,
+        request_alignment_measured: bool = False,
+        reference_review_measured: bool = False,
     ) -> SkillShadowAudit:
         if invocation is None:
-            return SkillShadowAudit(request_id=request_id)
+            return SkillShadowAudit(
+                request_id=request_id,
+                context_digest=context_digest,
+                request_alignment_measured=request_alignment_measured,
+                reference_review_measured=reference_review_measured,
+            )
         return SkillShadowAudit(
             provider=invocation.provider,
             model=invocation.model,
@@ -2530,11 +2570,15 @@ class CharacterGenerationAgent:
             turn_number=invocation.turn_number,
             outcome=invocation.outcome,
             transport=invocation.transport,
+            context_digest=context_digest,
+            request_alignment_measured=request_alignment_measured,
+            reference_review_measured=reference_review_measured,
         )
 
     @staticmethod
     def _skill_shadow_error_message(stage: str) -> str:
         return {
+            "context": "SkillKit shadow validation context is invalid",
             "provider": "SkillKit shadow provider invocation failed",
             "json": "SkillKit shadow response was not valid JSON",
             "shape": "SkillKit shadow candidate failed the strict shape contract",
