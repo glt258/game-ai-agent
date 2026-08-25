@@ -1,10 +1,13 @@
 # Along the Street — Game AI Agent System
 
+[![CI](https://github.com/glt258/game-ai-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/glt258/game-ai-agent/actions/workflows/ci.yml)
+
 Along the Street is a structured game-content authoring system. Its current
 Character Authoring milestone turns a designer brief into a reviewable,
 Canon-grounded `CharacterDraft` through bounded retrieval, strict structured
 finalization, deterministic validation, Canon checking, and bounded repair.
-The agent proposes content; it does not write or approve formal Canon.
+The agent proposes content; it does not write, publish, or approve formal
+Canon.
 
 Character authoring supports age-ambiguous and diverse life-stage concepts
 without forcing age-to-school/work mappings, while preserving Canon,
@@ -19,7 +22,7 @@ non-student status.
 
 | Namespace | Current Identifier | Meaning |
 |---|---|---|
-| Project | `0.7.1` | Current release candidate |
+| Project | `0.7.1` | Current release |
 | Public Release | `v0.7.1` | Live authoring safety and diagnostics release |
 | Runtime Baseline | `runtime-v0.6.6` | Frozen runtime baseline |
 | Reference Corpus | `reference-corpus-v0.5` | Current 16-record expanded corpus baseline |
@@ -30,6 +33,23 @@ The full naming policy is documented in [Versioning and Namespace Policy](docs/v
 
 Release notes for `v0.7.1` are documented in
 [docs/release_notes_v0.7.1.md](docs/release_notes_v0.7.1.md).
+
+## What v0.7.1 Adds
+
+- Fail-closed Live failure rendering with safe failure types, bounded reasons,
+  invocation outcomes, grounding checks, and allowlisted Canon IDs.
+- Strict finalization termination: only the exact `FINALIZE` signal ends the
+  retrieval/action loop; exhausted or malformed loops do not fabricate a draft.
+- Clean finalization context built from the request and validated evidence,
+  without replaying retrieval tool history into the finalization request.
+- Negation-aware deterministic Canon forbidden-pattern matching for supported
+  Chinese negative expressions, while positive RULE-008 violations remain
+  rejected.
+- Sanitized `CharacterDraft` contract-recovery audit messages that never copy
+  raw provider responses, prompts, model output, or secrets.
+
+The release keeps grounding, CharacterDraft validation, Canon Checker, bounded
+Repair, provider retry behavior, and fail-closed boundaries unchanged.
 
 ## What This Project Is
 
@@ -81,10 +101,12 @@ flowchart TD
     repair --> checker
 ```
 
-Retrieval and final structured drafting are separate model phases. During the
-retrieval/action phase, the model may call read-only tools or end with the
-exact `FINALIZE` signal. The next model turn is the finalization phase: tools
-are omitted and the model must return the strict `CharacterDraft` contract.
+Retrieval and final structured drafting are separate phases. The compatible
+default `model_loop` strategy lets the model request bounded read-only tool
+calls; the optional `deterministic` strategy plans the same safe retrieval
+surface without changing grounding or validation rules. In either strategy,
+the finalization turn has no tools and must return the strict `CharacterDraft`
+contract.
 
 The phase split was introduced in commit `6b9f402`,
 `feat: split character retrieval and finalization turns`.
@@ -112,18 +134,22 @@ The project separates these responsibilities:
 
 1. Receive a `CharacterDesignRequest` containing the brief, hard constraints,
    soft preferences, forbidden elements, and desired connections.
-2. Enter the retrieval/action phase with a bounded default of six tool rounds.
+2. Enter the bounded retrieval/action phase. The compatible default model loop
+   allows at most six tool rounds; deterministic retrieval is available as an
+   explicit strategy for controlled integrations.
 3. Use a read-only Canon tool only when the brief depends on an existing
    faction, lore fact, character, world rule, story, case, or incident.
 4. Accumulate source IDs and grounding evidence from successful tool results.
-5. Stop early with `FINALIZE`, or finalize after the deterministic retrieval
-   budget is exhausted.
-6. Enter a tools-omitted finalization turn and parse the direct JSON root as a
-   `CharacterDraft`.
+5. Stop early only with the exact `FINALIZE` signal. Malformed termination or
+   exhausted action rounds fail closed and do not invoke unsafe finalization.
+6. Enter a clean, tools-omitted finalization turn and parse the direct JSON
+   root as a `CharacterDraft`.
 7. Validate Canon IDs, grounding, request constraints, forbidden content, and
    proposal fields deterministically.
 8. Run `CanonChecker`; if permitted, make at most one bounded repair attempt
    and perform a full re-check.
+9. On any unsafe failure, return `NOT_COMPLETED` with no fabricated draft or
+   Canon result. Structural CharacterDraft recovery is bounded and audited.
 
 The result is a candidate for human review. It is never promoted to Canon by
 this pipeline.
@@ -142,6 +168,25 @@ Searches return bounded safe summaries; detail calls retrieve one stable ID.
 The toolbox supports authoring-visible scopes and does not expose the resolver,
 repositories, filesystem paths, or write operations to the model.
 
+## Live Observability
+
+Live provider success is not the same as pipeline completion. A provider call
+may succeed and the subsequent agent loop, finalization, grounding, or draft
+validation may still fail. The failure renderer keeps that distinction visible:
+
+```text
+Provider invocation: SUCCESS
+Outcome: success
+Error: AgentExecutionError: <safe failure reason>
+Pipeline status: NOT_COMPLETED
+No Character draft or Canon result was fabricated.
+```
+
+Diagnostics may expose an exception category, a fixed safe reason, a grounding
+check, and a validated Canon ID. They never expose API keys, provider response
+bodies, full prompts, unprocessed model output, or unprocessed recovery
+exception text.
+
 ## Example Live Run
 
 One verified live end-to-end run used provider `opencode_go` with model
@@ -154,26 +199,26 @@ draft character `方宁舒`, whose occupation was
 The draft had a non-empty retrieved source set and grounded Canon Basis
 entries including `faction_005`, `lore_023`, `lore_024`, `lore_026`, and
 `char_launch_007`. This is a verified live E2E example, not a benchmark or a
-claim about universal model quality.
+claim about universal model quality. Separate release probes found that
+DeepSeek Pro full finalization can still exceed the existing bounded provider
+attempts; that provider/model latency limitation is intentionally not hidden
+or changed by v0.7.1.
 
 ## Evaluation
 
 The repository evaluates the boundaries around generation, not just whether
-some text was produced:
+some text was produced. The release gate covers the full deterministic test
+suite, provider/adapter contracts, Canon and grounding regression cases,
+negation-aware forbidden-pattern cases, recovery-audit secrecy checks, and
+the SkillKit integration gates. CI also runs pre-commit checks, packaged-data
+validation, distribution build checks, and installed-wheel smoke.
 
-- Full deterministic test suite: **641 passed, 1 skipped**.
-- Character Generation tests: **43 passed**.
-- Provider / adapter contract selection (`test_provider_contracts.py`,
-  `test_openai_provider.py`, `test_live_llm_adapter.py`,
-  `test_live_llm_errors.py`): **112 passed**.
-- Character Generation deterministic evals: **13 passed, 0 failed**.
-- Lean Character Generation Benchmark: cases **A–F all accepted**.
-
-Coverage includes multi-round retrieval, finalization with tools omitted,
-malformed response handling, pseudo-tool JSON rejection, unknown or fake Canon
-IDs, grounding failures, forbidden content, bounded repair, and fail-closed
-provider behavior. The small benchmark is an auditable fixture suite, not a
-claim of general model performance.
+Coverage includes multi-round retrieval, optional deterministic retrieval,
+clean finalization context, exact termination, malformed response handling,
+pseudo-tool JSON rejection, unknown or fake Canon IDs, grounding failures,
+negation-aware forbidden content, bounded repair, recovery diagnostics, and
+fail-closed provider behavior. The fixture benchmarks are auditable regression
+checks, not a claim of general model performance.
 
 Run the main checks with:
 
@@ -373,6 +418,10 @@ directory, for example `load_canon(data_dir=path)`,
 - Pseudo-tool JSON is not treated as a real tool call.
 - Finalization receives no tools; attempted finalization tool calls fail.
 - Retrieval is bounded, and provider retries / loop exhaustion are bounded.
+- Live failure diagnostics retain only sanitized provider/model metadata and
+  allowlisted failure details.
+- Negated forbidden-pattern statements are evaluated deterministically; a
+  positive forbidden institution or authority claim still fails Canon checks.
 - Unsupported Canon claims fail validation or enter the bounded repair path;
   they do not silently pass.
 - Repair cannot write Canon, approve a draft, escape its editable scope, or
@@ -388,8 +437,9 @@ evaluation, and demo readiness rather than speculative platform features.
 
 Known limitations include imperfect Canon entity and alias resolution, a strict
 extractive support contract for `canon_basis.supports`, retrieval efficiency,
-and transient live-provider failures. The runtime fails closed for malformed
-or exhausted provider interactions. These limits are recorded in
+and transient live-provider failures. DeepSeek Pro full finalization can still
+time out under the existing provider bounds. The runtime fails closed for
+malformed or exhausted provider interactions. These limits are recorded in
 [the runtime freeze](docs/runtime_freeze_v0.6.6.md); planned work such as RAG,
 memory, multi-agent orchestration, and Canon publishing is not implemented.
 
@@ -423,6 +473,8 @@ capabilities.
 - [Canon Checker](docs/canon_checker_v0.1.md)
 - [Character Repair Loop](docs/character_repair_loop_v0.1.md)
 - [Provider Capability Layer](docs/provider_capability_layer.md)
+- [v0.7.1 Release Notes](docs/release_notes_v0.7.1.md)
+- [v0.7.1 Release Scope](docs/v0.7.1_release_scope.md)
 - [Reference Corpus Production Baseline v0.1](docs/reference_corpus/production_baseline_v0.1.md)
 - [Reference Corpus Baseline reference-corpus-v0.5](docs/reference_corpus_expanded_baseline_v0.5.md)
 
