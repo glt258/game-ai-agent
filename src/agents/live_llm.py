@@ -27,6 +27,7 @@ from .models import (
     SegmentKind,
     ToolCall,
 )
+from .provider_profiles import ProviderProfile, resolve_provider_profile
 from .provider_protocol import (
     NegotiatedResponseContract,
     ProviderChatClient,
@@ -35,13 +36,11 @@ from .provider_protocol import (
     ProviderToolCall,
     negotiate_response_contract,
 )
-from .provider_profiles import ProviderProfile, resolve_provider_profile
 from .response_contracts import (
     CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL,
     has_terminal_authoring_finalize_signal,
     response_contract_for,
 )
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -611,7 +610,14 @@ class LiveLLMAdapter:
         else:
             raised = ModelProviderError("Live LLM provider request failed")
         raised.audit = self._failure_audit(
-            prompt, error.kind, latency_ms, retry_count, None, str(raised)
+            prompt,
+            error.kind,
+            latency_ms,
+            retry_count,
+            None,
+            str(raised),
+            provider_status_code=error.status_code,
+            provider_retryable=error.retryable,
         )
         raise raised from None
 
@@ -623,6 +629,9 @@ class LiveLLMAdapter:
         retry_count: int,
         response: ProviderCompletion | None,
         error_message: str,
+        *,
+        provider_status_code: Any = None,
+        provider_retryable: Any = None,
     ) -> ModelInvocationAudit:
         """Build a provider-neutral failure audit from sanitized metadata only.
 
@@ -645,4 +654,6 @@ class LiveLLMAdapter:
             response_contract=self._response_contract(prompt).mode.value,
             error_message=error_message,
             purpose=prompt.invocation_purpose,
+            provider_status_code=provider_status_code,
+            provider_retryable=provider_retryable,
         )

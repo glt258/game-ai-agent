@@ -39,3 +39,7 @@ htmlcov/
 # Protected local working files
 /IDEA.md
 /manual_character_test.py
+
+# Local Live audit captures and probe wrappers may contain machine-specific
+# credential paths or other diagnostic-only metadata; never publish them.
+/local-audit/

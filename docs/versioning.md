@@ -12,6 +12,7 @@ Use Project Release for the version of the whole repository:
 
 ```text
 v0.7.0
+v0.7.1
 v0.8.0
 0.8.0.dev0
 ```

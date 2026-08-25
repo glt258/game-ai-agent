@@ -6,10 +6,16 @@ from pathlib import Path
 import pytest
 
 from agents import (
+    AgentExecutionError,
     CharacterDesignRequest,
     CharacterGenerationAgent,
+    ModelAuthenticationError,
+    ModelCapabilityError,
     ModelInvocationAudit,
     ModelMalformedResponseError,
+    ModelProviderError,
+    ModelRateLimitError,
+    ModelTimeoutError,
     ModelTurn,
     ScriptedAgentModel,
 )
@@ -163,6 +169,81 @@ def test_failed_recovery_is_fail_closed_and_never_retried(recovery_turn: ModelTu
 
     assert len(model.prompts) == 3
     assert model.prompts[-1].invocation_purpose == "character_draft_recovery"
+
+
+@pytest.mark.parametrize(
+    ("failure", "expected_message"),
+    [
+        (
+            ModelTimeoutError("raw provider response contains API_KEY_SECRET"),
+            "CharacterDraft contract recovery provider request timed out after bounded retries",
+        ),
+        (
+            ModelProviderError("raw model output contains PROMPT_SECRET"),
+            "CharacterDraft contract recovery provider request failed",
+        ),
+        (
+            ModelRateLimitError("raw provider response contains RATE_LIMIT_SECRET"),
+            "CharacterDraft contract recovery provider rate limited the request after bounded retries",
+        ),
+        (
+            ModelAuthenticationError("raw provider response contains CREDENTIAL_SECRET"),
+            "CharacterDraft contract recovery provider authentication failed",
+        ),
+        (
+            ModelCapabilityError("raw provider response contains CAPABILITY_SECRET"),
+            "CharacterDraft contract recovery provider cannot satisfy the authoring contract",
+        ),
+        (
+            ModelMalformedResponseError("raw model output: {\"secret\": \"MODEL_SECRET\"}"),
+            "CharacterDraft contract recovery response failed the structural contract",
+        ),
+        (
+            AgentExecutionError("raw tool payload contains TOOL_SECRET"),
+            "CharacterDraft contract recovery execution failed safely",
+        ),
+        (
+            RuntimeError("raw provider response contains API_KEY_SECRET and PROMPT_SECRET"),
+            "CharacterDraft contract recovery failed safely",
+        ),
+    ],
+)
+def test_failed_recovery_audit_uses_sanitized_diagnostic(
+    failure: Exception,
+    expected_message: str,
+):
+    original = _payload()
+    original.pop("canon_basis")
+    original.pop("new_design_elements")
+
+    class RecoveryFailureModel:
+        def __init__(self) -> None:
+            self.prompts = []
+
+        def generate(self, prompt):
+            self.prompts.append(prompt)
+            if prompt.invocation_purpose == "character_draft_recovery":
+                raise failure
+            if len(self.prompts) == 1:
+                return ModelTurn(text="FINALIZE", invocation=_invocation(1))
+            return ModelTurn(structured_output=original, invocation=_invocation(2))
+
+    model = RecoveryFailureModel()
+    with pytest.raises(type(failure)) as captured:
+        CharacterGenerationAgent(model).generate("设计一个角色")
+
+    recovery = captured.value.contract_recovery
+    assert recovery.status == "failed"
+    assert recovery.error_message == expected_message
+    serialized = repr(recovery)
+    assert "API_KEY_SECRET" not in serialized
+    assert "PROMPT_SECRET" not in serialized
+    assert "MODEL_SECRET" not in serialized
+    assert "TOOL_SECRET" not in serialized
+    assert "RATE_LIMIT_SECRET" not in serialized
+    assert "CREDENTIAL_SECRET" not in serialized
+    assert "CAPABILITY_SECRET" not in serialized
+    assert len(model.prompts) == 3
 
 
 def test_open_questions_retains_existing_safe_normalization_without_recovery():

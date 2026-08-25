@@ -4,8 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "along-street-knowledge-resolver"
-version = "0.8.0.dev0"
+version = "0.7.1"
 description = "Default-deny NPC knowledge boundary resolver for Along the Street"
+readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.10"
 dependencies = ["PyYAML>=6.0", "openai>=1.0,<3"]
 

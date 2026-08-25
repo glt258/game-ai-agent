@@ -34,12 +34,11 @@ CHARACTER_AUTHORING_ACTION_RESPONSE_CONTRACT = ResponseContract(
 
 
 def has_terminal_authoring_finalize_signal(text: str) -> bool:
-    """Accept FINALIZE only when it is the last non-empty response line."""
+    """Accept only the exact FINALIZE signal with surrounding whitespace."""
 
     if not isinstance(text, str):
         return False
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    return bool(lines) and lines[-1] == CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL
+    return text.strip() == CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL
 
 
 CHARACTER_DRAFT_JSON_SCHEMA: Mapping[str, Any] = MappingProxyType(

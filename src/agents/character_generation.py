@@ -29,11 +29,19 @@ from combat_semantics import CombatRoleProfile, resolve_legacy_combat_role_profi
 from knowledge import KnowledgeResolver
 from story import StoryRepository, load_story_repository
 
+from .character_retrieval import build_character_retrieval_plan
 from .errors import (
+    AgentError,
     AgentExecutionError,
     AgentToolError,
+    ModelAuthenticationError,
+    ModelCapabilityError,
+    ModelConfigurationError,
     ModelError,
     ModelMalformedResponseError,
+    ModelProviderError,
+    ModelRateLimitError,
+    ModelTimeoutError,
 )
 from .model_protocol import AgentModel
 from .models import (
@@ -433,6 +441,41 @@ _CANON_ID_PATTERN = re.compile(
     r"\b(?:lore(?:_secret)?_[A-Za-z0-9_.:-]+|faction_[A-Za-z0-9_.:-]+|"
     r"char_[A-Za-z0-9_.:-]+|(?:story|case|incident|project)_[A-Za-z0-9_.:-]+)\b"
 )
+
+
+def _safe_character_draft_recovery_error_message(error: BaseException) -> str:
+    """Return a fixed diagnostic safe for the recovery audit boundary.
+
+    Recovery errors can originate from a provider, a model contract parser, or
+    an unexpected implementation boundary.  Their exception text is not a
+    safe audit input because it may contain provider payloads, prompts, model
+    output, or credentials.  Keep this mapping deliberately fixed and narrow;
+    the original exception is still propagated for fail-closed behavior.
+    """
+
+    if isinstance(error, ModelTimeoutError):
+        return "CharacterDraft contract recovery provider request timed out after bounded retries"
+    if isinstance(error, ModelRateLimitError):
+        return "CharacterDraft contract recovery provider rate limited the request after bounded retries"
+    if isinstance(error, ModelAuthenticationError):
+        return "CharacterDraft contract recovery provider authentication failed"
+    if isinstance(error, ModelCapabilityError):
+        return "CharacterDraft contract recovery provider cannot satisfy the authoring contract"
+    if isinstance(error, ModelConfigurationError):
+        return "CharacterDraft contract recovery model configuration is invalid"
+    if isinstance(error, ModelProviderError):
+        return "CharacterDraft contract recovery provider request failed"
+    if isinstance(error, ModelMalformedResponseError):
+        return "CharacterDraft contract recovery response failed the structural contract"
+    if isinstance(error, AgentExecutionError):
+        return "CharacterDraft contract recovery execution failed safely"
+    if isinstance(error, AgentError):
+        return "CharacterDraft contract recovery agent operation failed"
+    return "CharacterDraft contract recovery failed safely"
+_ORGANIZATION_NAME_PATTERN = re.compile(
+    r"[\u4e00-\u9fffA-Za-z0-9·]{2,}"
+    r"(?:研究中心|研究院|合作社|基金会|管理局|联席体系|保险|传媒|集团|公司|机构|组织|协会|事务所)"
+)
 _NEW_DESIGN_FIELD_PATTERN = re.compile(
     r"^new_design:(?P<field>[A-Za-z_][A-Za-z0-9_.]*)(?::|$)"
 )
@@ -482,6 +525,27 @@ def _canon_id_references(
     return tuple(sorted(set(references), key=lambda item: (item[1], item[2], item[0])))
 
 
+def _canon_alias_references(
+    text: str,
+    aliases: Mapping[str, Sequence[str]] | None,
+) -> tuple[tuple[str, int, int], ...]:
+    """Return registered Canon entity-name references with their source IDs."""
+
+    if not aliases:
+        return ()
+    references: list[tuple[str, int, int]] = []
+    for source_id in sorted(aliases):
+        for alias in sorted(
+            {item.strip() for item in aliases[source_id] if isinstance(item, str) and item.strip()},
+            key=lambda item: (-len(item), item),
+        ):
+            references.extend(
+                (source_id, match.start(), match.end())
+                for match in re.finditer(re.escape(alias), text, flags=re.IGNORECASE)
+            )
+    return tuple(sorted(set(references), key=lambda item: (item[1], item[2], item[0])))
+
+
 def _is_negated_canon_id_reference(text: str, start: int, end: int) -> bool:
     """Keep explicit negative knowledge references out of positive grounding."""
 
@@ -507,6 +571,8 @@ def canon_field_grounding_violations(
     source_ids: set[str] | frozenset[str],
     *,
     available_source_ids: set[str] | frozenset[str] | None = None,
+    known_source_aliases: Mapping[str, Sequence[str]] | None = None,
+    reject_unknown_organizations: bool = False,
 ) -> tuple[tuple[str, tuple[str, ...], str], ...]:
     """Find narrative fields lacking an explicit Canon/design classification.
 
@@ -534,7 +600,10 @@ def canon_field_grounding_violations(
         referenced_ids = tuple(
             dict.fromkeys(
                 source_id
-                for source_id, start, end in _canon_id_references(text, source_ids)
+                for source_id, start, end in (
+                    *_canon_id_references(text, source_ids),
+                    *_canon_alias_references(text, known_source_aliases),
+                )
                 if not _is_negated_canon_id_reference(text, start, end)
             )
         )
@@ -556,6 +625,21 @@ def canon_field_grounding_violations(
                         "Narrative field references Canon IDs without a field-level canon_basis edge.",
                     )
                 )
+            continue
+
+        if (
+            field == "occupation"
+            and reject_unknown_organizations
+            and known_source_aliases
+            and _ORGANIZATION_NAME_PATTERN.search(text)
+        ):
+            violations.append(
+                (
+                    field,
+                    (),
+                    "Occupation names an unverified organization; retrieve an existing Canon entity or use an ordinary role without creating an organization.",
+                )
+            )
             continue
 
         if field not in basis_by_field and field not in declared:
@@ -1036,7 +1120,7 @@ class CharacterAuthoringToolbox:
 
     @staticmethod
     def _lore_summary(record: Mapping[str, Any]) -> dict[str, Any]:
-        return {"id": record.get("id"), "source_id": record.get("id"), "source_type": "lore", "title": record.get("title", ""), "summary": record.get("statement", ""), "category": record.get("category")}
+        return {"id": record.get("id"), "source_id": record.get("id"), "source_type": "lore", "title": record.get("title", ""), "summary": record.get("statement", ""), "category": record.get("category"), "sensitivity": record.get("sensitivity", "public")}
 
     @staticmethod
     def _lore_view(record: Mapping[str, Any]) -> dict[str, Any]:
@@ -1090,6 +1174,8 @@ Canon grounding is conditional on Canon dependency, not a requirement to call a 
 
 If the brief uses or depends on an existing Canon entity, identifier, fact, rule or context—including an existing faction, lore fact, character, world rule, story, case or incident—you must first search for or retrieve it with the appropriate listed read-only authoring tool before producing the final CharacterDraft. Do not treat a name or ID in the brief as verified evidence. For an existing faction, search/retrieve the faction, use the returned stable ID and evidence, and only then set faction_id or cite that faction in canon_basis. The same rule applies to every other existing Canon claim. Use only facts returned by successful authoring-tool observations.
 
+Occupation contract: an ordinary role such as a freelancer, photographer, coordinator or consultant may be new design and must be marked `new_design:occupation:` when it does not depend on an existing entity. If occupation text names or includes a registered Canon entity, retrieve that entity and add a field-level `canon_basis` edge for `occupation`; do not classify the Canon entity relationship as new design. Never invent an organization, company, group, institution or named employer. A mixed occupation may keep its ordinary role tail as new design, but its Canon organization reference still requires the retrieved source edge.
+
 Every existing Canon claim must be represented by a canon_basis source ID returned by a successful tool observation. canon_basis.supports is a machine-validated contract: prefer defined generic support keys, field paths, or short extractive phrases copied from the cited Canon source; do not freely paraphrase Canon claims in supports. Every non-empty Canon-bearing text field must either include its exact field path in a canon_basis.supports entry or have an explicit new_design:<field> declaration in new_design_elements. A free-form new_design_elements sentence does not authorize unrelated fields. If a narrative field names an existing Canon ID, it must have a field-level basis edge even when the surrounding idea is new design. New personal details must be placed in new_design_elements or proposed_new_content and must never be presented as existing Canon. Never create organizations, IDs, files or Canon records. If required Canon cannot be found or verified, do not invent or guess it; leave the Canon-dependent field unresolved and surface the uncertainty through open_questions and constraint_notes. Respect hard constraints. Keep combat_role_profile canonical and high-level; do not emit a flat combat-role field. Do not invent numeric balance values.""" + "\n\n" + character_draft_prompt_contract()
 
 
@@ -1119,6 +1205,17 @@ Age, life-stage, and social-position requirements:
 
 Reference context requirements:
 - The supplied reference context is bounded external design precedent, not Canon evidence and not a template. Extract a high-level design principle, transform it into this brief, and do not copy a reference character's personality, combat kit, or visual identity. Field-level causal attribution is not available.
+"""
+
+
+CHARACTER_FINALIZATION_SYSTEM_CONTRACT = CHARACTER_SYSTEM_CONTRACT + """
+
+Finalization seam: retrieval is complete. Do not call tools, reconstruct retrieval
+history, or treat an absent Canon source as verified. The user payload contains a
+deterministic Evidence Bundle built from successful read-only retrieval. Treat
+only the bundle's source IDs and factual payloads as available Canon evidence;
+do not ask the provider to summarize Canon as an authority. Use the request and
+bundle as the complete finalization context.
 """
 
 
@@ -1179,6 +1276,20 @@ class GroundingFailureDiagnostic:
 _SAFE_GROUNDING_CANON_ID = re.compile(
     r"(?:world_rules|(?:faction|lore|char|story|case|incident|project)_[A-Za-z0-9][A-Za-z0-9_.:-]*)"
 )
+_ACTION_TERMINATION_PHASE = "action_termination"
+_FINALIZATION_CONTEXT_PHASE = "finalization_context"
+
+
+def _classify_generation_failure(
+    error: Exception,
+    *,
+    phase: str,
+    reason: str,
+) -> None:
+    """Attach fixed, sanitized stage metadata to a generation failure."""
+
+    error.phase = phase
+    error.reason = reason
 
 
 def _safe_grounding_canon_id(value: Any) -> str | None:
@@ -1201,6 +1312,653 @@ def _grounding_failure(
     return error
 
 
+_FINALIZATION_SEARCH_TO_SOURCE_TYPE = {
+    "search_lore": frozenset({"lore"}),
+    "search_factions": frozenset({"faction"}),
+    "search_characters": frozenset({"character"}),
+    "search_story_context": frozenset({"story", "case", "incident"}),
+}
+_FINALIZATION_SEARCH_BOUND_PER_SOURCE_TYPE = 5
+
+
+@dataclass(frozen=True)
+class CharacterFinalizationContext:
+    """Clean, provider-facing evidence context for the draft turn.
+
+    Retrieval history is intentionally not part of this context.  The full
+    history remains on the generation audit, while the finalizer receives a
+    deterministic evidence bundle and the single original request message.
+    Search-only discovery is bounded to five sources per source type, matching
+    the toolbox's default search limit.  Explicit ``get_*`` observations and
+    request-matched sources are retained outside that discovery bound.
+    """
+
+    messages: tuple[ConversationMessage, ...]
+    evidence: tuple[GroundingEvidence, ...]
+    source_ids: tuple[str, ...]
+    source_types: Mapping[str, str]
+    evidence_bundle: tuple[Mapping[str, Any], ...] = ()
+    selected_search_counts: Mapping[str, int] = field(default_factory=dict)
+    pruned_source_count: int = 0
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "messages", tuple(self.messages))
+        object.__setattr__(self, "evidence", tuple(self.evidence))
+        object.__setattr__(self, "source_ids", tuple(self.source_ids))
+        object.__setattr__(
+            self,
+            "source_types",
+            MappingProxyType(dict(self.source_types)),
+        )
+        object.__setattr__(
+            self,
+            "evidence_bundle",
+            tuple(dict(item) for item in self.evidence_bundle),
+        )
+        object.__setattr__(
+            self,
+            "selected_search_counts",
+            MappingProxyType(dict(self.selected_search_counts)),
+        )
+
+
+@dataclass(frozen=True)
+class _FinalizationCallRecord:
+    group_index: int
+    call_index: int
+    call: Mapping[str, Any]
+    tool_message: ConversationMessage
+    audit: ToolAuditEntry
+    source_ids: frozenset[str]
+    observation: Mapping[str, Any]
+
+
+@dataclass(frozen=True)
+class _FinalizationSearchCandidate:
+    source_id: str
+    source_type: str
+    group_index: int
+    call_index: int
+    result_index: int
+    score: int
+    result: Mapping[str, Any]
+
+
+_FINALIZATION_SAFE_PAYLOAD_KEYS = {
+    "world_rules": (
+        "rules",
+        "forbidden_patterns",
+        "scope_summary",
+    ),
+    "lore": (
+        "title",
+        "statement",
+        "summary",
+        "category",
+        "sensitivity",
+    ),
+    "faction": (
+        "name",
+        "type",
+        "summary",
+        "tags",
+        "status",
+        "public_identity",
+        "core_function",
+        "canon_constraints",
+        "internal_structure",
+    ),
+    "character": (
+        "name",
+        "age",
+        "occupation",
+        "faction_id",
+        "tags",
+        "character_hook",
+        "personality",
+        "ability",
+        "narrative",
+    ),
+    "story": (
+        "name",
+        "summary",
+        "faction_ids",
+    ),
+    "case": (
+        "name",
+        "summary",
+        "story_refs",
+        "related_incident_ids",
+    ),
+    "incident": (
+        "name",
+        "summary",
+        "story_refs",
+        "related_case_ids",
+    ),
+}
+_FINALIZATION_ALLOWED_SOURCE_TYPES = frozenset(_FINALIZATION_SAFE_PAYLOAD_KEYS)
+
+
+def _finalization_json_safe(value: Any) -> Any:
+    """Copy only JSON-shaped deterministic Canon data into the bundle."""
+
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, Mapping):
+        return {
+            str(key): _finalization_json_safe(item)
+            for key, item in sorted(value.items(), key=lambda item: str(item[0]))
+            if isinstance(key, (str, int, float, bool))
+        }
+    if isinstance(value, (tuple, list)):
+        return [_finalization_json_safe(item) for item in value]
+    return None
+
+
+def _finalization_has_factual_value(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, Mapping):
+        return bool(value) and any(_finalization_has_factual_value(item) for item in value.values())
+    if isinstance(value, (tuple, list)):
+        return bool(value) and any(_finalization_has_factual_value(item) for item in value)
+    return True
+
+
+def _finalization_safe_payload(
+    source_id: str,
+    source_type: str,
+    observation_payload: Mapping[str, Any] | None,
+    *,
+    allow_restricted_lore: bool = True,
+) -> dict[str, Any]:
+    if source_type not in _FINALIZATION_ALLOWED_SOURCE_TYPES:
+        raise ModelMalformedResponseError(
+            "Finalization context contains an unknown Canon source type"
+        )
+    if not isinstance(observation_payload, Mapping):
+        raise ModelMalformedResponseError(
+            "Finalization source has no verifiable observation payload"
+        )
+    if (
+        source_type == "lore"
+        and not allow_restricted_lore
+        and observation_payload.get("sensitivity") != "public"
+    ):
+        raise ModelMalformedResponseError(
+            "Finalization context cannot verify restricted lore access"
+        )
+    payload: dict[str, Any] = {
+        "source_id": source_id,
+        "source_type": source_type,
+    }
+    factual_value_found = False
+    for key in _FINALIZATION_SAFE_PAYLOAD_KEYS[source_type]:
+        if key not in observation_payload:
+            continue
+        safe_value = _finalization_json_safe(observation_payload[key])
+        payload[key] = safe_value
+        factual_value_found = factual_value_found or _finalization_has_factual_value(safe_value)
+    if not factual_value_found:
+        raise ModelMalformedResponseError(
+            "Finalization source has no verifiable observation payload"
+        )
+    return payload
+
+
+def _finalization_summary(payload: Mapping[str, Any], source_id: str, source_type: str) -> str:
+    for key in ("summary", "statement", "scope_summary", "title", "name"):
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    core_function = payload.get("core_function")
+    if isinstance(core_function, Mapping):
+        description = core_function.get("description")
+        if isinstance(description, str) and description.strip():
+            return description.strip()
+    for key in (
+        "rules",
+        "forbidden_patterns",
+        "tags",
+        "public_identity",
+        "canon_constraints",
+        "internal_structure",
+        "character_hook",
+        "personality",
+        "ability",
+        "narrative",
+        "faction_ids",
+        "story_refs",
+        "related_incident_ids",
+        "related_case_ids",
+    ):
+        value = payload.get(key)
+        if _finalization_has_factual_value(value):
+            return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    raise ModelMalformedResponseError(
+        "Finalization source has no factual summary derived from its observation"
+    )
+
+
+def _finalization_value_text(value: Any) -> str:
+    if isinstance(value, Mapping):
+        return " ".join(
+            f"{_finalization_value_text(key)} {_finalization_value_text(item)}"
+            for key, item in value.items()
+        )
+    if isinstance(value, (tuple, list)):
+        return " ".join(_finalization_value_text(item) for item in value)
+    if isinstance(value, (str, int, float, bool)):
+        return str(value)
+    return ""
+
+
+def _finalization_normalize(value: str) -> str:
+    return "".join(character.lower() for character in value if character.isalnum())
+
+
+def _finalization_units(value: str) -> set[str]:
+    chinese = [char for char in value if "\u4e00" <= char <= "\u9fff"]
+    units = set(re.findall(r"[a-z0-9]+", value))
+    units.update(chinese)
+    units.update("".join(chinese[index : index + 2]) for index in range(len(chinese) - 1))
+    return units
+
+
+def _finalization_search_score(query: Any, result: Mapping[str, Any]) -> int:
+    if not isinstance(query, str):
+        query = ""
+    query_norm = _finalization_normalize(query)
+    result_norm = _finalization_normalize(_finalization_value_text(result))
+    return (20 if query_norm and query_norm in result_norm else 0) + len(
+        _finalization_units(query_norm) & _finalization_units(result_norm)
+    )
+
+
+def _finalization_candidate_key(
+    candidate: _FinalizationSearchCandidate,
+) -> tuple[int, str, int, int]:
+    return (
+        -candidate.score,
+        candidate.source_id,
+        candidate.group_index,
+        candidate.result_index,
+    )
+
+
+def _request_canon_source_ids(
+    request: CharacterDesignRequest,
+    available_source_ids: set[str],
+    known_source_ids: set[str] | frozenset[str],
+    known_source_aliases: Mapping[str, Sequence[str]] | None,
+) -> frozenset[str]:
+    request_text = " ".join(
+        (
+            request.brief,
+            *request.hard_constraints,
+            *request.soft_preferences,
+            *request.forbidden_elements,
+            *request.desired_connections,
+        )
+    )
+    reference_ids: set[str] = set()
+    reference_pool = set(known_source_ids) | set(available_source_ids)
+    for source_id, start, end in _canon_id_references(request_text, reference_pool):
+        if not _is_negated_canon_id_reference(request_text, start, end):
+            reference_ids.add(source_id)
+    for source_id, start, end in _canon_alias_references(request_text, known_source_aliases):
+        if not _is_negated_canon_id_reference(request_text, start, end):
+            reference_ids.add(source_id)
+    return frozenset(reference_ids & available_source_ids)
+
+
+def _build_finalization_context(
+    request: CharacterDesignRequest,
+    *,
+    messages: Sequence[ConversationMessage],
+    source_ids: set[str] | frozenset[str],
+    source_types: Mapping[str, str],
+    audits: Sequence[ToolAuditEntry],
+    known_source_ids: set[str] | frozenset[str] | None = None,
+    known_source_aliases: Mapping[str, Sequence[str]] | None = None,
+    known_source_types: Mapping[str, str] | None = None,
+    allow_restricted_lore: bool = True,
+) -> CharacterFinalizationContext:
+    """Build a clean finalization context from the full retrieval trail.
+
+    The caller supplies the full successful retrieval trail and receives only
+    the original user message plus a deterministic Evidence Bundle.  This
+    implementation owns protocol pairing, direct-get retention,
+    search ranking/deduplication, and source-set construction.  Retrieval
+    action messages and observations never cross the finalization seam.
+    """
+
+    retrieved_ids = set(source_ids)
+    typed_retrieved_ids = retrieved_ids & set(source_types)
+    if typed_retrieved_ids != retrieved_ids:
+        raise ModelMalformedResponseError(
+            "Finalization context has a source without a source type"
+        )
+    if known_source_ids is not None:
+        unknown_source_ids = retrieved_ids - set(known_source_ids)
+        if unknown_source_ids:
+            raise ModelMalformedResponseError(
+                "Finalization context contains a source outside known Canon IDs"
+            )
+    for source_id in retrieved_ids:
+        source_type = source_types.get(source_id)
+        if not isinstance(source_type, str) or source_type not in _FINALIZATION_ALLOWED_SOURCE_TYPES:
+            raise ModelMalformedResponseError(
+                "Finalization context contains an unknown Canon source type"
+            )
+        if known_source_types is not None and known_source_types.get(source_id) != source_type:
+            raise ModelMalformedResponseError(
+                "Finalization context source type does not match known Canon type"
+            )
+    if not messages or messages[0].role != "user":
+        raise ModelMalformedResponseError(
+            "Finalization context must begin with the original user message"
+        )
+
+    successful_audits = tuple(
+        item for item in audits if item.result_status == "allowed"
+    )
+    audit_index = 0
+    groups: list[tuple[ConversationMessage, tuple[_FinalizationCallRecord, ...]]] = []
+    message_index = 1
+    while message_index < len(messages):
+        assistant = messages[message_index]
+        if assistant.role != "assistant" or not isinstance(assistant.content, Mapping):
+            raise ModelMalformedResponseError(
+                "Finalization context contains an invalid assistant tool-call message"
+            )
+        raw_calls = assistant.content.get("tool_calls")
+        if isinstance(raw_calls, (str, bytes)) or not isinstance(raw_calls, Sequence) or not raw_calls:
+            raise ModelMalformedResponseError(
+                "Finalization context contains an invalid tool-call group"
+            )
+        message_index += 1
+        records: list[_FinalizationCallRecord] = []
+        for call_index, raw_call in enumerate(raw_calls):
+            if not isinstance(raw_call, Mapping):
+                raise ModelMalformedResponseError(
+                    "Finalization context contains an invalid tool call"
+                )
+            call_id = raw_call.get("id")
+            tool_name = raw_call.get("name")
+            arguments = raw_call.get("arguments", {})
+            if (
+                not isinstance(call_id, str)
+                or not call_id
+                or not isinstance(tool_name, str)
+                or not tool_name
+                or not isinstance(arguments, Mapping)
+            ):
+                raise ModelMalformedResponseError(
+                    "Finalization context contains malformed tool-call metadata"
+                )
+            if message_index >= len(messages) or messages[message_index].role != "tool":
+                raise ModelMalformedResponseError(
+                    "Finalization context contains an orphan assistant tool call"
+                )
+            tool_message = messages[message_index]
+            if not isinstance(tool_message.content, Mapping):
+                raise ModelMalformedResponseError(
+                    "Finalization context contains an invalid tool observation"
+                )
+            if tool_message.content.get("tool_call_id") != call_id:
+                raise ModelMalformedResponseError(
+                    "Finalization context contains an orphan tool observation"
+                )
+            if audit_index >= len(successful_audits):
+                raise ModelMalformedResponseError(
+                    "Finalization context is missing a successful tool audit"
+                )
+            audit = successful_audits[audit_index]
+            audit_index += 1
+            if audit.tool_name != tool_name or dict(audit.arguments) != dict(arguments):
+                raise ModelMalformedResponseError(
+                    "Finalization context tool audit does not match the history"
+                )
+            call_source_ids = frozenset(audit.allowed_lore_ids)
+            if not call_source_ids <= retrieved_ids:
+                raise ModelMalformedResponseError(
+                    "Finalization context audit references an unretrieved source"
+                )
+            if any(item not in source_types for item in call_source_ids):
+                raise ModelMalformedResponseError(
+                    "Finalization context has an untyped tool observation"
+                )
+            if tool_name.startswith("get_") and not call_source_ids:
+                raise ModelMalformedResponseError(
+                    "Successful direct retrieval has no grounded source"
+                )
+            records.append(
+                _FinalizationCallRecord(
+                    len(groups),
+                    call_index,
+                    dict(raw_call),
+                    tool_message,
+                    audit,
+                    call_source_ids,
+                    tool_message.content,
+                )
+            )
+            message_index += 1
+        groups.append((assistant, tuple(records)))
+    if audit_index != len(successful_audits):
+        raise ModelMalformedResponseError(
+            "Finalization context has a successful tool audit without a history pair"
+        )
+
+    direct_source_ids = {
+        source_id
+        for _assistant, records in groups
+        for record in records
+        if record.call["name"].startswith("get_")
+        for source_id in record.source_ids
+    }
+    observation_payload_by_source: dict[str, Mapping[str, Any]] = {}
+    for _assistant, records in groups:
+        for record in records:
+            if not record.call["name"].startswith("get_"):
+                continue
+            raw_result = record.observation.get("result")
+            if not isinstance(raw_result, Mapping) or len(record.source_ids) != 1:
+                raise ModelMalformedResponseError(
+                    "Finalization direct retrieval has no verifiable observation payload"
+                )
+            direct_source_id = next(iter(record.source_ids))
+            observed_source_id = raw_result.get("source_id") or raw_result.get("id")
+            if observed_source_id != direct_source_id:
+                raise ModelMalformedResponseError(
+                    "Finalization direct retrieval observation does not identify its source"
+                )
+            observed_source_type = raw_result.get("source_type")
+            if observed_source_type is not None and observed_source_type != source_types[direct_source_id]:
+                raise ModelMalformedResponseError(
+                    "Finalization direct retrieval observation has an invalid source type"
+                )
+            observation_payload_by_source[direct_source_id] = raw_result
+    explicit_source_ids = _request_canon_source_ids(
+        request,
+        retrieved_ids,
+        set(known_source_ids or ()) | retrieved_ids,
+        known_source_aliases,
+    )
+
+    candidates_by_source_id: dict[str, _FinalizationSearchCandidate] = {}
+    candidates_by_record: dict[tuple[int, int], list[_FinalizationSearchCandidate]] = {}
+    for _assistant, records in groups:
+        for record in records:
+            tool_name = record.call["name"]
+            source_type_options = _FINALIZATION_SEARCH_TO_SOURCE_TYPE.get(tool_name)
+            if source_type_options is None:
+                continue
+            results = record.observation.get("results")
+            if isinstance(results, (str, bytes)) or not isinstance(results, Sequence):
+                raise ModelMalformedResponseError(
+                    "Search observation does not contain a valid results array"
+                )
+            for result_index, result in enumerate(results):
+                if not isinstance(result, Mapping):
+                    raise ModelMalformedResponseError(
+                        "Search observation contains an invalid result"
+                    )
+                candidate_id = result.get("source_id") or result.get("id")
+                if not isinstance(candidate_id, str) or candidate_id not in record.source_ids:
+                    continue
+                source_type = source_types.get(candidate_id)
+                if source_type not in source_type_options:
+                    continue
+                observed_source_type = result.get("source_type")
+                if observed_source_type is not None and observed_source_type != source_type:
+                    raise ModelMalformedResponseError(
+                        "Finalization search observation has an invalid source type"
+                    )
+                candidate = _FinalizationSearchCandidate(
+                    candidate_id,
+                    source_type,
+                    record.group_index,
+                    record.call_index,
+                    result_index,
+                    _finalization_search_score(record.call["arguments"].get("query"), result),
+                    result,
+                )
+                candidates_by_record.setdefault(
+                    (record.group_index, record.call_index), []
+                ).append(candidate)
+                previous = candidates_by_source_id.get(candidate_id)
+                if previous is None or _finalization_candidate_key(candidate) < _finalization_candidate_key(previous):
+                    candidates_by_source_id[candidate_id] = candidate
+
+    missing_explicit_sources = explicit_source_ids - direct_source_ids - set(
+        candidates_by_source_id
+    )
+    if missing_explicit_sources:
+        raise ModelMalformedResponseError(
+            "An explicitly requested Canon source cannot be reconstructed from its observation"
+        )
+
+    selected_search: dict[str, _FinalizationSearchCandidate] = {}
+    source_types_seen = sorted(
+        {candidate.source_type for candidate in candidates_by_source_id.values()}
+    )
+    for source_type in source_types_seen:
+        candidates = sorted(
+            (
+                candidate
+                for candidate in candidates_by_source_id.values()
+                if candidate.source_type == source_type and candidate.source_id not in direct_source_ids
+            ),
+            key=_finalization_candidate_key,
+        )
+        forced = [candidate for candidate in candidates if candidate.source_id in explicit_source_ids]
+        bounded = [candidate for candidate in candidates if candidate.source_id not in explicit_source_ids][
+            :_FINALIZATION_SEARCH_BOUND_PER_SOURCE_TYPE
+        ]
+        for candidate in (*forced, *bounded):
+            selected_search[candidate.source_id] = candidate
+
+    selected_source_ids = direct_source_ids | set(selected_search)
+    selected_types = {
+        source_id: source_types[source_id]
+        for source_id in selected_source_ids
+    }
+    selected_search_counts: dict[str, int] = {}
+    for source_id in selected_search:
+        selected_search_counts[selected_search[source_id].source_type] = (
+            selected_search_counts.get(selected_search[source_id].source_type, 0) + 1
+        )
+
+    for _assistant, records in groups:
+        for record in records:
+            tool_name = record.call["name"]
+            if not tool_name.startswith("get_") and tool_name not in _FINALIZATION_SEARCH_TO_SOURCE_TYPE:
+                raise ModelMalformedResponseError(
+                    "Finalization context contains an unknown retrieval tool"
+                )
+
+    final_source_ids = tuple(sorted(selected_source_ids))
+    final_source_types = {
+        source_id: selected_types[source_id] for source_id in final_source_ids
+    }
+    for source_id, candidate in selected_search.items():
+        observation_payload_by_source[source_id] = candidate.result
+    records_by_key = {
+        (record.group_index, record.call_index): record
+        for _assistant, records in groups
+        for record in records
+    }
+    provenance_by_source: dict[str, list[dict[str, Any]]] = {
+        source_id: [] for source_id in final_source_ids
+    }
+    for _assistant, records in groups:
+        for record in records:
+            if not record.call["name"].startswith("get_"):
+                continue
+            for source_id in sorted(record.source_ids & set(final_source_ids)):
+                provenance_by_source[source_id].append(
+                    {
+                        "kind": "explicit_get",
+                        "tool_name": record.call["name"],
+                        "round": record.audit.round,
+                    }
+                )
+    for source_id, candidate in selected_search.items():
+        record = records_by_key[(candidate.group_index, candidate.call_index)]
+        provenance_by_source[source_id].append(
+            {
+                "kind": "request_explicit"
+                if source_id in explicit_source_ids
+                else "discovery_search",
+                "tool_name": record.call["name"],
+                "round": record.audit.round,
+                "result_index": candidate.result_index,
+            }
+        )
+    bundle_items: list[Mapping[str, Any]] = []
+    for source_id in final_source_ids:
+        source_type = final_source_types[source_id]
+        payload = _finalization_safe_payload(
+            source_id,
+            source_type,
+            observation_payload_by_source.get(source_id),
+            allow_restricted_lore=allow_restricted_lore,
+        )
+        bundle_items.append(
+            {
+                "source_id": source_id,
+                "source_type": source_type,
+                "payload": payload,
+                "summary": _finalization_summary(payload, source_id, source_type),
+                "provenance": tuple(provenance_by_source[source_id]),
+            }
+        )
+    evidence_bundle = tuple(bundle_items)
+    evidence = tuple(
+        GroundingEvidence(
+            f"canon:{source_id}",
+            GroundingEvidenceType.TOOL_LORE,
+            item["summary"],
+            source_id,
+        )
+        for source_id, item in zip(final_source_ids, evidence_bundle)
+    )
+    return CharacterFinalizationContext(
+        (messages[0],),
+        evidence,
+        final_source_ids,
+        final_source_types,
+        evidence_bundle,
+        selected_search_counts,
+        len(retrieved_ids - set(final_source_ids)),
+    )
+
+
 @dataclass(frozen=True)
 class CharacterGenerationResult:
     draft: CharacterDraft
@@ -1213,11 +1971,13 @@ class CharacterGenerationResult:
 class CharacterGenerationAgent:
     """Sibling consumer to NpcConversationAgent for one-shot draft generation."""
 
-    def __init__(self, model: AgentModel, *, resolver: KnowledgeResolver | None = None, story_repository: StoryRepository | None = None, max_tool_rounds: int = 6, authoring_context: CharacterAuthoringKnowledgeContext | None = None, reference_context: Sequence[Mapping[str, Any]] = (), shadow_config: SkillShadowConfig | None = None) -> None:
+    def __init__(self, model: AgentModel, *, resolver: KnowledgeResolver | None = None, story_repository: StoryRepository | None = None, max_tool_rounds: int = 6, authoring_context: CharacterAuthoringKnowledgeContext | None = None, reference_context: Sequence[Mapping[str, Any]] = (), shadow_config: SkillShadowConfig | None = None, retrieval_strategy: str = "model_loop") -> None:
         if max_tool_rounds < 1:
             raise ValueError("max_tool_rounds must be positive")
         if shadow_config is not None and not isinstance(shadow_config, SkillShadowConfig):
             raise TypeError("shadow_config must be a SkillShadowConfig or None")
+        if retrieval_strategy not in ("model_loop", "deterministic"):
+            raise ValueError("retrieval_strategy must be 'model_loop' or 'deterministic'")
         self.resolver = resolver or KnowledgeResolver()
         self.story_repository = story_repository or load_story_repository()
         self.tools = CharacterAuthoringToolbox(self.resolver, self.story_repository)
@@ -1226,6 +1986,7 @@ class CharacterGenerationAgent:
         self.authoring_context = authoring_context or CharacterAuthoringKnowledgeContext()
         self.reference_context = tuple(dict(item) for item in reference_context)
         self.shadow_config = shadow_config or SkillShadowConfig()
+        self.retrieval_strategy = retrieval_strategy
 
     def generate(
         self,
@@ -1260,7 +2021,21 @@ class CharacterGenerationAgent:
         recovery_audit = CharacterDraftRecoveryAudit()
         try:
             finalization_round: int | None = None
-            for round_number in range(1, self.max_tool_rounds + 1):
+            if self.retrieval_strategy == "deterministic":
+                finalization_round = self._run_deterministic_retrieval(
+                    request=request,
+                    authoring=authoring,
+                    runtime=runtime,
+                    messages=messages,
+                    source_ids=source_ids,
+                    source_types=source_types,
+                    audits=audits,
+                    invocations=invocations,
+                )
+                action_rounds: Sequence[int] = ()
+            else:
+                action_rounds = range(1, self.max_tool_rounds + 1)
+            for round_number in action_rounds:
                 evidence = tuple(
                     GroundingEvidence(f"canon:{source_id}", GroundingEvidenceType.TOOL_LORE, source_id, source_id if source_type == "lore" else None)
                     for source_id, source_type in sorted(source_types.items())
@@ -1276,45 +2051,94 @@ class CharacterGenerationAgent:
                     evidence,
                     response_format="character_authoring_action",
                 )
-                turn = self.model.generate(prompt)
+                try:
+                    turn = self.model.generate(prompt)
+                except ModelMalformedResponseError as error:
+                    _classify_generation_failure(
+                        error,
+                        phase=_ACTION_TERMINATION_PHASE,
+                        reason="invalid_termination_signal",
+                    )
+                    raise
                 if turn.invocation is not None:
                     invocations.append(turn.invocation)
                 if turn.tool_calls:
-                    messages.append(ConversationMessage("assistant", {"tool_calls": [{"id": call.id, "name": call.name, "arguments": dict(call.arguments)} for call in turn.tool_calls]}))
-                    for call in turn.tool_calls:
-                        try:
-                            execution = self.tools.execute(tool_name=call.name, arguments=call.arguments, context=self.authoring_context, round_number=round_number)
-                        except AgentToolError:
-                            audits.append(ToolAuditEntry(round_number, call.name, call.arguments, "rejected", resolver_reason_code="tool_not_allowed" if call.name not in self.tools.allowed_tools else "invalid_tool_arguments"))
-                            raise
-                        audits.append(execution.audit)
-                        source_ids.update(execution.allowed_source_ids)
-                        source_types.update(execution.source_types)
-                        messages.append(ConversationMessage("tool", {"tool_call_id": call.id, **dict(execution.observation)}))
+                    self._execute_tool_calls(
+                        turn.tool_calls,
+                        round_number=round_number,
+                        messages=messages,
+                        source_ids=source_ids,
+                        source_types=source_types,
+                        audits=audits,
+                    )
                     continue
                 if not has_terminal_authoring_finalize_signal(turn.text or ""):
-                    raise ModelMalformedResponseError(
+                    error = ModelMalformedResponseError(
                         "Authoring action must be a real tool call or end with the exact FINALIZE signal"
                     )
+                    _classify_generation_failure(
+                        error,
+                        phase=_ACTION_TERMINATION_PHASE,
+                        reason="invalid_termination_signal",
+                    )
+                    raise error
                 finalization_round = round_number + 1
                 break
             if finalization_round is None:
-                finalization_round = self.max_tool_rounds + 1
+                error = ModelMalformedResponseError(
+                    "Authoring action round limit exhausted before exact FINALIZE"
+                )
+                _classify_generation_failure(
+                    error,
+                    phase=_ACTION_TERMINATION_PHASE,
+                    reason="tool_round_limit_exhausted",
+                )
+                raise error
 
-            evidence = tuple(
-                GroundingEvidence(f"canon:{source_id}", GroundingEvidenceType.TOOL_LORE, source_id, source_id if source_type == "lore" else None)
-                for source_id, source_type in sorted(source_types.items())
-            )
+            try:
+                finalization_context = _build_finalization_context(
+                    request,
+                    messages=messages,
+                    source_ids=source_ids,
+                    source_types=source_types,
+                    audits=audits,
+                    known_source_ids=self._known_canon_source_ids(),
+                    known_source_aliases=self._known_canon_source_aliases(),
+                    known_source_types=self._known_canon_source_types(),
+                    allow_restricted_lore=self.authoring_context.allow_restricted_lore,
+                )
+            except ModelMalformedResponseError as error:
+                _classify_generation_failure(
+                    error,
+                    phase=_FINALIZATION_CONTEXT_PHASE,
+                    reason="context_construction_failed",
+                )
+                raise
+            final_source_ids = set(finalization_context.source_ids)
+            final_source_types = dict(finalization_context.source_types)
+            finalization_payload = {
+                "task": "finalize_character_draft_from_evidence_bundle",
+                "request": request.to_dict(),
+                "evidence_bundle": [
+                    dict(item) for item in finalization_context.evidence_bundle
+                ],
+                "available_canon_source_ids": list(finalization_context.source_ids),
+                "available_canon_source_types": dict(
+                    sorted(finalization_context.source_types.items())
+                ),
+                "reference_context": [dict(item) for item in self.reference_context],
+            }
             final_prompt = AgentPrompt(
-                CHARACTER_SYSTEM_CONTRACT,
+                CHARACTER_FINALIZATION_SYSTEM_CONTRACT,
                 authoring,
                 runtime,
-                tuple(messages),
+                finalization_context.messages,
                 (),
                 f"character_generation:{request.request_id}",
                 finalization_round,
-                evidence,
+                finalization_context.evidence,
                 response_format="character_draft",
+                authoring_payload=finalization_payload,
             )
             final_turn = self.model.generate(final_prompt)
             if final_turn.invocation is not None:
@@ -1337,26 +2161,28 @@ class CharacterGenerationAgent:
                 request=request,
                 authoring=authoring,
                 runtime=runtime,
-                messages=messages,
-                evidence=evidence,
+                messages=finalization_context.messages,
+                evidence=finalization_context.evidence,
+                evidence_bundle=finalization_context.evidence_bundle,
                 turn_number=finalization_round,
                 invocations=invocations,
-                source_ids=source_ids,
-                source_types=source_types,
+                source_ids=final_source_ids,
+                source_types=final_source_types,
             )
             draft = CharacterDraft.from_mapping(payload)
             self._validate_draft(
                 draft,
                 request,
-                source_ids,
-                source_types,
+                final_source_ids,
+                final_source_types,
                 known_source_ids=self._known_canon_source_ids(),
+                known_source_aliases=self._known_canon_source_aliases(),
             )
             audit = CharacterGenerationAudit(
                 request.request_id,
                 len(audits),
                 tuple(audits),
-                tuple(sorted(source_ids)),
+                finalization_context.source_ids,
                 tuple(invocations),
                 tuple(item["reference_id"] for item in self.reference_context if isinstance(item.get("reference_id"), str)),
                 normalized_fields,
@@ -1370,7 +2196,7 @@ class CharacterGenerationAgent:
             )
             return CharacterGenerationResult(
                 draft,
-                tuple(sorted(source_ids)),
+                finalization_context.source_ids,
                 audit,
                 design_plan,
                 skill_shadow,
@@ -1388,6 +2214,145 @@ class CharacterGenerationAgent:
             error.contract_recovery = recovery_audit
             raise
         raise AgentExecutionError("Character generation ended without a draft")
+
+    def _run_deterministic_retrieval(
+        self,
+        *,
+        request: CharacterDesignRequest,
+        authoring: CharacterAuthoringView,
+        runtime: CharacterGenerationRuntimeView,
+        messages: list[ConversationMessage],
+        source_ids: set[str],
+        source_types: dict[str, str],
+        audits: list[ToolAuditEntry],
+        invocations: list[ModelInvocationAudit],
+    ) -> int:
+        plan = build_character_retrieval_plan(
+            request,
+            known_source_ids=self._known_canon_source_ids(),
+            known_source_aliases=self._known_canon_source_aliases(),
+            source_types=self._known_canon_source_types(),
+        )
+        self._execute_tool_calls(
+            plan.tool_calls,
+            round_number=1,
+            messages=messages,
+            source_ids=source_ids,
+            source_types=source_types,
+            audits=audits,
+        )
+        if not plan.requires_model_planning:
+            return 1
+
+        evidence = tuple(
+            GroundingEvidence(
+                f"canon:{source_id}",
+                GroundingEvidenceType.TOOL_LORE,
+                source_id,
+                source_id if source_type == "lore" else None,
+            )
+            for source_id, source_type in sorted(source_types.items())
+        )
+        prompt = AgentPrompt(
+            CHARACTER_AUTHORING_ACTION_SYSTEM_CONTRACT,
+            authoring,
+            runtime,
+            tuple(messages),
+            self.tools.tool_definitions,
+            f"character_generation:{request.request_id}",
+            1,
+            evidence,
+            response_format="character_authoring_action",
+        )
+        try:
+            turn = self.model.generate(prompt)
+        except ModelMalformedResponseError as error:
+            _classify_generation_failure(
+                error,
+                phase=_ACTION_TERMINATION_PHASE,
+                reason="invalid_termination_signal",
+            )
+            raise
+        if turn.invocation is not None:
+            invocations.append(turn.invocation)
+        if turn.tool_calls:
+            self._execute_tool_calls(
+                turn.tool_calls,
+                round_number=1,
+                messages=messages,
+                source_ids=source_ids,
+                source_types=source_types,
+                audits=audits,
+            )
+        elif not has_terminal_authoring_finalize_signal(turn.text or ""):
+            error = ModelMalformedResponseError(
+                "Authoring action must be a real tool call or end with the exact FINALIZE signal"
+            )
+            _classify_generation_failure(
+                error,
+                phase=_ACTION_TERMINATION_PHASE,
+                reason="invalid_termination_signal",
+            )
+            raise error
+        return 2
+
+    def _execute_tool_calls(
+        self,
+        calls: Sequence[ToolCall],
+        *,
+        round_number: int,
+        messages: list[ConversationMessage],
+        source_ids: set[str],
+        source_types: dict[str, str],
+        audits: list[ToolAuditEntry],
+    ) -> None:
+        messages.append(
+            ConversationMessage(
+                "assistant",
+                {
+                    "tool_calls": [
+                        {
+                            "id": call.id,
+                            "name": call.name,
+                            "arguments": dict(call.arguments),
+                        }
+                        for call in calls
+                    ]
+                },
+            )
+        )
+        for call in calls:
+            try:
+                execution = self.tools.execute(
+                    tool_name=call.name,
+                    arguments=call.arguments,
+                    context=self.authoring_context,
+                    round_number=round_number,
+                )
+            except AgentToolError:
+                audits.append(
+                    ToolAuditEntry(
+                        round_number,
+                        call.name,
+                        call.arguments,
+                        "rejected",
+                        resolver_reason_code=(
+                            "tool_not_allowed"
+                            if call.name not in self.tools.allowed_tools
+                            else "invalid_tool_arguments"
+                        ),
+                    )
+                )
+                raise
+            audits.append(execution.audit)
+            source_ids.update(execution.allowed_source_ids)
+            source_types.update(execution.source_types)
+            messages.append(
+                ConversationMessage(
+                    "tool",
+                    {"tool_call_id": call.id, **dict(execution.observation)},
+                )
+            )
 
     def _generate_skill_shadow(
         self,
@@ -1623,6 +2588,7 @@ class CharacterGenerationAgent:
         runtime: CharacterGenerationRuntimeView,
         messages: Sequence[ConversationMessage],
         evidence: tuple[GroundingEvidence, ...],
+        evidence_bundle: Sequence[Mapping[str, Any]],
         turn_number: int,
         invocations: list[ModelInvocationAudit],
         source_ids: set[str],
@@ -1680,6 +2646,7 @@ class CharacterGenerationAgent:
                 "request": request.to_dict(),
                 "available_canon_source_ids": sorted(source_ids),
                 "available_canon_source_types": dict(sorted(source_types.items())),
+                "evidence_bundle": [dict(item) for item in evidence_bundle],
                 "reference_context": [dict(item) for item in self.reference_context],
             },
             invocation_purpose="character_draft_recovery",
@@ -1752,7 +2719,7 @@ class CharacterGenerationAgent:
                 status="failed",
                 attempted=True,
                 missing_required=inspection.missing_required,
-                error_message=str(error),
+                error_message=_safe_character_draft_recovery_error_message(error),
             )
             error.contract_recovery = failed
             raise
@@ -1780,6 +2747,42 @@ class CharacterGenerationAgent:
             *self.story_repository.canon,
         }
 
+    def _known_canon_source_types(self) -> Mapping[str, str]:
+        source_types: dict[str, str] = {"world_rules": "world_rules"}
+        source_types.update({source_id: "faction" for source_id in self.resolver.factions})
+        source_types.update({source_id: "lore" for source_id in self.resolver.lore})
+        source_types.update({source_id: "character" for source_id in self.resolver.characters})
+        source_types.update({source_id: "story" for source_id in self.story_repository.canon})
+        source_types.update({source_id: "case" for source_id in self.resolver.cases})
+        source_types.update({source_id: "incident" for source_id in self.resolver.incidents})
+        return source_types
+
+    def _known_canon_source_aliases(self) -> Mapping[str, tuple[str, ...]]:
+        aliases: dict[str, set[str]] = {}
+
+        def add(source_id: str, *values: Any) -> None:
+            bucket = aliases.setdefault(source_id, set())
+            for value in values:
+                if isinstance(value, str) and len(value.strip()) >= 2:
+                    bucket.add(value.strip())
+
+        for source_id, record in self.resolver.factions.items():
+            add(source_id, record.get("name"), record.get("short_name"))
+        for source_id, record in self.resolver.characters.items():
+            name = record.get("name", {})
+            add(source_id, name.get("display_name") if isinstance(name, Mapping) else None)
+        for source_id, record in self.resolver.lore.items():
+            add(source_id, record.get("title"))
+        for source_id, record in self.resolver.projects.items():
+            add(source_id, record.get("name"), record.get("title"))
+        for source_id, record in self.resolver.cases.items():
+            add(source_id, record.get("name"))
+        for source_id, record in self.resolver.incidents.items():
+            add(source_id, record.get("name"))
+        for source_id, record in self.story_repository.canon.items():
+            add(source_id, record.get("title"), record.get("name"))
+        return {source_id: tuple(sorted(values)) for source_id, values in aliases.items()}
+
     @staticmethod
     def _validate_draft(
         draft: CharacterDraft,
@@ -1788,6 +2791,7 @@ class CharacterGenerationAgent:
         source_types: Mapping[str, str],
         *,
         known_source_ids: set[str] | frozenset[str] | None = None,
+        known_source_aliases: Mapping[str, Sequence[str]] | None = None,
     ) -> None:
         age_bounds = CharacterGenerationAgent._age_bounds(request)
         canon_age_supported = any(
@@ -1828,6 +2832,8 @@ class CharacterGenerationAgent:
             draft,
             source_ids if known_source_ids is None else known_source_ids,
             available_source_ids=source_ids,
+            known_source_aliases=known_source_aliases,
+            reject_unknown_organizations=True,
         )
         if field_violations:
             field, evidence_ids, reason = field_violations[0]
@@ -1908,13 +2914,17 @@ class DeterministicCharacterGenerationModel:
             if message.role == "assistant" and isinstance(message.content, Mapping)
         }
         brief = prompt.runtime.brief
-        if "get_world_rules" not in called:
+        if prompt.response_format == "character_authoring_action" and "get_world_rules" not in called:
             return ModelTurn(tool_calls=(ToolCall("world", "get_world_rules", {}),))
-        if "search_factions" not in called:
+        if prompt.response_format == "character_authoring_action" and "search_factions" not in called:
             return ModelTurn(tool_calls=(ToolCall("faction", "search_factions", {"query": brief, "limit": 5}),))
-        if "search_lore" not in called:
+        if prompt.response_format == "character_authoring_action" and "search_lore" not in called:
             return ModelTurn(tool_calls=(ToolCall("lore", "search_lore", {"query": brief, "limit": 5}),))
-        if ("事件" in brief or "事故" in brief or "南站" in brief or "南栈" in brief) and "search_story_context" not in called:
+        if (
+            prompt.response_format == "character_authoring_action"
+            and ("事件" in brief or "事故" in brief or "南站" in brief or "南栈" in brief)
+            and "search_story_context" not in called
+        ):
             return ModelTurn(tool_calls=(ToolCall("story", "search_story_context", {"query": brief, "limit": 5}),))
         if prompt.response_format == "character_authoring_action":
             return ModelTurn(text=CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL)
@@ -1922,6 +2932,31 @@ class DeterministicCharacterGenerationModel:
         selected_story = None
         lore_sources: list[str] = []
         faction_candidates: list[tuple[str, str]] = []
+        if isinstance(prompt.authoring_payload, Mapping):
+            bundle = prompt.authoring_payload.get("evidence_bundle", ())
+            if isinstance(bundle, Sequence) and not isinstance(bundle, (str, bytes)):
+                for evidence in bundle:
+                    if not isinstance(evidence, Mapping):
+                        continue
+                    source_id = evidence.get("source_id")
+                    source_type = evidence.get("source_type")
+                    payload = evidence.get("payload")
+                    if not isinstance(source_id, str) or not isinstance(source_type, str):
+                        continue
+                    if not isinstance(payload, Mapping):
+                        payload = {}
+                    if source_type == "faction":
+                        faction_candidates.append(
+                            (
+                                source_id,
+                                str(payload.get("name", ""))
+                                + str(payload.get("summary", "")),
+                            )
+                        )
+                    if source_type in {"story", "case", "incident"} and selected_story is None:
+                        selected_story = source_id
+                    if source_type == "lore":
+                        lore_sources.append(source_id)
         for message in prompt.messages:
             if message.role != "tool" or not isinstance(message.content, Mapping):
                 continue

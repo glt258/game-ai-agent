@@ -19,14 +19,17 @@ non-student status.
 
 | Namespace | Current Identifier | Meaning |
 |---|---|---|
-| Project | `0.8.0.dev0` | Current development version |
-| Public Release | `v0.7.0` | Latest public project release |
+| Project | `0.7.1` | Current release candidate |
+| Public Release | `v0.7.1` | Live authoring safety and diagnostics release |
 | Runtime Baseline | `runtime-v0.6.6` | Frozen runtime baseline |
 | Reference Corpus | `reference-corpus-v0.5` | Current 16-record expanded corpus baseline |
 | Character Intelligence | `CI-B1.5` | Current canonical combat-role compatibility milestone |
 | Character Skill | `CS-S1.1` | Current frozen interface-design milestone |
 
 The full naming policy is documented in [Versioning and Namespace Policy](docs/versioning.md).
+
+Release notes for `v0.7.1` are documented in
+[docs/release_notes_v0.7.1.md](docs/release_notes_v0.7.1.md).
 
 ## What This Project Is
 

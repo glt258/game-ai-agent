@@ -8,8 +8,10 @@ from typing import Any
 import pytest
 
 from agents import (
+    SAFE_FALLBACK_TEXT,
     LiveLLMAdapter,
     ModelAuthenticationError,
+    ModelInvocationAudit,
     ModelMalformedResponseError,
     ModelProviderError,
     ModelRateLimitError,
@@ -17,10 +19,8 @@ from agents import (
     NpcConversationAgent,
     ProviderClientError,
     ProviderCompletion,
-    SAFE_FALLBACK_TEXT,
 )
 from story import StoryRuntime
-
 
 STORY_ID = "story_after_the_show_001"
 
@@ -85,6 +85,8 @@ def test_timeout_retries_once_then_succeeds_with_audit():
     assert response.text == "我没有这部分可核实的资料。"
     assert client.call_count == 2 and delays == [0.5]
     assert response.model_invocations[0].retry_count == 1
+    assert response.model_invocations[0].provider_status_code is None
+    assert response.model_invocations[0].provider_retryable is None
 
 
 def test_timeout_exhaustion_is_bounded_and_turn_local():
@@ -103,6 +105,8 @@ def test_timeout_exhaustion_is_bounded_and_turn_local():
     assert failure.provider == "openai" and failure.model == "test-model"
     assert failure.finish_reason is None and failure.usage is None
     assert failure.error_message == "Live LLM request timed out after bounded retries"
+    assert failure.provider_status_code is None
+    assert failure.provider_retryable is True
 
 
 def test_rate_limit_retries_are_bounded():
@@ -116,6 +120,8 @@ def test_rate_limit_retries_are_bounded():
         agent.chat(session, state, "你好")
 
     assert client.call_count == 2
+    assert session.model_audit[0].provider_status_code == 429
+    assert session.model_audit[0].provider_retryable is True
 
 
 def test_authentication_failure_is_not_retried_or_leaked():
@@ -129,6 +135,8 @@ def test_authentication_failure_is_not_retried_or_leaked():
 
     assert client.call_count == 1
     assert secret not in str(captured.value)
+    assert session.model_audit[0].provider_status_code == 401
+    assert session.model_audit[0].provider_retryable is False
 
 
 def test_provider_5xx_exhaustion_is_normalized():
@@ -136,10 +144,93 @@ def test_provider_5xx_exhaustion_is_normalized():
         ProviderClientError("provider", retryable=True, status_code=500)
         for _ in range(2)
     ]
-    agent, _, session, state = run_live(failures, max_retries=1)
+    agent, client, session, state = run_live(failures, max_retries=1)
 
     with pytest.raises(ModelProviderError):
         agent.chat(session, state, "你好")
+
+    assert client.call_count == 2
+    assert session.model_audit[0].provider_status_code == 500
+    assert session.model_audit[0].provider_retryable is True
+
+
+@pytest.mark.parametrize("status_code", [400, 402, 403, 422])
+def test_nonretry_provider_failures_carry_safe_http_status(status_code: int):
+    agent, client, session, state = run_live(
+        [ProviderClientError("provider", retryable=False, status_code=status_code)]
+    )
+
+    with pytest.raises(ModelProviderError):
+        agent.chat(session, state, "你好")
+
+    assert client.call_count == 1
+    assert session.model_audit[0].provider_status_code == status_code
+    assert session.model_audit[0].provider_retryable is False
+
+
+@pytest.mark.parametrize(
+    ("kind", "error_type"),
+    [("timeout", ModelTimeoutError), ("provider", ModelProviderError)],
+)
+def test_statusless_transport_failures_keep_http_status_unknown(kind, error_type):
+    agent, client, session, state = run_live(
+        [ProviderClientError(kind, retryable=True)], max_retries=0
+    )
+
+    with pytest.raises(error_type):
+        agent.chat(session, state, "你好")
+
+    assert client.call_count == 1
+    assert session.model_audit[0].provider_status_code is None
+    assert session.model_audit[0].provider_retryable is True
+
+
+def test_provider_metadata_sanitizes_invalid_values_without_leaking_content():
+    status_sentinel = "HTTP_STATUS_SECRET"
+    retryable_sentinel = "RETRYABLE_SECRET"
+    raw_response_sentinel = "RAW_PROVIDER_RESPONSE_SECRET"
+    error = ProviderClientError(
+        "provider",
+        retryable=retryable_sentinel,
+        status_code=status_sentinel,
+    )
+    error.response = {"body": raw_response_sentinel}
+    agent, client, session, state = run_live([error], max_retries=0)
+
+    with pytest.raises(ModelProviderError):
+        agent.chat(session, state, "PROMPT_SECRET")
+
+    assert client.call_count == 1
+    failure = session.model_audit[0]
+    assert failure.provider_status_code is None
+    assert failure.provider_retryable is None
+    payload = json.dumps(asdict(failure), ensure_ascii=False)
+    assert all(
+        sentinel not in payload
+        for sentinel in (
+            status_sentinel,
+            retryable_sentinel,
+            raw_response_sentinel,
+            "PROMPT_SECRET",
+        )
+    )
+
+
+def test_provider_metadata_is_fail_closed_at_audit_construction():
+    audit = ModelInvocationAudit(
+        session_id="session",
+        turn_number=1,
+        provider="openai",
+        model="test-model",
+        outcome="provider",
+        latency_ms=1.0,
+        retry_count=0,
+        provider_status_code=True,
+        provider_retryable=1,
+    )
+
+    assert audit.provider_status_code is None
+    assert audit.provider_retryable is None
 
 
 @pytest.mark.parametrize(

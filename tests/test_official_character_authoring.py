@@ -384,6 +384,25 @@ def test_live_failure_renderer_reports_safe_grounding_check_and_canon_id() -> No
     assert "Draft faction_id is not grounded" not in output
 
 
+def test_live_failure_renderer_reports_occupation_grounding_without_raw_reason() -> None:
+    secret = "RAW_OCCUPATION_MODEL_OUTPUT_123"
+    error = AgentExecutionError(
+        f"Draft field 'occupation' is not canon-grounded (faction_003): {secret}"
+    )
+    error.grounding_failure = type(
+        "GroundingFailure",
+        (),
+        {"check": "field:occupation", "canon_id": "faction_003"},
+    )()
+
+    output = render_live_failure(error)
+
+    assert "Grounding check: field:occupation" in output
+    assert "Rejected Canon ID: faction_003" in output
+    assert secret not in output
+    assert "Draft field 'occupation' is not canon-grounded" not in output
+
+
 def test_live_failure_renderer_hides_untrusted_grounding_id() -> None:
     error = AgentExecutionError(
         "Draft faction_id is not grounded: raw_model_output_with_secret"

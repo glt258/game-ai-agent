@@ -62,6 +62,25 @@ class ModelInvocationAudit:
     # Provider-neutral purpose marker.  Existing callers default to ordinary
     # generation; bounded structural recovery marks its own invocation.
     purpose: str = "generation"
+    # Safe provider diagnostics only; values are sanitized at this audit seam.
+    provider_status_code: int | None = None
+    provider_retryable: bool | None = None
+
+    def __post_init__(self) -> None:
+        status_code = self.provider_status_code
+        if (
+            isinstance(status_code, bool)
+            or not isinstance(status_code, int)
+            or not 100 <= status_code <= 599
+        ):
+            status_code = None
+        retryable = (
+            self.provider_retryable
+            if isinstance(self.provider_retryable, bool)
+            else None
+        )
+        object.__setattr__(self, "provider_status_code", status_code)
+        object.__setattr__(self, "provider_retryable", retryable)
 
 
 @dataclass(frozen=True)

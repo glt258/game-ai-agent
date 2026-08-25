@@ -9,8 +9,8 @@ validator, schema, or corpus semantics.
 
 | Existing Name | File / Location | Actual Meaning | Proposed Namespace | Rename Required | Notes |
 |---|---|---|---|---|---|
-| `0.8.0.dev0` | `pyproject.toml`, `README.md` | Current development release of the whole project | Project Release | No | Already canonical project version. |
-| `v0.7.0` | `README.md`, Git tag | Latest public project release | Project Release | No | Legacy-compatible public release identifier; tag retained. |
+| `0.7.1` | `pyproject.toml`, `README.md` | Current release candidate for the whole project | Project Release | No | Release metadata prepared for manual `v0.7.1` publication. |
+| `v0.7.0` | `README.md`, Git tag | Previous public project release | Project Release | No | Historical public release identifier; tag retained. |
 | `v0.6.6` | `docs/runtime_freeze_v0.6.6.md`, `README.md`, Git tag | Frozen Character Authoring runtime baseline | Runtime Baseline | No | File name and Git tag are historical identifiers; canonical body identifier becomes `runtime-v0.6.6`. |
 | `v0.1` | `docs/reference_corpus/production_baseline_v0.1.md` and earlier corpus freeze docs | Historical pilot/production corpus checkpoints | Reference Corpus Baseline | No | Historical freeze identifiers are retained and labeled as legacy. |
 | `v0.5` | `docs/reference_corpus_expanded_baseline_v0.5.md`, expansion-wave docs, Git tags | Current 16-record expanded reference corpus baseline and its historical waves | Reference Corpus Baseline | No | Canonical current identifier becomes `reference-corpus-v0.5`; wave identifiers remain historical. |

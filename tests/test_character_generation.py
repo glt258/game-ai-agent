@@ -9,6 +9,7 @@ import pytest
 from agents import (
     AgentExecutionError,
     AgentToolError,
+    CharacterAuthoringToolbox,
     CharacterDesignRequest,
     CharacterGenerationAgent,
     DeterministicCharacterGenerationModel,
@@ -28,8 +29,9 @@ from agents import (
     ScriptedAgentModel,
     ThinkingModeBehavior,
     ToolCall,
+    ToolAuditEntry,
 )
-from agents.character_generation import CHARACTER_SYSTEM_CONTRACT
+from agents.character_generation import AuthoringToolExecution, CHARACTER_SYSTEM_CONTRACT
 
 
 def _payload(**overrides):
@@ -472,6 +474,28 @@ def live_agent(outcomes: list, **adapter_options):
     return CharacterGenerationAgent(adapter, max_tool_rounds=max_tool_rounds), client
 
 
+class _MalformedFinalizationToolbox(CharacterAuthoringToolbox):
+    def execute(self, *, tool_name, arguments, round_number, **kwargs):
+        return AuthoringToolExecution(
+            {
+                "status": "ok",
+                "result": {
+                    "source_id": "world_rules",
+                    "detail": "not a safe factual observation",
+                },
+            },
+            ToolAuditEntry(
+                round_number,
+                tool_name,
+                arguments,
+                "allowed",
+                allowed_lore_ids=("world_rules",),
+            ),
+            frozenset({"world_rules"}),
+            {"world_rules": "world_rules"},
+        )
+
+
 def test_live_malformed_structured_output_records_failure_audit():
     agent, client = live_agent(
         [
@@ -569,11 +593,11 @@ def test_live_character_generation_separates_retrieval_and_finalization_contract
     "action_text",
     [
         "FINALIZE",
-        "I have enough Canon evidence.\nFINALIZE",
-        "Retrieval is complete.\nFINALIZE\n\n",
+        " FINALIZE ",
+        "\n\tFINALIZE\n\n",
     ],
 )
-def test_live_authoring_action_accepts_terminal_finalize_line(action_text):
+def test_live_authoring_action_accepts_exact_finalize_with_outer_whitespace(action_text):
     agent, client = live_agent(
         [
             ProviderCompletion(text=action_text),
@@ -593,7 +617,10 @@ def test_live_authoring_action_accepts_terminal_finalize_line(action_text):
     "action_text",
     [
         "FINALIZE please",
+        "I have enough Canon evidence.\nFINALIZE",
         '{"action":"FINALIZE"}',
+        "```text\nFINALIZE\n```",
+        json.dumps(_payload(canon_basis=[]), ensure_ascii=False),
         "I think we should finalize",
         "FINALIZE and use faction_005",
         '{"/users/.../search_factions":null}',
@@ -602,10 +629,12 @@ def test_live_authoring_action_accepts_terminal_finalize_line(action_text):
 def test_live_authoring_action_rejects_non_terminal_finalize_text(action_text):
     agent, client = live_agent([ProviderCompletion(text=action_text)])
 
-    with pytest.raises(ModelMalformedResponseError, match="real tool call"):
+    with pytest.raises(ModelMalformedResponseError, match="real tool call") as captured:
         agent.generate("选择一个已有阵营的角色")
 
     assert client.call_count == 1
+    assert getattr(captured.value, "phase", None) == "action_termination"
+    assert getattr(captured.value, "reason", None) == "invalid_termination_signal"
 
 
 def test_live_finalization_tool_call_fails_closed_and_preserves_success_audit():
@@ -724,7 +753,66 @@ def test_live_character_generation_supports_multiple_retrieval_rounds():
     ]
 
 
-def test_live_character_generation_finalizes_immediately_after_retrieval_budget():
+def test_live_three_round_repeated_search_and_zero_result_replay_builds_bundle():
+    agent, client = live_agent(
+        [
+            ProviderCompletion(
+                tool_calls=(
+                    ProviderToolCall(
+                        "search-lore-1",
+                        "search_lore",
+                        '{"query":"大学","limit":5}',
+                    ),
+                    ProviderToolCall(
+                        "search-empty-1",
+                        "search_lore",
+                        '{"query":"no_such_canon_marker","limit":5}',
+                    ),
+                )
+            ),
+            ProviderCompletion(
+                tool_calls=(
+                    ProviderToolCall(
+                        "search-lore-2",
+                        "search_lore",
+                        '{"query":"大学","limit":5}',
+                    ),
+                    ProviderToolCall(
+                        "search-empty-2",
+                        "search_lore",
+                        '{"query":"no_such_canon_marker","limit":5}',
+                    ),
+                )
+            ),
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(text=json.dumps(_payload(canon_basis=[]), ensure_ascii=False)),
+        ]
+    )
+
+    result = agent.generate("设计一个完全原创的角色")
+
+    assert result.draft.status == "draft"
+    assert client.call_count == 4
+    assert [request["response_contract"]["mode"] for request in client.requests] == [
+        "text",
+        "text",
+        "text",
+        "json_object",
+    ]
+    assert [item.tool_name for item in result.audit.tool_calls] == [
+        "search_lore",
+        "search_lore",
+        "search_lore",
+        "search_lore",
+    ]
+    assert all(item.result_status == "allowed" for item in result.audit.tool_calls)
+    final_payload = json.loads(client.requests[-1]["messages"][1]["content"])
+    assert final_payload["evidence_bundle"]
+    assert all(item["source_type"] == "lore" for item in final_payload["evidence_bundle"])
+    assert client.requests[-1]["tools"] == []
+
+
+def test_live_character_generation_requires_exact_finalize_before_retrieval_budget():
     agent, client = live_agent(
         [
             ProviderCompletion(
@@ -745,69 +833,91 @@ def test_live_character_generation_finalizes_immediately_after_retrieval_budget(
                     ),
                 )
             ),
+        ],
+        max_tool_rounds=2,
+    )
+
+    with pytest.raises(ModelMalformedResponseError, match="round limit") as captured:
+        agent.generate("设计一个必须参考现有临洲大学研究中心的角色")
+
+    error = captured.value
+    assert client.call_count == 2
+    assert all(request["response_contract"]["mode"] == "text" for request in client.requests)
+    assert [entry.tool_call_count for entry in error.model_invocations] == [1, 1]
+    assert getattr(error, "phase", None) == "action_termination"
+    assert getattr(error, "reason", None) == "tool_round_limit_exhausted"
+
+
+def test_live_budget_exhaustion_fails_closed_without_finalization_invocation():
+    agent, client = live_agent(
+        [
             ProviderCompletion(
-                text=json.dumps(
-                    _payload(
-                        canon_basis=[],
-                        open_questions=["Confirm the character's faction after review."],
-                        constraint_notes=["Do not infer missing faction evidence."],
+                tool_calls=(ProviderToolCall("world", "get_world_rules", "{}"),)
+            ),
+            ProviderCompletion(
+                tool_calls=(
+                    ProviderToolCall(
+                        "search",
+                        "search_factions",
+                        '{"query":"大学","limit":5}',
                     ),
-                    ensure_ascii=False,
-                ),
-                request_id="req_draft",
+                )
             ),
         ],
         max_tool_rounds=2,
     )
 
-    result = agent.generate("设计一个必须参考现有临洲大学研究中心的角色")
+    with pytest.raises(ModelMalformedResponseError, match="round limit") as captured:
+        agent.generate("设计一个角色")
 
-    assert result.draft.open_questions == ("Confirm the character's faction after review.",)
-    assert result.draft.constraint_notes == ("Do not infer missing faction evidence.",)
-    assert "faction_002" in result.sources
-    assert client.call_count == 3
-    assert [request["response_contract"]["mode"] for request in client.requests] == [
-        "text",
-        "text",
-        "json_object",
-    ]
-    assert client.requests[0]["tools"]
-    assert client.requests[1]["tools"]
-    assert client.requests[2]["tools"] == []
-    assert [entry.turn_number for entry in result.audit.model_invocations] == [1, 2, 3]
-    assert [entry.tool_call_count for entry in result.audit.model_invocations] == [1, 1, 0]
-    assert [entry.provider_request_id for entry in result.audit.model_invocations] == [
-        None,
-        None,
-        "req_draft",
-    ]
+    error = captured.value
+    assert client.call_count == 2
+    assert all(request["response_contract"]["mode"] == "text" for request in client.requests)
+    assert [item.tool_call_count for item in error.model_invocations] == [1, 1]
+    assert getattr(error, "phase", None) == "action_termination"
+    assert getattr(error, "reason", None) == "tool_round_limit_exhausted"
 
 
-def test_live_budget_exhaustion_does_not_bypass_final_grounding_validation():
+def test_termination_then_context_construction_failure_is_classified_without_finalization():
+    agent, client = live_agent(
+        [
+            ProviderCompletion(
+                tool_calls=(ProviderToolCall("world", "get_world_rules", "{}"),)
+            ),
+            ProviderCompletion(text="FINALIZE"),
+        ]
+    )
+    agent.tools = _MalformedFinalizationToolbox()
+
+    with pytest.raises(ModelMalformedResponseError, match="observation payload") as captured:
+        agent.generate("设计一个角色")
+
+    error = captured.value
+    assert client.call_count == 2
+    assert all(request["response_contract"]["mode"] == "text" for request in client.requests)
+    assert [item.tool_call_count for item in error.model_invocations] == [1, 0]
+    assert getattr(error, "phase", None) == "finalization_context"
+    assert getattr(error, "reason", None) == "context_construction_failed"
+
+
+def test_live_budget_exhaustion_fails_closed_before_draft_grounding_validation():
     agent, client = live_agent(
         [
             ProviderCompletion(
                 tool_calls=(ProviderToolCall("world", "get_world_rules", {}),)
             ),
-            ProviderCompletion(
-                text=json.dumps(
-                    _payload(faction_id="faction_999", canon_basis=[]),
-                    ensure_ascii=False,
-                ),
-                request_id="req_draft",
-            ),
         ],
         max_tool_rounds=1,
     )
 
-    with pytest.raises(AgentExecutionError, match="not grounded") as captured:
+    with pytest.raises(ModelMalformedResponseError, match="round limit") as captured:
         agent.generate("设计一个角色")
 
-    assert client.call_count == 2
-    assert client.requests[1]["tools"] == []
-    assert client.requests[1]["response_contract"]["mode"] == "json_object"
-    assert [entry.turn_number for entry in captured.value.model_invocations] == [1, 2]
-    assert [entry.tool_call_count for entry in captured.value.model_invocations] == [1, 0]
+    assert client.call_count == 1
+    assert client.requests[0]["response_contract"]["mode"] == "text"
+    assert [entry.tool_call_count for entry in captured.value.model_invocations] == [1]
+    assert getattr(captured.value, "phase", None) == "action_termination"
+    assert getattr(captured.value, "reason", None) == "tool_round_limit_exhausted"
 
 
 def test_live_pseudo_tool_json_is_not_recognized_as_a_tool_call():
@@ -1014,6 +1124,154 @@ def test_live_validation_failure_keeps_invocation_trail():
         "success",
     ]
     assert error.model_invocations[2].provider_request_id == "req_draft"
+
+
+def _without_occupation_design_marker():
+    return tuple(
+        item
+        for item in _payload()["new_design_elements"]
+        if not item.startswith("new_design:occupation:")
+    )
+
+
+@pytest.mark.parametrize(
+    "occupation",
+    ["自由摄影师", "独立活动策划", "私人顾问"],
+)
+def test_live_ordinary_occupation_with_explicit_new_design_is_allowed(occupation):
+    design_elements = list(_payload()["new_design_elements"])
+    agent, _client = live_agent(
+        [
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(
+                text=json.dumps(
+                    _payload(
+                        occupation=occupation,
+                        canon_basis=[],
+                        new_design_elements=design_elements,
+                    ),
+                    ensure_ascii=False,
+                )
+            ),
+        ]
+    )
+
+    result = agent.generate("设计一个完全原创的成年角色")
+
+    assert result.draft.occupation == occupation
+
+
+def test_live_known_organization_without_retrieval_fails_with_entity_id():
+    agent, _client = live_agent(
+        [
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(
+                text=json.dumps(
+                    _payload(
+                        occupation="衡信保险风险分析师",
+                        canon_basis=[],
+                        new_design_elements=_without_occupation_design_marker(),
+                    ),
+                    ensure_ascii=False,
+                )
+            ),
+        ]
+    )
+
+    with pytest.raises(AgentExecutionError) as captured:
+        agent.generate("职业必须与现有商业组织有关的成年角色")
+
+    assert captured.value.grounding_failure.check == "field:occupation"
+    assert captured.value.grounding_failure.canon_id == "faction_003"
+
+
+def test_live_retrieved_organization_without_occupation_attribution_stays_fail_closed():
+    agent, _client = live_agent(
+        [
+            ProviderCompletion(
+                tool_calls=(
+                    ProviderToolCall("world", "get_world_rules", {}),
+                )
+            ),
+            ProviderCompletion(
+                tool_calls=(
+                    ProviderToolCall(
+                        "faction", "get_faction", {"faction_id": "faction_003"}
+                    ),
+                )
+            ),
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(
+                text=json.dumps(
+                    _payload(
+                        occupation="衡信保险风险分析师",
+                        canon_basis=[
+                            {"source_id": "world_rules", "supports": ["world_rules"]},
+                            {"source_id": "faction_003", "supports": ["faction_id"]},
+                        ],
+                        new_design_elements=_without_occupation_design_marker(),
+                    ),
+                    ensure_ascii=False,
+                )
+            ),
+        ]
+    )
+
+    with pytest.raises(AgentExecutionError) as captured:
+        agent.generate("职业必须与现有商业组织有关的成年角色")
+
+    assert captured.value.grounding_failure.check == "field:occupation"
+    assert captured.value.grounding_failure.canon_id == "faction_003"
+
+
+def test_live_unknown_organization_is_rejected_even_if_marked_new_design():
+    agent, _client = live_agent(
+        [
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(
+                text=json.dumps(
+                    _payload(
+                        occupation="临洲未来科技集团高级顾问",
+                        canon_basis=[],
+                        new_design_elements=_payload()["new_design_elements"],
+                    ),
+                    ensure_ascii=False,
+                )
+            ),
+        ]
+    )
+
+    with pytest.raises(AgentExecutionError, match="unverified organization"):
+        agent.generate("设计一个不能新建组织的成年角色")
+
+
+def test_live_mixed_occupation_requires_known_organization_edge_but_allows_new_role_tail():
+    agent, _client = live_agent(
+        [
+            ProviderCompletion(
+                tool_calls=(
+                    ProviderToolCall("faction", "get_faction", {"faction_id": "faction_003"}),
+                )
+            ),
+            ProviderCompletion(text="FINALIZE"),
+            ProviderCompletion(
+                text=json.dumps(
+                    _payload(
+                        occupation="为衡信保险提供外部活动协调服务的自由顾问",
+                        canon_basis=[
+                            {"source_id": "faction_003", "supports": ["occupation"]}
+                        ],
+                        new_design_elements=_without_occupation_design_marker(),
+                    ),
+                    ensure_ascii=False,
+                )
+            ),
+        ]
+    )
+
+    result = agent.generate("职业必须与现有商业组织有关的成年角色")
+
+    assert result.draft.occupation.startswith("为衡信保险")
 
 
 @pytest.mark.parametrize(
