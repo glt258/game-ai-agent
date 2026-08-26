@@ -1,5 +1,7 @@
 # Along the Street — Game AI Agent System
 
+**English** | [简体中文](README.zh-CN.md)
+
 [![CI](https://github.com/glt258/game-ai-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/glt258/game-ai-agent/actions/workflows/ci.yml)
 
 Along the Street is a structured game-content authoring system. Its current
