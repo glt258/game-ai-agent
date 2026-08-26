@@ -187,3 +187,20 @@ def test_diagnostic_runner_emits_one_independent_lineage_record(tmp_path) -> Non
     assert "super_secret_api_key" not in diagnostic_text
     assert "sk-FAKE_SECRET" not in diagnostic_text
     evidence.validate_shape_diagnostic_bundle(bundle)
+
+
+def test_contract_compliance_runner_has_independent_baseline_lineage(tmp_path) -> None:
+    runner = evidence.ContractComplianceCohortRunner()
+    model = _DiagnosticModel(EMPTY_CANDIDATE)
+    bundle = runner.run(
+        source_path=evidence.ROOT / evidence.DIAGNOSTIC_RESULT_RELATIVE_PATH,
+        live=True,
+        output_path=tmp_path / "compliance.json",
+        shadow_model=model,
+        enforce_clean_tree=False,
+    )
+    assert model.calls == 1
+    assert bundle["cohort_type"] == "contract_compliance"
+    assert bundle["observations"][0]["observation"]["case_id"] == "case_13"
+    assert bundle["observations"][0]["observation"]["baseline_observation_id"] == bundle["baseline_observation_id"]
+    evidence.validate_contract_compliance_bundle(bundle)

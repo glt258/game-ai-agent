@@ -15,6 +15,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from evals.character_skill_s2_shadow_evidence import (  # noqa: E402
+    ContractComplianceCohortRunner,
     EvidenceRunnerError,
     RetryUnavailableCohortRunner,
     ShadowEvidenceRunner,
@@ -43,6 +44,12 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="plan or run the single case_13 content-free shape diagnostic cohort",
     )
+    parser.add_argument(
+        "--contract-compliance-from",
+        type=Path,
+        default=None,
+        help="plan or run the single case_13 contract-compliance cohort",
+    )
     parser.add_argument("--output", type=Path, default=None, help=argparse.SUPPRESS)
     parser.add_argument("--manifest", type=Path, default=None, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
@@ -55,8 +62,20 @@ def main(argv: list[str] | None = None) -> int:
     if args.shape_diagnostic_from is not None and (args.retry_unavailable_from is not None or args.case_ids not in (None, ["case_13"])):
         print(json.dumps({"status": "error", "error_code": "DIAGNOSTIC_ARGUMENTS_INVALID"}))
         return 2
+    if args.contract_compliance_from is not None and (args.retry_unavailable_from is not None or args.shape_diagnostic_from is not None or args.case_ids not in (None, ["case_13"])):
+        print(json.dumps({"status": "error", "error_code": "COMPLIANCE_ARGUMENTS_INVALID"}))
+        return 2
     try:
-        if args.shape_diagnostic_from is not None:
+        if args.contract_compliance_from is not None:
+            if args.repeat != 1:
+                raise EvidenceRunnerError("COMPLIANCE_REPEAT_INVALID")
+            runner = ContractComplianceCohortRunner(ROOT, manifest_path=args.manifest)
+            result = runner.run(
+                source_path=args.contract_compliance_from,
+                live=args.live,
+                output_path=args.output,
+            )
+        elif args.shape_diagnostic_from is not None:
             if args.repeat != 1:
                 raise EvidenceRunnerError("DIAGNOSTIC_REPEAT_INVALID")
             runner = ShapeDiagnosticCohortRunner(ROOT, manifest_path=args.manifest)

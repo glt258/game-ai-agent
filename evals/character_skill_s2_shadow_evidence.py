@@ -16,6 +16,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -121,6 +122,18 @@ DIAGNOSTIC_TEMP_RELATIVE_PATH = (
 )
 _DIAGNOSTIC_RUN_ID_RE = re.compile(
     r"^cs-s2-shadow-deepseek-shape-diagnostic-v0\.1\.0-[0-9a-f]{40}-[0-9a-f]{12}-run-01$"
+)
+COMPLIANCE_SCHEMA_VERSION = "character-skill-s2-shadow-contract-compliance/0.1.0"
+COMPLIANCE_COHORT_TYPE = "contract_compliance"
+COMPLIANCE_LINEAGE_POLICY = "diagnoses_shape_observation_without_replacement"
+COMPLIANCE_RESULT_RELATIVE_PATH = (
+    "evals/results/character_skill_s2_shadow_contract_compliance_case_13_run_01_v0.1.0.json"
+)
+COMPLIANCE_TEMP_RELATIVE_PATH = (
+    "evals/results/.character_skill_s2_shadow_contract_compliance_case_13_run_01_v0.1.0.json.tmp"
+)
+_COMPLIANCE_RUN_ID_RE = re.compile(
+    r"^cs-s2-shadow-deepseek-contract-compliance-v0\.1\.0-[0-9a-f]{40}-[0-9a-f]{12}-run-01$"
 )
 
 
@@ -2005,6 +2018,154 @@ class ShapeDiagnosticCohortRunner:
         return bundle
 
 
+def _compliance_run_id(source_commit: str, manifest_digest: str) -> str:
+    return (
+        "cs-s2-shadow-deepseek-contract-compliance-v0.1.0-"
+        f"{source_commit}-{manifest_digest[:12]}-run-01"
+    )
+
+
+def validate_contract_compliance_bundle(bundle: Mapping[str, object]) -> None:
+    expected = {
+        "schema_version", "protocol_version", "run_id", "cohort_type",
+        "lineage_policy", "baseline_observation_id", "source_run_id",
+        "source_bundle_sha256", "source_manifest_digest", "input_manifest_digest",
+        "inputs", "provider", "observations",
+    }
+    _exact_keys(bundle, expected, "COMPLIANCE_BUNDLE_KEYS_INVALID")
+    if bundle["schema_version"] != COMPLIANCE_SCHEMA_VERSION or bundle["protocol_version"] != PROTOCOL_VERSION:
+        raise EvidenceContractError("COMPLIANCE_BUNDLE_VERSION_INVALID")
+    if bundle["cohort_type"] != COMPLIANCE_COHORT_TYPE or bundle["lineage_policy"] != COMPLIANCE_LINEAGE_POLICY:
+        raise EvidenceContractError("COMPLIANCE_COHORT_INVALID")
+    if not isinstance(bundle["run_id"], str) or not _COMPLIANCE_RUN_ID_RE.fullmatch(bundle["run_id"]):
+        raise EvidenceContractError("COMPLIANCE_RUN_ID_INVALID")
+    for key in ("baseline_observation_id", "source_run_id"):
+        if not isinstance(bundle[key], str) or not bundle[key]:
+            raise EvidenceContractError("COMPLIANCE_LINEAGE_INVALID")
+    if not (_RETRY_RUN_ID_RE.fullmatch(bundle["source_run_id"]) or _DIAGNOSTIC_RUN_ID_RE.fullmatch(bundle["source_run_id"])):
+        raise EvidenceContractError("COMPLIANCE_SOURCE_RUN_INVALID")
+    for key in ("source_bundle_sha256", "source_manifest_digest", "input_manifest_digest"):
+        if not _is_sha(bundle[key]):
+            raise EvidenceContractError("COMPLIANCE_DIGEST_INVALID")
+    if bundle["source_manifest_digest"] != bundle["input_manifest_digest"]:
+        raise EvidenceContractError("COMPLIANCE_MANIFEST_MISMATCH")
+    provider = bundle["provider"]
+    if not isinstance(provider, Mapping) or provider != _bundle_provider(provider.get("model_reported")):
+        raise EvidenceContractError("COMPLIANCE_PROVIDER_INVALID")
+    observations = bundle["observations"]
+    if not isinstance(observations, list) or len(observations) != 1:
+        raise EvidenceContractError("COMPLIANCE_OBSERVATIONS_INVALID")
+    record = observations[0]
+    if not isinstance(record, Mapping):
+        raise EvidenceContractError("COMPLIANCE_RECORD_INVALID")
+    observation = record.get("observation")
+    if not isinstance(observation, Mapping) or observation.get("baseline_observation_id") != bundle["baseline_observation_id"]:
+        raise EvidenceContractError("COMPLIANCE_LINEAGE_INVALID")
+    base_observation = dict(observation)
+    del base_observation["baseline_observation_id"]
+    body = {"observation": observation, "audit": record["audit"], "sanitization": record["sanitization"]}
+    if not _is_sha(record.get("record_digest")) or _record_digest(body) != record["record_digest"]:
+        raise EvidenceContractError("COMPLIANCE_RECORD_DIGEST_INVALID")
+    base_body = {"observation": base_observation, "audit": record["audit"], "sanitization": record["sanitization"]}
+    _validate_record({"record_digest": _record_digest(base_body), **base_body})
+
+
+class ContractComplianceCohortRunner:
+    """Run one independent case_13 compliance sample from the shape baseline."""
+
+    def __init__(self, repo_root: Path | str | None = None, *, manifest_path: Path | str | None = None) -> None:
+        self.root = Path(repo_root or ROOT).resolve()
+        self.manifest = load_manifest(self.root, manifest_path)
+        self.cases = _load_cases(self.root, self.manifest)
+
+    def _source(self, source_path: Path | str) -> tuple[dict[str, Any], bytes, Mapping[str, object]]:
+        source = Path(source_path).resolve()
+        if not source.is_file():
+            raise EvidenceRunnerError("COMPLIANCE_SOURCE_MISSING")
+        bundle, raw = _load_json(source)
+        validate_shape_diagnostic_bundle(bundle)
+        if bundle["input_manifest_digest"] != self.manifest.raw_digest:
+            raise EvidenceRunnerError("COMPLIANCE_SOURCE_MANIFEST_MISMATCH")
+        record = bundle["observations"][0]
+        if record["observation"]["case_id"] != "case_13":
+            raise EvidenceRunnerError("COMPLIANCE_CASE_INVALID")
+        return bundle, raw, record
+
+    def dry_run(self, *, source_path: Path | str) -> dict[str, object]:
+        source_bundle, raw, source_record = self._source(source_path)
+        return {
+            "status": "dry_run_contract_compliance",
+            "run_id": _compliance_run_id(_source_commit(self.root), self.manifest.raw_digest),
+            "cohort_type": COMPLIANCE_COHORT_TYPE,
+            "baseline_observation_id": source_record["observation"]["observation_id"],
+            "source_run_id": source_bundle["run_id"],
+            "source_bundle_sha256": _digest_bytes(raw),
+            "case_ids": ["case_13"],
+            "provider_factory_constructed": False,
+            "provider_called": False,
+            "result_path": None,
+        }
+
+    def run(
+        self,
+        *,
+        source_path: Path | str,
+        live: bool = False,
+        output_path: Path | str | None = None,
+        shadow_model: Any | None = None,
+        model_factory: Callable[[], Any] | None = None,
+        enforce_clean_tree: bool = True,
+    ) -> dict[str, object]:
+        source_bundle, source_raw, source_record = self._source(source_path)
+        if not live:
+            if output_path is not None or shadow_model is not None or model_factory is not None:
+                raise EvidenceRunnerError("COMPLIANCE_DRY_RUN_ARGUMENTS_INVALID")
+            return self.dry_run(source_path=source_path)
+        if enforce_clean_tree:
+            dirty = tuple(path for path in _dirty_paths(self.root) if path not in {COMPLIANCE_RESULT_RELATIVE_PATH, COMPLIANCE_TEMP_RELATIVE_PATH})
+            if dirty:
+                raise EvidenceRunnerError("LIVE_DIRTY_TREE")
+        destination = (Path(output_path) if output_path is not None else self.root / COMPLIANCE_RESULT_RELATIVE_PATH).resolve()
+        if destination == Path(source_path).resolve():
+            raise EvidenceRunnerError("COMPLIANCE_OUTPUT_EQUALS_SOURCE")
+        if shadow_model is not None and model_factory is not None:
+            raise EvidenceRunnerError("COMPLIANCE_MODEL_ARGUMENTS_INVALID")
+        with tempfile.TemporaryDirectory(prefix="cs-s2-compliance-") as temp_dir:
+            temp_output = Path(temp_dir) / "shadow.json"
+            regular = ShadowEvidenceRunner(self.root).run(
+                live=True,
+                case_id="case_13",
+                output_path=temp_output,
+                shadow_model=shadow_model,
+                model_factory=model_factory,
+                enforce_clean_tree=False,
+            )
+        run_id = _compliance_run_id(_source_commit(self.root), self.manifest.raw_digest)
+        record = dict(regular["observations"][0])
+        observation = dict(record["observation"])
+        observation["observation_id"] = f"{run_id}:case_13:compliance-01"
+        observation["baseline_observation_id"] = source_record["observation"]["observation_id"]
+        body = {"observation": observation, "audit": dict(record["audit"]), "sanitization": dict(record["sanitization"])}
+        compliance = {
+            "schema_version": COMPLIANCE_SCHEMA_VERSION,
+            "protocol_version": PROTOCOL_VERSION,
+            "run_id": run_id,
+            "cohort_type": COMPLIANCE_COHORT_TYPE,
+            "lineage_policy": COMPLIANCE_LINEAGE_POLICY,
+            "baseline_observation_id": source_record["observation"]["observation_id"],
+            "source_run_id": source_bundle["run_id"],
+            "source_bundle_sha256": _digest_bytes(source_raw),
+            "source_manifest_digest": self.manifest.raw_digest,
+            "input_manifest_digest": self.manifest.raw_digest,
+            "inputs": [dict(item) for item in self.manifest.input_files],
+            "provider": regular["provider"],
+            "observations": [{"record_digest": _record_digest(body), **body}],
+        }
+        validate_contract_compliance_bundle(compliance)
+        _write_bundle(destination, compliance, resume=False)
+        return compliance
+
+
 def _write_bundle(path: Path, bundle: Mapping[str, object], *, resume: bool) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists() and not resume:
@@ -2077,9 +2238,11 @@ def run_retry_unavailable(
 
 __all__ = [
     "CASE_IDS",
+    "COMPLIANCE_SCHEMA_VERSION",
     "EVIDENCE_SCHEMA_VERSION",
     "EvidenceContractError",
     "EvidenceRunnerError",
+    "ContractComplianceCohortRunner",
     "RETRY_SCHEMA_VERSION",
     "RetryUnavailableCohortRunner",
     "ShapeDiagnosticCohortRunner",
@@ -2090,5 +2253,6 @@ __all__ = [
     "run_shadow_evidence",
     "validate_retry_evidence_bundle",
     "validate_shape_diagnostic_bundle",
+    "validate_contract_compliance_bundle",
     "validate_evidence_bundle",
 ]
