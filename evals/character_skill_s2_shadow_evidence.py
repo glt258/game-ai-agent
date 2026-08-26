@@ -48,6 +48,9 @@ from combat_semantics import CombatRoleProfile  # noqa: E402
 PROTOCOL_VERSION = "0.2.1"
 MANIFEST_SCHEMA_VERSION = "character-skill-s2-shadow-evidence-manifest/0.2.1"
 EVIDENCE_SCHEMA_VERSION = "character-skill-s2-shadow-evidence/0.2.1"
+RETRY_SCHEMA_VERSION = "character-skill-s2-shadow-retry-unavailable/0.1.0"
+RETRY_COHORT_TYPE = "retry_unavailable"
+RETRY_LINEAGE_POLICY = "one_retry_per_unavailable_source_observation"
 PROVIDER_NAME = "opencode_go"
 MODEL_REQUESTED = "deepseek-v4-flash"
 TRANSPORT = "openai_chat_completions"
@@ -63,6 +66,9 @@ _GIT_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 _CASE_RE = re.compile(r"^case_(?:0[1-9]|1[0-9])$")
 _RUN_ID_RE = re.compile(
     r"^cs-s2-shadow-deepseek-v0\.2\.1-[0-9a-f]{40}-[0-9a-f]{12}-run-0[1-3]$"
+)
+_RETRY_RUN_ID_RE = re.compile(
+    r"^cs-s2-shadow-deepseek-retry-unavailable-v0\.2\.1-[0-9a-f]{40}-[0-9a-f]{12}-cohort-01$"
 )
 _SAFE_MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 _FAILURE_STAGES = {None, "context", "provider", "json", "shape", "validation", "runner"}
@@ -87,6 +93,12 @@ RESULT_RELATIVE_TEMPLATE = (
 )
 TEMP_RELATIVE_TEMPLATE = (
     "evals/results/.character_skill_s2_shadow_deepseek_run_{repeat:02d}_v0.2.1.json.tmp"
+)
+RETRY_RESULT_RELATIVE_PATH = (
+    "evals/results/character_skill_s2_shadow_deepseek_retry_unavailable_run_01_v0.2.1.json"
+)
+RETRY_TEMP_RELATIVE_PATH = (
+    "evals/results/.character_skill_s2_shadow_deepseek_retry_unavailable_run_01_v0.2.1.json.tmp"
 )
 
 
@@ -861,6 +873,182 @@ def _validate_record(record: object) -> None:
         raise EvidenceContractError("SANITIZATION_FAILURE")
 
 
+def _retry_run_id(source_commit: str, manifest_digest: str) -> str:
+    return (
+        "cs-s2-shadow-deepseek-retry-unavailable-v0.2.1-"
+        f"{source_commit}-{manifest_digest[:12]}-cohort-01"
+    )
+
+
+def _retry_observation_id(retry_run_id: str, source_observation_id: str) -> str:
+    source_digest = _digest_bytes(source_observation_id.encode("utf-8"))[:16]
+    return f"{retry_run_id}:source-{source_digest}"
+
+
+def _retry_record(
+    record: Mapping[str, object],
+    retry_run_id: str,
+    *,
+    supersedes: str | None = None,
+) -> dict[str, object]:
+    source_observation = record["observation"]
+    source_id = supersedes or source_observation["observation_id"]
+    body_observation = dict(source_observation)
+    body_observation["observation_id"] = _retry_observation_id(retry_run_id, source_id)
+    body_observation["supersedes"] = source_id
+    body = {
+        "observation": body_observation,
+        "audit": dict(record["audit"]),
+        "sanitization": dict(record["sanitization"]),
+    }
+    return {"record_digest": _record_digest(body), **body}
+
+
+def _validate_retry_record(record: object) -> None:
+    if not isinstance(record, Mapping):
+        raise EvidenceContractError("RETRY_RECORD_INVALID")
+    _exact_keys(record, {"record_digest", "observation", "audit", "sanitization"}, "RETRY_RECORD_KEYS_INVALID")
+    observation = record.get("observation")
+    if not isinstance(observation, Mapping):
+        raise EvidenceContractError("RETRY_OBSERVATION_INVALID")
+    if set(observation) != {
+        "observation_id",
+        "case_id",
+        "repeat",
+        "draft_id",
+        "transport_outcome",
+        "failure_stage",
+        "failure_code",
+        "shape_compliant",
+        "parse_outcome",
+        "outcome",
+        "finding_codes",
+        "candidate_digest",
+        "context_digest",
+        "report_digest",
+        "renderer_comparison",
+        "legacy_impact",
+        "supersedes",
+    }:
+        raise EvidenceContractError("RETRY_OBSERVATION_KEYS_INVALID")
+    supersedes = observation["supersedes"]
+    if not isinstance(supersedes, str) or not supersedes:
+        raise EvidenceContractError("RETRY_SUPERSEDES_INVALID")
+    if supersedes == observation["observation_id"]:
+        raise EvidenceContractError("RETRY_SUPERSEDES_SELF_REFERENCE")
+    base_observation = dict(observation)
+    del base_observation["supersedes"]
+    base = {
+        "record_digest": _record_digest(
+            {
+                "observation": base_observation,
+                "audit": record["audit"],
+                "sanitization": record["sanitization"],
+            }
+        ),
+        "observation": base_observation,
+        "audit": record["audit"],
+        "sanitization": record["sanitization"],
+    }
+    _validate_record(base)
+    # The normal validator above intentionally does not know the lineage field;
+    # validate the retry digest over the complete retry observation separately.
+    if not _is_sha(record["record_digest"]):
+        raise EvidenceContractError("RETRY_RECORD_DIGEST_INVALID")
+    complete_body = {
+        "observation": observation,
+        "audit": record["audit"],
+        "sanitization": record["sanitization"],
+    }
+    if _record_digest(complete_body) != record["record_digest"]:
+        raise EvidenceContractError("RETRY_RECORD_DIGEST_MISMATCH")
+
+
+def validate_retry_evidence_bundle(bundle: Mapping[str, object]) -> None:
+    """Validate the independent retry-unavailable cohort contract."""
+
+    _exact_keys(
+        bundle,
+        {
+            "schema_version",
+            "run_id",
+            "protocol_version",
+            "cohort_type",
+            "source_run_id",
+            "source_bundle_sha256",
+            "source_manifest_digest",
+            "input_manifest_digest",
+            "inputs",
+            "provider",
+            "lineage_policy",
+            "observations",
+        },
+        "RETRY_BUNDLE_KEYS_INVALID",
+    )
+    if bundle["schema_version"] != RETRY_SCHEMA_VERSION or bundle["protocol_version"] != PROTOCOL_VERSION:
+        raise EvidenceContractError("RETRY_BUNDLE_VERSION_INVALID")
+    if not isinstance(bundle["run_id"], str) or not _RETRY_RUN_ID_RE.fullmatch(bundle["run_id"]):
+        raise EvidenceContractError("RETRY_BUNDLE_ID_INVALID")
+    if bundle["cohort_type"] != RETRY_COHORT_TYPE or bundle["lineage_policy"] != RETRY_LINEAGE_POLICY:
+        raise EvidenceContractError("RETRY_COHORT_METADATA_INVALID")
+    if not isinstance(bundle["source_run_id"], str) or not _RUN_ID_RE.fullmatch(bundle["source_run_id"]):
+        raise EvidenceContractError("RETRY_SOURCE_RUN_INVALID")
+    for key in ("source_bundle_sha256", "source_manifest_digest", "input_manifest_digest"):
+        if not _is_sha(bundle[key]):
+            raise EvidenceContractError("RETRY_DIGEST_INVALID")
+    if bundle["source_manifest_digest"] != bundle["input_manifest_digest"]:
+        raise EvidenceContractError("RETRY_MANIFEST_MISMATCH")
+    inputs = bundle["inputs"]
+    if not isinstance(inputs, list) or len(inputs) != 2:
+        raise EvidenceContractError("RETRY_INPUTS_INVALID")
+    input_roles: set[str] = set()
+    for item in inputs:
+        if not isinstance(item, Mapping):
+            raise EvidenceContractError("RETRY_INPUT_ENTRY_INVALID")
+        _exact_keys(item, {"path", "sha256", "role"}, "RETRY_INPUT_ENTRY_INVALID")
+        if not isinstance(item["path"], str) or not _is_sha(item["sha256"]) or item["role"] not in {"provider", "evaluator"}:
+            raise EvidenceContractError("RETRY_INPUT_ENTRY_INVALID")
+        input_roles.add(item["role"])
+    if input_roles != {"provider", "evaluator"}:
+        raise EvidenceContractError("RETRY_INPUT_ROLES_INVALID")
+    provider = bundle["provider"]
+    if not isinstance(provider, Mapping):
+        raise EvidenceContractError("RETRY_PROVIDER_INVALID")
+    _exact_keys(
+        provider,
+        {
+            "name",
+            "model_requested",
+            "model_reported",
+            "transport",
+            "structured_output_mode",
+            "response_contract",
+            "candidate_schema_version",
+            "timeout_seconds",
+            "max_transport_retries",
+        },
+        "RETRY_PROVIDER_INVALID",
+    )
+    if provider != _bundle_provider(provider["model_reported"]):
+        raise EvidenceContractError("RETRY_PROVIDER_INVALID")
+    observations = bundle["observations"]
+    if not isinstance(observations, list):
+        raise EvidenceContractError("RETRY_OBSERVATIONS_INVALID")
+    seen: set[str] = set()
+    superseded: set[str] = set()
+    for record in observations:
+        _validate_retry_record(record)
+        observation = record["observation"]
+        observation_id = observation["observation_id"]
+        source_id = observation["supersedes"]
+        if observation_id in seen:
+            raise EvidenceContractError("RETRY_DUPLICATE_OBSERVATION")
+        if source_id in superseded:
+            raise EvidenceContractError("RETRY_DUPLICATE_SUPERSEDE")
+        seen.add(observation_id)
+        superseded.add(source_id)
+
+
 def _source_commit(root: Path) -> str:
     try:
         value = subprocess.run(
@@ -1211,6 +1399,273 @@ class ShadowEvidenceRunner:
         return bundle
 
 
+class RetryUnavailableCohortRunner:
+    """Plan and run an immutable retry cohort for UNAVAILABLE observations."""
+
+    def __init__(
+        self,
+        repo_root: Path | str | None = None,
+        *,
+        manifest_path: Path | str | None = None,
+    ) -> None:
+        self.root = Path(repo_root or ROOT).resolve()
+        self.manifest = load_manifest(self.root, manifest_path)
+        self.cases = _load_cases(self.root, self.manifest)
+
+    def _source(
+        self, source_path: Path | str
+    ) -> tuple[Path, dict[str, Any], bytes, str, list[Mapping[str, object]]]:
+        source = Path(source_path).resolve()
+        if not source.is_file():
+            raise EvidenceRunnerError("RETRY_SOURCE_MISSING")
+        if source == (self.root / RETRY_RESULT_RELATIVE_PATH).resolve():
+            raise EvidenceRunnerError("RETRY_SOURCE_IS_RETRY_OUTPUT")
+        try:
+            raw = source.read_bytes()
+        except OSError as error:
+            raise EvidenceRunnerError("RETRY_SOURCE_UNREADABLE") from error
+        try:
+            bundle = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise EvidenceRunnerError("RETRY_SOURCE_JSON_INVALID") from error
+        if not isinstance(bundle, dict):
+            raise EvidenceRunnerError("RETRY_SOURCE_NOT_OBJECT")
+        try:
+            validate_evidence_bundle(bundle)
+        except EvidenceContractError as error:
+            raise EvidenceRunnerError("RETRY_SOURCE_BUNDLE_INVALID") from error
+        if bundle["input_manifest_digest"] != self.manifest.raw_digest:
+            raise EvidenceRunnerError("RETRY_SOURCE_MANIFEST_MISMATCH")
+        if bundle["inputs"] != list(self.manifest.input_files):
+            raise EvidenceRunnerError("RETRY_SOURCE_INPUT_MISMATCH")
+        eligible: list[Mapping[str, object]] = []
+        for record in bundle["observations"]:
+            observation = record["observation"]
+            if observation["outcome"] != "UNAVAILABLE":
+                continue
+            if (
+                observation["candidate_digest"] is not None
+                or observation["report_digest"] is not None
+                or observation["parse_outcome"] == "parsed"
+            ):
+                raise EvidenceRunnerError("RETRY_SOURCE_TARGET_INVALID")
+            eligible.append(record)
+        return source, bundle, raw, _digest_bytes(raw), eligible
+
+    @staticmethod
+    def _selected(
+        eligible: Sequence[Mapping[str, object]],
+        case_ids: str | Sequence[str] | None,
+    ) -> tuple[Mapping[str, object], ...]:
+        by_case = {record["observation"]["case_id"]: record for record in eligible}
+        if case_ids is None:
+            return tuple(eligible)
+        requested = (case_ids,) if isinstance(case_ids, str) else tuple(case_ids)
+        if not requested or len(set(requested)) != len(requested):
+            raise EvidenceRunnerError("RETRY_CASE_SELECTION_INVALID")
+        missing = [case_id for case_id in requested if case_id not in by_case]
+        if missing:
+            raise EvidenceRunnerError("RETRY_TARGET_INELIGIBLE")
+        return tuple(by_case[case_id] for case_id in requested)
+
+    def dry_run(
+        self,
+        *,
+        source_path: Path | str,
+        case_id: str | Sequence[str] | None = None,
+    ) -> dict[str, object]:
+        source, bundle, raw, source_digest, eligible = self._source(source_path)
+        selected = self._selected(eligible, case_id)
+        try:
+            if source.read_bytes() != raw:
+                raise EvidenceRunnerError("RETRY_SOURCE_MODIFIED")
+        except OSError as error:
+            raise EvidenceRunnerError("RETRY_SOURCE_UNREADABLE") from error
+        retry_run_id = _retry_run_id(bundle["source_commit"], self.manifest.raw_digest)
+        return {
+            "status": "dry_run_retry_unavailable",
+            "run_id": retry_run_id,
+            "cohort_type": RETRY_COHORT_TYPE,
+            "source_run_id": bundle["run_id"],
+            "source_bundle_path": source.as_posix(),
+            "source_bundle_sha256": source_digest,
+            "source_bundle_bytes": len(raw),
+            "eligible_count": len(eligible),
+            "skipped_count": len(eligible) - len(selected),
+            "retry_target_count": len(selected),
+            "retry_observation_ids": [
+                _retry_observation_id(retry_run_id, record["observation"]["observation_id"])
+                for record in selected
+            ],
+            "provider_factory_constructed": False,
+            "provider_called": False,
+            "result_path": None,
+        }
+
+    def _bundle(
+        self,
+        *,
+        run_id: str,
+        source_bundle: Mapping[str, object],
+        source_digest: str,
+        records: Sequence[Mapping[str, object]],
+        reported_model: str | None,
+    ) -> dict[str, object]:
+        bundle = {
+            "schema_version": RETRY_SCHEMA_VERSION,
+            "run_id": run_id,
+            "protocol_version": PROTOCOL_VERSION,
+            "cohort_type": RETRY_COHORT_TYPE,
+            "source_run_id": source_bundle["run_id"],
+            "source_bundle_sha256": source_digest,
+            "source_manifest_digest": source_bundle["input_manifest_digest"],
+            "input_manifest_digest": self.manifest.raw_digest,
+            "inputs": [dict(item) for item in self.manifest.input_files],
+            "provider": _bundle_provider(reported_model),
+            "lineage_policy": RETRY_LINEAGE_POLICY,
+            "observations": [dict(record) for record in records],
+        }
+        validate_retry_evidence_bundle(bundle)
+        return bundle
+
+    def run(
+        self,
+        *,
+        source_path: Path | str,
+        live: bool = False,
+        case_id: str | Sequence[str] | None = None,
+        resume: bool = False,
+        output_path: Path | str | None = None,
+        shadow_model: Any | None = None,
+        enforce_clean_tree: bool = True,
+        model_factory: Callable[[], Any] | None = None,
+    ) -> dict[str, object]:
+        if shadow_model is not None and model_factory is not None:
+            raise EvidenceRunnerError("RETRY_MODEL_ARGUMENTS_INVALID")
+        source, source_bundle, source_raw, source_digest, eligible = self._source(source_path)
+        selected = self._selected(eligible, case_id)
+        run_id = _retry_run_id(source_bundle["source_commit"], self.manifest.raw_digest)
+        destination = (Path(output_path) if output_path is not None else self.root / RETRY_RESULT_RELATIVE_PATH).resolve()
+        if destination == source:
+            raise EvidenceRunnerError("RETRY_OUTPUT_EQUALS_SOURCE")
+        if not live:
+            if resume or output_path is not None or shadow_model is not None or model_factory is not None:
+                raise EvidenceRunnerError("RETRY_DRY_RUN_ARGUMENTS_INVALID")
+            return self.dry_run(source_path=source, case_id=case_id)
+        if enforce_clean_tree:
+            dirty = tuple(path for path in _dirty_paths(self.root) if path not in {RETRY_RESULT_RELATIVE_PATH, RETRY_TEMP_RELATIVE_PATH})
+            if dirty:
+                raise EvidenceRunnerError("LIVE_DIRTY_TREE")
+        existing: list[dict[str, object]] = []
+        if resume:
+            if not destination.is_file():
+                raise EvidenceRunnerError("RETRY_RESUME_RESULT_MISSING")
+            existing_bundle, _ = _load_json(destination)
+            try:
+                validate_retry_evidence_bundle(existing_bundle)
+            except EvidenceContractError as error:
+                raise EvidenceRunnerError("RETRY_RESUME_BUNDLE_INVALID") from error
+            if (
+                existing_bundle["run_id"] != run_id
+                or existing_bundle["source_run_id"] != source_bundle["run_id"]
+                or existing_bundle["source_bundle_sha256"] != source_digest
+                or existing_bundle["input_manifest_digest"] != self.manifest.raw_digest
+            ):
+                raise EvidenceRunnerError("RETRY_RESUME_IDENTITY_MISMATCH")
+            existing = list(existing_bundle["observations"])
+        elif destination.exists():
+            raise EvidenceRunnerError("RETRY_RESULT_EXISTS_WITHOUT_RESUME")
+        eligible_by_id = {record["observation"]["observation_id"]: record for record in eligible}
+        existing_by_source: dict[str, Mapping[str, object]] = {}
+        for record in existing:
+            source_id = record["observation"]["supersedes"]
+            if source_id not in eligible_by_id or source_id in existing_by_source:
+                raise EvidenceRunnerError("RETRY_DUPLICATE_SUPERSEDE")
+            existing_by_source[source_id] = record
+        provider_model = shadow_model
+        if provider_model is None:
+            try:
+                if model_factory is not None:
+                    provider_model = model_factory()
+                else:
+                    environment = {
+                        "NPC_AGENT_MODEL": "live",
+                        "NPC_LLM_PROVIDER": PROVIDER_NAME,
+                        "NPC_LLM_MODEL": MODEL_REQUESTED,
+                        "NPC_LLM_TRANSPORT": TRANSPORT,
+                        "NPC_LLM_STRUCTURED_OUTPUT": STRUCTURED_OUTPUT_MODE,
+                        "NPC_LLM_TIMEOUT_SECONDS": str(TIMEOUT_SECONDS),
+                        "NPC_LLM_MAX_RETRIES": str(MAX_TRANSPORT_RETRIES),
+                    }
+                    api_key = os.environ.get("NPC_LLM_API_KEY")
+                    if api_key:
+                        environment["NPC_LLM_API_KEY"] = api_key
+                    provider_model = character_model_from_environment(environment=environment, mode_override="live")
+            except Exception as error:
+                raise EvidenceRunnerError("PROVIDER_FACTORY_FAILED") from error
+        if provider_model is None:
+            raise EvidenceRunnerError("PROVIDER_FACTORY_FAILED")
+        router = ShadowEvidenceModelRouter(provider_model)
+        agent = CharacterGenerationAgent(router, shadow_config=SkillShadowConfig(enabled=True), retrieval_strategy="deterministic")
+        records = list(existing)
+        reported_models: set[str] = set()
+        if resume:
+            existing_provider = existing_bundle["provider"]
+            existing_reported = _safe_model_name(existing_provider["model_reported"])
+            if existing_reported is not None:
+                reported_models.add(existing_reported)
+        for source_record in selected:
+            source_id = source_record["observation"]["observation_id"]
+            if source_id in existing_by_source:
+                continue
+            observation = source_record["observation"]
+            case = self.cases[observation["case_id"]]
+            try:
+                result = agent.generate(case.request(), skill_shadow_context=case.context)
+                record = _retry_record(
+                    _record_from_result(case, run_id, observation["repeat"], result, router),
+                    run_id,
+                    supersedes=source_id,
+                )
+            except EvidenceRunnerError:
+                raise
+            except Exception:
+                record = _retry_record(
+                    ShadowEvidenceRunner(self.root)._runner_failure_record(case, run_id, observation["repeat"]),
+                    run_id,
+                    supersedes=source_id,
+                )
+            _validate_invocation_profile(router.shadow_invocation)
+            records.append(record)
+            reported = _safe_model_name(router.shadow_invocation.model if router.shadow_invocation is not None else None)
+            if reported is not None:
+                reported_models.add(reported)
+            bundle = self._bundle(
+                run_id=run_id,
+                source_bundle=source_bundle,
+                source_digest=source_digest,
+                records=records,
+                reported_model=next(iter(reported_models)) if len(reported_models) == 1 else None,
+            )
+            _write_bundle(destination, bundle, resume=resume or destination.exists())
+            existing_by_source[source_id] = record
+        try:
+            if source.read_bytes() != source_raw:
+                raise EvidenceRunnerError("RETRY_SOURCE_MODIFIED")
+        except OSError as error:
+            raise EvidenceRunnerError("RETRY_SOURCE_UNREADABLE") from error
+        final_reported = next(iter(reported_models)) if len(reported_models) == 1 else None
+        bundle = self._bundle(
+            run_id=run_id,
+            source_bundle=source_bundle,
+            source_digest=source_digest,
+            records=records,
+            reported_model=final_reported,
+        )
+        validate_retry_evidence_bundle(bundle)
+        return bundle
+
+
 def _write_bundle(path: Path, bundle: Mapping[str, object], *, resume: bool) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists() and not resume:
@@ -1257,14 +1712,42 @@ def run_shadow_evidence(
     )
 
 
+def run_retry_unavailable(
+    *,
+    source_path: Path | str,
+    repo_root: Path | str | None = None,
+    live: bool = False,
+    case_id: str | Sequence[str] | None = None,
+    resume: bool = False,
+    output_path: Path | str | None = None,
+    shadow_model: Any | None = None,
+    enforce_clean_tree: bool = True,
+    model_factory: Callable[[], Any] | None = None,
+) -> dict[str, object]:
+    return RetryUnavailableCohortRunner(repo_root).run(
+        source_path=source_path,
+        live=live,
+        case_id=case_id,
+        resume=resume,
+        output_path=output_path,
+        shadow_model=shadow_model,
+        enforce_clean_tree=enforce_clean_tree,
+        model_factory=model_factory,
+    )
+
+
 __all__ = [
     "CASE_IDS",
     "EVIDENCE_SCHEMA_VERSION",
     "EvidenceContractError",
     "EvidenceRunnerError",
+    "RETRY_SCHEMA_VERSION",
+    "RetryUnavailableCohortRunner",
     "ShadowEvidenceModelRouter",
     "ShadowEvidenceRunner",
     "load_manifest",
+    "run_retry_unavailable",
     "run_shadow_evidence",
+    "validate_retry_evidence_bundle",
     "validate_evidence_bundle",
 ]

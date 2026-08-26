@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "character-skill-s2-shadow-retry-unavailable/0.1.0",
+  "title": "Character Skill CS-S2 Retry-Unavailable Cohort Bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "protocol_version",
+    "cohort_type",
+    "source_run_id",
+    "source_bundle_sha256",
+    "source_manifest_digest",
+    "input_manifest_digest",
+    "inputs",
+    "provider",
+    "lineage_policy",
+    "observations"
+  ],
+  "properties": {
+    "schema_version": {"const": "character-skill-s2-shadow-retry-unavailable/0.1.0"},
+    "run_id": {"type": "string", "minLength": 1},
+    "protocol_version": {"const": "0.2.1"},
+    "cohort_type": {"const": "retry_unavailable"},
+    "source_run_id": {"type": "string", "minLength": 1},
+    "source_bundle_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source_manifest_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "input_manifest_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "inputs": {"type": "array", "minItems": 2, "maxItems": 2},
+    "provider": {"type": "object"},
+    "lineage_policy": {"const": "one_retry_per_unavailable_source_observation"},
+    "observations": {"type": "array", "items": {"$ref": "#/$defs/record"}}
+  },
+  "$defs": {
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_digest", "observation", "audit", "sanitization"],
+      "properties": {
+        "record_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "observation": {
+          "type": "object",
+          "required": ["observation_id", "supersedes"],
+          "properties": {
+            "observation_id": {"type": "string", "minLength": 1},
+            "supersedes": {"type": "string", "minLength": 1}
+          }
+        },
+        "audit": {"type": "object"},
+        "sanitization": {"type": "object"}
+      }
+    }
+  }
+}

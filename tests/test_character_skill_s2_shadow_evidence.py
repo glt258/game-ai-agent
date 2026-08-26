@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import asdict
 from pathlib import Path
@@ -97,6 +98,10 @@ def _run_case(tmp_path: Path, case_id: str, model: object) -> dict[str, object]:
 
 def test_manifest_and_default_dry_run_are_reproducible_without_factory_or_result() -> None:
     runner = evidence.ShadowEvidenceRunner(ROOT)
+    before = {
+        path.name
+        for path in (ROOT / "evals/results").glob("character_skill_s2_shadow_deepseek_run_*.json")
+    }
     result = runner.run(live=False, case_id="case_13")
 
     assert result["status"] == "dry_run"
@@ -105,9 +110,11 @@ def test_manifest_and_default_dry_run_are_reproducible_without_factory_or_result
     assert result["provider_called"] is False
     assert result["result_count"] == 0
     assert result["result_path"] is None
-    assert not any(
-        (ROOT / "evals/results").glob("character_skill_s2_shadow_deepseek_run_*.json")
-    )
+    after = {
+        path.name
+        for path in (ROOT / "evals/results").glob("character_skill_s2_shadow_deepseek_run_*.json")
+    }
+    assert after == before
 
 
 def test_router_rebuilds_remote_prompt_from_only_four_frozen_projection_fields() -> None:
@@ -309,6 +316,85 @@ def test_resume_skips_valid_observation_and_does_not_overwrite_without_resume(tm
             enforce_clean_tree=False,
         )
     assert captured.value.code == "RESULT_EXISTS_WITHOUT_RESUME"
+
+
+def _copy_run_01(tmp_path: Path) -> Path:
+    source = tmp_path / "source-run-01.json"
+    source.write_bytes(
+        (ROOT / "evals/results/character_skill_s2_shadow_deepseek_run_01_v0.2.1.json").read_bytes()
+    )
+    return source
+
+
+def test_retry_unavailable_dry_run_is_provider_free_and_preserves_source(tmp_path: Path) -> None:
+    source = _copy_run_01(tmp_path)
+    before = hashlib.sha256(source.read_bytes()).hexdigest()
+    runner = evidence.RetryUnavailableCohortRunner(ROOT)
+    result = runner.run(source_path=source, live=False)
+
+    assert result["status"] == "dry_run_retry_unavailable"
+    assert result["eligible_count"] == 3
+    assert result["retry_target_count"] == 3
+    assert result["provider_called"] is False
+    assert result["provider_factory_constructed"] is False
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == before
+
+
+def test_retry_unavailable_creates_lineage_and_resumes_without_duplicate_provider_call(tmp_path: Path) -> None:
+    source = _copy_run_01(tmp_path)
+    output = tmp_path / "retry.json"
+    first_model = _CandidateModel(PUBLIC_BY_ID["case_13"]["candidate"])
+    first = evidence.RetryUnavailableCohortRunner(ROOT).run(
+        source_path=source,
+        live=True,
+        case_id="case_13",
+        output_path=output,
+        shadow_model=first_model,
+        enforce_clean_tree=False,
+    )
+
+    record = first["observations"][0]
+    source_record = json.loads(source.read_text(encoding="utf-8"))["observations"]
+    original_id = next(item["observation"]["observation_id"] for item in source_record if item["observation"]["case_id"] == "case_13")
+    assert record["observation"]["observation_id"] != original_id
+    assert record["observation"]["supersedes"] == original_id
+    evidence.validate_retry_evidence_bundle(first)
+    digest_before = hashlib.sha256(source.read_bytes()).hexdigest()
+
+    second_model = _CandidateModel(error=AssertionError("provider must not be called on retry resume"))
+    resumed = evidence.RetryUnavailableCohortRunner(ROOT).run(
+        source_path=source,
+        live=True,
+        case_id="case_13",
+        resume=True,
+        output_path=output,
+        shadow_model=second_model,
+        enforce_clean_tree=False,
+    )
+    assert second_model.calls == 0
+    assert resumed["observations"] == first["observations"]
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == digest_before
+
+
+def test_retry_validator_rejects_duplicate_supersede_and_non_unavailable_targets(tmp_path: Path) -> None:
+    source = _copy_run_01(tmp_path)
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    payload["observations"][0]["observation"]["outcome"] = "PASS"
+    record = payload["observations"][0]
+    body = {
+        "observation": record["observation"],
+        "audit": record["audit"],
+        "sanitization": record["sanitization"],
+    }
+    record["record_digest"] = hashlib.sha256(
+        json.dumps(body, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    source.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    with pytest.raises(evidence.EvidenceRunnerError) as captured:
+        evidence.RetryUnavailableCohortRunner(ROOT).run(
+            source_path=source, live=False, case_id="case_01"
+        )
+    assert captured.value.code == "RETRY_TARGET_INELIGIBLE"
 
 
 def test_live_mode_rejects_dirty_source_before_factory_or_provider(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

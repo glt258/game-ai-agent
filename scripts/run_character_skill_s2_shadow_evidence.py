@@ -16,6 +16,7 @@ if str(SRC) not in sys.path:
 
 from evals.character_skill_s2_shadow_evidence import (  # noqa: E402
     EvidenceRunnerError,
+    RetryUnavailableCohortRunner,
     ShadowEvidenceRunner,
 )
 
@@ -29,21 +30,42 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repeat", type=int, default=1, choices=(1, 2, 3))
     parser.add_argument("--case-id", action="append", dest="case_ids")
     parser.add_argument("--resume", action="store_true", help="resume an existing append-only result bundle")
+    parser.add_argument(
+        "--retry-unavailable-from",
+        type=Path,
+        default=None,
+        help="plan or run an independent retry cohort from an existing evidence bundle",
+    )
     parser.add_argument("--output", type=Path, default=None, help=argparse.SUPPRESS)
     parser.add_argument("--manifest", type=Path, default=None, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if args.live and args.dry_run:
         print(json.dumps({"status": "error", "error_code": "MODE_ARGUMENTS_INVALID"}))
         return 2
+    if args.retry_unavailable_from is not None and args.case_ids is not None and not args.case_ids:
+        print(json.dumps({"status": "error", "error_code": "RETRY_ARGUMENTS_INVALID"}))
+        return 2
     try:
-        runner = ShadowEvidenceRunner(ROOT, manifest_path=args.manifest)
-        result = runner.run(
-            live=args.live,
-            repeat=args.repeat,
-            case_id=args.case_ids,
-            resume=args.resume,
-            output_path=args.output,
-        )
+        if args.retry_unavailable_from is not None:
+            if args.repeat != 1:
+                raise EvidenceRunnerError("RETRY_REPEAT_INVALID")
+            runner = RetryUnavailableCohortRunner(ROOT, manifest_path=args.manifest)
+            result = runner.run(
+                source_path=args.retry_unavailable_from,
+                live=args.live,
+                case_id=args.case_ids,
+                resume=args.resume,
+                output_path=args.output,
+            )
+        else:
+            runner = ShadowEvidenceRunner(ROOT, manifest_path=args.manifest)
+            result = runner.run(
+                live=args.live,
+                repeat=args.repeat,
+                case_id=args.case_ids,
+                resume=args.resume,
+                output_path=args.output,
+            )
     except EvidenceRunnerError as error:
         print(json.dumps({"status": "blocked", "error_code": error.code}, ensure_ascii=False))
         return 2
