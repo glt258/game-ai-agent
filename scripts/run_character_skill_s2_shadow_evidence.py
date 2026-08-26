@@ -18,6 +18,7 @@ from evals.character_skill_s2_shadow_evidence import (  # noqa: E402
     ContractComplianceCohortRunner,
     EvidenceRunnerError,
     FixedContractComplianceCohortRunner,
+    ModelSuitabilityProbeRunner,
     RetryUnavailableCohortRunner,
     ShadowEvidenceRunner,
     ShapeDiagnosticCohortRunner,
@@ -76,6 +77,12 @@ def main(argv: list[str] | None = None) -> int:
         help="run or plan the isolated case_13 60-second timeout-suitability probe",
     )
     parser.add_argument(
+        "--model-suitability-probe",
+        "--deepseek-v4-pro-bakeoff",
+        action="store_true",
+        help="run or plan the isolated case_13 DeepSeek V4 Pro model-suitability probe",
+    )
+    parser.add_argument(
         "--timeout-seconds",
         type=int,
         default=60,
@@ -97,7 +104,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     target_samples = args.target_samples
     if target_samples is None:
-        target_samples = 1 if args.timeout_suitability_probe else 3
+        target_samples = 1 if (args.timeout_suitability_probe or args.model_suitability_probe) else 3
     if args.live and args.dry_run:
         print(json.dumps({"status": "error", "error_code": "MODE_ARGUMENTS_INVALID"}))
         return 2
@@ -130,6 +137,19 @@ def main(argv: list[str] | None = None) -> int:
     ):
         print(json.dumps({"status": "error", "error_code": "TIMEOUT_SUITABILITY_ARGUMENTS_INVALID"}))
         return 2
+    if args.model_suitability_probe and (
+        args.timeout_suitability_probe
+        or args.retry_unavailable_from is not None
+        or args.shape_diagnostic_from is not None
+        or args.contract_compliance_from is not None
+        or args.fixed_contract_compliance_from is not None
+        or args.case_ids not in (None, ["case_13"])
+        or args.repeat != 1
+        or args.append_next_sample
+        or (args.target_samples is not None and args.target_samples != 1)
+    ):
+        print(json.dumps({"status": "error", "error_code": "MODEL_SUITABILITY_ARGUMENTS_INVALID"}))
+        return 2
     if args.append_next_sample and args.fixed_contract_compliance_from is None:
         print(json.dumps({"status": "error", "error_code": "FIXED_COHORT_ARGUMENTS_INVALID"}))
         return 2
@@ -146,6 +166,17 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.timeout_suitability_probe:
             runner = TimeoutSuitabilityProbeRunner(ROOT, manifest_path=args.manifest)
+            result = runner.run(
+                live=args.live,
+                timeout_seconds=args.timeout_seconds,
+                max_transport_retries=args.max_transport_retries,
+                target_sample_count=target_samples,
+                expected_source_commit=args.probe_source_commit,
+                resume=args.resume,
+                output_path=args.output,
+            )
+        elif args.model_suitability_probe:
+            runner = ModelSuitabilityProbeRunner(ROOT, manifest_path=args.manifest)
             result = runner.run(
                 live=args.live,
                 timeout_seconds=args.timeout_seconds,
