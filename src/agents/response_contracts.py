@@ -406,6 +406,69 @@ def _skill_kit_schema() -> dict[str, Any]:
 CHARACTER_SKILL_KIT_JSON_SCHEMA: Mapping[str, Any] = MappingProxyType(_skill_kit_schema())
 
 
+def character_skill_kit_prompt_contract() -> str:
+    """Render the frozen SkillKit contract into bounded model-facing guidance."""
+
+    schema = CHARACTER_SKILL_KIT_JSON_SCHEMA
+    properties = schema["properties"]
+    required = tuple(schema["required"])
+    lines = [
+        "Return exactly one SkillKit candidate JSON object, directly at the root.",
+        "The root object must contain exactly these required keys:",
+        *[f"- {name}" for name in required],
+        "Every required root key must be present even when its value is empty.",
+        "Array-valued sections may be empty; do not omit their keys.",
+        "Do not add any other root keys.",
+        "Do not wrap the object in candidate, result, data, output, response, payload, envelope, skill_kit, or ability_concept.",
+        "Do not return prose, Markdown, code fences, explanations, or reasoning; return only the JSON object.",
+        "Nested shape summary (all listed object fields are required):",
+    ]
+    definitions = schema["$defs"]
+    for root_name, root_schema in properties.items():
+        item = root_schema.get("items") if root_schema.get("type") == "array" else root_schema
+        if not isinstance(item, Mapping) or "$ref" not in item:
+            continue
+        definition_name = str(item["$ref"]).rsplit("/", 1)[-1]
+        definition = definitions.get(definition_name)
+        if not isinstance(definition, Mapping):
+            continue
+        fields = definition.get("properties", {})
+        if isinstance(fields, Mapping):
+            lines.append(f"- {root_name}: array of {definition_name} objects with fields {', '.join(str(key) for key in fields)}")
+
+    enum_lines: list[str] = []
+
+    def collect_enums(node: object, path: str) -> None:
+        if not isinstance(node, Mapping):
+            return
+        values = node.get("enum")
+        if isinstance(values, list) and values:
+            rendered = ", ".join("null" if value is None else str(value) for value in values)
+            enum_lines.append(f"- {path}: {rendered}")
+        child_properties = node.get("properties")
+        if isinstance(child_properties, Mapping):
+            for key, child in child_properties.items():
+                collect_enums(child, f"{path}.{key}" if path else str(key))
+        items = node.get("items")
+        if isinstance(items, Mapping):
+            collect_enums(items, path)
+        for branch_key in ("anyOf", "oneOf"):
+            branches = node.get(branch_key)
+            if isinstance(branches, list):
+                for branch in branches:
+                    collect_enums(branch, path)
+        ref = node.get("$ref")
+        if isinstance(ref, str) and ref.startswith("#/$defs/"):
+            name = ref.rsplit("/", 1)[-1]
+            collect_enums(definitions.get(name), path)
+
+    collect_enums(schema, "")
+    if enum_lines:
+        lines.append("Closed enum vocabulary:")
+        lines.extend(enum_lines)
+    return "\n".join(lines)
+
+
 GROUNDED_RESPONSE_JSON_SCHEMA: Mapping[str, Any] = MappingProxyType(
     {
         "type": "object",
@@ -521,6 +584,7 @@ __all__ = [
     "ResponseContract",
     "TEXT_RESPONSE_CONTRACT",
     "character_draft_root_example",
+    "character_skill_kit_prompt_contract",
     "character_draft_prompt_contract",
     "has_terminal_authoring_finalize_signal",
     "response_contract_for",

@@ -39,6 +39,7 @@ from agents.models import (  # noqa: E402
     ModelTurn,
     SkillShadowConfig,
 )
+from agents.response_contracts import character_skill_kit_prompt_contract  # noqa: E402
 from character_skill import (  # noqa: E402
     SkillValidationContext,
     evaluate,
@@ -321,7 +322,7 @@ class ShadowEvidenceModelRouter:
             _canonical_json(projection),
         )
         return AgentPrompt(
-            "Return one direct Character SkillKit candidate root JSON object.",
+            character_skill_kit_prompt_contract(),
             view,
             view,
             (message,),

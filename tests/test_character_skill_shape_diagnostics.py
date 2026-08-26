@@ -6,6 +6,7 @@ import json
 import pytest
 
 from agents.models import ModelInvocationAudit, ModelTurn
+from agents.response_contracts import character_skill_kit_prompt_contract
 from character_skill import SkillKitShapeError, parse_candidate
 from evals import character_skill_s2_shadow_evidence as evidence
 
@@ -31,6 +32,27 @@ def _error(payload: object) -> SkillKitShapeError:
 def test_valid_candidate_acceptance_is_unchanged() -> None:
     candidate = parse_candidate(EMPTY_CANDIDATE)
     assert candidate.to_mapping() == EMPTY_CANDIDATE
+
+
+def test_model_facing_contract_projection_is_explicit_and_schema_derived() -> None:
+    contract = character_skill_kit_prompt_contract()
+    for field in (
+        "schema_version",
+        "display_summary",
+        "entries",
+        "feedback_relations",
+        "resources",
+        "role_evidence",
+        "states",
+        "summons",
+    ):
+        assert f"- {field}" in contract
+    assert "Do not add any other root keys." in contract
+    assert "Do not wrap the object in candidate, result, data" in contract
+    assert "Do not return prose, Markdown, code fences, explanations, or reasoning" in contract
+    assert "mode" in contract and "active" in contract and "passive" in contract
+    assert "entries: array of ability objects" in contract
+    assert "protocols" in contract and "causes" in contract
 
 
 def test_wrong_root_type_is_content_free() -> None:

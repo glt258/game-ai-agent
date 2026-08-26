@@ -64,6 +64,7 @@ from .response_contracts import (
     CHARACTER_DRAFT_CORE_FIELDS,
     CHARACTER_DRAFT_JSON_SCHEMA,
     character_draft_prompt_contract,
+    character_skill_kit_prompt_contract,
     has_terminal_authoring_finalize_signal,
 )
 
@@ -2436,8 +2437,7 @@ class CharacterGenerationAgent:
                 "task": "produce_a_protocol_skill_kit_candidate",
             }
             shadow_prompt = AgentPrompt(
-                "Return one direct Character SkillKit candidate root JSON object. "
-                "Do not return a legacy ability_concept or an envelope.",
+                character_skill_kit_prompt_contract(),
                 authoring,
                 runtime,
                 (
