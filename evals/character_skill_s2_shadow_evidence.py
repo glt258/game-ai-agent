@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 from collections.abc import Callable, Mapping, Sequence
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -134,6 +135,30 @@ COMPLIANCE_TEMP_RELATIVE_PATH = (
 )
 _COMPLIANCE_RUN_ID_RE = re.compile(
     r"^cs-s2-shadow-deepseek-contract-compliance-v0\.1\.0-[0-9a-f]{40}-[0-9a-f]{12}-run-01$"
+)
+FIXED_COMPLIANCE_SCHEMA_VERSION = (
+    "character-skill-s2-shadow-contract-compliance-cohort/0.2.0"
+)
+FIXED_COMPLIANCE_COHORT_TYPE = "contract_compliance"
+FIXED_COMPLIANCE_LINEAGE_POLICY = "baseline_plus_parallel_samples"
+FIXED_COMPLIANCE_RESULT_RELATIVE_PATH = (
+    "evals/results/character_skill_s2_shadow_contract_compliance_cohort_run_01_v0.2.0.json"
+)
+FIXED_COMPLIANCE_TEMP_RELATIVE_PATH = (
+    "evals/results/.character_skill_s2_shadow_contract_compliance_cohort_run_01_v0.2.0.json.tmp"
+)
+MAX_FIXED_COHORT_SAMPLES = 16
+DEFAULT_FIXED_COHORT_TARGET = 3
+FIXED_COMPLIANCE_FROZEN_CONFIG = {
+    "timeout_seconds": TIMEOUT_SECONDS,
+    "max_transport_retries": MAX_TRANSPORT_RETRIES,
+    "retrieval_strategy": "deterministic",
+    "feature_mode": "record_only",
+    "repair_enabled": False,
+}
+_FIXED_COMPLIANCE_RUN_ID_RE = re.compile(
+    r"^cs-s2-shadow-deepseek-contract-compliance-cohort-v0\.2\.0-"
+    r"[0-9a-f]{40}-[0-9a-f]{12}-n[0-9]+-run-01$"
 )
 
 
@@ -2166,6 +2191,338 @@ class ContractComplianceCohortRunner:
         return compliance
 
 
+def _fixed_compliance_run_id(
+    source_commit: str, manifest_digest: str, target_sample_count: int
+) -> str:
+    return (
+        "cs-s2-shadow-deepseek-contract-compliance-cohort-v0.2.0-"
+        f"{source_commit}-{manifest_digest[:12]}-n{target_sample_count}-run-01"
+    )
+
+
+def _fixed_compliance_record(record: Mapping[str, object], sample_index: int) -> dict[str, object]:
+    return {"sample_index": sample_index, **deepcopy(dict(record))}
+
+
+def _fixed_compliance_bundle_digest(bundle: Mapping[str, object]) -> str:
+    body = {key: value for key, value in bundle.items() if key != "bundle_digest"}
+    return _digest_mapping(body)
+
+
+def _fixed_compliance_frozen_config() -> dict[str, object]:
+    return dict(FIXED_COMPLIANCE_FROZEN_CONFIG)
+
+
+def validate_fixed_contract_compliance_bundle(bundle: Mapping[str, object]) -> None:
+    expected = {
+        "schema_version",
+        "protocol_version",
+        "run_id",
+        "cohort_type",
+        "lineage_policy",
+        "case_id",
+        "target_sample_count",
+        "complete",
+        "baseline_observation_id",
+        "source_run_id",
+        "source_compliance_bundle_sha256",
+        "source_manifest_digest",
+        "input_manifest_digest",
+        "inputs",
+        "provider",
+        "frozen_config",
+        "source_observation_id",
+        "observations",
+        "bundle_digest",
+    }
+    _exact_keys(bundle, expected, "FIXED_COHORT_BUNDLE_KEYS_INVALID")
+    if (
+        bundle["schema_version"] != FIXED_COMPLIANCE_SCHEMA_VERSION
+        or bundle["protocol_version"] != PROTOCOL_VERSION
+        or bundle["cohort_type"] != FIXED_COMPLIANCE_COHORT_TYPE
+        or bundle["lineage_policy"] != FIXED_COMPLIANCE_LINEAGE_POLICY
+    ):
+        raise EvidenceContractError("FIXED_COHORT_VERSION_INVALID")
+    if not isinstance(bundle["run_id"], str) or not _FIXED_COMPLIANCE_RUN_ID_RE.fullmatch(bundle["run_id"]):
+        raise EvidenceContractError("FIXED_COHORT_RUN_ID_INVALID")
+    target = bundle["target_sample_count"]
+    if isinstance(target, bool) or not isinstance(target, int) or not 0 < target <= MAX_FIXED_COHORT_SAMPLES:
+        raise EvidenceContractError("COHORT_TARGET_INVALID")
+    if not isinstance(bundle["case_id"], str) or not _CASE_RE.fullmatch(bundle["case_id"]):
+        raise EvidenceContractError("FIXED_COHORT_CASE_INVALID")
+    if not isinstance(bundle["complete"], bool):
+        raise EvidenceContractError("FIXED_COHORT_COMPLETE_INVALID")
+    for key in (
+        "baseline_observation_id",
+        "source_run_id",
+        "source_observation_id",
+    ):
+        if not isinstance(bundle[key], str) or not bundle[key]:
+            raise EvidenceContractError("FIXED_COHORT_LINEAGE_INVALID")
+    if not (
+        _COMPLIANCE_RUN_ID_RE.fullmatch(bundle["source_run_id"])
+        or _RETRY_RUN_ID_RE.fullmatch(bundle["source_run_id"])
+        or _DIAGNOSTIC_RUN_ID_RE.fullmatch(bundle["source_run_id"])
+    ):
+        raise EvidenceContractError("FIXED_COHORT_SOURCE_RUN_INVALID")
+    for key in (
+        "source_compliance_bundle_sha256",
+        "source_manifest_digest",
+        "input_manifest_digest",
+        "bundle_digest",
+    ):
+        if not _is_sha(bundle[key]):
+            raise EvidenceContractError("FIXED_COHORT_DIGEST_INVALID")
+    if bundle["source_manifest_digest"] != bundle["input_manifest_digest"]:
+        raise EvidenceContractError("FIXED_COHORT_MANIFEST_MISMATCH")
+    if _fixed_compliance_bundle_digest(bundle) != bundle["bundle_digest"]:
+        raise EvidenceContractError("FIXED_COHORT_BUNDLE_DIGEST_INVALID")
+    inputs = bundle["inputs"]
+    if (
+        not isinstance(inputs, list)
+        or not inputs
+        or any(
+            not isinstance(item, Mapping)
+            or set(item) != {"path", "sha256", "role"}
+            or not isinstance(item["path"], str)
+            or not isinstance(item["role"], str)
+            or not _is_sha(item["sha256"])
+            for item in inputs
+        )
+    ):
+        raise EvidenceContractError("FIXED_COHORT_INPUTS_INVALID")
+    provider = bundle["provider"]
+    if not isinstance(provider, Mapping) or provider != _bundle_provider(provider.get("model_reported")):
+        raise EvidenceContractError("FIXED_COHORT_PROVIDER_INVALID")
+    if bundle["frozen_config"] != _fixed_compliance_frozen_config():
+        raise EvidenceContractError("FIXED_COHORT_CONFIG_INVALID")
+    observations = bundle["observations"]
+    if not isinstance(observations, list) or not 0 < len(observations) <= target:
+        raise EvidenceContractError("FIXED_COHORT_OBSERVATIONS_INVALID")
+    indexes: list[int] = []
+    observation_ids: set[str] = set()
+    for item in observations:
+        if not isinstance(item, Mapping):
+            raise EvidenceContractError("FIXED_COHORT_RECORD_INVALID")
+        _exact_keys(item, {"sample_index", "record_digest", "observation", "audit", "sanitization"}, "FIXED_COHORT_RECORD_KEYS_INVALID")
+        index = item["sample_index"]
+        if isinstance(index, bool) or not isinstance(index, int) or not 1 <= index <= target:
+            raise EvidenceContractError("FIXED_COHORT_SAMPLE_INDEX_INVALID")
+        if index in indexes:
+            raise EvidenceContractError("FIXED_COHORT_DUPLICATE_SAMPLE_INDEX")
+        indexes.append(index)
+        observation = item["observation"]
+        if "supersedes" in observation or observation["case_id"] != bundle["case_id"]:
+            raise EvidenceContractError("FIXED_COHORT_LINEAGE_INVALID")
+        if index == 1:
+            if observation.get("baseline_observation_id") != bundle["baseline_observation_id"]:
+                raise EvidenceContractError("FIXED_COHORT_LINEAGE_INVALID")
+        elif "baseline_observation_id" in observation:
+            raise EvidenceContractError("FIXED_COHORT_LINEAGE_INVALID")
+        full_body = {
+            "observation": observation,
+            "audit": item["audit"],
+            "sanitization": item["sanitization"],
+        }
+        if not _is_sha(item["record_digest"]) or _record_digest(full_body) != item["record_digest"]:
+            raise EvidenceContractError("FIXED_COHORT_RECORD_DIGEST_INVALID")
+        base_observation = dict(observation)
+        base_observation.pop("baseline_observation_id", None)
+        base_body = {
+            "observation": base_observation,
+            "audit": item["audit"],
+            "sanitization": item["sanitization"],
+        }
+        _validate_record({"record_digest": _record_digest(base_body), **base_body})
+        if observation["observation_id"] in observation_ids:
+            raise EvidenceContractError("FIXED_COHORT_DUPLICATE_OBSERVATION")
+        observation_ids.add(observation["observation_id"])
+        if index == 1:
+            if observation["observation_id"] != bundle["source_observation_id"]:
+                raise EvidenceContractError("FIXED_COHORT_LEGACY_SAMPLE_INVALID")
+        else:
+            expected_id = f"{bundle['run_id']}:{bundle['case_id']}:sample-{index:02d}"
+            if observation["observation_id"] != expected_id:
+                raise EvidenceContractError("FIXED_COHORT_OBSERVATION_ID_INVALID")
+    if sorted(indexes) != list(range(1, len(indexes) + 1)):
+        raise EvidenceContractError("FIXED_COHORT_SAMPLE_INDEX_GAP")
+    if bundle["complete"] is not (len(indexes) == target):
+        raise EvidenceContractError("FIXED_COHORT_COMPLETE_INVALID")
+    if not isinstance(bundle["baseline_observation_id"], str):
+        raise EvidenceContractError("FIXED_COHORT_LINEAGE_INVALID")
+
+
+class FixedContractComplianceCohortRunner:
+    """Append one deterministic sample at a time to a frozen cohort."""
+
+    def __init__(self, repo_root: Path | str | None = None, *, manifest_path: Path | str | None = None) -> None:
+        self.root = Path(repo_root or ROOT).resolve()
+        self.manifest = load_manifest(self.root, manifest_path)
+        self.cases = _load_cases(self.root, self.manifest)
+
+    def _legacy_source(self, source_path: Path | str) -> tuple[Path, dict[str, Any], bytes, str, Mapping[str, object]]:
+        source = Path(source_path).resolve()
+        if not source.is_file():
+            raise EvidenceRunnerError("FIXED_COHORT_SOURCE_MISSING")
+        bundle, raw = _load_json(source)
+        validate_contract_compliance_bundle(bundle)
+        if (
+            bundle["input_manifest_digest"] != self.manifest.raw_digest
+            or bundle["inputs"] != list(self.manifest.input_files)
+        ):
+            raise EvidenceRunnerError("FIXED_COHORT_SOURCE_MANIFEST_MISMATCH")
+        records = bundle["observations"]
+        source_record = records[0]
+        if source_record["observation"]["case_id"] != "case_13":
+            raise EvidenceRunnerError("FIXED_COHORT_CASE_INVALID")
+        return source, bundle, raw, _digest_bytes(raw), source_record
+
+    def _destination(self, output_path: Path | str | None) -> Path:
+        return (Path(output_path) if output_path is not None else self.root / FIXED_COMPLIANCE_RESULT_RELATIVE_PATH).resolve()
+
+    def _new_bundle(self, source_bundle: Mapping[str, object], source_digest: str, source_record: Mapping[str, object], target: int) -> dict[str, object]:
+        run_id = _fixed_compliance_run_id(_source_commit(self.root), self.manifest.raw_digest, target)
+        observations = [_fixed_compliance_record(source_record, 1)]
+        bundle = {
+            "schema_version": FIXED_COMPLIANCE_SCHEMA_VERSION,
+            "protocol_version": PROTOCOL_VERSION,
+            "run_id": run_id,
+            "cohort_type": FIXED_COMPLIANCE_COHORT_TYPE,
+            "lineage_policy": FIXED_COMPLIANCE_LINEAGE_POLICY,
+            "case_id": "case_13",
+            "target_sample_count": target,
+            "complete": False,
+            "baseline_observation_id": source_bundle["baseline_observation_id"],
+            "source_run_id": source_bundle["run_id"],
+            "source_compliance_bundle_sha256": source_digest,
+            "source_manifest_digest": self.manifest.raw_digest,
+            "input_manifest_digest": self.manifest.raw_digest,
+            "inputs": [dict(item) for item in self.manifest.input_files],
+            "provider": dict(source_bundle["provider"]),
+            "frozen_config": _fixed_compliance_frozen_config(),
+            "source_observation_id": source_record["observation"]["observation_id"],
+            "observations": observations,
+        }
+        bundle["complete"] = len(observations) == target
+        bundle["bundle_digest"] = _fixed_compliance_bundle_digest(bundle)
+        return bundle
+
+    def _load_or_initialize(self, source_path: Path | str, destination: Path, target: int) -> tuple[Path, bytes, dict[str, Any], list[dict[str, object]], str]:
+        source, source_bundle, source_raw, source_digest, source_record = self._legacy_source(source_path)
+        if destination == source:
+            raise EvidenceRunnerError("FIXED_COHORT_OUTPUT_EQUALS_SOURCE")
+        if destination.exists():
+            existing, _ = _load_json(destination)
+            validate_fixed_contract_compliance_bundle(existing)
+            if existing["target_sample_count"] != target:
+                raise EvidenceRunnerError("COHORT_TARGET_MISMATCH")
+            if (
+                existing["run_id"] != _fixed_compliance_run_id(_source_commit(self.root), self.manifest.raw_digest, target)
+                or existing["source_run_id"] != source_bundle["run_id"]
+                or existing["source_compliance_bundle_sha256"] != source_digest
+                or existing["baseline_observation_id"] != source_bundle["baseline_observation_id"]
+            ):
+                raise EvidenceRunnerError("FIXED_COHORT_IDENTITY_MISMATCH")
+            return source, source_raw, existing, list(existing["observations"]), source_digest
+        return source, source_raw, self._new_bundle(source_bundle, source_digest, source_record, target), [_fixed_compliance_record(source_record, 1)], source_digest
+
+    def dry_run(self, *, source_path: Path | str, target_sample_count: int = DEFAULT_FIXED_COHORT_TARGET, output_path: Path | str | None = None) -> dict[str, object]:
+        target = _validate_fixed_target(target_sample_count)
+        destination = self._destination(output_path)
+        source, source_raw, bundle, observations, _ = self._load_or_initialize(source_path, destination, target)
+        del source_raw
+        indexes = [item["sample_index"] for item in observations]
+        next_index = len(indexes) + 1 if len(indexes) < target else None
+        return {
+            "status": "cohort_complete" if next_index is None else "dry_run_fixed_contract_compliance",
+            "schema_version": FIXED_COMPLIANCE_SCHEMA_VERSION,
+            "run_id": bundle["run_id"],
+            "cohort_type": FIXED_COMPLIANCE_COHORT_TYPE,
+            "target_sample_count": target,
+            "existing_sample_count": len(indexes),
+            "existing_sample_indexes": sorted(indexes),
+            "remaining_sample_count": target - len(indexes),
+            "next_sample_index": next_index,
+            "case_ids": ["case_13"],
+            "source_bundle_sha256": bundle["source_compliance_bundle_sha256"],
+            "provider_factory_constructed": False,
+            "provider_called": False,
+            "result_path": destination.as_posix() if destination.exists() else None,
+            "source_path": source.as_posix(),
+        }
+
+    def run(
+        self,
+        *,
+        source_path: Path | str,
+        live: bool = False,
+        target_sample_count: int = DEFAULT_FIXED_COHORT_TARGET,
+        resume: bool = False,
+        append_next_sample: bool = False,
+        output_path: Path | str | None = None,
+        shadow_model: Any | None = None,
+        model_factory: Callable[[], Any] | None = None,
+        enforce_clean_tree: bool = True,
+    ) -> dict[str, object]:
+        target = _validate_fixed_target(target_sample_count)
+        destination = self._destination(output_path)
+        if not live:
+            if resume or append_next_sample or shadow_model is not None or model_factory is not None:
+                raise EvidenceRunnerError("FIXED_COHORT_DRY_RUN_ARGUMENTS_INVALID")
+            return self.dry_run(source_path=source_path, target_sample_count=target, output_path=output_path)
+        if not (resume or append_next_sample):
+            raise EvidenceRunnerError("FIXED_COHORT_APPEND_REQUIRED")
+        if resume and not destination.exists():
+            raise EvidenceRunnerError("FIXED_COHORT_RESUME_MISSING")
+        source, source_raw, existing_bundle, observations, source_digest = self._load_or_initialize(source_path, destination, target)
+        if len(observations) >= target:
+            raise EvidenceRunnerError("COHORT_ALREADY_COMPLETE")
+        if enforce_clean_tree:
+            dirty = tuple(path for path in _dirty_paths(self.root) if path not in {FIXED_COMPLIANCE_RESULT_RELATIVE_PATH, FIXED_COMPLIANCE_TEMP_RELATIVE_PATH})
+            if dirty:
+                raise EvidenceRunnerError("LIVE_DIRTY_TREE")
+        if shadow_model is not None and model_factory is not None:
+            raise EvidenceRunnerError("FIXED_COHORT_MODEL_ARGUMENTS_INVALID")
+        next_index = len(observations) + 1
+        run_id = existing_bundle["run_id"]
+        with tempfile.TemporaryDirectory(prefix="cs-s2-fixed-cohort-") as temp_dir:
+            regular = ShadowEvidenceRunner(self.root).run(
+                live=True,
+                case_id="case_13",
+                output_path=Path(temp_dir) / "shadow.json",
+                shadow_model=shadow_model,
+                model_factory=model_factory,
+                enforce_clean_tree=False,
+            )
+        if regular["provider"] != existing_bundle["provider"]:
+            raise EvidenceRunnerError("FIXED_COHORT_PROVIDER_DRIFT")
+        record = deepcopy(regular["observations"][0])
+        record["observation"]["observation_id"] = f"{run_id}:case_13:sample-{next_index:02d}"
+        record_body = {
+            "observation": record["observation"],
+            "audit": record["audit"],
+            "sanitization": record["sanitization"],
+        }
+        record["record_digest"] = _record_digest(record_body)
+        observations.append(_fixed_compliance_record(record, next_index))
+        bundle = deepcopy(existing_bundle)
+        bundle["observations"] = observations
+        bundle["complete"] = len(observations) == target
+        bundle["bundle_digest"] = _fixed_compliance_bundle_digest({key: value for key, value in bundle.items() if key != "bundle_digest"})
+        validate_fixed_contract_compliance_bundle(bundle)
+        if source.read_bytes() != source_raw:
+            raise EvidenceRunnerError("FIXED_COHORT_SOURCE_MODIFIED")
+        _write_bundle(destination, bundle, resume=destination.exists())
+        del source_digest
+        return bundle
+
+
+def _validate_fixed_target(target: object) -> int:
+    if isinstance(target, bool) or not isinstance(target, int) or not 0 < target <= MAX_FIXED_COHORT_SAMPLES:
+        raise EvidenceRunnerError("COHORT_TARGET_INVALID")
+    return target
+
+
 def _write_bundle(path: Path, bundle: Mapping[str, object], *, resume: bool) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists() and not resume:
@@ -2239,10 +2596,14 @@ def run_retry_unavailable(
 __all__ = [
     "CASE_IDS",
     "COMPLIANCE_SCHEMA_VERSION",
+    "DEFAULT_FIXED_COHORT_TARGET",
     "EVIDENCE_SCHEMA_VERSION",
     "EvidenceContractError",
     "EvidenceRunnerError",
     "ContractComplianceCohortRunner",
+    "FixedContractComplianceCohortRunner",
+    "FIXED_COMPLIANCE_SCHEMA_VERSION",
+    "MAX_FIXED_COHORT_SAMPLES",
     "RETRY_SCHEMA_VERSION",
     "RetryUnavailableCohortRunner",
     "ShapeDiagnosticCohortRunner",
@@ -2254,5 +2615,6 @@ __all__ = [
     "validate_retry_evidence_bundle",
     "validate_shape_diagnostic_bundle",
     "validate_contract_compliance_bundle",
+    "validate_fixed_contract_compliance_bundle",
     "validate_evidence_bundle",
 ]

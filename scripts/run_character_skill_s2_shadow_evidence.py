@@ -17,6 +17,7 @@ if str(SRC) not in sys.path:
 from evals.character_skill_s2_shadow_evidence import (  # noqa: E402
     ContractComplianceCohortRunner,
     EvidenceRunnerError,
+    FixedContractComplianceCohortRunner,
     RetryUnavailableCohortRunner,
     ShadowEvidenceRunner,
     ShapeDiagnosticCohortRunner,
@@ -50,6 +51,23 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="plan or run the single case_13 contract-compliance cohort",
     )
+    parser.add_argument(
+        "--fixed-contract-compliance-from",
+        type=Path,
+        default=None,
+        help="plan or append one sample to a fixed multi-observation contract-compliance cohort",
+    )
+    parser.add_argument(
+        "--target-samples",
+        type=int,
+        default=3,
+        help="fixed cohort target sample count (frozen after initialization)",
+    )
+    parser.add_argument(
+        "--append-next-sample",
+        action="store_true",
+        help="explicitly authorize one live fixed-cohort sample append",
+    )
     parser.add_argument("--output", type=Path, default=None, help=argparse.SUPPRESS)
     parser.add_argument("--manifest", type=Path, default=None, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
@@ -65,8 +83,29 @@ def main(argv: list[str] | None = None) -> int:
     if args.contract_compliance_from is not None and (args.retry_unavailable_from is not None or args.shape_diagnostic_from is not None or args.case_ids not in (None, ["case_13"])):
         print(json.dumps({"status": "error", "error_code": "COMPLIANCE_ARGUMENTS_INVALID"}))
         return 2
+    if args.fixed_contract_compliance_from is not None and (
+        args.retry_unavailable_from is not None
+        or args.shape_diagnostic_from is not None
+        or args.contract_compliance_from is not None
+        or args.case_ids not in (None, ["case_13"])
+    ):
+        print(json.dumps({"status": "error", "error_code": "FIXED_COHORT_ARGUMENTS_INVALID"}))
+        return 2
+    if args.append_next_sample and args.fixed_contract_compliance_from is None:
+        print(json.dumps({"status": "error", "error_code": "FIXED_COHORT_ARGUMENTS_INVALID"}))
+        return 2
     try:
-        if args.contract_compliance_from is not None:
+        if args.fixed_contract_compliance_from is not None:
+            runner = FixedContractComplianceCohortRunner(ROOT, manifest_path=args.manifest)
+            result = runner.run(
+                source_path=args.fixed_contract_compliance_from,
+                live=args.live,
+                target_sample_count=args.target_samples,
+                resume=args.resume,
+                append_next_sample=args.append_next_sample,
+                output_path=args.output,
+            )
+        elif args.contract_compliance_from is not None:
             if args.repeat != 1:
                 raise EvidenceRunnerError("COMPLIANCE_REPEAT_INVALID")
             runner = ContractComplianceCohortRunner(ROOT, manifest_path=args.manifest)
