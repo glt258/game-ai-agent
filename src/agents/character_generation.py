@@ -11,11 +11,11 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
-from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Mapping, Sequence
 
 from along_street_resources import data_resource
+from character_intelligence.planner import CharacterDesignPlan
 from character_skill import (
     ProtocolSkillKitCandidate,
     SkillKitShapeError,
@@ -24,7 +24,7 @@ from character_skill import (
     parse_candidate,
     render_ability_concept,
 )
-from character_intelligence.planner import CharacterDesignPlan
+from character_skill.errors import SkillKitShapeDiagnostic, build_shape_diagnostic
 from combat_semantics import CombatRoleProfile, resolve_legacy_combat_role_profile
 from knowledge import KnowledgeResolver
 from story import StoryRepository, load_story_repository
@@ -47,12 +47,12 @@ from .model_protocol import AgentModel
 from .models import (
     AgentPrompt,
     CharacterDraftRecoveryAudit,
+    CharacterSkillShadowResult,
     ConversationMessage,
     GroundingEvidence,
     GroundingEvidenceType,
     ModelInvocationAudit,
     ModelTurn,
-    CharacterSkillShadowResult,
     SkillShadowAudit,
     SkillShadowConfig,
     ToolAuditEntry,
@@ -60,9 +60,9 @@ from .models import (
     ToolDefinition,
 )
 from .response_contracts import (
+    CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL,
     CHARACTER_DRAFT_CORE_FIELDS,
     CHARACTER_DRAFT_JSON_SCHEMA,
-    CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL,
     character_draft_prompt_contract,
     has_terminal_authoring_finalize_signal,
 )
@@ -591,7 +591,7 @@ def canon_field_grounding_violations(
 
     declared = declared_new_design_fields(draft)
     violations: list[tuple[str, tuple[str, ...], str]] = []
-    for field in CANON_GROUNDING_TEXT_FIELDS:
+    for field in CANON_GROUNDING_TEXT_FIELDS:  # noqa: F402 - domain field vocabulary
         value = getattr(draft, field)
         text = " ".join(value) if isinstance(value, tuple) else str(value)
         if not text.strip():
@@ -2381,6 +2381,7 @@ class CharacterGenerationAgent:
         report = None
         rendered: str | None = None
         response_compliant = False
+        shape_diagnostic: SkillKitShapeDiagnostic | None = None
         audit = SkillShadowAudit(request_id=request.request_id)
         context: SkillValidationContext | None = None
         context_digest: str | None = None
@@ -2477,17 +2478,32 @@ class CharacterGenerationAgent:
                     raise ValueError("invalid shadow JSON") from None
             if not isinstance(payload, Mapping):
                 stage = "shape"
-                raise ValueError("shadow response must be a JSON object")
+                shape_error = SkillKitShapeError(
+                    "TYPE_MISMATCH", "/", "shadow response must be a JSON object"
+                )
+                shape_error.attach_diagnostic(
+                    build_shape_diagnostic(payload, shape_error, extraction_stage="shadow_root_check")
+                )
+                raise shape_error
 
             stage = "shape"
             # The provider contract is stricter than the general parser seam:
             # only a direct candidate root is accepted for this invocation.
             if "skill_kit" in payload or "ability_concept" in payload:
-                raise SkillKitShapeError(
+                shape_error = SkillKitShapeError(
                     "UNSUPPORTED_VALUE",
                     "/",
                     "shadow response must be a direct ProtocolSkillKitCandidate root",
                 )
+                shape_error.attach_diagnostic(
+                    build_shape_diagnostic(
+                        payload,
+                        shape_error,
+                        extraction_stage="shadow_root_check",
+                        wrapper_detected=True,
+                    )
+                )
+                raise shape_error
             parsed = parse_candidate(payload)
             if not isinstance(parsed, ProtocolSkillKitCandidate):
                 raise SkillKitShapeError(
@@ -2513,6 +2529,7 @@ class CharacterGenerationAgent:
                 candidate=candidate,
                 validation_report=report,
                 audit=audit,
+                shape_diagnostic=shape_diagnostic,
                 rendered_ability_concept=rendered,
                 legacy_ability_concept=legacy_ability_concept,
                 ability_concept_diff=diff,
@@ -2530,6 +2547,8 @@ class CharacterGenerationAgent:
                     request_alignment_measured=request_alignment_measured,
                     reference_review_measured=reference_review_measured,
                 )
+            if isinstance(error, SkillKitShapeError):
+                shape_diagnostic = error.diagnostic
             return CharacterSkillShadowResult(
                 draft_id=draft.draft_id,
                 response_compliant=response_compliant,
@@ -2537,6 +2556,7 @@ class CharacterGenerationAgent:
                 validation_report=report,
                 audit=audit,
                 failure_stage=stage,
+                shape_diagnostic=shape_diagnostic,
                 error_message=self._skill_shadow_error_message(stage),
                 rendered_ability_concept=rendered,
                 legacy_ability_concept=legacy_ability_concept,
@@ -2668,7 +2688,7 @@ class CharacterGenerationAgent:
                 self._contract_diagnosis("CharacterDraft contract is not safely recoverable", inspection)
             )
 
-        recovery_audit = CharacterDraftRecoveryAudit(
+        _recovery_audit = CharacterDraftRecoveryAudit(
             status="attempted",
             attempted=True,
             missing_required=inspection.missing_required,

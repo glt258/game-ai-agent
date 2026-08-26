@@ -6,6 +6,8 @@ from enum import Enum
 from types import MappingProxyType
 from typing import Any, Mapping
 
+from character_skill.errors import SkillKitShapeDiagnostic
+
 
 @dataclass(frozen=True)
 class ToolDefinition:
@@ -122,6 +124,7 @@ class CharacterSkillShadowResult:
     validation_report: Any | None = None
     audit: SkillShadowAudit = field(default_factory=SkillShadowAudit)
     failure_stage: str | None = None
+    shape_diagnostic: SkillKitShapeDiagnostic | None = None
     error_message: str | None = None
     rendered_ability_concept: str | None = None
     legacy_ability_concept: str = ""
@@ -134,6 +137,10 @@ class CharacterSkillShadowResult:
             raise TypeError("response_compliant must be a boolean")
         if not isinstance(self.audit, SkillShadowAudit):
             raise TypeError("audit must be a SkillShadowAudit")
+        if self.shape_diagnostic is not None and not isinstance(
+            self.shape_diagnostic, SkillKitShapeDiagnostic
+        ):
+            raise TypeError("shape_diagnostic must be SkillKitShapeDiagnostic or None")
         object.__setattr__(
             self,
             "ability_concept_diff",

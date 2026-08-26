@@ -43,6 +43,15 @@ from character_skill import (  # noqa: E402
     SkillValidationContext,
     evaluate,
 )
+from character_skill.errors import (  # noqa: E402
+    CANONICAL_ROOT_FIELDS,
+    SHAPE_DIAGNOSTIC_ERROR_CODES,
+    SHAPE_DIAGNOSTIC_MAX_ERRORS,
+    SHAPE_DIAGNOSTIC_MAX_FIELDS,
+    SHAPE_DIAGNOSTIC_MAX_KEYS,
+    SHAPE_DIAGNOSTIC_STAGES,
+    SkillKitShapeDiagnostic,
+)
 from combat_semantics import CombatRoleProfile  # noqa: E402
 
 PROTOCOL_VERSION = "0.2.1"
@@ -99,6 +108,18 @@ RETRY_RESULT_RELATIVE_PATH = (
 )
 RETRY_TEMP_RELATIVE_PATH = (
     "evals/results/.character_skill_s2_shadow_deepseek_retry_unavailable_run_01_v0.2.1.json.tmp"
+)
+DIAGNOSTIC_SCHEMA_VERSION = "character-skill-s2-shadow-shape-diagnostic/0.1.0"
+DIAGNOSTIC_COHORT_TYPE = "shape_diagnostic"
+DIAGNOSTIC_LINEAGE_POLICY = "diagnoses_retry_observation_without_replacement"
+DIAGNOSTIC_RESULT_RELATIVE_PATH = (
+    "evals/results/character_skill_s2_shadow_shape_diagnostic_case_13_run_01_v0.1.0.json"
+)
+DIAGNOSTIC_TEMP_RELATIVE_PATH = (
+    "evals/results/.character_skill_s2_shadow_shape_diagnostic_case_13_run_01_v0.1.0.json.tmp"
+)
+_DIAGNOSTIC_RUN_ID_RE = re.compile(
+    r"^cs-s2-shadow-deepseek-shape-diagnostic-v0\.1\.0-[0-9a-f]{40}-[0-9a-f]{12}-run-01$"
 )
 
 
@@ -655,6 +676,8 @@ def _record_from_result(
         },
         "legacy_impact": False,
     }
+    if shadow.shape_diagnostic is not None:
+        observation["shape_diagnostic"] = shadow.shape_diagnostic.to_dict()
     record = {
         "observation": observation,
         "audit": _audit_mapping(case.case_id, invocation, provider_outcome),
@@ -782,9 +805,7 @@ def _validate_record(record: object) -> None:
     observation = record["observation"]
     if not isinstance(observation, Mapping):
         raise EvidenceContractError("OBSERVATION_INVALID")
-    _exact_keys(
-        observation,
-        {
+    observation_keys = {
             "observation_id",
             "case_id",
             "repeat",
@@ -801,9 +822,12 @@ def _validate_record(record: object) -> None:
             "report_digest",
             "renderer_comparison",
             "legacy_impact",
-        },
-        "OBSERVATION_KEYS_INVALID",
-    )
+        }
+    actual_observation_keys = set(observation)
+    if actual_observation_keys != observation_keys and actual_observation_keys != observation_keys | {"shape_diagnostic"}:
+        raise EvidenceContractError("OBSERVATION_KEYS_INVALID")
+    if "shape_diagnostic" in observation:
+        _validate_shape_diagnostic(observation["shape_diagnostic"])
     if not isinstance(observation["observation_id"], str) or not observation["observation_id"]:
         raise EvidenceContractError("OBSERVATION_ID_INVALID")
     if not isinstance(observation["case_id"], str) or not _CASE_RE.fullmatch(observation["case_id"]):
@@ -873,6 +897,72 @@ def _validate_record(record: object) -> None:
         raise EvidenceContractError("SANITIZATION_FAILURE")
 
 
+def _validate_shape_diagnostic(value: object) -> None:
+    if not isinstance(value, Mapping):
+        raise EvidenceContractError("SHAPE_DIAGNOSTIC_INVALID")
+    expected = {
+        "parsed_top_level_type",
+        "key_count",
+        "key_count_truncated",
+        "expected_top_level_type",
+        "wrapper_detected",
+        "missing_required_count",
+        "missing_required_fields",
+        "unknown_key_count",
+        "parser_error_code",
+        "parser_error_path",
+        "json_extraction_stage",
+        "validation_error_count",
+    }
+    if set(value) != expected:
+        raise EvidenceContractError("SHAPE_DIAGNOSTIC_KEYS_INVALID")
+    fields = value["missing_required_fields"]
+    if not isinstance(fields, list) or len(fields) > SHAPE_DIAGNOSTIC_MAX_FIELDS:
+        raise EvidenceContractError("SHAPE_DIAGNOSTIC_FIELDS_INVALID")
+    if any(field not in CANONICAL_ROOT_FIELDS for field in fields):
+        raise EvidenceContractError("SHAPE_DIAGNOSTIC_FIELDS_INVALID")
+    for key in ("missing_required_count", "unknown_key_count", "validation_error_count"):
+        number = value[key]
+        if isinstance(number, bool) or not isinstance(number, int) or not 0 <= number <= SHAPE_DIAGNOSTIC_MAX_ERRORS:
+            raise EvidenceContractError("SHAPE_DIAGNOSTIC_COUNT_INVALID")
+    key_count = value["key_count"]
+    if key_count is not None and (
+        isinstance(key_count, bool)
+        or not isinstance(key_count, int)
+        or not 0 <= key_count <= SHAPE_DIAGNOSTIC_MAX_KEYS
+    ):
+        raise EvidenceContractError("SHAPE_DIAGNOSTIC_KEY_COUNT_INVALID")
+    if not isinstance(value["key_count_truncated"], bool):
+        raise EvidenceContractError("SHAPE_DIAGNOSTIC_KEY_COUNT_INVALID")
+    if value["expected_top_level_type"] != "object":
+        raise EvidenceContractError("SHAPE_DIAGNOSTIC_TYPE_INVALID")
+    if value["wrapper_detected"] is not None and not isinstance(value["wrapper_detected"], bool):
+        raise EvidenceContractError("SHAPE_DIAGNOSTIC_WRAPPER_INVALID")
+    if value["parser_error_code"] not in SHAPE_DIAGNOSTIC_ERROR_CODES:
+        raise EvidenceContractError("SHAPE_DIAGNOSTIC_CODE_INVALID")
+    if value["parser_error_path"] is not None:
+        raise EvidenceContractError("SHAPE_DIAGNOSTIC_PATH_INVALID")
+    if value["json_extraction_stage"] not in SHAPE_DIAGNOSTIC_STAGES:
+        raise EvidenceContractError("SHAPE_DIAGNOSTIC_STAGE_INVALID")
+    try:
+        SkillKitShapeDiagnostic(
+            parsed_top_level_type=value["parsed_top_level_type"],
+            key_count=value["key_count"],
+            key_count_truncated=value["key_count_truncated"],
+            expected_top_level_type=value["expected_top_level_type"],
+            wrapper_detected=value["wrapper_detected"],
+            missing_required_count=value["missing_required_count"],
+            missing_required_fields=tuple(fields),
+            unknown_key_count=value["unknown_key_count"],
+            parser_error_code=value["parser_error_code"],
+            parser_error_path=None,
+            json_extraction_stage=value["json_extraction_stage"],
+            validation_error_count=value["validation_error_count"],
+        )
+    except (TypeError, ValueError) as error:
+        raise EvidenceContractError("SHAPE_DIAGNOSTIC_INVALID") from error
+
+
 def _retry_run_id(source_commit: str, manifest_digest: str) -> str:
     return (
         "cs-s2-shadow-deepseek-retry-unavailable-v0.2.1-"
@@ -911,7 +1001,7 @@ def _validate_retry_record(record: object) -> None:
     observation = record.get("observation")
     if not isinstance(observation, Mapping):
         raise EvidenceContractError("RETRY_OBSERVATION_INVALID")
-    if set(observation) != {
+    retry_observation_keys = {
         "observation_id",
         "case_id",
         "repeat",
@@ -929,8 +1019,12 @@ def _validate_retry_record(record: object) -> None:
         "renderer_comparison",
         "legacy_impact",
         "supersedes",
-    }:
+    }
+    actual_retry_keys = set(observation)
+    if actual_retry_keys != retry_observation_keys and actual_retry_keys != retry_observation_keys | {"shape_diagnostic"}:
         raise EvidenceContractError("RETRY_OBSERVATION_KEYS_INVALID")
+    if "shape_diagnostic" in observation:
+        _validate_shape_diagnostic(observation["shape_diagnostic"])
     supersedes = observation["supersedes"]
     if not isinstance(supersedes, str) or not supersedes:
         raise EvidenceContractError("RETRY_SUPERSEDES_INVALID")
@@ -1666,6 +1760,250 @@ class RetryUnavailableCohortRunner:
         return bundle
 
 
+def _diagnostic_run_id(source_commit: str, manifest_digest: str) -> str:
+    return (
+        "cs-s2-shadow-deepseek-shape-diagnostic-v0.1.0-"
+        f"{source_commit}-{manifest_digest[:12]}-run-01"
+    )
+
+
+def _diagnostic_record(
+    record: Mapping[str, object],
+    *,
+    run_id: str,
+    diagnosed_observation_id: str,
+) -> dict[str, object]:
+    observation = dict(record["observation"])
+    observation["observation_id"] = f"{run_id}:case_13:diagnostic-01"
+    observation["diagnoses_observation_id"] = diagnosed_observation_id
+    body = {
+        "observation": observation,
+        "audit": dict(record["audit"]),
+        "sanitization": dict(record["sanitization"]),
+    }
+    return {"record_digest": _record_digest(body), **body}
+
+
+def _validate_diagnostic_record(record: object, *, diagnosed_observation_id: str) -> None:
+    if not isinstance(record, Mapping):
+        raise EvidenceContractError("DIAGNOSTIC_RECORD_INVALID")
+    if set(record) != {"record_digest", "observation", "audit", "sanitization"}:
+        raise EvidenceContractError("DIAGNOSTIC_RECORD_KEYS_INVALID")
+    observation = record["observation"]
+    if not isinstance(observation, Mapping):
+        raise EvidenceContractError("DIAGNOSTIC_OBSERVATION_INVALID")
+    if observation.get("diagnoses_observation_id") != diagnosed_observation_id:
+        raise EvidenceContractError("DIAGNOSTIC_LINEAGE_INVALID")
+    base_observation = dict(observation)
+    del base_observation["diagnoses_observation_id"]
+    base = {
+        "record_digest": record["record_digest"],
+        "observation": base_observation,
+        "audit": record["audit"],
+        "sanitization": record["sanitization"],
+    }
+    body = {
+        "observation": observation,
+        "audit": record["audit"],
+        "sanitization": record["sanitization"],
+    }
+    if not _is_sha(record["record_digest"]) or _record_digest(body) != record["record_digest"]:
+        raise EvidenceContractError("DIAGNOSTIC_RECORD_DIGEST_INVALID")
+    # Validate the shared observation contract after removing only diagnostic lineage.
+    _validate_record(
+        {
+            "record_digest": _record_digest(
+                {
+                    "observation": base_observation,
+                    "audit": base["audit"],
+                    "sanitization": base["sanitization"],
+                }
+            ),
+            "observation": base_observation,
+            "audit": base["audit"],
+            "sanitization": base["sanitization"],
+        }
+    )
+
+
+def validate_shape_diagnostic_bundle(bundle: Mapping[str, object]) -> None:
+    """Validate the independent one-case diagnostic cohort contract."""
+
+    expected = {
+        "schema_version",
+        "protocol_version",
+        "run_id",
+        "cohort_type",
+        "lineage_policy",
+        "diagnoses_observation_id",
+        "source_run_id",
+        "source_bundle_sha256",
+        "source_manifest_digest",
+        "input_manifest_digest",
+        "inputs",
+        "provider",
+        "observations",
+    }
+    _exact_keys(bundle, expected, "DIAGNOSTIC_BUNDLE_KEYS_INVALID")
+    if bundle["schema_version"] != DIAGNOSTIC_SCHEMA_VERSION or bundle["protocol_version"] != PROTOCOL_VERSION:
+        raise EvidenceContractError("DIAGNOSTIC_BUNDLE_VERSION_INVALID")
+    if bundle["cohort_type"] != DIAGNOSTIC_COHORT_TYPE or bundle["lineage_policy"] != DIAGNOSTIC_LINEAGE_POLICY:
+        raise EvidenceContractError("DIAGNOSTIC_COHORT_INVALID")
+    if not isinstance(bundle["run_id"], str) or not _DIAGNOSTIC_RUN_ID_RE.fullmatch(bundle["run_id"]):
+        raise EvidenceContractError("DIAGNOSTIC_RUN_ID_INVALID")
+    if not isinstance(bundle["diagnoses_observation_id"], str) or not bundle["diagnoses_observation_id"]:
+        raise EvidenceContractError("DIAGNOSTIC_LINEAGE_INVALID")
+    if not isinstance(bundle["source_run_id"], str) or not _RETRY_RUN_ID_RE.fullmatch(bundle["source_run_id"]):
+        raise EvidenceContractError("DIAGNOSTIC_SOURCE_RUN_INVALID")
+    for key in ("source_bundle_sha256", "source_manifest_digest", "input_manifest_digest"):
+        if not _is_sha(bundle[key]):
+            raise EvidenceContractError("DIAGNOSTIC_DIGEST_INVALID")
+    if bundle["source_manifest_digest"] != bundle["input_manifest_digest"]:
+        raise EvidenceContractError("DIAGNOSTIC_MANIFEST_MISMATCH")
+    provider = bundle["provider"]
+    if not isinstance(provider, Mapping) or provider != _bundle_provider(provider.get("model_reported")):
+        raise EvidenceContractError("DIAGNOSTIC_PROVIDER_INVALID")
+    inputs = bundle["inputs"]
+    if not isinstance(inputs, list) or len(inputs) != 2:
+        raise EvidenceContractError("DIAGNOSTIC_INPUTS_INVALID")
+    for item in inputs:
+        if not isinstance(item, Mapping):
+            raise EvidenceContractError("DIAGNOSTIC_INPUTS_INVALID")
+        _exact_keys(item, {"path", "sha256", "role"}, "DIAGNOSTIC_INPUTS_INVALID")
+        if not isinstance(item["path"], str) or not _is_sha(item["sha256"]) or item["role"] not in {"provider", "evaluator"}:
+            raise EvidenceContractError("DIAGNOSTIC_INPUTS_INVALID")
+    observations = bundle["observations"]
+    if not isinstance(observations, list) or len(observations) != 1:
+        raise EvidenceContractError("DIAGNOSTIC_OBSERVATIONS_INVALID")
+    _validate_diagnostic_record(observations[0], diagnosed_observation_id=bundle["diagnoses_observation_id"])
+
+
+class ShapeDiagnosticCohortRunner:
+    """Run exactly one case_13 observation diagnosing the retry cohort sample."""
+
+    def __init__(self, repo_root: Path | str | None = None, *, manifest_path: Path | str | None = None) -> None:
+        self.root = Path(repo_root or ROOT).resolve()
+        self.manifest = load_manifest(self.root, manifest_path)
+        self.cases = _load_cases(self.root, self.manifest)
+
+    def _source(self, source_path: Path | str) -> tuple[dict[str, Any], bytes, Mapping[str, object]]:
+        source = Path(source_path).resolve()
+        if not source.is_file():
+            raise EvidenceRunnerError("DIAGNOSTIC_SOURCE_MISSING")
+        raw = source.read_bytes()
+        bundle, _ = _load_json(source)
+        validate_retry_evidence_bundle(bundle)
+        if bundle["input_manifest_digest"] != self.manifest.raw_digest:
+            raise EvidenceRunnerError("DIAGNOSTIC_SOURCE_MANIFEST_MISMATCH")
+        records = [item for item in bundle["observations"] if item["observation"]["case_id"] == "case_13"]
+        if len(records) != 1:
+            raise EvidenceRunnerError("DIAGNOSTIC_CASE13_SOURCE_INVALID")
+        source_record = records[0]
+        if source_record["observation"]["outcome"] != "UNAVAILABLE":
+            raise EvidenceRunnerError("DIAGNOSTIC_SOURCE_NOT_UNAVAILABLE")
+        return bundle, raw, source_record
+
+    def dry_run(self, *, source_path: Path | str) -> dict[str, object]:
+        source_bundle, raw, source_record = self._source(source_path)
+        run_id = _diagnostic_run_id(_source_commit(self.root), self.manifest.raw_digest)
+        return {
+            "status": "dry_run_shape_diagnostic",
+            "run_id": run_id,
+            "cohort_type": DIAGNOSTIC_COHORT_TYPE,
+            "diagnoses_observation_id": source_record["observation"]["observation_id"],
+            "source_run_id": source_bundle["run_id"],
+            "source_bundle_sha256": _digest_bytes(raw),
+            "case_ids": ["case_13"],
+            "provider_factory_constructed": False,
+            "provider_called": False,
+            "result_path": None,
+        }
+
+    def run(
+        self,
+        *,
+        source_path: Path | str,
+        live: bool = False,
+        output_path: Path | str | None = None,
+        shadow_model: Any | None = None,
+        enforce_clean_tree: bool = True,
+        model_factory: Callable[[], Any] | None = None,
+    ) -> dict[str, object]:
+        source_bundle, source_raw, source_record = self._source(source_path)
+        if not live:
+            if output_path is not None or shadow_model is not None or model_factory is not None:
+                raise EvidenceRunnerError("DIAGNOSTIC_DRY_RUN_ARGUMENTS_INVALID")
+            return self.dry_run(source_path=source_path)
+        if enforce_clean_tree:
+            dirty = tuple(path for path in _dirty_paths(self.root) if path not in {DIAGNOSTIC_RESULT_RELATIVE_PATH, DIAGNOSTIC_TEMP_RELATIVE_PATH})
+            if dirty:
+                raise EvidenceRunnerError("LIVE_DIRTY_TREE")
+        if shadow_model is not None and model_factory is not None:
+            raise EvidenceRunnerError("DIAGNOSTIC_MODEL_ARGUMENTS_INVALID")
+        provider_model = shadow_model
+        if provider_model is None:
+            try:
+                provider_model = model_factory() if model_factory is not None else character_model_from_environment(
+                    environment={
+                        "NPC_AGENT_MODEL": "live",
+                        "NPC_LLM_PROVIDER": PROVIDER_NAME,
+                        "NPC_LLM_MODEL": MODEL_REQUESTED,
+                        "NPC_LLM_TRANSPORT": TRANSPORT,
+                        "NPC_LLM_STRUCTURED_OUTPUT": STRUCTURED_OUTPUT_MODE,
+                        "NPC_LLM_TIMEOUT_SECONDS": str(TIMEOUT_SECONDS),
+                        "NPC_LLM_MAX_RETRIES": str(MAX_TRANSPORT_RETRIES),
+                        **({"NPC_LLM_API_KEY": os.environ["NPC_LLM_API_KEY"]} if os.environ.get("NPC_LLM_API_KEY") else {}),
+                    },
+                    mode_override="live",
+                )
+            except Exception as error:
+                raise EvidenceRunnerError("PROVIDER_FACTORY_FAILED") from error
+        if provider_model is None:
+            raise EvidenceRunnerError("PROVIDER_FACTORY_FAILED")
+        run_id = _diagnostic_run_id(_source_commit(self.root), self.manifest.raw_digest)
+        destination = (Path(output_path) if output_path is not None else self.root / DIAGNOSTIC_RESULT_RELATIVE_PATH).resolve()
+        if destination == Path(source_path).resolve():
+            raise EvidenceRunnerError("DIAGNOSTIC_OUTPUT_EQUALS_SOURCE")
+        router = ShadowEvidenceModelRouter(provider_model)
+        agent = CharacterGenerationAgent(router, shadow_config=SkillShadowConfig(enabled=True), retrieval_strategy="deterministic")
+        case = self.cases["case_13"]
+        try:
+            result = agent.generate(case.request(), skill_shadow_context=case.context)
+            record = _diagnostic_record(
+                _record_from_result(case, run_id, 1, result, router),
+                run_id=run_id,
+                diagnosed_observation_id=source_record["observation"]["observation_id"],
+            )
+        except EvidenceRunnerError:
+            raise
+        except Exception:
+            record = _diagnostic_record(
+                ShadowEvidenceRunner(self.root)._runner_failure_record(case, run_id, 1),
+                run_id=run_id,
+                diagnosed_observation_id=source_record["observation"]["observation_id"],
+            )
+        _validate_invocation_profile(router.shadow_invocation)
+        reported_model = _safe_model_name(router.shadow_invocation.model if router.shadow_invocation is not None else None)
+        bundle = {
+            "schema_version": DIAGNOSTIC_SCHEMA_VERSION,
+            "protocol_version": PROTOCOL_VERSION,
+            "run_id": run_id,
+            "cohort_type": DIAGNOSTIC_COHORT_TYPE,
+            "lineage_policy": DIAGNOSTIC_LINEAGE_POLICY,
+            "diagnoses_observation_id": source_record["observation"]["observation_id"],
+            "source_run_id": source_bundle["run_id"],
+            "source_bundle_sha256": _digest_bytes(source_raw),
+            "source_manifest_digest": self.manifest.raw_digest,
+            "input_manifest_digest": self.manifest.raw_digest,
+            "inputs": [dict(item) for item in self.manifest.input_files],
+            "provider": _bundle_provider(reported_model),
+            "observations": [record],
+        }
+        validate_shape_diagnostic_bundle(bundle)
+        _write_bundle(destination, bundle, resume=False)
+        return bundle
+
+
 def _write_bundle(path: Path, bundle: Mapping[str, object], *, resume: bool) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists() and not resume:
@@ -1743,11 +2081,13 @@ __all__ = [
     "EvidenceRunnerError",
     "RETRY_SCHEMA_VERSION",
     "RetryUnavailableCohortRunner",
+    "ShapeDiagnosticCohortRunner",
     "ShadowEvidenceModelRouter",
     "ShadowEvidenceRunner",
     "load_manifest",
     "run_retry_unavailable",
     "run_shadow_evidence",
     "validate_retry_evidence_bundle",
+    "validate_shape_diagnostic_bundle",
     "validate_evidence_bundle",
 ]

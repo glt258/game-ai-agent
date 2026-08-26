@@ -18,6 +18,7 @@ from evals.character_skill_s2_shadow_evidence import (  # noqa: E402
     EvidenceRunnerError,
     RetryUnavailableCohortRunner,
     ShadowEvidenceRunner,
+    ShapeDiagnosticCohortRunner,
 )
 
 
@@ -36,6 +37,12 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="plan or run an independent retry cohort from an existing evidence bundle",
     )
+    parser.add_argument(
+        "--shape-diagnostic-from",
+        type=Path,
+        default=None,
+        help="plan or run the single case_13 content-free shape diagnostic cohort",
+    )
     parser.add_argument("--output", type=Path, default=None, help=argparse.SUPPRESS)
     parser.add_argument("--manifest", type=Path, default=None, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
@@ -45,8 +52,20 @@ def main(argv: list[str] | None = None) -> int:
     if args.retry_unavailable_from is not None and args.case_ids is not None and not args.case_ids:
         print(json.dumps({"status": "error", "error_code": "RETRY_ARGUMENTS_INVALID"}))
         return 2
+    if args.shape_diagnostic_from is not None and (args.retry_unavailable_from is not None or args.case_ids not in (None, ["case_13"])):
+        print(json.dumps({"status": "error", "error_code": "DIAGNOSTIC_ARGUMENTS_INVALID"}))
+        return 2
     try:
-        if args.retry_unavailable_from is not None:
+        if args.shape_diagnostic_from is not None:
+            if args.repeat != 1:
+                raise EvidenceRunnerError("DIAGNOSTIC_REPEAT_INVALID")
+            runner = ShapeDiagnosticCohortRunner(ROOT, manifest_path=args.manifest)
+            result = runner.run(
+                source_path=args.shape_diagnostic_from,
+                live=args.live,
+                output_path=args.output,
+            )
+        elif args.retry_unavailable_from is not None:
             if args.repeat != 1:
                 raise EvidenceRunnerError("RETRY_REPEAT_INVALID")
             runner = RetryUnavailableCohortRunner(ROOT, manifest_path=args.manifest)
