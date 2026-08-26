@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "character-skill-s2-shadow-timeout-suitability/0.1.0",
+  "title": "Character Skill CS-S2 Flash 60s Timeout Suitability Bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "character-skill-s2-shadow-timeout-suitability/0.1.0"},
+    "protocol_version": {"type": "string"},
+    "run_id": {"type": "string"},
+    "experiment_type": {"const": "timeout_suitability"},
+    "source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "manifest_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "input_manifest_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "inputs": {"type": "array", "minItems": 1},
+    "provider": {"type": "object"},
+    "case_id": {"const": "case_13"},
+    "target_sample_count": {"const": 1},
+    "sample_index": {"const": 1},
+    "complete": {"const": true},
+    "baseline": {"type": "object"},
+    "observation": {"type": "object"},
+    "bundle_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "required": [
+    "schema_version", "protocol_version", "run_id", "experiment_type",
+    "source_commit", "manifest_digest", "input_manifest_digest", "inputs",
+    "provider", "case_id", "target_sample_count", "sample_index", "complete", "baseline",
+    "observation", "bundle_digest"
+  ]
+}

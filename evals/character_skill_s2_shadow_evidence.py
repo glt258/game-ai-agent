@@ -160,6 +160,37 @@ _FIXED_COMPLIANCE_RUN_ID_RE = re.compile(
     r"^cs-s2-shadow-deepseek-contract-compliance-cohort-v0\.2\.0-"
     r"[0-9a-f]{40}-[0-9a-f]{12}-n[0-9]+-run-01$"
 )
+TIMEOUT_SUITABILITY_SCHEMA_VERSION = (
+    "character-skill-s2-shadow-timeout-suitability/0.1.0"
+)
+TIMEOUT_SUITABILITY_EXPERIMENT_TYPE = "timeout_suitability"
+TIMEOUT_SUITABILITY_PROVIDER = "opencode_go"
+TIMEOUT_SUITABILITY_MODEL = "deepseek-v4-flash"
+TIMEOUT_SUITABILITY_TRANSPORT = "openai_chat_completions"
+TIMEOUT_SUITABILITY_STRUCTURED_OUTPUT_MODE = "json_object"
+TIMEOUT_SUITABILITY_TIMEOUT_SECONDS = 60
+TIMEOUT_SUITABILITY_MAX_TRANSPORT_RETRIES = 2
+TIMEOUT_SUITABILITY_TARGET = 1
+TIMEOUT_SUITABILITY_RESULT_RELATIVE_PATH = (
+    "evals/results/character_skill_s2_shadow_timeout_suitability_flash_60s_case_13_run_01_v0.1.0.json"
+)
+TIMEOUT_SUITABILITY_TEMP_RELATIVE_PATH = (
+    "evals/results/.character_skill_s2_shadow_timeout_suitability_flash_60s_case_13_run_01_v0.1.0.json.tmp"
+)
+_TIMEOUT_SUITABILITY_RUN_ID_RE = re.compile(
+    r"^cs-s2-shadow-timeout-suitability-v0\.1\.0-opencode_go-deepseek-v4-flash-"
+    r"case_13-t60-r2-n1-[0-9a-f]{40}-[0-9a-f]{12}-run-01$"
+)
+TIMEOUT_SUITABILITY_BASELINE_SHA256 = (
+    "99bd6f48e04c1262292468b64ded78c4eb9c6160f94ddba9386bea580d76e46d"
+)
+TIMEOUT_SUITABILITY_HISTORICAL_SHA256 = {
+    "original": "b84bba6063f2b9bb77c0b9d88ba36a3d0f92a5e23a2b022b87d67d55f117b7a3",
+    "retry": "7722165cae52cb858078ad9725a516d5ac04cdb8d41824e8d71826eea4989a31",
+    "shape": "89b44f5413ab92a418958d2659880b69635ca0bc7a135123afd5579af8898215",
+    "compliance": "5ef5fde8fe677d634eedd017948e84c50802f04603df1144dc6360a7f8176803",
+    "fixed": TIMEOUT_SUITABILITY_BASELINE_SHA256,
+}
 
 
 class EvidenceRunnerError(RuntimeError):
@@ -2200,6 +2231,13 @@ def _fixed_compliance_run_id(
     )
 
 
+def _timeout_suitability_run_id(source_commit: str, manifest_digest: str) -> str:
+    return (
+        "cs-s2-shadow-timeout-suitability-v0.1.0-opencode_go-deepseek-v4-flash-"
+        f"case_13-t60-r2-n1-{source_commit}-{manifest_digest[:12]}-run-01"
+    )
+
+
 def _fixed_compliance_record(record: Mapping[str, object], sample_index: int) -> dict[str, object]:
     return {"sample_index": sample_index, **deepcopy(dict(record))}
 
@@ -2350,6 +2388,91 @@ def validate_fixed_contract_compliance_bundle(bundle: Mapping[str, object]) -> N
         raise EvidenceContractError("FIXED_COHORT_COMPLETE_INVALID")
     if not isinstance(bundle["baseline_observation_id"], str):
         raise EvidenceContractError("FIXED_COHORT_LINEAGE_INVALID")
+
+
+def _timeout_suitability_provider(model_reported: str | None) -> dict[str, object]:
+    return {
+        "name": TIMEOUT_SUITABILITY_PROVIDER,
+        "model_requested": TIMEOUT_SUITABILITY_MODEL,
+        "model_reported": model_reported,
+        "transport": TIMEOUT_SUITABILITY_TRANSPORT,
+        "structured_output_mode": TIMEOUT_SUITABILITY_STRUCTURED_OUTPUT_MODE,
+        "response_contract": RESPONSE_CONTRACT,
+        "candidate_schema_version": CANDIDATE_SCHEMA_VERSION,
+        "timeout_seconds": TIMEOUT_SUITABILITY_TIMEOUT_SECONDS,
+        "max_transport_retries": TIMEOUT_SUITABILITY_MAX_TRANSPORT_RETRIES,
+    }
+
+
+def _timeout_suitability_bundle_digest(bundle: Mapping[str, object]) -> str:
+    return _digest_mapping({key: value for key, value in bundle.items() if key != "bundle_digest"})
+
+
+def validate_timeout_suitability_bundle(bundle: Mapping[str, object]) -> None:
+    expected = {
+        "schema_version", "protocol_version", "run_id", "experiment_type",
+        "source_commit", "manifest_digest", "input_manifest_digest", "inputs",
+        "provider", "case_id", "target_sample_count", "complete", "baseline",
+        "sample_index", "observation", "bundle_digest",
+    }
+    _exact_keys(bundle, expected, "TIMEOUT_SUITABILITY_BUNDLE_KEYS_INVALID")
+    if (
+        bundle["schema_version"] != TIMEOUT_SUITABILITY_SCHEMA_VERSION
+        or bundle["protocol_version"] != PROTOCOL_VERSION
+        or bundle["experiment_type"] != TIMEOUT_SUITABILITY_EXPERIMENT_TYPE
+    ):
+        raise EvidenceContractError("TIMEOUT_SUITABILITY_VERSION_INVALID")
+    source_commit = bundle["source_commit"]
+    if not isinstance(source_commit, str) or not _GIT_SHA_RE.fullmatch(source_commit):
+        raise EvidenceContractError("TIMEOUT_SUITABILITY_SOURCE_COMMIT_INVALID")
+    if (
+        bundle["manifest_digest"] != bundle["input_manifest_digest"]
+        or not _is_sha(bundle["manifest_digest"])
+    ):
+        raise EvidenceContractError("TIMEOUT_SUITABILITY_MANIFEST_INVALID")
+    if not isinstance(bundle["run_id"], str) or not _TIMEOUT_SUITABILITY_RUN_ID_RE.fullmatch(bundle["run_id"]):
+        raise EvidenceContractError("TIMEOUT_SUITABILITY_RUN_ID_INVALID")
+    if bundle["case_id"] != "case_13" or bundle["target_sample_count"] != TIMEOUT_SUITABILITY_TARGET:
+        raise EvidenceContractError("TIMEOUT_SUITABILITY_TARGET_INVALID")
+    if bundle["sample_index"] != 1:
+        raise EvidenceContractError("TIMEOUT_SUITABILITY_SAMPLE_INDEX_INVALID")
+    if not isinstance(bundle["complete"], bool):
+        raise EvidenceContractError("TIMEOUT_SUITABILITY_COMPLETE_INVALID")
+    inputs = bundle["inputs"]
+    if not isinstance(inputs, list) or not inputs or any(
+        not isinstance(item, Mapping)
+        or set(item) != {"path", "sha256", "role"}
+        or not isinstance(item["path"], str)
+        or not isinstance(item["role"], str)
+        or not _is_sha(item["sha256"])
+        for item in inputs
+    ):
+        raise EvidenceContractError("TIMEOUT_SUITABILITY_INPUTS_INVALID")
+    provider = bundle["provider"]
+    if not isinstance(provider, Mapping):
+        raise EvidenceContractError("TIMEOUT_SUITABILITY_PROVIDER_INVALID")
+    if provider != _timeout_suitability_provider(provider.get("model_reported")):
+        raise EvidenceContractError("TIMEOUT_SUITABILITY_PROVIDER_INVALID")
+    baseline = bundle["baseline"]
+    if (
+        not isinstance(baseline, Mapping)
+        or set(baseline) != {"experiment_type", "timeout_seconds", "bundle_sha256"}
+        or baseline["experiment_type"] != FIXED_COMPLIANCE_COHORT_TYPE
+        or baseline["timeout_seconds"] != TIMEOUT_SECONDS
+        or baseline["bundle_sha256"] != TIMEOUT_SUITABILITY_BASELINE_SHA256
+    ):
+        raise EvidenceContractError("TIMEOUT_SUITABILITY_BASELINE_INVALID")
+    record = bundle["observation"]
+    if not isinstance(record, Mapping):
+        raise EvidenceContractError("TIMEOUT_SUITABILITY_OBSERVATION_INVALID")
+    _validate_record(record)
+    observation = record["observation"]
+    if observation.get("observation_id") != f"{bundle['run_id']}:case_13:sample-01":
+        raise EvidenceContractError("TIMEOUT_SUITABILITY_OBSERVATION_ID_INVALID")
+    if bundle["complete"] is not True:
+        raise EvidenceContractError("TIMEOUT_SUITABILITY_COMPLETE_INVALID")
+    if bundle["bundle_digest"] != _timeout_suitability_bundle_digest(bundle):
+        raise EvidenceContractError("TIMEOUT_SUITABILITY_BUNDLE_DIGEST_INVALID")
 
 
 class FixedContractComplianceCohortRunner:
@@ -2517,6 +2640,223 @@ class FixedContractComplianceCohortRunner:
         return bundle
 
 
+class TimeoutSuitabilityProbeRunner:
+    """Run one isolated 60-second timeout-suitability observation."""
+
+    def __init__(self, repo_root: Path | str | None = None, *, manifest_path: Path | str | None = None) -> None:
+        self.root = Path(repo_root or ROOT).resolve()
+        self.manifest = load_manifest(self.root, manifest_path)
+        self.cases = _load_cases(self.root, self.manifest)
+
+    def _destination(self, output_path: Path | str | None) -> Path:
+        return (Path(output_path) if output_path is not None else self.root / TIMEOUT_SUITABILITY_RESULT_RELATIVE_PATH).resolve()
+
+    def _assert_historical_integrity(self) -> None:
+        specs = (
+            ("original", RESULT_RELATIVE_TEMPLATE.format(repeat=1), validate_evidence_bundle),
+            ("retry", RETRY_RESULT_RELATIVE_PATH, validate_retry_evidence_bundle),
+            ("shape", DIAGNOSTIC_RESULT_RELATIVE_PATH, validate_shape_diagnostic_bundle),
+            ("compliance", COMPLIANCE_RESULT_RELATIVE_PATH, validate_contract_compliance_bundle),
+            ("fixed", FIXED_COMPLIANCE_RESULT_RELATIVE_PATH, validate_fixed_contract_compliance_bundle),
+        )
+        for name, relative, validator in specs:
+            path = self.root / relative
+            try:
+                raw = path.read_bytes()
+            except OSError as error:
+                raise EvidenceRunnerError("TIMEOUT_SUITABILITY_HISTORY_MISSING") from error
+            if _digest_bytes(raw) != TIMEOUT_SUITABILITY_HISTORICAL_SHA256[name]:
+                raise EvidenceRunnerError("TIMEOUT_SUITABILITY_HISTORY_MUTATED")
+            bundle, _ = _load_json(path)
+            try:
+                validator(bundle)
+            except EvidenceContractError as error:
+                raise EvidenceRunnerError("TIMEOUT_SUITABILITY_HISTORY_INVALID") from error
+
+    def _identity(self, source_commit: str) -> str:
+        return _timeout_suitability_run_id(source_commit, self.manifest.raw_digest)
+
+    def _load_existing(self, destination: Path, run_id: str) -> dict[str, Any] | None:
+        if not destination.exists():
+            return None
+        bundle, _ = _load_json(destination)
+        try:
+            validate_timeout_suitability_bundle(bundle)
+        except EvidenceContractError as error:
+            raise EvidenceRunnerError("TIMEOUT_SUITABILITY_EXISTING_INVALID") from error
+        if bundle["run_id"] != run_id:
+            raise EvidenceRunnerError("TIMEOUT_SUITABILITY_IDENTITY_MISMATCH")
+        return bundle
+
+    def dry_run(
+        self,
+        *,
+        timeout_seconds: int = TIMEOUT_SUITABILITY_TIMEOUT_SECONDS,
+        max_transport_retries: int = TIMEOUT_SUITABILITY_MAX_TRANSPORT_RETRIES,
+        target_sample_count: int = TIMEOUT_SUITABILITY_TARGET,
+        output_path: Path | str | None = None,
+    ) -> dict[str, object]:
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (
+            TIMEOUT_SUITABILITY_TIMEOUT_SECONDS,
+            TIMEOUT_SUITABILITY_MAX_TRANSPORT_RETRIES,
+            TIMEOUT_SUITABILITY_TARGET,
+        ):
+            raise EvidenceRunnerError("TIMEOUT_SUITABILITY_VARIABLE_MISMATCH")
+        self._assert_historical_integrity()
+        source_commit = _source_commit(self.root)
+        destination = self._destination(output_path)
+        run_id = self._identity(source_commit)
+        existing = self._load_existing(destination, run_id)
+        existing_count = 1 if existing is not None else 0
+        return {
+            "status": "cohort_complete" if existing is not None else "dry_run_timeout_suitability",
+            "experiment_type": TIMEOUT_SUITABILITY_EXPERIMENT_TYPE,
+            "schema_version": TIMEOUT_SUITABILITY_SCHEMA_VERSION,
+            "run_id": run_id,
+            "source_commit": source_commit,
+            "provider": TIMEOUT_SUITABILITY_PROVIDER,
+            "model": TIMEOUT_SUITABILITY_MODEL,
+            "transport": TIMEOUT_SUITABILITY_TRANSPORT,
+            "structured_output_mode": TIMEOUT_SUITABILITY_STRUCTURED_OUTPUT_MODE,
+            "case_id": "case_13",
+            "timeout_seconds": TIMEOUT_SUITABILITY_TIMEOUT_SECONDS,
+            "max_transport_retries": TIMEOUT_SUITABILITY_MAX_TRANSPORT_RETRIES,
+            "target_sample_count": TIMEOUT_SUITABILITY_TARGET,
+            "existing_sample_count": existing_count,
+            "existing_sample_indexes": [1] if existing is not None else [],
+            "next_sample_index": None if existing is not None else 1,
+            "remaining_sample_count": 0 if existing is not None else 1,
+            "provider_factory_constructed": False,
+            "provider_called": False,
+            "result_path": destination.as_posix() if existing is not None else None,
+        }
+
+    def run(
+        self,
+        *,
+        live: bool = False,
+        timeout_seconds: int = TIMEOUT_SUITABILITY_TIMEOUT_SECONDS,
+        max_transport_retries: int = TIMEOUT_SUITABILITY_MAX_TRANSPORT_RETRIES,
+        target_sample_count: int = TIMEOUT_SUITABILITY_TARGET,
+        expected_source_commit: str | None = None,
+        resume: bool = False,
+        output_path: Path | str | None = None,
+        shadow_model: Any | None = None,
+        model_factory: Callable[[], Any] | None = None,
+        enforce_clean_tree: bool = True,
+    ) -> dict[str, object]:
+        if not live:
+            if resume or shadow_model is not None or model_factory is not None:
+                raise EvidenceRunnerError("TIMEOUT_SUITABILITY_DRY_RUN_ARGUMENTS_INVALID")
+            return self.dry_run(
+                timeout_seconds=timeout_seconds,
+                max_transport_retries=max_transport_retries,
+                target_sample_count=target_sample_count,
+                output_path=output_path,
+            )
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (
+            TIMEOUT_SUITABILITY_TIMEOUT_SECONDS,
+            TIMEOUT_SUITABILITY_MAX_TRANSPORT_RETRIES,
+            TIMEOUT_SUITABILITY_TARGET,
+        ):
+            raise EvidenceRunnerError("TIMEOUT_SUITABILITY_VARIABLE_MISMATCH")
+        if expected_source_commit is None:
+            raise EvidenceRunnerError("TIMEOUT_SUITABILITY_SOURCE_COMMIT_REQUIRED")
+        source_commit = _source_commit(self.root)
+        if source_commit != expected_source_commit:
+            raise EvidenceRunnerError("TIMEOUT_SUITABILITY_SOURCE_COMMIT_MISMATCH")
+        self._assert_historical_integrity()
+        if enforce_clean_tree:
+            dirty = tuple(
+                path
+                for path in _dirty_paths(self.root)
+                if path not in {TIMEOUT_SUITABILITY_RESULT_RELATIVE_PATH, TIMEOUT_SUITABILITY_TEMP_RELATIVE_PATH}
+            )
+            if dirty:
+                raise EvidenceRunnerError("LIVE_DIRTY_TREE")
+        destination = self._destination(output_path)
+        run_id = self._identity(source_commit)
+        existing = self._load_existing(destination, run_id)
+        if existing is not None:
+            raise EvidenceRunnerError("COHORT_ALREADY_COMPLETE")
+        if destination.exists() and not resume:
+            raise EvidenceRunnerError("TIMEOUT_SUITABILITY_RESULT_EXISTS")
+        if shadow_model is not None and model_factory is not None:
+            raise EvidenceRunnerError("TIMEOUT_SUITABILITY_MODEL_ARGUMENTS_INVALID")
+        provider_model = shadow_model
+        if provider_model is None:
+            try:
+                if model_factory is not None:
+                    provider_model = model_factory()
+                else:
+                    environment = {
+                        "NPC_AGENT_MODEL": "live",
+                        "NPC_LLM_PROVIDER": TIMEOUT_SUITABILITY_PROVIDER,
+                        "NPC_LLM_MODEL": TIMEOUT_SUITABILITY_MODEL,
+                        "NPC_LLM_TRANSPORT": TIMEOUT_SUITABILITY_TRANSPORT,
+                        "NPC_LLM_STRUCTURED_OUTPUT": TIMEOUT_SUITABILITY_STRUCTURED_OUTPUT_MODE,
+                        "NPC_LLM_TIMEOUT_SECONDS": str(TIMEOUT_SUITABILITY_TIMEOUT_SECONDS),
+                        "NPC_LLM_MAX_RETRIES": str(TIMEOUT_SUITABILITY_MAX_TRANSPORT_RETRIES),
+                        **({"NPC_LLM_API_KEY": os.environ["NPC_LLM_API_KEY"]} if os.environ.get("NPC_LLM_API_KEY") else {}),
+                    }
+                    provider_model = character_model_from_environment(environment=environment, mode_override="live")
+            except Exception as error:
+                raise EvidenceRunnerError("PROVIDER_FACTORY_FAILED") from error
+        if provider_model is None:
+            raise EvidenceRunnerError("PROVIDER_FACTORY_FAILED")
+        router = ShadowEvidenceModelRouter(provider_model)
+        agent = CharacterGenerationAgent(
+            router,
+            shadow_config=SkillShadowConfig(enabled=True),
+            retrieval_strategy="deterministic",
+        )
+        case = self.cases["case_13"]
+        try:
+            result = agent.generate(case.request(), skill_shadow_context=case.context)
+            record = _record_from_result(case, run_id, 1, result, router)
+        except EvidenceRunnerError:
+            raise
+        except Exception:
+            record = ShadowEvidenceRunner(self.root)._runner_failure_record(case, run_id, 1)
+        invocation = router.shadow_invocation
+        _validate_invocation_profile(invocation)
+        if invocation is not None and invocation.model != TIMEOUT_SUITABILITY_MODEL:
+            raise EvidenceRunnerError("TIMEOUT_SUITABILITY_MODEL_DRIFT")
+        record["observation"]["observation_id"] = f"{run_id}:case_13:sample-01"
+        record_body = {
+            "observation": record["observation"],
+            "audit": record["audit"],
+            "sanitization": record["sanitization"],
+        }
+        record["record_digest"] = _record_digest(record_body)
+        reported_model = _safe_model_name(invocation.model if invocation is not None else None)
+        bundle = {
+            "schema_version": TIMEOUT_SUITABILITY_SCHEMA_VERSION,
+            "protocol_version": PROTOCOL_VERSION,
+            "run_id": run_id,
+            "experiment_type": TIMEOUT_SUITABILITY_EXPERIMENT_TYPE,
+            "source_commit": source_commit,
+            "manifest_digest": self.manifest.raw_digest,
+            "input_manifest_digest": self.manifest.raw_digest,
+            "inputs": [dict(item) for item in self.manifest.input_files],
+            "provider": _timeout_suitability_provider(reported_model),
+            "case_id": "case_13",
+            "target_sample_count": TIMEOUT_SUITABILITY_TARGET,
+            "sample_index": 1,
+            "complete": True,
+            "baseline": {
+                "experiment_type": FIXED_COMPLIANCE_COHORT_TYPE,
+                "timeout_seconds": TIMEOUT_SECONDS,
+                "bundle_sha256": TIMEOUT_SUITABILITY_BASELINE_SHA256,
+            },
+            "observation": record,
+        }
+        bundle["bundle_digest"] = _timeout_suitability_bundle_digest(bundle)
+        validate_timeout_suitability_bundle(bundle)
+        _write_bundle(destination, bundle, resume=False)
+        return bundle
+
+
 def _validate_fixed_target(target: object) -> int:
     if isinstance(target, bool) or not isinstance(target, int) or not 0 < target <= MAX_FIXED_COHORT_SAMPLES:
         raise EvidenceRunnerError("COHORT_TARGET_INVALID")
@@ -2593,6 +2933,34 @@ def run_retry_unavailable(
     )
 
 
+def run_timeout_suitability(
+    *,
+    repo_root: Path | str | None = None,
+    live: bool = False,
+    timeout_seconds: int = TIMEOUT_SUITABILITY_TIMEOUT_SECONDS,
+    max_transport_retries: int = TIMEOUT_SUITABILITY_MAX_TRANSPORT_RETRIES,
+    target_sample_count: int = TIMEOUT_SUITABILITY_TARGET,
+    expected_source_commit: str | None = None,
+    resume: bool = False,
+    output_path: Path | str | None = None,
+    shadow_model: Any | None = None,
+    enforce_clean_tree: bool = True,
+    model_factory: Callable[[], Any] | None = None,
+) -> dict[str, object]:
+    return TimeoutSuitabilityProbeRunner(repo_root).run(
+        live=live,
+        timeout_seconds=timeout_seconds,
+        max_transport_retries=max_transport_retries,
+        target_sample_count=target_sample_count,
+        expected_source_commit=expected_source_commit,
+        resume=resume,
+        output_path=output_path,
+        shadow_model=shadow_model,
+        enforce_clean_tree=enforce_clean_tree,
+        model_factory=model_factory,
+    )
+
+
 __all__ = [
     "CASE_IDS",
     "COMPLIANCE_SCHEMA_VERSION",
@@ -2607,14 +2975,22 @@ __all__ = [
     "RETRY_SCHEMA_VERSION",
     "RetryUnavailableCohortRunner",
     "ShapeDiagnosticCohortRunner",
+    "TimeoutSuitabilityProbeRunner",
+    "TIMEOUT_SUITABILITY_SCHEMA_VERSION",
+    "TIMEOUT_SUITABILITY_RESULT_RELATIVE_PATH",
+    "TIMEOUT_SUITABILITY_TIMEOUT_SECONDS",
+    "TIMEOUT_SUITABILITY_MAX_TRANSPORT_RETRIES",
+    "TIMEOUT_SUITABILITY_TARGET",
     "ShadowEvidenceModelRouter",
     "ShadowEvidenceRunner",
     "load_manifest",
     "run_retry_unavailable",
+    "run_timeout_suitability",
     "run_shadow_evidence",
     "validate_retry_evidence_bundle",
     "validate_shape_diagnostic_bundle",
     "validate_contract_compliance_bundle",
     "validate_fixed_contract_compliance_bundle",
+    "validate_timeout_suitability_bundle",
     "validate_evidence_bundle",
 ]

@@ -21,6 +21,7 @@ from evals.character_skill_s2_shadow_evidence import (  # noqa: E402
     RetryUnavailableCohortRunner,
     ShadowEvidenceRunner,
     ShapeDiagnosticCohortRunner,
+    TimeoutSuitabilityProbeRunner,
 )
 
 
@@ -60,7 +61,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--target-samples",
         type=int,
-        default=3,
+        default=None,
         help="fixed cohort target sample count (frozen after initialization)",
     )
     parser.add_argument(
@@ -68,9 +69,35 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="explicitly authorize one live fixed-cohort sample append",
     )
+    parser.add_argument(
+        "--timeout-suitability-probe",
+        "--timeout-suitability",
+        action="store_true",
+        help="run or plan the isolated case_13 60-second timeout-suitability probe",
+    )
+    parser.add_argument(
+        "--timeout-seconds",
+        type=int,
+        default=60,
+        help="timeout suitability probe timeout (frozen at 60)",
+    )
+    parser.add_argument(
+        "--max-transport-retries",
+        type=int,
+        default=2,
+        help="timeout suitability probe retries (frozen at 2)",
+    )
+    parser.add_argument(
+        "--probe-source-commit",
+        default=None,
+        help="exact implementation commit required before a live timeout probe",
+    )
     parser.add_argument("--output", type=Path, default=None, help=argparse.SUPPRESS)
     parser.add_argument("--manifest", type=Path, default=None, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    target_samples = args.target_samples
+    if target_samples is None:
+        target_samples = 1 if args.timeout_suitability_probe else 3
     if args.live and args.dry_run:
         print(json.dumps({"status": "error", "error_code": "MODE_ARGUMENTS_INVALID"}))
         return 2
@@ -91,6 +118,18 @@ def main(argv: list[str] | None = None) -> int:
     ):
         print(json.dumps({"status": "error", "error_code": "FIXED_COHORT_ARGUMENTS_INVALID"}))
         return 2
+    if args.timeout_suitability_probe and (
+        args.retry_unavailable_from is not None
+        or args.shape_diagnostic_from is not None
+        or args.contract_compliance_from is not None
+        or args.fixed_contract_compliance_from is not None
+        or args.case_ids not in (None, ["case_13"])
+        or args.repeat != 1
+        or args.append_next_sample
+        or (args.target_samples is not None and args.target_samples != 1)
+    ):
+        print(json.dumps({"status": "error", "error_code": "TIMEOUT_SUITABILITY_ARGUMENTS_INVALID"}))
+        return 2
     if args.append_next_sample and args.fixed_contract_compliance_from is None:
         print(json.dumps({"status": "error", "error_code": "FIXED_COHORT_ARGUMENTS_INVALID"}))
         return 2
@@ -100,9 +139,20 @@ def main(argv: list[str] | None = None) -> int:
             result = runner.run(
                 source_path=args.fixed_contract_compliance_from,
                 live=args.live,
-                target_sample_count=args.target_samples,
+                target_sample_count=target_samples,
                 resume=args.resume,
                 append_next_sample=args.append_next_sample,
+                output_path=args.output,
+            )
+        elif args.timeout_suitability_probe:
+            runner = TimeoutSuitabilityProbeRunner(ROOT, manifest_path=args.manifest)
+            result = runner.run(
+                live=args.live,
+                timeout_seconds=args.timeout_seconds,
+                max_transport_retries=args.max_transport_retries,
+                target_sample_count=target_samples,
+                expected_source_commit=args.probe_source_commit,
+                resume=args.resume,
                 output_path=args.output,
             )
         elif args.contract_compliance_from is not None:
