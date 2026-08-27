@@ -53,8 +53,10 @@ from agents.provider_protocol import (  # noqa: E402
 )
 from agents.response_contracts import character_skill_kit_prompt_contract  # noqa: E402
 from character_skill import (  # noqa: E402
+    SkillKitShapeError,
     SkillValidationContext,
     evaluate,
+    parse_candidate,
 )
 from character_skill.errors import (  # noqa: E402
     CANONICAL_ROOT_FIELDS,
@@ -346,6 +348,28 @@ COMPACT_V2_L1_CHARS = 2131
 COMPACT_V2_L1_BYTES = 2255
 COMPACT_V2_L2_CHARS = 1351
 COMPACT_V2_L2_BYTES = 1475
+MINIMAL_SKILLKIT_SCHEMA_VERSION = "character-skill-s2-shadow-compact-contract-v2-minimal-skillkit/0.1.0"
+MINIMAL_SKILLKIT_EXPERIMENT_TYPE = "compact_contract_v2_minimal_skillkit"
+MINIMAL_SKILLKIT_OUTPUT_CONTRACT_VERSION = "minimal-skillkit-output-contract/0.1.0"
+MINIMAL_SKILLKIT_PROVIDER = "opencode_go"
+MINIMAL_SKILLKIT_MODEL = "deepseek-v4-pro"
+MINIMAL_SKILLKIT_TIMEOUT_SECONDS = 60
+MINIMAL_SKILLKIT_MAX_TRANSPORT_RETRIES = 0
+MINIMAL_SKILLKIT_TARGET = 1
+MINIMAL_SKILLKIT_CASE_ID = "case_13"
+MINIMAL_SKILLKIT_RESPONSE_MODE = "json_object"
+MINIMAL_SKILLKIT_PARSER_CONTRACT_VERSION = "skill-kit-validator/0.1.1"
+MINIMAL_SKILLKIT_EVALUATOR_CONTEXT_VERSION = "skill-kit-evaluator-context/0.1.1"
+MINIMAL_SKILLKIT_RESULT_RELATIVE_PATH = (
+    "evals/results/character_skill_s2_shadow_compact_contract_v2_minimal_skillkit_opencode_go_pro_case_13_run_01_v0.1.0.json"
+)
+MINIMAL_SKILLKIT_TEMP_RELATIVE_PATH = (
+    "evals/results/.character_skill_s2_shadow_compact_contract_v2_minimal_skillkit_opencode_go_pro_case_13_run_01_v0.1.0.json.tmp"
+)
+_MINIMAL_SKILLKIT_RUN_ID_RE = re.compile(
+    r"^cs-s2-shadow-compact-contract-v2-minimal-skillkit-v0\.1\.0-opencode_go-deepseek-v4-pro-"
+    r"case_13-t60-r0-n1-[0-9a-f]{40}-[0-9a-f]{12}-[0-9a-f]{12}-run-01$"
+)
 
 
 class EvidenceRunnerError(RuntimeError):
@@ -4785,6 +4809,131 @@ def build_compact_skillkit_contract_v2() -> str:
     return _compact_v2_contract()
 
 
+MINIMAL_SKILLKIT_OUTPUT_INSTRUCTION = (
+    "For this compliance probe, return one canonical CharacterSkillKit JSON object with the smallest legal content: "
+    "exactly 1 entry, exactly 3 protocols (trigger, feedback, support), exactly 3 effects, exactly 1 feedback relation, "
+    "and exactly 1 core role_evidence; resources, states, and summons must be empty arrays. Keep display_summary short. "
+    "Include every required field, use canonical enum values, make every typed reference resolve, add no root keys, and return JSON only."
+)
+
+
+def _minimal_skillkit_prompt(case: ShadowEvidenceCase) -> AgentPrompt:
+    projection = _full_input_projection(case)
+    view = _ShadowProjectionView(
+        projection["brief"], tuple(projection["hard_constraints"]),
+        tuple(projection["forbidden_elements"]), projection["combat_role_profile"],
+    )
+    return AgentPrompt(
+        _compact_v2_contract() + "\n\n" + MINIMAL_SKILLKIT_OUTPUT_INSTRUCTION,
+        view, view, (ConversationMessage("user", _canonical_json(projection)),), (),
+        "cs-s2-compact-contract-v2-minimal-skillkit", 1,
+        response_format=RESPONSE_CONTRACT, authoring_payload=projection,
+        invocation_purpose=MINIMAL_SKILLKIT_EXPERIMENT_TYPE,
+    )
+
+
+def _minimal_skillkit_output_contract_digest() -> str:
+    return _digest_bytes(MINIMAL_SKILLKIT_OUTPUT_INSTRUCTION.encode("utf-8"))
+
+
+def _minimal_skillkit_run_id(source_commit: str, manifest_digest: str, output_digest: str) -> str:
+    return (
+        "cs-s2-shadow-compact-contract-v2-minimal-skillkit-v0.1.0-opencode_go-deepseek-v4-pro-"
+        f"case_13-t60-r0-n1-{source_commit}-{manifest_digest[:12]}-{output_digest[:12]}-run-01"
+    )
+
+
+def _minimal_skillkit_provider() -> dict[str, object]:
+    return {
+        "name": MINIMAL_SKILLKIT_PROVIDER,
+        "model_requested": MINIMAL_SKILLKIT_MODEL,
+        "model_reported": MINIMAL_SKILLKIT_MODEL,
+        "transport": TRANSPORT,
+        "structured_output_mode": STRUCTURED_OUTPUT_MODE,
+        "response_contract": RESPONSE_CONTRACT,
+        "candidate_schema_version": CANDIDATE_SCHEMA_VERSION,
+        "timeout_seconds": MINIMAL_SKILLKIT_TIMEOUT_SECONDS,
+        "max_transport_retries": MINIMAL_SKILLKIT_MAX_TRANSPORT_RETRIES,
+    }
+
+
+def _minimal_skillkit_failure_categories(error: BaseException) -> tuple[str, ...]:
+    code = getattr(error, "code", "")
+    return {
+        "MISSING_FIELD": ("MISSING_REQUIRED_FIELD",),
+        "UNKNOWN_FIELD": ("UNKNOWN_FIELD",),
+        "TYPE_MISMATCH": ("WRONG_TYPE",),
+        "UNSUPPORTED_VALUE": ("INVALID_ENUM",),
+        "INVALID_ID": ("NESTED_SHAPE_FAILURE",),
+    }.get(code, ("OTHER_CANONICAL_REJECTION",))
+
+
+def _minimal_skillkit_observation_keys() -> set[str]:
+    return {
+        "observation_id", "provider_outcome", "transport_attempts", "latency_ms",
+        "json_extraction_outcome", "parsed_top_level_type", "parser_invoked", "parser_outcome",
+        "parser_failure_categories", "parser_failure_counts", "reference_validation_invoked",
+        "reference_validation_result", "evaluator_invoked", "evaluator_outcome", "evaluator_finding_codes",
+        "principal_verdict", "repair_calls", "failure_stage", "failure_code", "sanitization",
+    }
+
+
+def _minimal_skillkit_bundle_digest(bundle: Mapping[str, object]) -> str:
+    return _digest_mapping({key: value for key, value in bundle.items() if key != "bundle_digest"})
+
+
+def _minimal_skillkit_shape_ok(candidate: Any) -> bool:
+    entries = getattr(candidate, "entries", ())
+    if len(entries) != 1:
+        return False
+    entry = entries[0]
+    protocols = getattr(entry, "protocols", ())
+    if len(protocols) != 3 or {getattr(item, "protocol_id", None) for item in protocols} != {"trigger", "feedback", "support"}:
+        return False
+    if sum(len(getattr(item, "causes", ())) for item in protocols) != 3:
+        return False
+    if len(getattr(candidate, "feedback_relations", ())) != 1 or len(getattr(candidate, "role_evidence", ())) != 1:
+        return False
+    return not any(getattr(candidate, name, ()) for name in ("resources", "states", "summons"))
+
+
+def validate_minimal_skillkit_bundle(bundle: Mapping[str, object]) -> None:
+    expected = {
+        "schema_version", "protocol_version", "run_id", "experiment_type", "contract_version",
+        "contract_digest", "minimal_output_contract_version", "minimal_output_contract_digest",
+        "parser_contract_version", "evaluator_context_version", "source_commit", "manifest_digest",
+        "input_manifest_digest", "inputs", "provider", "case_id", "timeout_seconds",
+        "max_transport_retries", "target_sample_count", "complete", "request_metrics",
+        "sample_index", "observation", "bundle_digest",
+    }
+    _exact_keys(bundle, expected, "MINIMAL_SKILLKIT_BUNDLE_KEYS_INVALID")
+    if bundle["schema_version"] != MINIMAL_SKILLKIT_SCHEMA_VERSION or bundle["protocol_version"] != PROTOCOL_VERSION or bundle["experiment_type"] != MINIMAL_SKILLKIT_EXPERIMENT_TYPE or bundle["contract_version"] != COMPACT_V2_CONTRACT_VERSION or bundle["minimal_output_contract_version"] != MINIMAL_SKILLKIT_OUTPUT_CONTRACT_VERSION or bundle["parser_contract_version"] != MINIMAL_SKILLKIT_PARSER_CONTRACT_VERSION or bundle["case_id"] != MINIMAL_SKILLKIT_CASE_ID or bundle["timeout_seconds"] != 60 or bundle["max_transport_retries"] != 0 or bundle["target_sample_count"] != 1 or bundle["complete"] is not True or bundle["sample_index"] != 1:
+        raise EvidenceContractError("MINIMAL_SKILLKIT_CONFIG_INVALID")
+    if not _is_sha(bundle["contract_digest"]) or not _is_sha(bundle["minimal_output_contract_digest"]) or not isinstance(bundle["source_commit"], str) or not _GIT_SHA_RE.fullmatch(bundle["source_commit"]):
+        raise EvidenceContractError("MINIMAL_SKILLKIT_IDENTITY_INVALID")
+    if bundle["manifest_digest"] != bundle["input_manifest_digest"] or not _is_sha(bundle["manifest_digest"]):
+        raise EvidenceContractError("MINIMAL_SKILLKIT_MANIFEST_INVALID")
+    if not isinstance(bundle["run_id"], str) or not _MINIMAL_SKILLKIT_RUN_ID_RE.fullmatch(bundle["run_id"]):
+        raise EvidenceContractError("MINIMAL_SKILLKIT_RUN_ID_INVALID")
+    if bundle["provider"] != _minimal_skillkit_provider():
+        raise EvidenceContractError("MINIMAL_SKILLKIT_PROVIDER_INVALID")
+    observation = bundle["observation"]
+    if not isinstance(observation, Mapping):
+        raise EvidenceContractError("MINIMAL_SKILLKIT_OBSERVATION_INVALID")
+    _exact_keys(observation, _minimal_skillkit_observation_keys(), "MINIMAL_SKILLKIT_OBSERVATION_KEYS_INVALID")
+    if observation["observation_id"] != f"{bundle['run_id']}:case_13:sample-01" or observation["repair_calls"] != 0 or observation["sanitization"] != _sanitization_mapping():
+        raise EvidenceContractError("MINIMAL_SKILLKIT_OBSERVATION_INVALID")
+    if observation["principal_verdict"] not in {
+        "V2_A_MINIMAL_SKILLKIT_STRUCTURAL_PASS",
+        "V2_A_MINIMAL_SKILLKIT_PARSE_REJECTED",
+        "V2_A_MINIMAL_SKILLKIT_MALFORMED",
+        "V2_A_MINIMAL_SKILLKIT_UNAVAILABLE",
+    }:
+        raise EvidenceContractError("MINIMAL_SKILLKIT_VERDICT_INVALID")
+    if bundle["bundle_digest"] != _minimal_skillkit_bundle_digest(bundle):
+        raise EvidenceContractError("MINIMAL_SKILLKIT_BUNDLE_DIGEST_INVALID")
+
+
 def _compact_v2_prompt(case: ShadowEvidenceCase) -> AgentPrompt:
     projection = _full_input_projection(case)
     view = _ShadowProjectionView(
@@ -5038,6 +5187,219 @@ class CompactContractV2Runner:
         return bundle
 
 
+class MinimalSkillKitRunner:
+    """Prepare the independent minimal-SkillKit compliance experiment."""
+
+    def __init__(self, repo_root: Path | str | None = None, *, manifest_path: Path | str | None = None) -> None:
+        self.root = Path(repo_root or ROOT).resolve()
+        self.manifest = load_manifest(self.root, manifest_path)
+        self.cases = _load_cases(self.root, self.manifest)
+
+    def _destination(self, output_path: Path | str | None) -> Path:
+        return (Path(output_path) if output_path is not None else self.root / MINIMAL_SKILLKIT_RESULT_RELATIVE_PATH).resolve()
+
+    def _prepare(self, output_path: Path | str | None = None) -> dict[str, object]:
+        case = self.cases[MINIMAL_SKILLKIT_CASE_ID]
+        v2_contract = _compact_v2_contract()
+        v2_digest = _digest_bytes(v2_contract.encode("utf-8"))
+        if v2_digest != "5dd592925cb4cdc0e20cbb564deedba4c64fe74e8fd79bb2925db66cde801bce" or len(v2_contract) != 981 or len(v2_contract.encode("utf-8")) != 985:
+            raise EvidenceRunnerError("BLOCKED_V2_CONTRACT_DRIFT")
+        v2_tiny = _message_metrics(_FullInputTinyOutputAdapter._provider_messages(_compact_v2_prompt(case)))
+        if (v2_tiny["chars"], v2_tiny["bytes"]) != (1709, 1837):
+            raise EvidenceRunnerError("BLOCKED_V2_DIAGNOSTIC_DRIFT")
+        minimal = _message_metrics(LiveLLMAdapter._provider_messages(_minimal_skillkit_prompt(case)))
+        production = _historical_full_input_metrics(case)
+        if (production["chars"], production["bytes"]) != (5157, 5281):
+            raise EvidenceRunnerError("BLOCKED_PRODUCTION_OR_BASELINE_DRIFT")
+        source_commit = _source_commit(self.root)
+        output_digest = _minimal_skillkit_output_contract_digest()
+        run_id = _minimal_skillkit_run_id(source_commit, self.manifest.raw_digest, output_digest)
+        if not _MINIMAL_SKILLKIT_RUN_ID_RE.fullmatch(run_id):
+            raise EvidenceRunnerError("MINIMAL_SKILLKIT_RUN_ID_INVALID")
+        destination = self._destination(output_path)
+        existing = None
+        if destination.exists():
+            payload, _ = _load_json(destination)
+            validate_minimal_skillkit_bundle(payload)
+            if payload["run_id"] != run_id:
+                raise EvidenceRunnerError("MINIMAL_SKILLKIT_IDENTITY_MISMATCH")
+            existing = payload
+        return {"case": case, "v2_digest": v2_digest, "output_digest": output_digest, "run_id": run_id, "source_commit": source_commit, "destination": destination, "minimal": minimal, "production": production, "existing": existing}
+
+    def dry_run(self, *, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, output_path: Path | str | None = None) -> dict[str, object]:
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1):
+            raise EvidenceRunnerError("MINIMAL_SKILLKIT_VARIABLE_MISMATCH")
+        NestedShapeStepdownRunner(self.root, manifest_path=self.root / MANIFEST_RELATIVE_PATH)._assert_historical_integrity()
+        prepared = self._prepare(output_path)
+        existing = prepared["existing"] is not None
+        metrics = prepared["minimal"]
+        return {
+            "status": "COHORT_ALREADY_COMPLETE" if existing else "dry_run_minimal_skillkit",
+            "experiment_type": MINIMAL_SKILLKIT_EXPERIMENT_TYPE,
+            "schema_version": MINIMAL_SKILLKIT_SCHEMA_VERSION,
+            "contract_version": COMPACT_V2_CONTRACT_VERSION,
+            "contract_digest": prepared["v2_digest"],
+            "minimal_output_contract_version": MINIMAL_SKILLKIT_OUTPUT_CONTRACT_VERSION,
+            "minimal_output_contract_digest": prepared["output_digest"],
+            "parser_contract_version": MINIMAL_SKILLKIT_PARSER_CONTRACT_VERSION,
+            "evaluator_context_version": MINIMAL_SKILLKIT_EVALUATOR_CONTEXT_VERSION,
+            "run_id": prepared["run_id"], "source_commit": prepared["source_commit"],
+            "manifest_digest": self.manifest.raw_digest, "provider": MINIMAL_SKILLKIT_PROVIDER,
+            "model": MINIMAL_SKILLKIT_MODEL, "case_id": MINIMAL_SKILLKIT_CASE_ID,
+            "timeout_seconds": 60, "max_transport_retries": 0, "target_sample_count": 1,
+            "response_mode": MINIMAL_SKILLKIT_RESPONSE_MODE,
+            "request_metrics": metrics,
+            "production_request_metrics": prepared["production"],
+            "minimal_output_instruction_chars": len(MINIMAL_SKILLKIT_OUTPUT_INSTRUCTION),
+            "minimal_output_instruction_bytes": len(MINIMAL_SKILLKIT_OUTPUT_INSTRUCTION.encode("utf-8")),
+            "existing_sample_count": 1 if existing else 0,
+            "existing_sample_indexes": [1] if existing else [],
+            "next_sample_index": None if existing else 1,
+            "remaining_sample_count": 0 if existing else 1,
+            "feature_flag": "OFF", "record_only": True,
+            "provider_factory_constructed": False, "provider_called": False,
+            "repair_calls": 0, "output_path": prepared["destination"].as_posix(),
+        }
+
+    def run(self, *, live: bool = False, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, expected_source_commit: str | None = None, resume: bool = False, output_path: Path | str | None = None, model_factory: Callable[[], Any] | None = None, enforce_clean_tree: bool = True, **_: object) -> dict[str, object]:
+        if not live:
+            if resume or model_factory is not None:
+                raise EvidenceRunnerError("MINIMAL_SKILLKIT_DRY_RUN_ARGUMENTS_INVALID")
+            return self.dry_run(timeout_seconds=timeout_seconds, max_transport_retries=max_transport_retries, target_sample_count=target_sample_count, output_path=output_path)
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1):
+            raise EvidenceRunnerError("MINIMAL_SKILLKIT_VARIABLE_MISMATCH")
+        if expected_source_commit is None:
+            raise EvidenceRunnerError("MINIMAL_SKILLKIT_SOURCE_COMMIT_REQUIRED")
+        source_commit = _source_commit(self.root)
+        if source_commit != expected_source_commit:
+            raise EvidenceRunnerError("MINIMAL_SKILLKIT_SOURCE_COMMIT_MISMATCH")
+        prepared = self._prepare(output_path)
+        if prepared["existing"] is not None:
+            raise EvidenceRunnerError("COHORT_ALREADY_COMPLETE")
+        if enforce_clean_tree and _dirty_paths(self.root):
+            raise EvidenceRunnerError("LIVE_DIRTY_TREE")
+        destination = prepared["destination"]
+        if destination.exists() and not resume:
+            raise EvidenceRunnerError("MINIMAL_SKILLKIT_RESULT_EXISTS")
+        if model_factory is not None:
+            provider_model = model_factory()
+        else:
+            environment = {
+                "NPC_AGENT_MODEL": "live", "NPC_LLM_PROVIDER": MINIMAL_SKILLKIT_PROVIDER,
+                "NPC_LLM_MODEL": MINIMAL_SKILLKIT_MODEL, "NPC_LLM_TRANSPORT": TRANSPORT,
+                "NPC_LLM_STRUCTURED_OUTPUT": STRUCTURED_OUTPUT_MODE, "NPC_LLM_TIMEOUT_SECONDS": "60",
+                "NPC_LLM_MAX_RETRIES": "0",
+                **({"NPC_LLM_API_KEY": os.environ["NPC_LLM_API_KEY"]} if os.environ.get("NPC_LLM_API_KEY") else {}),
+            }
+            try:
+                provider_model = character_model_from_environment(environment=environment, mode_override="live")
+            except Exception as error:
+                raise EvidenceRunnerError("PROVIDER_FACTORY_FAILED") from error
+        provider_outcome = "failure"
+        attempts = 1
+        latency_ms = None
+        json_outcome = "not_attempted"
+        top_level = None
+        parser_invoked = False
+        parser_outcome = "NOT_REACHED"
+        parser_categories: tuple[str, ...] = ()
+        parser_counts: dict[str, int] = {}
+        ref_invoked = False
+        ref_result = "NOT_REACHED"
+        evaluator_invoked = False
+        evaluator_outcome = "NOT_RUN"
+        evaluator_codes: tuple[str, ...] = ()
+        principal_verdict = "V2_A_MINIMAL_SKILLKIT_UNAVAILABLE"
+        failure_stage = "provider"
+        failure_code = "PROVIDER_INVOCATION_FAILED"
+        try:
+            turn = provider_model.generate(_minimal_skillkit_prompt(prepared["case"]))
+            invocation = turn.invocation
+            provider_outcome = "success"
+            attempts = (invocation.retry_count + 1) if invocation is not None else 1
+            latency_ms = _bounded_latency(invocation)
+            json_outcome = "parsed"
+            try:
+                payload = json.loads(turn.text)
+                top_level = _minimal_top_level_type(payload)
+            except (TypeError, json.JSONDecodeError):
+                json_outcome = "failed"
+                failure_stage, failure_code = "json", "RESPONSE_JSON_INVALID"
+                principal_verdict = "V2_A_MINIMAL_SKILLKIT_MALFORMED"
+            else:
+                parser_invoked = True
+                try:
+                    candidate = parse_candidate(payload)
+                except (SkillKitShapeError, TypeError, ValueError) as error:
+                    parser_outcome = "PARSER_REJECTED"
+                    parser_categories = _minimal_skillkit_failure_categories(error)
+                    parser_counts = {category: 1 for category in parser_categories}
+                    failure_stage, failure_code = "shape", "CANDIDATE_SHAPE_REJECTED"
+                    principal_verdict = "V2_A_MINIMAL_SKILLKIT_PARSE_REJECTED"
+                else:
+                    parser_outcome = "PARSER_PASS"
+                    if not _minimal_skillkit_shape_ok(candidate):
+                        parser_outcome = "PARSER_REJECTED"
+                        parser_categories = ("MINIMAL_SHAPE_MISMATCH",)
+                        parser_counts = {"MINIMAL_SHAPE_MISMATCH": 1}
+                        failure_stage, failure_code = "shape", "MINIMAL_SHAPE_REJECTED"
+                        principal_verdict = "V2_A_MINIMAL_SKILLKIT_PARSE_REJECTED"
+                    else:
+                        ref_invoked = True
+                        evaluator_invoked = True
+                        report = evaluate(candidate, prepared["case"].context)
+                        evaluator_outcome = report.outcome
+                        evaluator_codes = tuple(report.finding_codes)
+                        ref_codes = tuple(
+                            code for code in evaluator_codes
+                            if "REFERENCE" in code or "DANGLING" in code or code.startswith("FEEDBACK_RELATION")
+                        )
+                        ref_result = "FAIL" if ref_codes else "PASS"
+                        if ref_codes:
+                            parser_categories = ("BROKEN_REFERENCE",)
+                            parser_counts = {"BROKEN_REFERENCE": len(ref_codes)}
+                            principal_verdict = "V2_A_MINIMAL_SKILLKIT_PARSE_REJECTED"
+                        else:
+                            principal_verdict = "V2_A_MINIMAL_SKILLKIT_STRUCTURAL_PASS"
+        except ModelError as error:
+            invocation = error.audit
+            attempts = (invocation.retry_count + 1) if invocation is not None else 1
+            latency_ms = _bounded_latency(invocation)
+            failure_stage, failure_code = "provider", "PROVIDER_INVOCATION_FAILED"
+        observation = {
+            "observation_id": f"{prepared['run_id']}:case_13:sample-01",
+            "provider_outcome": provider_outcome, "transport_attempts": attempts, "latency_ms": latency_ms,
+            "json_extraction_outcome": json_outcome, "parsed_top_level_type": top_level,
+            "parser_invoked": parser_invoked, "parser_outcome": parser_outcome,
+            "parser_failure_categories": parser_categories, "parser_failure_counts": parser_counts,
+            "reference_validation_invoked": ref_invoked, "reference_validation_result": ref_result,
+            "evaluator_invoked": evaluator_invoked, "evaluator_outcome": evaluator_outcome,
+            "evaluator_finding_codes": evaluator_codes, "repair_calls": 0,
+            "principal_verdict": principal_verdict,
+            "failure_stage": failure_stage, "failure_code": failure_code,
+            "sanitization": _sanitization_mapping(),
+        }
+        bundle = {
+            "schema_version": MINIMAL_SKILLKIT_SCHEMA_VERSION, "protocol_version": PROTOCOL_VERSION,
+            "run_id": prepared["run_id"], "experiment_type": MINIMAL_SKILLKIT_EXPERIMENT_TYPE,
+            "contract_version": COMPACT_V2_CONTRACT_VERSION, "contract_digest": prepared["v2_digest"],
+            "minimal_output_contract_version": MINIMAL_SKILLKIT_OUTPUT_CONTRACT_VERSION,
+            "minimal_output_contract_digest": prepared["output_digest"],
+            "parser_contract_version": MINIMAL_SKILLKIT_PARSER_CONTRACT_VERSION,
+            "evaluator_context_version": MINIMAL_SKILLKIT_EVALUATOR_CONTEXT_VERSION,
+            "source_commit": source_commit, "manifest_digest": self.manifest.raw_digest,
+            "input_manifest_digest": self.manifest.raw_digest, "inputs": [dict(item) for item in self.manifest.input_files],
+            "provider": _minimal_skillkit_provider(), "case_id": MINIMAL_SKILLKIT_CASE_ID,
+            "timeout_seconds": 60, "max_transport_retries": 0, "target_sample_count": 1,
+            "complete": True, "request_metrics": prepared["minimal"], "sample_index": 1,
+            "observation": observation,
+        }
+        bundle["bundle_digest"] = _minimal_skillkit_bundle_digest(bundle)
+        validate_minimal_skillkit_bundle(bundle)
+        _write_bundle(destination, bundle, resume=False)
+        return bundle
+
+
 def _validate_fixed_target(target: object) -> int:
     if isinstance(target, bool) or not isinstance(target, int) or not 0 < target <= MAX_FIXED_COHORT_SAMPLES:
         raise EvidenceRunnerError("COHORT_TARGET_INVALID")
@@ -5244,6 +5606,30 @@ def run_compact_contract_v2(
     )
 
 
+def run_minimal_skillkit(
+    *,
+    repo_root: Path | str | None = None,
+    live: bool = False,
+    timeout_seconds: int = MINIMAL_SKILLKIT_TIMEOUT_SECONDS,
+    max_transport_retries: int = MINIMAL_SKILLKIT_MAX_TRANSPORT_RETRIES,
+    target_sample_count: int = MINIMAL_SKILLKIT_TARGET,
+    expected_source_commit: str | None = None,
+    resume: bool = False,
+    output_path: Path | str | None = None,
+    model_factory: Callable[[], Any] | None = None,
+) -> dict[str, object]:
+    return MinimalSkillKitRunner(repo_root).run(
+        live=live,
+        timeout_seconds=timeout_seconds,
+        max_transport_retries=max_transport_retries,
+        target_sample_count=target_sample_count,
+        expected_source_commit=expected_source_commit,
+        resume=resume,
+        output_path=output_path,
+        model_factory=model_factory,
+    )
+
+
 __all__ = [
     "CASE_IDS",
     "COMPLIANCE_SCHEMA_VERSION",
@@ -5295,6 +5681,13 @@ __all__ = [
     "EnumExpansionStepdownRunner",
     "NestedShapeStepdownRunner",
     "CompactContractV2Runner",
+    "MinimalSkillKitRunner",
+    "MINIMAL_SKILLKIT_SCHEMA_VERSION",
+    "MINIMAL_SKILLKIT_EXPERIMENT_TYPE",
+    "MINIMAL_SKILLKIT_RESULT_RELATIVE_PATH",
+    "MINIMAL_SKILLKIT_TIMEOUT_SECONDS",
+    "MINIMAL_SKILLKIT_MAX_TRANSPORT_RETRIES",
+    "MINIMAL_SKILLKIT_TARGET",
     "COMPACT_V2_SCHEMA_VERSION",
     "COMPACT_V2_EXPERIMENT_TYPE",
     "COMPACT_V2_CONTRACT_VERSION",
@@ -5304,6 +5697,8 @@ __all__ = [
     "COMPACT_V2_TARGET",
     "build_compact_skillkit_contract_v2",
     "run_compact_contract_v2",
+    "validate_minimal_skillkit_bundle",
+    "run_minimal_skillkit",
     "FULL_INPUT_TINY_OUTPUT_SCHEMA_VERSION",
     "FULL_INPUT_TINY_OUTPUT_RESULT_RELATIVE_PATH",
     "FULL_INPUT_TINY_OUTPUT_TIMEOUT_SECONDS",
