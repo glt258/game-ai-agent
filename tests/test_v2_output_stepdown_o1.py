@@ -388,3 +388,15 @@ def test_o2_local_structure_dry_run_and_fake_provider_are_independent(tmp_path: 
     assert bundle["observation"]["principal_verdict"] == "O2_LOCAL_STRUCTURE_STRUCTURAL_PASS"
     assert bundle["observation"]["evaluator_invoked"] is False
     evidence.validate_o2_local_structure_bundle(bundle)
+
+
+def test_o2_compact_contract_is_a_new_shorter_identity(tmp_path: Path) -> None:
+    runner = evidence.O2LocalStructureRunner(ROOT, compact=True)
+    result = runner.dry_run(output_path=tmp_path / "plan.json")
+    assert result["status"] == "dry_run_o2_local_structure"
+    assert result["output_contract_version"] == evidence.O2_LOCAL_STRUCTURE_COMPACT_OUTPUT_CONTRACT_VERSION
+    assert result["request_metrics"]["chars"] == 1533
+    assert result["request_metrics"]["bytes"] == 1661
+    assert result["existing_sample_count"] == 0
+    assert result["provider_factory_constructed"] is False
+    assert result["provider_called"] is False
