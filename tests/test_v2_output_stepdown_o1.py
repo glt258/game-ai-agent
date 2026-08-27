@@ -49,6 +49,35 @@ def _run(tmp_path: Path, model: _FakeModel) -> dict[str, object]:
     )
 
 
+def _run_diagnostic(tmp_path: Path, model: _FakeModel) -> dict[str, object]:
+    return evidence.O1SafeDiagnosticRunner(ROOT).run(
+        live=True,
+        expected_source_commit=evidence._source_commit(ROOT),
+        output_path=tmp_path / "diagnostic.json",
+        model_factory=lambda: model,
+        enforce_clean_tree=False,
+    )
+
+
+def _nested_fixture() -> dict[str, object]:
+    source = json.loads(
+        (ROOT / "evals/fixtures/character_skill_interface_prototype_cases_v0.1.1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    payload = copy.deepcopy(source["candidates"]["mechanic_repair"])
+    payload["feedback_relations"] = [
+        {
+            "feedback_id": "echo_feedback",
+            "source_effect": {"kind": "effect", "id": "echo/trigger/apply"},
+            "target_protocol": {"kind": "protocol", "id": "echo/feedback"},
+            "event": "effect_resolved",
+            "operation": "enables",
+        }
+    ]
+    return payload
+
+
 def test_o1_dry_run_is_provider_free_and_preserves_frozen_v2_metrics(tmp_path: Path) -> None:
     result = evidence.OutputStepdownRunner(ROOT).dry_run(output_path=tmp_path / "plan.json")
     assert result["status"] == "dry_run_o1_root_only"
@@ -191,3 +220,94 @@ def test_o1_compression_is_versioned_and_identity_changes() -> None:
     assert evidence.O1_ROOT_ONLY_OUTPUT_INSTRUCTION.count("role_evidence") == 0
     assert evidence.O1_ROOT_ONLY_OUTPUT_INSTRUCTION.count("no wrapper") == 0
     assert evidence.O1_ROOT_ONLY_OUTPUT_INSTRUCTION.count("additional fields") == 0
+
+
+def test_safe_snapshot_is_pure_bounded_and_value_free() -> None:
+    fixture = evidence.build_o1_root_only_fixture()
+    before = copy.deepcopy(fixture)
+    first = evidence.build_o1_safe_diagnostic_snapshot(fixture)
+    second = evidence.build_o1_safe_diagnostic_snapshot(fixture)
+    assert first == second
+    assert fixture == before
+    assert first.root_schema_version_exact_match is True
+    assert first.collection_shape_valid is True
+    assert first.nonempty_collection_count == 0
+    assert first.unexpected_nested_content is False
+
+
+def test_safe_diagnostic_classifies_schema_mismatch_without_value_leak(tmp_path: Path) -> None:
+    payload = evidence.build_o1_root_only_fixture()
+    payload["schema_version"] = "TOP-SECRET-GENERATED-VALUE"
+    bundle = _run_diagnostic(tmp_path, _FakeModel(text=json.dumps(payload)))
+    safe = bundle["observation"]["safe_diagnostics"]
+    assert safe["root_schema_version_present"] is True
+    assert safe["root_schema_version_is_string"] is True
+    assert safe["root_schema_version_exact_match"] is False
+    assert safe["unexpected_nested_content"] is False
+    assert safe["diagnostic_category"] == "ROOT_SCHEMA_VERSION_MISMATCH"
+    assert safe["diagnostic_resolution"] == "FIELD_RESOLVED"
+    assert "TOP-SECRET-GENERATED-VALUE" not in json.dumps(bundle)
+    evidence.validate_o1_safe_diagnostic_bundle(bundle)
+
+
+def test_safe_diagnostic_captures_nested_and_multiple_signals(tmp_path: Path) -> None:
+    nested = _nested_fixture()
+    snapshot = evidence.build_o1_safe_diagnostic_snapshot(nested)
+    assert snapshot.root_schema_version_exact_match is True
+    assert snapshot.nonempty_collection_count >= 1
+    assert snapshot.unexpected_nested_content is True
+    category, resolution = evidence.classify_o1_safe_diagnostic(snapshot, "INVALID_CANONICAL_VALUE")
+    assert category == "O1_CONTRACT_NESTED_CONTENT_VIOLATION"
+    assert resolution == "PARTIALLY_RESOLVED"
+
+    nested["entries"][0]["protocols"][0]["when"]["event"] = "TOP-SECRET-GENERATED-VALUE"
+    bundle = _run_diagnostic(tmp_path / "nested", _FakeModel(text=json.dumps(nested)))
+    safe = bundle["observation"]["safe_diagnostics"]
+    assert safe["diagnostic_category"] == "NESTED_INVALID_CANONICAL_VALUE"
+    assert safe["diagnostic_resolution"] == "FIELD_RESOLVED"
+    assert "TOP-SECRET-GENERATED-VALUE" not in json.dumps(bundle)
+
+    multiple = _nested_fixture()
+    multiple["schema_version"] = "TOP-SECRET-GENERATED-VALUE"
+    bundle = _run_diagnostic(tmp_path / "multiple", _FakeModel(text=json.dumps(multiple)))
+    safe = bundle["observation"]["safe_diagnostics"]
+    assert safe["diagnostic_category"] == "MULTIPLE_OR_AMBIGUOUS_VIOLATIONS"
+    assert safe["diagnostic_resolution"] == "PARTIALLY_RESOLVED"
+    assert "TOP-SECRET-GENERATED-VALUE" not in json.dumps(bundle)
+
+
+def test_safe_diagnostic_preserves_shape_taxonomy_and_timeout_boundary(tmp_path: Path) -> None:
+    unknown = evidence.build_o1_root_only_fixture()
+    unknown["unknown_generated_key"] = "sk-FAKE Authorization Bearer"
+    unknown_bundle = _run_diagnostic(tmp_path / "unknown", _FakeModel(text=json.dumps(unknown)))
+    unknown_obs = unknown_bundle["observation"]
+    assert unknown_obs["parser_failure_categories"] == ("UNKNOWN_FIELD",)
+    assert unknown_obs["safe_diagnostics"]["diagnostic_category"] == "SHAPE_FAILURE"
+    assert "unknown_generated_key" not in json.dumps(unknown_bundle)
+    assert "sk-FAKE" not in json.dumps(unknown_bundle)
+    assert "Authorization" not in json.dumps(unknown_bundle)
+    assert "Bearer" not in json.dumps(unknown_bundle)
+
+    malformed = _run_diagnostic(tmp_path / "malformed", _FakeModel(text="{not-json"))["observation"]
+    assert malformed["principal_verdict"] == "O1_ROOT_ONLY_MALFORMED"
+    assert malformed["parser_invoked"] is False
+    timeout = _run_diagnostic(tmp_path / "timeout", _FakeModel(error=ModelTimeoutError("timeout")))["observation"]
+    assert timeout["principal_verdict"] == "O1_ROOT_ONLY_UNAVAILABLE"
+    assert timeout["parser_invoked"] is False
+    assert timeout["safe_diagnostics"]["parser_failure_class"] == "UNAVAILABLE"
+
+
+def test_safe_diagnostic_dry_run_is_independent_and_provider_free(tmp_path: Path) -> None:
+    result = evidence.O1SafeDiagnosticRunner(ROOT).dry_run(output_path=tmp_path / "plan.json")
+    assert result["status"] == "dry_run_o1_safe_diagnostic"
+    assert result["experiment_type"] == "compact_contract_v2_output_stepdown_diagnostic"
+    assert result["level"] == "O1_ROOT_ONLY"
+    assert result["request_metrics"]["chars"] == 1461
+    assert result["request_metrics"]["bytes"] == 1589
+    assert result["existing_sample_count"] == 0
+    assert result["next_sample_index"] == 1
+    assert result["remaining_sample_count"] == 1
+    assert result["old_o1_cohort_complete"] is True
+    assert result["provider_factory_constructed"] is False
+    assert result["provider_called"] is False
+    assert not (tmp_path / "plan.json").exists()

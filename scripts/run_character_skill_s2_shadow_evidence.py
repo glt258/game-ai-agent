@@ -25,6 +25,7 @@ from evals.character_skill_s2_shadow_evidence import (  # noqa: E402
     MinimalTransportSanityRunner,
     ModelSuitabilityProbeRunner,
     NestedShapeStepdownRunner,
+    O1SafeDiagnosticRunner,
     OutputStepdownRunner,
     RetryUnavailableCohortRunner,
     ShadowEvidenceRunner,
@@ -132,6 +133,12 @@ def main(argv: list[str] | None = None) -> int:
         help="plan or run the independent V2-A O1 canonical root-only probe",
     )
     parser.add_argument(
+        "--o1-safe-diagnostic",
+        "--o1-diagnostic",
+        action="store_true",
+        help="plan or run the independent O1 safe parser-diagnostic cohort",
+    )
+    parser.add_argument(
         "--timeout-seconds",
         type=int,
         default=60,
@@ -153,13 +160,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     timeout_seconds = 60 if args.timeout_seconds is None else args.timeout_seconds
     max_transport_retries = (
-        (0 if (args.minimal_transport_sanity or args.full_input_tiny_output or args.enum_expansion_stepdown or args.nested_shape_stepdown or args.compact_contract_v2 or args.minimal_skillkit or args.o1_root_only) else 2)
+        (0 if (args.minimal_transport_sanity or args.full_input_tiny_output or args.enum_expansion_stepdown or args.nested_shape_stepdown or args.compact_contract_v2 or args.minimal_skillkit or args.o1_root_only or args.o1_safe_diagnostic) else 2)
         if args.max_transport_retries is None
         else args.max_transport_retries
     )
     target_samples = args.target_samples
     if target_samples is None:
-        target_samples = 1 if (args.timeout_suitability_probe or args.model_suitability_probe or args.minimal_transport_sanity or args.full_input_tiny_output or args.enum_expansion_stepdown or args.nested_shape_stepdown or args.compact_contract_v2 or args.minimal_skillkit or args.o1_root_only) else 3
+        target_samples = 1 if (args.timeout_suitability_probe or args.model_suitability_probe or args.minimal_transport_sanity or args.full_input_tiny_output or args.enum_expansion_stepdown or args.nested_shape_stepdown or args.compact_contract_v2 or args.minimal_skillkit or args.o1_root_only or args.o1_safe_diagnostic) else 3
     if args.live and args.dry_run:
         print(json.dumps({"status": "error", "error_code": "MODE_ARGUMENTS_INVALID"}))
         return 2
@@ -298,6 +305,17 @@ def main(argv: list[str] | None = None) -> int:
     ):
         print(json.dumps({"status": "error", "error_code": "O1_ROOT_ONLY_ARGUMENTS_INVALID"}))
         return 2
+    if args.o1_safe_diagnostic and (
+        args.timeout_suitability_probe or args.model_suitability_probe or args.minimal_transport_sanity
+        or args.full_input_tiny_output or args.enum_expansion_stepdown or args.nested_shape_stepdown
+        or args.compact_contract_v2 or args.minimal_skillkit or args.o1_root_only
+        or args.retry_unavailable_from is not None or args.shape_diagnostic_from is not None
+        or args.contract_compliance_from is not None or args.fixed_contract_compliance_from is not None
+        or args.case_ids not in (None, ["case_13"]) or args.repeat != 1 or args.append_next_sample
+        or (args.target_samples is not None and args.target_samples != 1)
+    ):
+        print(json.dumps({"status": "error", "error_code": "O1_SAFE_DIAGNOSTIC_ARGUMENTS_INVALID"}))
+        return 2
     if args.append_next_sample and args.fixed_contract_compliance_from is None:
         print(json.dumps({"status": "error", "error_code": "FIXED_COHORT_ARGUMENTS_INVALID"}))
         return 2
@@ -402,6 +420,17 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.o1_root_only:
             runner = OutputStepdownRunner(ROOT, manifest_path=args.manifest)
+            result = runner.run(
+                live=args.live,
+                timeout_seconds=timeout_seconds,
+                max_transport_retries=max_transport_retries,
+                target_sample_count=target_samples,
+                expected_source_commit=args.probe_source_commit,
+                resume=args.resume,
+                output_path=args.output,
+            )
+        elif args.o1_safe_diagnostic:
+            runner = O1SafeDiagnosticRunner(ROOT, manifest_path=args.manifest)
             result = runner.run(
                 live=args.live,
                 timeout_seconds=timeout_seconds,

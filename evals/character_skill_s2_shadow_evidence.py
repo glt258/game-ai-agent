@@ -392,6 +392,18 @@ _O1_ROOT_ONLY_RUN_ID_RE = re.compile(
     r"^cs-s2-shadow-compact-contract-v2-output-stepdown-o1-root-only-v0\.2\.0-opencode_go-deepseek-v4-pro-"
     r"case_13-t60-r0-n1-[0-9a-f]{40}-[0-9a-f]{12}-[0-9a-f]{12}-run-01$"
 )
+O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION = "character-skill-s2-shadow-o1-safe-diagnostic/0.1.0"
+O1_SAFE_DIAGNOSTIC_EXPERIMENT_TYPE = "compact_contract_v2_output_stepdown_diagnostic"
+O1_SAFE_DIAGNOSTIC_RESULT_RELATIVE_PATH = (
+    "evals/results/character_skill_s2_shadow_compact_contract_v2_output_stepdown_diagnostic_o1_root_only_opencode_go_pro_case_13_run_01_v0.1.0.json"
+)
+O1_SAFE_DIAGNOSTIC_TEMP_RELATIVE_PATH = (
+    "evals/results/.character_skill_s2_shadow_compact_contract_v2_output_stepdown_diagnostic_o1_root_only_opencode_go_pro_case_13_run_01_v0.1.0.json.tmp"
+)
+_O1_SAFE_DIAGNOSTIC_RUN_ID_RE = re.compile(
+    r"^cs-s2-shadow-compact-contract-v2-output-stepdown-diagnostic-o1-root-only-v0\.1\.0-"
+    r"opencode_go-deepseek-v4-pro-case_13-t60-r0-n1-[0-9a-f]{40}-[0-9a-f]{12}-[0-9a-f]{12}-run-01$"
+)
 
 
 class EvidenceRunnerError(RuntimeError):
@@ -5116,6 +5128,124 @@ def _o1_root_only_bundle_digest(bundle: Mapping[str, object]) -> str:
     return _digest_mapping({key: value for key, value in bundle.items() if key != "bundle_digest"})
 
 
+O1_SAFE_DIAGNOSTIC_CATEGORIES = frozenset({
+    "NO_DIAGNOSTIC", "ROOT_SCHEMA_VERSION_MISMATCH",
+    "O1_CONTRACT_NESTED_CONTENT_VIOLATION", "NESTED_INVALID_CANONICAL_VALUE",
+    "MULTIPLE_OR_AMBIGUOUS_VIOLATIONS", "ROOT_INVALID_CANONICAL_VALUE_OTHER",
+    "INVALID_CANONICAL_VALUE_UNRESOLVED", "SHAPE_FAILURE",
+})
+O1_SAFE_DIAGNOSTIC_RESOLUTIONS = frozenset({
+    "NOT_APPLICABLE", "FIELD_RESOLVED", "PARTIALLY_RESOLVED", "CLASS_ONLY",
+})
+O1_SAFE_DIAGNOSTIC_FAILURE_CLASSES = frozenset({
+    "NONE", "INVALID_CANONICAL_VALUE", "MISSING_REQUIRED_FIELD", "UNKNOWN_FIELD",
+    "WRONG_TYPE", "ROOT_SHAPE_FAILURE", "MALFORMED", "UNAVAILABLE",
+})
+_O1_COLLECTION_FIELDS = (
+    "entries", "feedback_relations", "resources", "states", "summons", "role_evidence",
+)
+
+
+@dataclass(frozen=True)
+class O1SafeDiagnosticSnapshot:
+    """Bounded, immutable metadata about an O1 candidate; never stores values."""
+
+    root_schema_version_present: bool
+    root_schema_version_is_string: bool
+    root_schema_version_exact_match: bool
+    collection_shape_valid: bool
+    nonempty_collection_count: int
+    unexpected_nested_content: bool
+    display_summary_present: bool
+    display_summary_is_string: bool
+
+    def __post_init__(self) -> None:
+        for name in (
+            "root_schema_version_present", "root_schema_version_is_string",
+            "root_schema_version_exact_match", "collection_shape_valid",
+            "unexpected_nested_content", "display_summary_present",
+            "display_summary_is_string",
+        ):
+            if not isinstance(getattr(self, name), bool):
+                raise TypeError(f"{name} must be bool")
+        if isinstance(self.nonempty_collection_count, bool) or not isinstance(self.nonempty_collection_count, int) or not 0 <= self.nonempty_collection_count <= 6:
+            raise ValueError("nonempty_collection_count must be between 0 and 6")
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "root_schema_version_present": self.root_schema_version_present,
+            "root_schema_version_is_string": self.root_schema_version_is_string,
+            "root_schema_version_exact_match": self.root_schema_version_exact_match,
+            "collection_shape_valid": self.collection_shape_valid,
+            "nonempty_collection_count": self.nonempty_collection_count,
+            "unexpected_nested_content": self.unexpected_nested_content,
+            "display_summary_present": self.display_summary_present,
+            "display_summary_is_string": self.display_summary_is_string,
+        }
+
+
+def build_o1_safe_diagnostic_snapshot(payload: object) -> O1SafeDiagnosticSnapshot:
+    """Read candidate shape without mutation, coercion, or value retention."""
+
+    if not isinstance(payload, Mapping):
+        return O1SafeDiagnosticSnapshot(False, False, False, False, 0, False, False, False)
+    schema_present = "schema_version" in payload
+    schema_is_string = schema_present and isinstance(payload.get("schema_version"), str)
+    schema_exact = schema_is_string and payload.get("schema_version") == CANDIDATE_SCHEMA_VERSION
+    shape_valid = all(field in payload and isinstance(payload.get(field), list) for field in _O1_COLLECTION_FIELDS)
+    nonempty = sum(1 for field in _O1_COLLECTION_FIELDS if isinstance(payload.get(field), list) and len(payload[field]) > 0)
+    display_present = "display_summary" in payload
+    return O1SafeDiagnosticSnapshot(
+        schema_present, schema_is_string, schema_exact, shape_valid, nonempty,
+        nonempty > 0, display_present, display_present and isinstance(payload.get("display_summary"), str),
+    )
+
+
+def _o1_safe_parser_failure_class(error: BaseException | None) -> str:
+    if error is None:
+        return "NONE"
+    code = getattr(error, "code", "")
+    if code in {"UNSUPPORTED_SCHEMA_VERSION", "UNSUPPORTED_VALUE"}:
+        return "INVALID_CANONICAL_VALUE"
+    if code == "MISSING_FIELD":
+        return "MISSING_REQUIRED_FIELD"
+    if code == "UNKNOWN_FIELD":
+        return "UNKNOWN_FIELD"
+    if code == "TYPE_MISMATCH":
+        return "WRONG_TYPE"
+    return "ROOT_SHAPE_FAILURE"
+
+
+def _o1_safe_nested_path(error: BaseException | None) -> bool:
+    path = getattr(error, "field_path", None)
+    if not isinstance(path, str):
+        return False
+    return any(path.startswith(f"/{field}/") for field in _O1_COLLECTION_FIELDS)
+
+
+def classify_o1_safe_diagnostic(
+    snapshot: O1SafeDiagnosticSnapshot,
+    parser_failure_class: str,
+    *,
+    parser_error: BaseException | None = None,
+) -> tuple[str, str]:
+    """Return (predefined category, resolution) without exposing raw values."""
+
+    if parser_failure_class == "NONE":
+        return "NO_DIAGNOSTIC", "NOT_APPLICABLE"
+    if parser_failure_class != "INVALID_CANONICAL_VALUE":
+        return "SHAPE_FAILURE", "CLASS_ONLY"
+    if not snapshot.root_schema_version_exact_match and snapshot.unexpected_nested_content:
+        return "MULTIPLE_OR_AMBIGUOUS_VIOLATIONS", "PARTIALLY_RESOLVED"
+    if not snapshot.root_schema_version_exact_match and not snapshot.unexpected_nested_content:
+        return "ROOT_SCHEMA_VERSION_MISMATCH", "FIELD_RESOLVED"
+    if snapshot.unexpected_nested_content:
+        if _o1_safe_nested_path(parser_error):
+            return "NESTED_INVALID_CANONICAL_VALUE", "FIELD_RESOLVED"
+        return "O1_CONTRACT_NESTED_CONTENT_VIOLATION", "PARTIALLY_RESOLVED"
+    return "ROOT_INVALID_CANONICAL_VALUE_OTHER", "PARTIALLY_RESOLVED"
+
+
 def validate_o1_root_only_bundle(bundle: Mapping[str, object]) -> None:
     expected = {
         "schema_version", "protocol_version", "run_id", "experiment_type", "level",
@@ -5853,6 +5983,264 @@ class MinimalSkillKitRunner:
         return bundle
 
 
+def _o1_safe_diagnostic_fields(snapshot: O1SafeDiagnosticSnapshot, parser_failure_class: str, category: str, resolution: str, *, missing: int = 0, unknown: int = 0, wrong_type: int = 0) -> dict[str, object]:
+    return {
+        **snapshot.to_dict(),
+        "parser_failure_class": parser_failure_class,
+        "diagnostic_category": category,
+        "diagnostic_resolution": resolution,
+        "missing_required_count": missing,
+        "unknown_field_count": unknown,
+        "wrong_type_count": wrong_type,
+    }
+
+
+def validate_o1_safe_diagnostic_bundle(bundle: Mapping[str, object]) -> None:
+    expected = {
+        "schema_version", "protocol_version", "run_id", "experiment_type", "level",
+        "contract_version", "contract_digest", "output_contract_version", "output_contract_digest",
+        "diagnostic_schema_version", "parser_contract_version", "source_commit", "manifest_digest",
+        "input_manifest_digest", "inputs", "provider", "model", "case_id", "timeout_seconds",
+        "max_transport_retries", "response_mode", "feature_flag", "record_only", "target_sample_count",
+        "complete", "request_metrics", "output_fixture_metrics", "sample_index", "observation", "bundle_digest",
+    }
+    _exact_keys(bundle, expected, "O1_SAFE_DIAGNOSTIC_BUNDLE_KEYS_INVALID")
+    if (
+        bundle["schema_version"] != O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION
+        or bundle["protocol_version"] != PROTOCOL_VERSION
+        or bundle["experiment_type"] != O1_SAFE_DIAGNOSTIC_EXPERIMENT_TYPE
+        or bundle["level"] != O1_ROOT_ONLY_LEVEL
+        or bundle["contract_version"] != COMPACT_V2_CONTRACT_VERSION
+        or bundle["output_contract_version"] != O1_ROOT_ONLY_OUTPUT_CONTRACT_VERSION
+        or bundle["parser_contract_version"] != O1_ROOT_ONLY_PARSER_CONTRACT_VERSION
+        or bundle["case_id"] != O1_ROOT_ONLY_CASE_ID
+        or bundle["timeout_seconds"] != 60
+        or bundle["max_transport_retries"] != 0
+        or bundle["response_mode"] != O1_ROOT_ONLY_RESPONSE_MODE
+        or bundle["feature_flag"] != "OFF"
+        or bundle["record_only"] is not True
+        or bundle["target_sample_count"] != 1
+        or bundle["complete"] is not True
+        or bundle["sample_index"] != 1
+    ):
+        raise EvidenceContractError("O1_SAFE_DIAGNOSTIC_CONFIG_INVALID")
+    for key in ("contract_digest", "output_contract_digest", "diagnostic_schema_version", "manifest_digest"):
+        if key == "diagnostic_schema_version":
+            if bundle[key] != O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION:
+                raise EvidenceContractError("O1_SAFE_DIAGNOSTIC_SCHEMA_INVALID")
+        elif not _is_sha(bundle[key]):
+            raise EvidenceContractError("O1_SAFE_DIAGNOSTIC_IDENTITY_INVALID")
+    if bundle["manifest_digest"] != bundle["input_manifest_digest"] or not isinstance(bundle["source_commit"], str) or not _GIT_SHA_RE.fullmatch(bundle["source_commit"]):
+        raise EvidenceContractError("O1_SAFE_DIAGNOSTIC_IDENTITY_INVALID")
+    if not isinstance(bundle["run_id"], str) or not _O1_SAFE_DIAGNOSTIC_RUN_ID_RE.fullmatch(bundle["run_id"]):
+        raise EvidenceContractError("O1_SAFE_DIAGNOSTIC_RUN_ID_INVALID")
+    if bundle["provider"] != _o1_root_only_provider() or bundle["model"] != O1_ROOT_ONLY_MODEL:
+        raise EvidenceContractError("O1_SAFE_DIAGNOSTIC_PROVIDER_INVALID")
+    observation = bundle["observation"]
+    if not isinstance(observation, Mapping):
+        raise EvidenceContractError("O1_SAFE_DIAGNOSTIC_OBSERVATION_INVALID")
+    _exact_keys(observation, _o1_root_only_observation_keys() | {"safe_diagnostics"}, "O1_SAFE_DIAGNOSTIC_OBSERVATION_KEYS_INVALID")
+    if observation["observation_id"] != f"{bundle['run_id']}:case_13:sample-01" or observation["repair_calls"] != 0 or observation["evaluator_invoked"] is not False or observation["evaluator_outcome"] != "NOT_RUN" or observation["sanitization"] != _sanitization_mapping():
+        raise EvidenceContractError("O1_SAFE_DIAGNOSTIC_OBSERVATION_INVALID")
+    safe = observation["safe_diagnostics"]
+    if not isinstance(safe, Mapping):
+        raise EvidenceContractError("O1_SAFE_DIAGNOSTIC_FIELDS_INVALID")
+    expected_safe = set(O1SafeDiagnosticSnapshot(False, False, False, False, 0, False, False, False).to_dict()) | {
+        "parser_failure_class", "diagnostic_category", "diagnostic_resolution",
+        "missing_required_count", "unknown_field_count", "wrong_type_count",
+    }
+    _exact_keys(safe, expected_safe, "O1_SAFE_DIAGNOSTIC_FIELDS_INVALID")
+    for key in O1SafeDiagnosticSnapshot(False, False, False, False, 0, False, False, False).to_dict():
+        if not isinstance(safe[key], bool) and key != "nonempty_collection_count":
+            raise EvidenceContractError("O1_SAFE_DIAGNOSTIC_FIELDS_INVALID")
+    if isinstance(safe["nonempty_collection_count"], bool) or not isinstance(safe["nonempty_collection_count"], int) or not 0 <= safe["nonempty_collection_count"] <= 6:
+        raise EvidenceContractError("O1_SAFE_DIAGNOSTIC_FIELDS_INVALID")
+    for key in ("missing_required_count", "unknown_field_count", "wrong_type_count"):
+        if isinstance(safe[key], bool) or not isinstance(safe[key], int) or not 0 <= safe[key] <= SHAPE_DIAGNOSTIC_MAX_ERRORS:
+            raise EvidenceContractError("O1_SAFE_DIAGNOSTIC_FIELDS_INVALID")
+    if safe["parser_failure_class"] not in O1_SAFE_DIAGNOSTIC_FAILURE_CLASSES or safe["diagnostic_category"] not in O1_SAFE_DIAGNOSTIC_CATEGORIES or safe["diagnostic_resolution"] not in O1_SAFE_DIAGNOSTIC_RESOLUTIONS:
+        raise EvidenceContractError("O1_SAFE_DIAGNOSTIC_FIELDS_INVALID")
+    if observation["principal_verdict"] not in {"O1_ROOT_ONLY_STRUCTURAL_PASS", "O1_ROOT_ONLY_PARSE_REJECTED", "O1_ROOT_ONLY_MALFORMED", "O1_ROOT_ONLY_UNAVAILABLE"}:
+        raise EvidenceContractError("O1_SAFE_DIAGNOSTIC_VERDICT_INVALID")
+    if bundle["bundle_digest"] != _digest_mapping({key: value for key, value in bundle.items() if key != "bundle_digest"}):
+        raise EvidenceContractError("O1_SAFE_DIAGNOSTIC_BUNDLE_DIGEST_INVALID")
+
+
+def _o1_safe_diagnostic_run_id(source_commit: str, manifest_digest: str, diagnostic_schema_digest: str) -> str:
+    return (
+        "cs-s2-shadow-compact-contract-v2-output-stepdown-diagnostic-o1-root-only-v0.1.0-"
+        "opencode_go-deepseek-v4-pro-case_13-t60-r0-n1-"
+        f"{source_commit}-{manifest_digest[:12]}-{diagnostic_schema_digest[:12]}-run-01"
+    )
+
+
+class O1SafeDiagnosticRunner:
+    """Independent O1 diagnostic cohort; model-facing request is byte-identical to O1."""
+
+    def __init__(self, repo_root: Path | str | None = None, *, manifest_path: Path | str | None = None) -> None:
+        self.root = Path(repo_root or ROOT).resolve()
+        self.manifest = load_manifest(self.root, manifest_path)
+        self.cases = _load_cases(self.root, self.manifest)
+
+    def _destination(self, output_path: Path | str | None) -> Path:
+        return (Path(output_path) if output_path is not None else self.root / O1_SAFE_DIAGNOSTIC_RESULT_RELATIVE_PATH).resolve()
+
+    def _prepare(self, output_path: Path | str | None = None) -> dict[str, object]:
+        base = OutputStepdownRunner(self.root, manifest_path=self.root / MANIFEST_RELATIVE_PATH)._prepare()
+        if (base["o1"]["chars"], base["o1"]["bytes"]) != (1461, 1589):
+            raise EvidenceRunnerError("BLOCKED_DIAGNOSTIC_REQUEST_DRIFT")
+        diagnostic_digest = _digest_bytes(O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION.encode("utf-8"))
+        source_commit = _source_commit(self.root)
+        run_id = _o1_safe_diagnostic_run_id(source_commit, self.manifest.raw_digest, diagnostic_digest)
+        if not _O1_SAFE_DIAGNOSTIC_RUN_ID_RE.fullmatch(run_id):
+            raise EvidenceRunnerError("O1_SAFE_DIAGNOSTIC_RUN_ID_INVALID")
+        destination = self._destination(output_path)
+        existing = None
+        if destination.exists():
+            payload, _ = _load_json(destination)
+            validate_o1_safe_diagnostic_bundle(payload)
+            if payload["run_id"] != run_id:
+                raise EvidenceRunnerError("O1_SAFE_DIAGNOSTIC_IDENTITY_MISMATCH")
+            existing = payload
+        return {"base": base, "run_id": run_id, "source_commit": source_commit, "diagnostic_digest": diagnostic_digest, "destination": destination, "existing": existing}
+
+    def dry_run(self, *, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, output_path: Path | str | None = None) -> dict[str, object]:
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1):
+            raise EvidenceRunnerError("O1_SAFE_DIAGNOSTIC_VARIABLE_MISMATCH")
+        NestedShapeStepdownRunner(self.root, manifest_path=self.root / MANIFEST_RELATIVE_PATH)._assert_historical_integrity()
+        prepared = self._prepare(output_path)
+        old_plan = prepared["base"]
+        existing = prepared["existing"] is not None
+        return {
+            "status": "COHORT_ALREADY_COMPLETE" if existing else "dry_run_o1_safe_diagnostic",
+            "experiment_type": O1_SAFE_DIAGNOSTIC_EXPERIMENT_TYPE, "level": O1_ROOT_ONLY_LEVEL,
+            "schema_version": O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION, "diagnostic_schema_version": O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION,
+            "contract_version": COMPACT_V2_CONTRACT_VERSION, "contract_digest": old_plan["v2_digest"],
+            "output_contract_version": O1_ROOT_ONLY_OUTPUT_CONTRACT_VERSION, "output_contract_digest": old_plan["output_digest"],
+            "parser_contract_version": O1_ROOT_ONLY_PARSER_CONTRACT_VERSION, "run_id": prepared["run_id"],
+            "source_commit": prepared["source_commit"], "manifest_digest": self.manifest.raw_digest,
+            "provider": O1_ROOT_ONLY_PROVIDER, "model": O1_ROOT_ONLY_MODEL, "case_id": O1_ROOT_ONLY_CASE_ID,
+            "timeout_seconds": 60, "max_transport_retries": 0, "response_mode": O1_ROOT_ONLY_RESPONSE_MODE,
+            "feature_flag": "OFF", "record_only": True, "target_sample_count": 1,
+            "request_metrics": old_plan["o1"], "output_fixture_metrics": old_plan["fixture_metrics"],
+            "existing_sample_count": 1 if existing else 0, "existing_sample_indexes": [1] if existing else [],
+            "next_sample_index": None if existing else 1, "remaining_sample_count": 0 if existing else 1,
+            "complete": existing, "provider_factory_constructed": False, "provider_called": False,
+            "evaluator_invoked": False, "repair_calls": 0, "old_o1_cohort_complete": old_plan["existing"] is not None,
+            "output_path": prepared["destination"].as_posix(),
+        }
+
+    def run(self, *, live: bool = False, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, expected_source_commit: str | None = None, resume: bool = False, output_path: Path | str | None = None, model_factory: Callable[[], Any] | None = None, enforce_clean_tree: bool = True, **_: object) -> dict[str, object]:
+        if not live:
+            if resume or model_factory is not None:
+                raise EvidenceRunnerError("O1_SAFE_DIAGNOSTIC_DRY_RUN_ARGUMENTS_INVALID")
+            return self.dry_run(timeout_seconds=timeout_seconds, max_transport_retries=max_transport_retries, target_sample_count=target_sample_count, output_path=output_path)
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1) or expected_source_commit is None or _source_commit(self.root) != expected_source_commit:
+            raise EvidenceRunnerError("O1_SAFE_DIAGNOSTIC_SOURCE_OR_VARIABLE_MISMATCH")
+        prepared = self._prepare(output_path)
+        if prepared["existing"] is not None:
+            raise EvidenceRunnerError("COHORT_ALREADY_COMPLETE")
+        if enforce_clean_tree and _dirty_paths(self.root):
+            raise EvidenceRunnerError("LIVE_DIRTY_TREE")
+        if prepared["destination"].exists() and not resume:
+            raise EvidenceRunnerError("O1_SAFE_DIAGNOSTIC_RESULT_EXISTS")
+        if model_factory is not None:
+            provider_model = model_factory()
+        else:
+            environment = {
+                "NPC_AGENT_MODEL": "live", "NPC_LLM_PROVIDER": O1_ROOT_ONLY_PROVIDER,
+                "NPC_LLM_MODEL": O1_ROOT_ONLY_MODEL, "NPC_LLM_TRANSPORT": TRANSPORT,
+                "NPC_LLM_STRUCTURED_OUTPUT": STRUCTURED_OUTPUT_MODE, "NPC_LLM_TIMEOUT_SECONDS": "60",
+                "NPC_LLM_MAX_RETRIES": "0", **({"NPC_LLM_API_KEY": os.environ["NPC_LLM_API_KEY"]} if os.environ.get("NPC_LLM_API_KEY") else {}),
+            }
+            try:
+                provider_model = character_model_from_environment(environment=environment, mode_override="live")
+            except Exception as error:
+                raise EvidenceRunnerError("PROVIDER_FACTORY_FAILED") from error
+        provider_outcome, attempts, latency_ms = "failure", 1, None
+        json_outcome, top_level, parser_invoked, parser_outcome = "not_attempted", None, False, "NOT_REACHED"
+        parser_categories: tuple[str, ...] = ()
+        parser_counts: dict[str, int] = {}
+        principal_verdict = "O1_ROOT_ONLY_UNAVAILABLE"
+        failure_stage, failure_code = "provider", "PROVIDER_INVOCATION_FAILED"
+        safe_snapshot = build_o1_safe_diagnostic_snapshot(None)
+        safe_class, safe_category, safe_resolution = "UNAVAILABLE", "INVALID_CANONICAL_VALUE_UNRESOLVED", "CLASS_ONLY"
+        try:
+            turn = provider_model.generate(_o1_root_only_prompt(self.cases[O1_ROOT_ONLY_CASE_ID]))
+            invocation = turn.invocation
+            provider_outcome = "success"
+            attempts = (invocation.retry_count + 1) if invocation is not None else 1
+            latency_ms = _bounded_latency(invocation)
+            try:
+                payload = json.loads(turn.text)
+                top_level = _minimal_top_level_type(payload)
+                json_outcome = "parsed"
+            except (TypeError, json.JSONDecodeError):
+                json_outcome = "failed"
+                principal_verdict, failure_stage, failure_code = "O1_ROOT_ONLY_MALFORMED", "json", "RESPONSE_JSON_INVALID"
+                safe_snapshot = build_o1_safe_diagnostic_snapshot(None)
+                safe_class, safe_category, safe_resolution = "MALFORMED", "INVALID_CANONICAL_VALUE_UNRESOLVED", "CLASS_ONLY"
+            else:
+                safe_snapshot = build_o1_safe_diagnostic_snapshot(payload)
+                parser_invoked = True
+                try:
+                    candidate = parse_candidate(payload)
+                    if not hasattr(candidate, "entries"):
+                        raise SkillKitShapeError("INVALID_ROOT_SHAPE", "/", "legacy candidate is not canonical root")
+                except (SkillKitShapeError, TypeError, ValueError) as error:
+                    parser_outcome = "PARSER_REJECTED"
+                    safe_class = _o1_safe_parser_failure_class(error)
+                    safe_category, safe_resolution = classify_o1_safe_diagnostic(safe_snapshot, safe_class, parser_error=error)
+                    parser_categories = _o1_root_only_failure_categories(error)
+                    parser_counts = {category: 1 for category in parser_categories}
+                    principal_verdict, failure_stage, failure_code = "O1_ROOT_ONLY_PARSE_REJECTED", "shape", "CANDIDATE_SHAPE_REJECTED"
+                else:
+                    parser_outcome = "PARSER_PASS"
+                    if safe_snapshot.unexpected_nested_content:
+                        safe_class, safe_category, safe_resolution = "INVALID_CANONICAL_VALUE", "O1_CONTRACT_NESTED_CONTENT_VIOLATION", "PARTIALLY_RESOLVED"
+                    else:
+                        safe_class, safe_category, safe_resolution = "NONE", "NO_DIAGNOSTIC", "NOT_APPLICABLE"
+                    principal_verdict, failure_stage, failure_code = "O1_ROOT_ONLY_STRUCTURAL_PASS", None, None
+        except ModelError as error:
+            invocation = error.audit
+            attempts = (invocation.retry_count + 1) if invocation is not None else 1
+            latency_ms = _bounded_latency(invocation)
+        safe = _o1_safe_diagnostic_fields(
+            safe_snapshot, safe_class, safe_category, safe_resolution,
+            missing=1 if safe_class == "MISSING_REQUIRED_FIELD" else 0,
+            unknown=1 if safe_class == "UNKNOWN_FIELD" else 0,
+            wrong_type=1 if safe_class == "WRONG_TYPE" else 0,
+        )
+        observation = {
+            "observation_id": f"{prepared['run_id']}:case_13:sample-01", "provider_outcome": provider_outcome,
+            "transport_attempts": attempts, "latency_ms": latency_ms, "json_extraction_outcome": json_outcome,
+            "parsed_top_level_type": top_level, "parser_invoked": parser_invoked, "parser_outcome": parser_outcome,
+            "parser_failure_categories": parser_categories, "parser_failure_counts": parser_counts,
+            "evaluator_invoked": False, "evaluator_outcome": "NOT_RUN", "principal_verdict": principal_verdict,
+            "repair_calls": 0, "failure_stage": failure_stage, "failure_code": failure_code,
+            "sanitization": _sanitization_mapping(), "safe_diagnostics": safe,
+        }
+        bundle = {
+            "schema_version": O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION, "protocol_version": PROTOCOL_VERSION,
+            "run_id": prepared["run_id"], "experiment_type": O1_SAFE_DIAGNOSTIC_EXPERIMENT_TYPE,
+            "level": O1_ROOT_ONLY_LEVEL, "contract_version": COMPACT_V2_CONTRACT_VERSION,
+            "contract_digest": prepared["base"]["v2_digest"], "output_contract_version": O1_ROOT_ONLY_OUTPUT_CONTRACT_VERSION,
+            "output_contract_digest": prepared["base"]["output_digest"], "diagnostic_schema_version": O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION,
+            "parser_contract_version": O1_ROOT_ONLY_PARSER_CONTRACT_VERSION, "source_commit": prepared["source_commit"],
+            "manifest_digest": self.manifest.raw_digest, "input_manifest_digest": self.manifest.raw_digest,
+            "inputs": [dict(item) for item in self.manifest.input_files], "provider": _o1_root_only_provider(),
+            "model": O1_ROOT_ONLY_MODEL, "case_id": O1_ROOT_ONLY_CASE_ID, "timeout_seconds": 60,
+            "max_transport_retries": 0, "response_mode": O1_ROOT_ONLY_RESPONSE_MODE, "feature_flag": "OFF",
+            "record_only": True, "target_sample_count": 1, "complete": True,
+            "request_metrics": prepared["base"]["o1"], "output_fixture_metrics": prepared["base"]["fixture_metrics"],
+            "sample_index": 1, "observation": observation,
+        }
+        bundle["bundle_digest"] = _digest_mapping(bundle)
+        validate_o1_safe_diagnostic_bundle(bundle)
+        _write_bundle(prepared["destination"], bundle, resume=False)
+        return bundle
+
+
 def _validate_fixed_target(target: object) -> int:
     if isinstance(target, bool) or not isinstance(target, int) or not 0 < target <= MAX_FIXED_COHORT_SAMPLES:
         raise EvidenceRunnerError("COHORT_TARGET_INVALID")
@@ -6160,6 +6548,14 @@ __all__ = [
     "CompactContractV2Runner",
     "MinimalSkillKitRunner",
     "OutputStepdownRunner",
+    "O1SafeDiagnosticRunner",
+    "O1SafeDiagnosticSnapshot",
+    "build_o1_safe_diagnostic_snapshot",
+    "classify_o1_safe_diagnostic",
+    "validate_o1_safe_diagnostic_bundle",
+    "O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION",
+    "O1_SAFE_DIAGNOSTIC_EXPERIMENT_TYPE",
+    "O1_SAFE_DIAGNOSTIC_RESULT_RELATIVE_PATH",
     "O1_ROOT_ONLY_SCHEMA_VERSION",
     "O1_ROOT_ONLY_EXPERIMENT_TYPE",
     "O1_ROOT_ONLY_LEVEL",
