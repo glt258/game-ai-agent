@@ -370,6 +370,28 @@ _MINIMAL_SKILLKIT_RUN_ID_RE = re.compile(
     r"^cs-s2-shadow-compact-contract-v2-minimal-skillkit-v0\.1\.0-opencode_go-deepseek-v4-pro-"
     r"case_13-t60-r0-n1-[0-9a-f]{40}-[0-9a-f]{12}-[0-9a-f]{12}-run-01$"
 )
+O1_ROOT_ONLY_SCHEMA_VERSION = "character-skill-s2-shadow-compact-contract-v2-output-stepdown/0.1.0"
+O1_ROOT_ONLY_EXPERIMENT_TYPE = "compact_contract_v2_output_stepdown"
+O1_ROOT_ONLY_LEVEL = "O1_ROOT_ONLY"
+O1_ROOT_ONLY_OUTPUT_CONTRACT_VERSION = "v2-output-stepdown-o1-root-only/0.1.0"
+O1_ROOT_ONLY_PROVIDER = "opencode_go"
+O1_ROOT_ONLY_MODEL = "deepseek-v4-pro"
+O1_ROOT_ONLY_TIMEOUT_SECONDS = 60
+O1_ROOT_ONLY_MAX_TRANSPORT_RETRIES = 0
+O1_ROOT_ONLY_TARGET = 1
+O1_ROOT_ONLY_CASE_ID = "case_13"
+O1_ROOT_ONLY_RESPONSE_MODE = "json_object"
+O1_ROOT_ONLY_PARSER_CONTRACT_VERSION = "skill-kit-validator/0.1.1"
+O1_ROOT_ONLY_RESULT_RELATIVE_PATH = (
+    "evals/results/character_skill_s2_shadow_compact_contract_v2_output_stepdown_o1_root_only_opencode_go_pro_case_13_run_01_v0.1.0.json"
+)
+O1_ROOT_ONLY_TEMP_RELATIVE_PATH = (
+    "evals/results/.character_skill_s2_shadow_compact_contract_v2_output_stepdown_o1_root_only_opencode_go_pro_case_13_run_01_v0.1.0.json.tmp"
+)
+_O1_ROOT_ONLY_RUN_ID_RE = re.compile(
+    r"^cs-s2-shadow-compact-contract-v2-output-stepdown-o1-root-only-v0\.1\.0-opencode_go-deepseek-v4-pro-"
+    r"case_13-t60-r0-n1-[0-9a-f]{40}-[0-9a-f]{12}-[0-9a-f]{12}-run-01$"
+)
 
 
 class EvidenceRunnerError(RuntimeError):
@@ -5007,6 +5029,344 @@ def validate_minimal_skillkit_bundle(bundle: Mapping[str, object]) -> None:
         raise EvidenceContractError("MINIMAL_SKILLKIT_BUNDLE_DIGEST_INVALID")
 
 
+O1_ROOT_ONLY_OUTPUT_INSTRUCTION = (
+    "For this structural latency diagnostic, return exactly one canonical CharacterSkillKit root JSON object. "
+    "Use the canonical schema_version and exactly these eight root keys: schema_version, entries, "
+    "feedback_relations, resources, states, summons, role_evidence, display_summary. "
+    "All seven collection values must be empty arrays; display_summary must be the shortest legal string. "
+    "Do not generate entries, protocols, effects, relations, role evidence, references, IDs, or nested semantic objects. "
+    "Return JSON only, as the direct root object: no prose, Markdown, wrapper, or additional fields."
+)
+
+
+def build_o1_root_only_fixture() -> dict[str, object]:
+    """Return the deterministic legal root-only fixture used by offline tests."""
+
+    return {
+        "schema_version": "skill-kit-candidate/0.1.1",
+        "entries": [],
+        "feedback_relations": [],
+        "resources": [],
+        "states": [],
+        "summons": [],
+        "role_evidence": [],
+        "display_summary": "",
+    }
+
+
+def _o1_root_only_prompt(case: ShadowEvidenceCase) -> AgentPrompt:
+    projection = _full_input_projection(case)
+    view = _ShadowProjectionView(
+        projection["brief"], tuple(projection["hard_constraints"]),
+        tuple(projection["forbidden_elements"]), projection["combat_role_profile"],
+    )
+    return AgentPrompt(
+        _compact_v2_contract() + "\n\n" + O1_ROOT_ONLY_OUTPUT_INSTRUCTION,
+        view, view, (ConversationMessage("user", _canonical_json(projection)),), (),
+        "cs-s2-compact-contract-v2-output-stepdown-o1-root-only", 1,
+        response_format=RESPONSE_CONTRACT, authoring_payload=projection,
+        invocation_purpose=O1_ROOT_ONLY_EXPERIMENT_TYPE,
+    )
+
+
+def _o1_root_only_output_contract_digest() -> str:
+    return _digest_bytes(O1_ROOT_ONLY_OUTPUT_INSTRUCTION.encode("utf-8"))
+
+
+def _o1_root_only_run_id(source_commit: str, manifest_digest: str, output_digest: str) -> str:
+    return (
+        "cs-s2-shadow-compact-contract-v2-output-stepdown-o1-root-only-v0.1.0-"
+        "opencode_go-deepseek-v4-pro-case_13-t60-r0-n1-"
+        f"{source_commit}-{manifest_digest[:12]}-{output_digest[:12]}-run-01"
+    )
+
+
+def _o1_root_only_provider() -> dict[str, object]:
+    return {
+        "name": O1_ROOT_ONLY_PROVIDER,
+        "model_requested": O1_ROOT_ONLY_MODEL,
+        "model_reported": O1_ROOT_ONLY_MODEL,
+        "transport": TRANSPORT,
+        "structured_output_mode": STRUCTURED_OUTPUT_MODE,
+        "response_contract": RESPONSE_CONTRACT,
+        "candidate_schema_version": CANDIDATE_SCHEMA_VERSION,
+        "timeout_seconds": O1_ROOT_ONLY_TIMEOUT_SECONDS,
+        "max_transport_retries": O1_ROOT_ONLY_MAX_TRANSPORT_RETRIES,
+    }
+
+
+def _o1_root_only_failure_categories(error: BaseException) -> tuple[str, ...]:
+    code = getattr(error, "code", "")
+    return {
+        "MISSING_FIELD": ("MISSING_REQUIRED_FIELD",),
+        "UNKNOWN_FIELD": ("UNKNOWN_FIELD",),
+        "TYPE_MISMATCH": ("WRONG_TYPE",),
+        "UNSUPPORTED_SCHEMA_VERSION": ("INVALID_CANONICAL_VALUE",),
+        "UNSUPPORTED_VALUE": ("INVALID_CANONICAL_VALUE",),
+    }.get(code, ("OTHER_CANONICAL_REJECTION",))
+
+
+def _o1_root_only_observation_keys() -> set[str]:
+    return {
+        "observation_id", "provider_outcome", "transport_attempts", "latency_ms",
+        "json_extraction_outcome", "parsed_top_level_type", "parser_invoked",
+        "parser_outcome", "parser_failure_categories", "parser_failure_counts",
+        "evaluator_invoked", "evaluator_outcome", "principal_verdict", "repair_calls",
+        "failure_stage", "failure_code", "sanitization",
+    }
+
+
+def _o1_root_only_bundle_digest(bundle: Mapping[str, object]) -> str:
+    return _digest_mapping({key: value for key, value in bundle.items() if key != "bundle_digest"})
+
+
+def validate_o1_root_only_bundle(bundle: Mapping[str, object]) -> None:
+    expected = {
+        "schema_version", "protocol_version", "run_id", "experiment_type", "level",
+        "contract_version", "contract_digest", "output_contract_version", "output_contract_digest",
+        "parser_contract_version", "source_commit", "manifest_digest", "input_manifest_digest",
+        "inputs", "provider", "model", "case_id", "timeout_seconds", "max_transport_retries",
+        "response_mode", "feature_flag", "record_only", "target_sample_count", "complete",
+        "request_metrics", "output_fixture_metrics", "sample_index", "observation", "bundle_digest",
+    }
+    _exact_keys(bundle, expected, "O1_ROOT_ONLY_BUNDLE_KEYS_INVALID")
+    if (
+        bundle["schema_version"] != O1_ROOT_ONLY_SCHEMA_VERSION
+        or bundle["protocol_version"] != PROTOCOL_VERSION
+        or bundle["experiment_type"] != O1_ROOT_ONLY_EXPERIMENT_TYPE
+        or bundle["level"] != O1_ROOT_ONLY_LEVEL
+        or bundle["contract_version"] != COMPACT_V2_CONTRACT_VERSION
+        or bundle["case_id"] != O1_ROOT_ONLY_CASE_ID
+        or bundle["timeout_seconds"] != O1_ROOT_ONLY_TIMEOUT_SECONDS
+        or bundle["max_transport_retries"] != O1_ROOT_ONLY_MAX_TRANSPORT_RETRIES
+        or bundle["response_mode"] != O1_ROOT_ONLY_RESPONSE_MODE
+        or bundle["feature_flag"] != "OFF"
+        or bundle["record_only"] is not True
+        or bundle["target_sample_count"] != O1_ROOT_ONLY_TARGET
+        or bundle["complete"] is not True
+        or bundle["sample_index"] != 1
+    ):
+        raise EvidenceContractError("O1_ROOT_ONLY_CONFIG_INVALID")
+    for key in ("contract_digest", "output_contract_digest", "manifest_digest"):
+        if not _is_sha(bundle[key]):
+            raise EvidenceContractError("O1_ROOT_ONLY_IDENTITY_INVALID")
+    if bundle["manifest_digest"] != bundle["input_manifest_digest"]:
+        raise EvidenceContractError("O1_ROOT_ONLY_MANIFEST_INVALID")
+    if not isinstance(bundle["source_commit"], str) or not _GIT_SHA_RE.fullmatch(bundle["source_commit"]):
+        raise EvidenceContractError("O1_ROOT_ONLY_SOURCE_COMMIT_INVALID")
+    if not isinstance(bundle["run_id"], str) or not _O1_ROOT_ONLY_RUN_ID_RE.fullmatch(bundle["run_id"]):
+        raise EvidenceContractError("O1_ROOT_ONLY_RUN_ID_INVALID")
+    if bundle["provider"] != _o1_root_only_provider() or bundle["model"] != O1_ROOT_ONLY_MODEL:
+        raise EvidenceContractError("O1_ROOT_ONLY_PROVIDER_INVALID")
+    observation = bundle["observation"]
+    if not isinstance(observation, Mapping):
+        raise EvidenceContractError("O1_ROOT_ONLY_OBSERVATION_INVALID")
+    _exact_keys(observation, _o1_root_only_observation_keys(), "O1_ROOT_ONLY_OBSERVATION_KEYS_INVALID")
+    if (
+        observation["observation_id"] != f"{bundle['run_id']}:case_13:sample-01"
+        or observation["repair_calls"] != 0
+        or observation["evaluator_invoked"] is not False
+        or observation["evaluator_outcome"] != "NOT_RUN"
+        or observation["sanitization"] != _sanitization_mapping()
+    ):
+        raise EvidenceContractError("O1_ROOT_ONLY_OBSERVATION_INVALID")
+    if observation["principal_verdict"] not in {
+        "O1_ROOT_ONLY_STRUCTURAL_PASS", "O1_ROOT_ONLY_PARSE_REJECTED",
+        "O1_ROOT_ONLY_MALFORMED", "O1_ROOT_ONLY_UNAVAILABLE",
+    }:
+        raise EvidenceContractError("O1_ROOT_ONLY_VERDICT_INVALID")
+    if bundle["bundle_digest"] != _o1_root_only_bundle_digest(bundle):
+        raise EvidenceContractError("O1_ROOT_ONLY_BUNDLE_DIGEST_INVALID")
+
+
+class OutputStepdownRunner:
+    """Offline planner and future fake/live harness for the O1 root-only probe."""
+
+    def __init__(self, repo_root: Path | str | None = None, *, manifest_path: Path | str | None = None) -> None:
+        self.root = Path(repo_root or ROOT).resolve()
+        self.manifest = load_manifest(self.root, manifest_path)
+        self.cases = _load_cases(self.root, self.manifest)
+
+    def _destination(self, output_path: Path | str | None) -> Path:
+        return (Path(output_path) if output_path is not None else self.root / O1_ROOT_ONLY_RESULT_RELATIVE_PATH).resolve()
+
+    def _prepare(self, output_path: Path | str | None = None) -> dict[str, object]:
+        case = self.cases[O1_ROOT_ONLY_CASE_ID]
+        contract = _compact_v2_contract()
+        digest = _digest_bytes(contract.encode("utf-8"))
+        if digest != "5dd592925cb4cdc0e20cbb564deedba4c64fe74e8fd79bb2925db66cde801bce" or len(contract) != 981 or len(contract.encode("utf-8")) != 985:
+            raise EvidenceRunnerError("BLOCKED_V2_CONTRACT_DRIFT")
+        tiny = _message_metrics(_FullInputTinyOutputAdapter._provider_messages(_compact_v2_prompt(case)))
+        minimal = _message_metrics(LiveLLMAdapter._provider_messages(_minimal_skillkit_prompt(case)))
+        o1 = _message_metrics(LiveLLMAdapter._provider_messages(_o1_root_only_prompt(case)))
+        if (tiny["chars"], tiny["bytes"]) != (1709, 1837) or (minimal["chars"], minimal["bytes"]) != (1724, 1852):
+            raise EvidenceRunnerError("BLOCKED_V2_DIAGNOSTIC_DRIFT")
+        source_commit = _source_commit(self.root)
+        output_digest = _o1_root_only_output_contract_digest()
+        run_id = _o1_root_only_run_id(source_commit, self.manifest.raw_digest, output_digest)
+        if not _O1_ROOT_ONLY_RUN_ID_RE.fullmatch(run_id):
+            raise EvidenceRunnerError("O1_ROOT_ONLY_RUN_ID_INVALID")
+        destination = self._destination(output_path)
+        existing = None
+        if destination.exists():
+            payload, _ = _load_json(destination)
+            validate_o1_root_only_bundle(payload)
+            if payload["run_id"] != run_id:
+                raise EvidenceRunnerError("O1_ROOT_ONLY_IDENTITY_MISMATCH")
+            existing = payload
+        fixture = build_o1_root_only_fixture()
+        fixture_metrics = {
+            "chars": len(_canonical_json(fixture)),
+            "bytes": len(_canonical_json(fixture).encode("utf-8")),
+            "objects": 1, "fields": 8, "refs": 0, "enum_decisions": 0,
+            "parser_legal": True,
+        }
+        try:
+            parse_candidate(fixture)
+        except (SkillKitShapeError, TypeError, ValueError) as error:
+            raise EvidenceRunnerError("BLOCKED_O1_NOT_CANONICAL_LEGAL") from error
+        return {
+            "case": case, "v2_digest": digest, "output_digest": output_digest,
+            "run_id": run_id, "source_commit": source_commit, "destination": destination,
+            "o1": o1, "tiny": tiny, "minimal": minimal, "fixture_metrics": fixture_metrics,
+            "existing": existing,
+        }
+
+    def dry_run(self, *, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, output_path: Path | str | None = None) -> dict[str, object]:
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1):
+            raise EvidenceRunnerError("O1_ROOT_ONLY_VARIABLE_MISMATCH")
+        NestedShapeStepdownRunner(self.root, manifest_path=self.root / MANIFEST_RELATIVE_PATH)._assert_historical_integrity()
+        prepared = self._prepare(output_path)
+        existing = prepared["existing"] is not None
+        return {
+            "status": "COHORT_ALREADY_COMPLETE" if existing else "dry_run_o1_root_only",
+            "experiment_type": O1_ROOT_ONLY_EXPERIMENT_TYPE, "level": O1_ROOT_ONLY_LEVEL,
+            "schema_version": O1_ROOT_ONLY_SCHEMA_VERSION, "contract_version": COMPACT_V2_CONTRACT_VERSION,
+            "contract_digest": prepared["v2_digest"], "output_contract_version": O1_ROOT_ONLY_OUTPUT_CONTRACT_VERSION,
+            "output_contract_digest": prepared["output_digest"], "parser_contract_version": O1_ROOT_ONLY_PARSER_CONTRACT_VERSION,
+            "run_id": prepared["run_id"], "source_commit": prepared["source_commit"],
+            "manifest_digest": self.manifest.raw_digest, "provider": O1_ROOT_ONLY_PROVIDER,
+            "model": O1_ROOT_ONLY_MODEL, "case_id": O1_ROOT_ONLY_CASE_ID, "timeout_seconds": 60,
+            "max_transport_retries": 0, "target_sample_count": 1, "response_mode": O1_ROOT_ONLY_RESPONSE_MODE,
+            "feature_flag": "OFF", "record_only": True, "request_metrics": prepared["o1"],
+            "v2_tiny_request_metrics": prepared["tiny"], "v2_minimal_request_metrics": prepared["minimal"],
+            "output_fixture_metrics": prepared["fixture_metrics"],
+            "output_instruction_chars": len(O1_ROOT_ONLY_OUTPUT_INSTRUCTION),
+            "output_instruction_bytes": len(O1_ROOT_ONLY_OUTPUT_INSTRUCTION.encode("utf-8")),
+            "existing_sample_count": 1 if existing else 0, "existing_sample_indexes": [1] if existing else [],
+            "next_sample_index": None if existing else 1, "remaining_sample_count": 0 if existing else 1,
+            "provider_factory_constructed": False, "provider_called": False, "evaluator_invoked": False,
+            "repair_calls": 0, "output_path": prepared["destination"].as_posix(),
+        }
+
+    def run(self, *, live: bool = False, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, expected_source_commit: str | None = None, resume: bool = False, output_path: Path | str | None = None, model_factory: Callable[[], Any] | None = None, enforce_clean_tree: bool = True, **_: object) -> dict[str, object]:
+        if not live:
+            if resume or model_factory is not None:
+                raise EvidenceRunnerError("O1_ROOT_ONLY_DRY_RUN_ARGUMENTS_INVALID")
+            return self.dry_run(timeout_seconds=timeout_seconds, max_transport_retries=max_transport_retries, target_sample_count=target_sample_count, output_path=output_path)
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1):
+            raise EvidenceRunnerError("O1_ROOT_ONLY_VARIABLE_MISMATCH")
+        if expected_source_commit is None:
+            raise EvidenceRunnerError("O1_ROOT_ONLY_SOURCE_COMMIT_REQUIRED")
+        if _source_commit(self.root) != expected_source_commit:
+            raise EvidenceRunnerError("O1_ROOT_ONLY_SOURCE_COMMIT_MISMATCH")
+        prepared = self._prepare(output_path)
+        if prepared["existing"] is not None:
+            raise EvidenceRunnerError("COHORT_ALREADY_COMPLETE")
+        if enforce_clean_tree and _dirty_paths(self.root):
+            raise EvidenceRunnerError("LIVE_DIRTY_TREE")
+        destination = prepared["destination"]
+        if destination.exists() and not resume:
+            raise EvidenceRunnerError("O1_ROOT_ONLY_RESULT_EXISTS")
+        if model_factory is not None:
+            provider_model = model_factory()
+        else:
+            environment = {
+                "NPC_AGENT_MODEL": "live", "NPC_LLM_PROVIDER": O1_ROOT_ONLY_PROVIDER,
+                "NPC_LLM_MODEL": O1_ROOT_ONLY_MODEL, "NPC_LLM_TRANSPORT": TRANSPORT,
+                "NPC_LLM_STRUCTURED_OUTPUT": STRUCTURED_OUTPUT_MODE, "NPC_LLM_TIMEOUT_SECONDS": "60",
+                "NPC_LLM_MAX_RETRIES": "0",
+                **({"NPC_LLM_API_KEY": os.environ["NPC_LLM_API_KEY"]} if os.environ.get("NPC_LLM_API_KEY") else {}),
+            }
+            try:
+                provider_model = character_model_from_environment(environment=environment, mode_override="live")
+            except Exception as error:
+                raise EvidenceRunnerError("PROVIDER_FACTORY_FAILED") from error
+        provider_outcome = "failure"
+        attempts = 1
+        latency_ms = None
+        json_outcome = "not_attempted"
+        top_level = None
+        parser_invoked = False
+        parser_outcome = "NOT_REACHED"
+        parser_categories: tuple[str, ...] = ()
+        parser_counts: dict[str, int] = {}
+        principal_verdict = "O1_ROOT_ONLY_UNAVAILABLE"
+        failure_stage = "provider"
+        failure_code = "PROVIDER_INVOCATION_FAILED"
+        try:
+            turn = provider_model.generate(_o1_root_only_prompt(prepared["case"]))
+            invocation = turn.invocation
+            provider_outcome = "success"
+            attempts = (invocation.retry_count + 1) if invocation is not None else 1
+            latency_ms = _bounded_latency(invocation)
+            try:
+                payload = json.loads(turn.text)
+                top_level = _minimal_top_level_type(payload)
+            except (TypeError, json.JSONDecodeError):
+                json_outcome = "failed"
+                failure_stage, failure_code = "json", "RESPONSE_JSON_INVALID"
+                principal_verdict = "O1_ROOT_ONLY_MALFORMED"
+            else:
+                json_outcome = "parsed"
+                parser_invoked = True
+                try:
+                    candidate = parse_candidate(payload)
+                    if not hasattr(candidate, "entries"):
+                        raise SkillKitShapeError("INVALID_ROOT_SHAPE", "/", "legacy candidate is not canonical root")
+                except (SkillKitShapeError, TypeError, ValueError) as error:
+                    parser_outcome = "PARSER_REJECTED"
+                    parser_categories = _o1_root_only_failure_categories(error)
+                    parser_counts = {category: 1 for category in parser_categories}
+                    failure_stage, failure_code = "shape", "CANDIDATE_SHAPE_REJECTED"
+                    principal_verdict = "O1_ROOT_ONLY_PARSE_REJECTED"
+                else:
+                    parser_outcome = "PARSER_PASS"
+                    principal_verdict = "O1_ROOT_ONLY_STRUCTURAL_PASS"
+                    failure_stage, failure_code = None, None
+        except ModelError as error:
+            invocation = error.audit
+            attempts = (invocation.retry_count + 1) if invocation is not None else 1
+            latency_ms = _bounded_latency(invocation)
+        observation = {
+            "observation_id": f"{prepared['run_id']}:case_13:sample-01", "provider_outcome": provider_outcome,
+            "transport_attempts": attempts, "latency_ms": latency_ms, "json_extraction_outcome": json_outcome,
+            "parsed_top_level_type": top_level, "parser_invoked": parser_invoked, "parser_outcome": parser_outcome,
+            "parser_failure_categories": parser_categories, "parser_failure_counts": parser_counts,
+            "evaluator_invoked": False, "evaluator_outcome": "NOT_RUN", "principal_verdict": principal_verdict,
+            "repair_calls": 0, "failure_stage": failure_stage, "failure_code": failure_code,
+            "sanitization": _sanitization_mapping(),
+        }
+        bundle = {
+            "schema_version": O1_ROOT_ONLY_SCHEMA_VERSION, "protocol_version": PROTOCOL_VERSION,
+            "run_id": prepared["run_id"], "experiment_type": O1_ROOT_ONLY_EXPERIMENT_TYPE,
+            "level": O1_ROOT_ONLY_LEVEL, "contract_version": COMPACT_V2_CONTRACT_VERSION,
+            "contract_digest": prepared["v2_digest"], "output_contract_version": O1_ROOT_ONLY_OUTPUT_CONTRACT_VERSION,
+            "output_contract_digest": prepared["output_digest"], "parser_contract_version": O1_ROOT_ONLY_PARSER_CONTRACT_VERSION,
+            "source_commit": _source_commit(self.root), "manifest_digest": self.manifest.raw_digest,
+            "input_manifest_digest": self.manifest.raw_digest, "inputs": [dict(item) for item in self.manifest.input_files],
+            "provider": _o1_root_only_provider(), "model": O1_ROOT_ONLY_MODEL, "case_id": O1_ROOT_ONLY_CASE_ID,
+            "timeout_seconds": 60, "max_transport_retries": 0, "response_mode": O1_ROOT_ONLY_RESPONSE_MODE,
+            "feature_flag": "OFF", "record_only": True, "target_sample_count": 1, "complete": True,
+            "request_metrics": prepared["o1"], "output_fixture_metrics": prepared["fixture_metrics"],
+            "sample_index": 1, "observation": observation,
+        }
+        bundle["bundle_digest"] = _o1_root_only_bundle_digest(bundle)
+        validate_o1_root_only_bundle(bundle)
+        _write_bundle(destination, bundle, resume=False)
+        return bundle
+
+
 def _compact_v2_prompt(case: ShadowEvidenceCase) -> AgentPrompt:
     projection = _full_input_projection(case)
     view = _ShadowProjectionView(
@@ -5727,6 +6087,30 @@ def run_minimal_skillkit(
     )
 
 
+def run_o1_root_only(
+    *,
+    repo_root: Path | str | None = None,
+    live: bool = False,
+    timeout_seconds: int = O1_ROOT_ONLY_TIMEOUT_SECONDS,
+    max_transport_retries: int = O1_ROOT_ONLY_MAX_TRANSPORT_RETRIES,
+    target_sample_count: int = O1_ROOT_ONLY_TARGET,
+    expected_source_commit: str | None = None,
+    resume: bool = False,
+    output_path: Path | str | None = None,
+    model_factory: Callable[[], Any] | None = None,
+) -> dict[str, object]:
+    return OutputStepdownRunner(repo_root).run(
+        live=live,
+        timeout_seconds=timeout_seconds,
+        max_transport_retries=max_transport_retries,
+        target_sample_count=target_sample_count,
+        expected_source_commit=expected_source_commit,
+        resume=resume,
+        output_path=output_path,
+        model_factory=model_factory,
+    )
+
+
 __all__ = [
     "CASE_IDS",
     "COMPLIANCE_SCHEMA_VERSION",
@@ -5779,6 +6163,18 @@ __all__ = [
     "NestedShapeStepdownRunner",
     "CompactContractV2Runner",
     "MinimalSkillKitRunner",
+    "OutputStepdownRunner",
+    "O1_ROOT_ONLY_SCHEMA_VERSION",
+    "O1_ROOT_ONLY_EXPERIMENT_TYPE",
+    "O1_ROOT_ONLY_LEVEL",
+    "O1_ROOT_ONLY_OUTPUT_CONTRACT_VERSION",
+    "O1_ROOT_ONLY_RESULT_RELATIVE_PATH",
+    "O1_ROOT_ONLY_TIMEOUT_SECONDS",
+    "O1_ROOT_ONLY_MAX_TRANSPORT_RETRIES",
+    "O1_ROOT_ONLY_TARGET",
+    "build_o1_root_only_fixture",
+    "validate_o1_root_only_bundle",
+    "run_o1_root_only",
     "MINIMAL_SKILLKIT_SCHEMA_VERSION",
     "MINIMAL_SKILLKIT_EXPERIMENT_TYPE",
     "MINIMAL_SKILLKIT_RESULT_RELATIVE_PATH",
