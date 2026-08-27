@@ -18,6 +18,7 @@ from evals.character_skill_s2_shadow_evidence import (  # noqa: E402
     ContractComplianceCohortRunner,
     EvidenceRunnerError,
     FixedContractComplianceCohortRunner,
+    MinimalTransportSanityRunner,
     ModelSuitabilityProbeRunner,
     RetryUnavailableCohortRunner,
     ShadowEvidenceRunner,
@@ -83,6 +84,12 @@ def main(argv: list[str] | None = None) -> int:
         help="run or plan the isolated case_13 DeepSeek V4 Pro model-suitability probe",
     )
     parser.add_argument(
+        "--minimal-transport-sanity",
+        "--minimal-transport-sanity-probe",
+        action="store_true",
+        help="run or plan the isolated tiny JSON OpenCode Go transport sanity probe",
+    )
+    parser.add_argument(
         "--timeout-seconds",
         type=int,
         default=60,
@@ -91,8 +98,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--max-transport-retries",
         type=int,
-        default=2,
-        help="timeout suitability probe retries (frozen at 2)",
+        default=None,
+        help="probe retries (defaults to 2, or 0 for minimal transport sanity)",
     )
     parser.add_argument(
         "--probe-source-commit",
@@ -102,9 +109,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", type=Path, default=None, help=argparse.SUPPRESS)
     parser.add_argument("--manifest", type=Path, default=None, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    timeout_seconds = 60 if args.timeout_seconds is None else args.timeout_seconds
+    max_transport_retries = (
+        (0 if args.minimal_transport_sanity else 2)
+        if args.max_transport_retries is None
+        else args.max_transport_retries
+    )
     target_samples = args.target_samples
     if target_samples is None:
-        target_samples = 1 if (args.timeout_suitability_probe or args.model_suitability_probe) else 3
+        target_samples = 1 if (args.timeout_suitability_probe or args.model_suitability_probe or args.minimal_transport_sanity) else 3
     if args.live and args.dry_run:
         print(json.dumps({"status": "error", "error_code": "MODE_ARGUMENTS_INVALID"}))
         return 2
@@ -150,6 +163,20 @@ def main(argv: list[str] | None = None) -> int:
     ):
         print(json.dumps({"status": "error", "error_code": "MODEL_SUITABILITY_ARGUMENTS_INVALID"}))
         return 2
+    if args.minimal_transport_sanity and (
+        args.timeout_suitability_probe
+        or args.model_suitability_probe
+        or args.retry_unavailable_from is not None
+        or args.shape_diagnostic_from is not None
+        or args.contract_compliance_from is not None
+        or args.fixed_contract_compliance_from is not None
+        or args.case_ids is not None
+        or args.repeat != 1
+        or args.append_next_sample
+        or (args.target_samples is not None and args.target_samples != 1)
+    ):
+        print(json.dumps({"status": "error", "error_code": "MINIMAL_TRANSPORT_SANITY_ARGUMENTS_INVALID"}))
+        return 2
     if args.append_next_sample and args.fixed_contract_compliance_from is None:
         print(json.dumps({"status": "error", "error_code": "FIXED_COHORT_ARGUMENTS_INVALID"}))
         return 2
@@ -168,8 +195,8 @@ def main(argv: list[str] | None = None) -> int:
             runner = TimeoutSuitabilityProbeRunner(ROOT, manifest_path=args.manifest)
             result = runner.run(
                 live=args.live,
-                timeout_seconds=args.timeout_seconds,
-                max_transport_retries=args.max_transport_retries,
+                timeout_seconds=timeout_seconds,
+                max_transport_retries=max_transport_retries,
                 target_sample_count=target_samples,
                 expected_source_commit=args.probe_source_commit,
                 resume=args.resume,
@@ -179,8 +206,19 @@ def main(argv: list[str] | None = None) -> int:
             runner = ModelSuitabilityProbeRunner(ROOT, manifest_path=args.manifest)
             result = runner.run(
                 live=args.live,
-                timeout_seconds=args.timeout_seconds,
-                max_transport_retries=args.max_transport_retries,
+                timeout_seconds=timeout_seconds,
+                max_transport_retries=max_transport_retries,
+                target_sample_count=target_samples,
+                expected_source_commit=args.probe_source_commit,
+                resume=args.resume,
+                output_path=args.output,
+            )
+        elif args.minimal_transport_sanity:
+            runner = MinimalTransportSanityRunner(ROOT, manifest_path=args.manifest)
+            result = runner.run(
+                live=args.live,
+                timeout_seconds=timeout_seconds,
+                max_transport_retries=max_transport_retries,
                 target_sample_count=target_samples,
                 expected_source_commit=args.probe_source_commit,
                 resume=args.resume,

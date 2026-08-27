@@ -33,13 +33,23 @@ from agents.character_generation import (  # noqa: E402
     CharacterGenerationAgent,
     DeterministicCharacterGenerationModel,
 )
+from agents.errors import ModelError  # noqa: E402
+from agents.live_llm import LiveLLMAdapter  # noqa: E402
 from agents.model_factory import character_model_from_environment  # noqa: E402
 from agents.models import (  # noqa: E402
     AgentPrompt,
     ConversationMessage,
     ModelInvocationAudit,
     ModelTurn,
+    NpcCharacterView,
+    NpcRuntimeView,
     SkillShadowConfig,
+)
+from agents.openai_provider import OpenAIChatClient  # noqa: E402
+from agents.provider_protocol import (  # noqa: E402
+    NegotiatedResponseContract,
+    ProviderCompletion,
+    ResponseMode,
 )
 from agents.response_contracts import character_skill_kit_prompt_contract  # noqa: E402
 from character_skill import (  # noqa: E402
@@ -212,6 +222,28 @@ _MODEL_SUITABILITY_RUN_ID_RE = re.compile(
 )
 MODEL_SUITABILITY_FLASH_TIMEOUT_SHA256 = (
     "d15389fa338cfbf1773f4c76360c216ef9fd164ee879adf40f309eac6c07dd17"
+)
+MINIMAL_TRANSPORT_SANITY_SCHEMA_VERSION = (
+    "character-skill-s2-shadow-minimal-transport-sanity/0.1.0"
+)
+MINIMAL_TRANSPORT_SANITY_EXPERIMENT_TYPE = "minimal_transport_sanity"
+MINIMAL_TRANSPORT_SANITY_PROVIDER = "opencode_go"
+MINIMAL_TRANSPORT_SANITY_MODEL = "deepseek-v4-pro"
+MINIMAL_TRANSPORT_SANITY_TRANSPORT = "openai_chat_completions"
+MINIMAL_TRANSPORT_SANITY_STRUCTURED_OUTPUT_MODE = "json_object"
+MINIMAL_TRANSPORT_SANITY_TIMEOUT_SECONDS = 60
+MINIMAL_TRANSPORT_SANITY_MAX_TRANSPORT_RETRIES = 0
+MINIMAL_TRANSPORT_SANITY_TARGET = 1
+MINIMAL_TRANSPORT_SANITY_TINY_CONTRACT_VERSION = "minimal-status-object/0.1.0"
+MINIMAL_TRANSPORT_SANITY_RESULT_RELATIVE_PATH = (
+    "evals/results/character_skill_s2_shadow_minimal_transport_sanity_opencode_go_pro_run_01_v0.1.0.json"
+)
+MINIMAL_TRANSPORT_SANITY_TEMP_RELATIVE_PATH = (
+    "evals/results/.character_skill_s2_shadow_minimal_transport_sanity_opencode_go_pro_run_01_v0.1.0.json.tmp"
+)
+_MINIMAL_TRANSPORT_SANITY_RUN_ID_RE = re.compile(
+    r"^cs-s2-minimal-transport-sanity-v0\.1\.0-opencode_go-deepseek-v4-pro-"
+    r"t60-r0-n1-[0-9a-f]{40}-run-01$"
 )
 
 
@@ -2514,6 +2546,89 @@ def validate_model_suitability_bundle(bundle: Mapping[str, object]) -> None:
         raise EvidenceContractError("MODEL_SUITABILITY_BUNDLE_DIGEST_INVALID")
 
 
+def _minimal_transport_sanity_run_id(source_commit: str) -> str:
+    return (
+        "cs-s2-minimal-transport-sanity-v0.1.0-opencode_go-deepseek-v4-pro-"
+        f"t60-r0-n1-{source_commit}-run-01"
+    )
+
+
+def _minimal_transport_sanity_provider() -> dict[str, object]:
+    return {
+        "name": MINIMAL_TRANSPORT_SANITY_PROVIDER,
+        "model_requested": MINIMAL_TRANSPORT_SANITY_MODEL,
+        "model_reported": MINIMAL_TRANSPORT_SANITY_MODEL,
+        "transport": MINIMAL_TRANSPORT_SANITY_TRANSPORT,
+        "structured_output_mode": MINIMAL_TRANSPORT_SANITY_STRUCTURED_OUTPUT_MODE,
+        "timeout_seconds": MINIMAL_TRANSPORT_SANITY_TIMEOUT_SECONDS,
+        "max_transport_retries": MINIMAL_TRANSPORT_SANITY_MAX_TRANSPORT_RETRIES,
+    }
+
+
+def _minimal_transport_sanity_bundle_digest(bundle: Mapping[str, object]) -> str:
+    return _digest_mapping({key: value for key, value in bundle.items() if key != "bundle_digest"})
+
+
+def validate_minimal_transport_sanity_bundle(bundle: Mapping[str, object]) -> None:
+    expected = {
+        "schema_version", "protocol_version", "run_id", "experiment_type",
+        "source_commit", "manifest_digest", "input_manifest_digest", "inputs",
+        "provider", "timeout_seconds", "max_transport_retries", "target_sample_count",
+        "complete", "tiny_contract_version", "sample_index", "observation", "bundle_digest",
+    }
+    _exact_keys(bundle, expected, "MINIMAL_TRANSPORT_SANITY_BUNDLE_KEYS_INVALID")
+    if (
+        bundle["schema_version"] != MINIMAL_TRANSPORT_SANITY_SCHEMA_VERSION
+        or bundle["protocol_version"] != PROTOCOL_VERSION
+        or bundle["experiment_type"] != MINIMAL_TRANSPORT_SANITY_EXPERIMENT_TYPE
+        or bundle["timeout_seconds"] != MINIMAL_TRANSPORT_SANITY_TIMEOUT_SECONDS
+        or bundle["max_transport_retries"] != MINIMAL_TRANSPORT_SANITY_MAX_TRANSPORT_RETRIES
+        or bundle["target_sample_count"] != MINIMAL_TRANSPORT_SANITY_TARGET
+        or bundle["tiny_contract_version"] != MINIMAL_TRANSPORT_SANITY_TINY_CONTRACT_VERSION
+    ):
+        raise EvidenceContractError("MINIMAL_TRANSPORT_SANITY_CONFIG_INVALID")
+    if not isinstance(bundle["source_commit"], str) or not _GIT_SHA_RE.fullmatch(bundle["source_commit"]):
+        raise EvidenceContractError("MINIMAL_TRANSPORT_SANITY_SOURCE_COMMIT_INVALID")
+    if bundle["manifest_digest"] != bundle["input_manifest_digest"] or not _is_sha(bundle["manifest_digest"]):
+        raise EvidenceContractError("MINIMAL_TRANSPORT_SANITY_MANIFEST_INVALID")
+    if not isinstance(bundle["run_id"], str) or not _MINIMAL_TRANSPORT_SANITY_RUN_ID_RE.fullmatch(bundle["run_id"]):
+        raise EvidenceContractError("MINIMAL_TRANSPORT_SANITY_RUN_ID_INVALID")
+    if bundle["sample_index"] != 1 or bundle["complete"] is not True:
+        raise EvidenceContractError("MINIMAL_TRANSPORT_SANITY_COMPLETE_INVALID")
+    inputs = bundle["inputs"]
+    if not isinstance(inputs, list) or not inputs or any(
+        not isinstance(item, Mapping)
+        or set(item) != {"path", "sha256", "role"}
+        or not isinstance(item["path"], str)
+        or not isinstance(item["role"], str)
+        or not _is_sha(item["sha256"])
+        for item in inputs
+    ):
+        raise EvidenceContractError("MINIMAL_TRANSPORT_SANITY_INPUTS_INVALID")
+    if bundle["provider"] != _minimal_transport_sanity_provider():
+        raise EvidenceContractError("MINIMAL_TRANSPORT_SANITY_PROVIDER_INVALID")
+    observation = bundle["observation"]
+    if not isinstance(observation, Mapping):
+        raise EvidenceContractError("MINIMAL_TRANSPORT_SANITY_OBSERVATION_INVALID")
+    _exact_keys(
+        observation,
+        {"observation_id", "provider_outcome", "transport_attempts", "latency_ms", "json_extraction_outcome", "tiny_contract_outcome", "parsed_top_level_type", "expected_key_count", "actual_key_count", "failure_stage", "failure_code", "sanitization"},
+        "MINIMAL_TRANSPORT_SANITY_OBSERVATION_KEYS_INVALID",
+    )
+    if observation["observation_id"] != f"{bundle['run_id']}:sample-01":
+        raise EvidenceContractError("MINIMAL_TRANSPORT_SANITY_OBSERVATION_ID_INVALID")
+    if observation["provider_outcome"] not in {"success", "failure"}:
+        raise EvidenceContractError("MINIMAL_TRANSPORT_SANITY_OBSERVATION_INVALID")
+    if observation["transport_attempts"] != 1:
+        raise EvidenceContractError("MINIMAL_TRANSPORT_SANITY_ATTEMPTS_INVALID")
+    if observation["tiny_contract_outcome"] not in {"TRANSPORT_SUCCESS_CONTRACT_PASS", "TRANSPORT_SUCCESS_CONTRACT_REJECTED", "TRANSPORT_UNAVAILABLE"}:
+        raise EvidenceContractError("MINIMAL_TRANSPORT_SANITY_OUTCOME_INVALID")
+    if observation["sanitization"] != _sanitization_mapping():
+        raise EvidenceContractError("MINIMAL_TRANSPORT_SANITY_SANITIZATION_INVALID")
+    if bundle["bundle_digest"] != _minimal_transport_sanity_bundle_digest(bundle):
+        raise EvidenceContractError("MINIMAL_TRANSPORT_SANITY_BUNDLE_DIGEST_INVALID")
+
+
 def validate_timeout_suitability_bundle(bundle: Mapping[str, object]) -> None:
     expected = {
         "schema_version", "protocol_version", "run_id", "experiment_type",
@@ -3184,6 +3299,282 @@ class ModelSuitabilityProbeRunner:
         return bundle
 
 
+class _MinimalTransportAdapter(LiveLLMAdapter):
+    """LiveLLMAdapter variant that keeps the tiny diagnostic contract isolated."""
+
+    @classmethod
+    def _provider_messages(cls, prompt: AgentPrompt) -> list[dict[str, Any]]:
+        return [
+            {
+                "role": "system",
+                "content": "Return exactly one JSON object with one field, status, whose value is exactly ok. Return no prose, Markdown, code fence, or additional fields.",
+            },
+            {"role": "user", "content": "{}"},
+        ]
+
+    def _response_contract(self, prompt: AgentPrompt) -> NegotiatedResponseContract:
+        if not self.profile.capabilities.supports_json_object:
+            raise RuntimeError("minimal transport contract requires JSON Object capability")
+        return NegotiatedResponseContract("minimal_transport_sanity", ResponseMode.JSON_OBJECT)
+
+    def _normalize(
+        self,
+        response: ProviderCompletion,
+        prompt: AgentPrompt,
+        started: float,
+        retry_count: int,
+    ) -> ModelTurn:
+        latency_ms = (self._monotonic() - started) * 1000
+        invocation = ModelInvocationAudit(
+            session_id=prompt.session_id,
+            turn_number=prompt.turn_number,
+            provider=self.provider,
+            model=self.model,
+            outcome="success",
+            latency_ms=latency_ms,
+            retry_count=retry_count,
+            finish_reason=response.finish_reason,
+            usage=response.usage,
+            provider_request_id=response.request_id,
+            transport=self.transport,
+            response_contract=ResponseMode.JSON_OBJECT.value,
+            purpose=prompt.invocation_purpose,
+        )
+        return ModelTurn(
+            text=response.text,
+            finish_reason=response.finish_reason,
+            usage=response.usage,
+            provider_request_id=response.request_id,
+            invocation=invocation,
+        )
+
+
+def _minimal_top_level_type(value: object) -> str:
+    if value is None:
+        return "null"
+    if isinstance(value, dict):
+        return "object"
+    if isinstance(value, list):
+        return "array"
+    if isinstance(value, str):
+        return "string"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, (int, float)):
+        return "number"
+    return "unknown"
+
+
+def _minimal_contract_result(text: object) -> dict[str, object]:
+    if not isinstance(text, str):
+        return {
+            "json_extraction_outcome": "failed",
+            "tiny_contract_outcome": "TRANSPORT_SUCCESS_CONTRACT_REJECTED",
+            "parsed_top_level_type": "invalid",
+            "actual_key_count": None,
+        }
+    try:
+        parsed = json.loads(text)
+    except (TypeError, json.JSONDecodeError):
+        return {
+            "json_extraction_outcome": "failed",
+            "tiny_contract_outcome": "TRANSPORT_SUCCESS_CONTRACT_REJECTED",
+            "parsed_top_level_type": "invalid",
+            "actual_key_count": None,
+        }
+    top_level = _minimal_top_level_type(parsed)
+    key_count = len(parsed) if isinstance(parsed, dict) else None
+    passed = isinstance(parsed, dict) and set(parsed) == {"status"} and parsed.get("status") == "ok"
+    return {
+        "json_extraction_outcome": "parsed",
+        "tiny_contract_outcome": "TRANSPORT_SUCCESS_CONTRACT_PASS" if passed else "TRANSPORT_SUCCESS_CONTRACT_REJECTED",
+        "parsed_top_level_type": top_level,
+        "actual_key_count": key_count,
+    }
+
+
+class MinimalTransportSanityRunner:
+    """Run one diagnostic-only tiny JSON request through the existing stack."""
+
+    def __init__(self, repo_root: Path | str | None = None, *, manifest_path: Path | str | None = None) -> None:
+        self.root = Path(repo_root or ROOT).resolve()
+        self.manifest = load_manifest(self.root, manifest_path)
+
+    def _destination(self, output_path: Path | str | None) -> Path:
+        return (Path(output_path) if output_path is not None else self.root / MINIMAL_TRANSPORT_SANITY_RESULT_RELATIVE_PATH).resolve()
+
+    def _assert_historical_integrity(self) -> None:
+        specs = (
+            (RESULT_RELATIVE_TEMPLATE.format(repeat=1), validate_evidence_bundle, "b84bba6063f2b9bb77c0b9d88ba36a3d0f92a5e23a2b022b87d67d55f117b7a3"),
+            (RETRY_RESULT_RELATIVE_PATH, validate_retry_evidence_bundle, "7722165cae52cb858078ad9725a516d5ac04cdb8d41824e8d71826eea4989a31"),
+            (DIAGNOSTIC_RESULT_RELATIVE_PATH, validate_shape_diagnostic_bundle, "89b44f5413ab92a418958d2659880b69635ca0bc7a135123afd5579af8898215"),
+            (COMPLIANCE_RESULT_RELATIVE_PATH, validate_contract_compliance_bundle, "5ef5fde8fe677d634eedd017948e84c50802f04603df1144dc6360a7f8176803"),
+            (FIXED_COMPLIANCE_RESULT_RELATIVE_PATH, validate_fixed_contract_compliance_bundle, "99bd6f48e04c1262292468b64ded78c4eb9c6160f94ddba9386bea580d76e46d"),
+            (TIMEOUT_SUITABILITY_RESULT_RELATIVE_PATH, validate_timeout_suitability_bundle, MODEL_SUITABILITY_FLASH_TIMEOUT_SHA256),
+            (MODEL_SUITABILITY_RESULT_RELATIVE_PATH, validate_model_suitability_bundle, "b96e1a822af9af6f4f805e12c9d38750fecbb0eb76b488f183fe14005a7fdcbb"),
+        )
+        for relative, validator, expected_sha in specs:
+            path = self.root / relative
+            try:
+                raw = path.read_bytes()
+                bundle, _ = _load_json(path)
+                validator(bundle)
+            except (OSError, EvidenceRunnerError) as error:
+                raise EvidenceRunnerError("MINIMAL_TRANSPORT_SANITY_HISTORY_INVALID") from error
+            if _digest_bytes(raw) != expected_sha:
+                raise EvidenceRunnerError("MINIMAL_TRANSPORT_SANITY_HISTORY_MUTATED")
+
+    def _identity(self, source_commit: str) -> str:
+        return _minimal_transport_sanity_run_id(source_commit)
+
+    def _load_existing(self, destination: Path, run_id: str) -> dict[str, Any] | None:
+        if not destination.exists():
+            return None
+        bundle, _ = _load_json(destination)
+        try:
+            validate_minimal_transport_sanity_bundle(bundle)
+        except EvidenceContractError as error:
+            raise EvidenceRunnerError("MINIMAL_TRANSPORT_SANITY_EXISTING_INVALID") from error
+        if bundle["run_id"] != run_id:
+            raise EvidenceRunnerError("MINIMAL_TRANSPORT_SANITY_IDENTITY_MISMATCH")
+        return bundle
+
+    def dry_run(self, *, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, output_path: Path | str | None = None) -> dict[str, object]:
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1):
+            raise EvidenceRunnerError("MINIMAL_TRANSPORT_SANITY_VARIABLE_MISMATCH")
+        self._assert_historical_integrity()
+        source_commit = _source_commit(self.root)
+        destination = self._destination(output_path)
+        run_id = self._identity(source_commit)
+        existing = self._load_existing(destination, run_id)
+        return {
+            "status": "cohort_complete" if existing is not None else "dry_run_minimal_transport_sanity",
+            "experiment_type": MINIMAL_TRANSPORT_SANITY_EXPERIMENT_TYPE,
+            "schema_version": MINIMAL_TRANSPORT_SANITY_SCHEMA_VERSION,
+            "tiny_contract_version": MINIMAL_TRANSPORT_SANITY_TINY_CONTRACT_VERSION,
+            "run_id": run_id,
+            "source_commit": source_commit,
+            "provider": MINIMAL_TRANSPORT_SANITY_PROVIDER,
+            "model": MINIMAL_TRANSPORT_SANITY_MODEL,
+            "timeout_seconds": 60,
+            "max_transport_retries": 0,
+            "target_sample_count": 1,
+            "existing_sample_count": 1 if existing is not None else 0,
+            "existing_sample_indexes": [1] if existing is not None else [],
+            "next_sample_index": None if existing is not None else 1,
+            "remaining_sample_count": 0 if existing is not None else 1,
+            "provider_factory_constructed": False,
+            "provider_called": False,
+            "output_path": destination.as_posix(),
+        }
+
+    def run(self, *, live: bool = False, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, expected_source_commit: str | None = None, resume: bool = False, output_path: Path | str | None = None, model_factory: Callable[[], Any] | None = None, enforce_clean_tree: bool = True) -> dict[str, object]:
+        if not live:
+            if resume or model_factory is not None:
+                raise EvidenceRunnerError("MINIMAL_TRANSPORT_SANITY_DRY_RUN_ARGUMENTS_INVALID")
+            return self.dry_run(timeout_seconds=timeout_seconds, max_transport_retries=max_transport_retries, target_sample_count=target_sample_count, output_path=output_path)
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1):
+            raise EvidenceRunnerError("MINIMAL_TRANSPORT_SANITY_VARIABLE_MISMATCH")
+        if expected_source_commit is None:
+            raise EvidenceRunnerError("MINIMAL_TRANSPORT_SANITY_SOURCE_COMMIT_REQUIRED")
+        source_commit = _source_commit(self.root)
+        if source_commit != expected_source_commit:
+            raise EvidenceRunnerError("MINIMAL_TRANSPORT_SANITY_SOURCE_COMMIT_MISMATCH")
+        self._assert_historical_integrity()
+        if enforce_clean_tree:
+            dirty = tuple(path for path in _dirty_paths(self.root) if path not in {MINIMAL_TRANSPORT_SANITY_RESULT_RELATIVE_PATH, MINIMAL_TRANSPORT_SANITY_TEMP_RELATIVE_PATH})
+            if dirty:
+                raise EvidenceRunnerError("LIVE_DIRTY_TREE")
+        destination = self._destination(output_path)
+        run_id = self._identity(source_commit)
+        if self._load_existing(destination, run_id) is not None:
+            raise EvidenceRunnerError("COHORT_ALREADY_COMPLETE")
+        if destination.exists() and not resume:
+            raise EvidenceRunnerError("MINIMAL_TRANSPORT_SANITY_RESULT_EXISTS")
+        if model_factory is not None:
+            provider_model = model_factory()
+        else:
+            environment = {
+                "NPC_AGENT_MODEL": "live",
+                "NPC_LLM_PROVIDER": MINIMAL_TRANSPORT_SANITY_PROVIDER,
+                "NPC_LLM_MODEL": MINIMAL_TRANSPORT_SANITY_MODEL,
+                "NPC_LLM_TRANSPORT": MINIMAL_TRANSPORT_SANITY_TRANSPORT,
+                "NPC_LLM_STRUCTURED_OUTPUT": MINIMAL_TRANSPORT_SANITY_STRUCTURED_OUTPUT_MODE,
+                "NPC_LLM_TIMEOUT_SECONDS": "60",
+                "NPC_LLM_MAX_RETRIES": "0",
+                **({"NPC_LLM_API_KEY": os.environ["NPC_LLM_API_KEY"]} if os.environ.get("NPC_LLM_API_KEY") else {}),
+            }
+            settings = __import__("agents.model_factory", fromlist=["LiveLLMSettings"]).LiveLLMSettings.from_environment(environment)
+            client = OpenAIChatClient(api_key=settings.api_key, base_url=settings.base_url, timeout_seconds=settings.timeout_seconds, request_options=settings.profile.provider_options)
+            provider_model = _MinimalTransportAdapter(client, provider=settings.provider, model=settings.model, profile=settings.profile, timeout_seconds=settings.timeout_seconds, max_retries=settings.max_retries)
+        prompt = AgentPrompt(
+            "minimal_transport_sanity",
+            NpcCharacterView("diagnostic", "diagnostic", "diagnostic", (), (), "neutral", "neutral", (), "neutral", "diagnostic"),
+            NpcRuntimeView("diagnostic", "diagnostic", None, (), ()),
+            (ConversationMessage("user", "{}"),),
+            (),
+            "cs-s2-minimal-transport-sanity",
+            1,
+            response_format="minimal_transport_sanity",
+            invocation_purpose="minimal_transport_sanity",
+        )
+        provider_outcome = "failure"
+        attempts = 1
+        latency_ms = None
+        json_result = {"json_extraction_outcome": "not_attempted", "tiny_contract_outcome": "TRANSPORT_UNAVAILABLE", "parsed_top_level_type": None, "actual_key_count": None}
+        failure_stage = "provider"
+        failure_code = "PROVIDER_INVOCATION_FAILED"
+        try:
+            turn = provider_model.generate(prompt)
+            invocation = turn.invocation
+            provider_outcome = "success"
+            attempts = (invocation.retry_count + 1) if invocation is not None else 1
+            latency_ms = _bounded_latency(invocation)
+            json_result = _minimal_contract_result(turn.text)
+            failure_stage = None
+            failure_code = None
+        except ModelError as error:
+            invocation = error.audit
+            attempts = (invocation.retry_count + 1) if invocation is not None else 1
+            latency_ms = _bounded_latency(invocation)
+        observation = {
+            "observation_id": f"{run_id}:sample-01",
+            "provider_outcome": provider_outcome,
+            "transport_attempts": attempts,
+            "latency_ms": latency_ms,
+            "json_extraction_outcome": json_result["json_extraction_outcome"],
+            "tiny_contract_outcome": json_result["tiny_contract_outcome"],
+            "parsed_top_level_type": json_result["parsed_top_level_type"],
+            "expected_key_count": 1,
+            "actual_key_count": json_result["actual_key_count"],
+            "failure_stage": failure_stage,
+            "failure_code": failure_code,
+            "sanitization": _sanitization_mapping(),
+        }
+        bundle = {
+            "schema_version": MINIMAL_TRANSPORT_SANITY_SCHEMA_VERSION,
+            "protocol_version": PROTOCOL_VERSION,
+            "run_id": run_id,
+            "experiment_type": MINIMAL_TRANSPORT_SANITY_EXPERIMENT_TYPE,
+            "source_commit": source_commit,
+            "manifest_digest": self.manifest.raw_digest,
+            "input_manifest_digest": self.manifest.raw_digest,
+            "inputs": [dict(item) for item in self.manifest.input_files],
+            "provider": _minimal_transport_sanity_provider(),
+            "timeout_seconds": 60,
+            "max_transport_retries": 0,
+            "target_sample_count": 1,
+            "complete": True,
+            "tiny_contract_version": MINIMAL_TRANSPORT_SANITY_TINY_CONTRACT_VERSION,
+            "sample_index": 1,
+            "observation": observation,
+        }
+        bundle["bundle_digest"] = _minimal_transport_sanity_bundle_digest(bundle)
+        validate_minimal_transport_sanity_bundle(bundle)
+        _write_bundle(destination, bundle, resume=False)
+        return bundle
+
+
 def _validate_fixed_target(target: object) -> int:
     if isinstance(target, bool) or not isinstance(target, int) or not 0 < target <= MAX_FIXED_COHORT_SAMPLES:
         raise EvidenceRunnerError("COHORT_TARGET_INVALID")
@@ -3316,6 +3707,32 @@ def run_model_suitability(
     )
 
 
+def run_minimal_transport_sanity(
+    *,
+    repo_root: Path | str | None = None,
+    live: bool = False,
+    timeout_seconds: int = MINIMAL_TRANSPORT_SANITY_TIMEOUT_SECONDS,
+    max_transport_retries: int = MINIMAL_TRANSPORT_SANITY_MAX_TRANSPORT_RETRIES,
+    target_sample_count: int = MINIMAL_TRANSPORT_SANITY_TARGET,
+    expected_source_commit: str | None = None,
+    resume: bool = False,
+    output_path: Path | str | None = None,
+    enforce_clean_tree: bool = True,
+    model_factory: Callable[[], Any] | None = None,
+) -> dict[str, object]:
+    return MinimalTransportSanityRunner(repo_root).run(
+        live=live,
+        timeout_seconds=timeout_seconds,
+        max_transport_retries=max_transport_retries,
+        target_sample_count=target_sample_count,
+        expected_source_commit=expected_source_commit,
+        resume=resume,
+        output_path=output_path,
+        enforce_clean_tree=enforce_clean_tree,
+        model_factory=model_factory,
+    )
+
+
 __all__ = [
     "CASE_IDS",
     "COMPLIANCE_SCHEMA_VERSION",
@@ -3337,6 +3754,12 @@ __all__ = [
     "MODEL_SUITABILITY_TIMEOUT_SECONDS",
     "MODEL_SUITABILITY_MAX_TRANSPORT_RETRIES",
     "MODEL_SUITABILITY_TARGET",
+    "MinimalTransportSanityRunner",
+    "MINIMAL_TRANSPORT_SANITY_SCHEMA_VERSION",
+    "MINIMAL_TRANSPORT_SANITY_RESULT_RELATIVE_PATH",
+    "MINIMAL_TRANSPORT_SANITY_TIMEOUT_SECONDS",
+    "MINIMAL_TRANSPORT_SANITY_MAX_TRANSPORT_RETRIES",
+    "MINIMAL_TRANSPORT_SANITY_TARGET",
     "TIMEOUT_SUITABILITY_SCHEMA_VERSION",
     "TIMEOUT_SUITABILITY_RESULT_RELATIVE_PATH",
     "TIMEOUT_SUITABILITY_TIMEOUT_SECONDS",
@@ -3348,6 +3771,7 @@ __all__ = [
     "run_retry_unavailable",
     "run_timeout_suitability",
     "run_model_suitability",
+    "run_minimal_transport_sanity",
     "run_shadow_evidence",
     "validate_retry_evidence_bundle",
     "validate_shape_diagnostic_bundle",
@@ -3355,5 +3779,6 @@ __all__ = [
     "validate_fixed_contract_compliance_bundle",
     "validate_timeout_suitability_bundle",
     "validate_model_suitability_bundle",
+    "validate_minimal_transport_sanity_bundle",
     "validate_evidence_bundle",
 ]
