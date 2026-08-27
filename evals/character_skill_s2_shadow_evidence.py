@@ -6086,7 +6086,19 @@ class O1SafeDiagnosticRunner:
         return (Path(output_path) if output_path is not None else self.root / O1_SAFE_DIAGNOSTIC_RESULT_RELATIVE_PATH).resolve()
 
     def _prepare(self, output_path: Path | str | None = None) -> dict[str, object]:
-        base = OutputStepdownRunner(self.root, manifest_path=self.root / MANIFEST_RELATIVE_PATH)._prepare()
+        historical_destination = self.root / O1_ROOT_ONLY_RESULT_RELATIVE_PATH
+        if not historical_destination.exists():
+            raise EvidenceRunnerError("BLOCKED_O1_HISTORICAL_EVIDENCE_MISSING")
+        historical_payload, _ = _load_json(historical_destination)
+        validate_o1_root_only_bundle(historical_payload)
+        # The historical O1 bundle is frozen at its original source identity.
+        # Prepare the current code's request metrics against an empty temporary
+        # destination so the legacy runner cannot reinterpret that bundle as a
+        # current-HEAD artifact.
+        with tempfile.TemporaryDirectory(prefix="cs-s2-o1-diagnostic-") as temp_dir:
+            base = OutputStepdownRunner(self.root, manifest_path=self.root / MANIFEST_RELATIVE_PATH)._prepare(
+                Path(temp_dir) / "legacy-o1-metrics.json"
+            )
         if (base["o1"]["chars"], base["o1"]["bytes"]) != (1461, 1589):
             raise EvidenceRunnerError("BLOCKED_DIAGNOSTIC_REQUEST_DRIFT")
         diagnostic_digest = _digest_bytes(O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION.encode("utf-8"))
@@ -6102,6 +6114,7 @@ class O1SafeDiagnosticRunner:
             if payload["run_id"] != run_id:
                 raise EvidenceRunnerError("O1_SAFE_DIAGNOSTIC_IDENTITY_MISMATCH")
             existing = payload
+        base["existing"] = historical_payload
         return {"base": base, "run_id": run_id, "source_commit": source_commit, "diagnostic_digest": diagnostic_digest, "destination": destination, "existing": existing}
 
     def dry_run(self, *, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, output_path: Path | str | None = None) -> dict[str, object]:
