@@ -18,6 +18,7 @@ from evals.character_skill_s2_shadow_evidence import (  # noqa: E402
     ContractComplianceCohortRunner,
     EvidenceRunnerError,
     FixedContractComplianceCohortRunner,
+    FullInputTinyOutputRunner,
     MinimalTransportSanityRunner,
     ModelSuitabilityProbeRunner,
     RetryUnavailableCohortRunner,
@@ -90,6 +91,12 @@ def main(argv: list[str] | None = None) -> int:
         help="run or plan the isolated tiny JSON OpenCode Go transport sanity probe",
     )
     parser.add_argument(
+        "--full-input-tiny-output",
+        "--full-input-tiny-output-probe",
+        action="store_true",
+        help="run or plan the isolated full-input tiny-output latency probe",
+    )
+    parser.add_argument(
         "--timeout-seconds",
         type=int,
         default=60,
@@ -111,13 +118,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     timeout_seconds = 60 if args.timeout_seconds is None else args.timeout_seconds
     max_transport_retries = (
-        (0 if args.minimal_transport_sanity else 2)
+        (0 if (args.minimal_transport_sanity or args.full_input_tiny_output) else 2)
         if args.max_transport_retries is None
         else args.max_transport_retries
     )
     target_samples = args.target_samples
     if target_samples is None:
-        target_samples = 1 if (args.timeout_suitability_probe or args.model_suitability_probe or args.minimal_transport_sanity) else 3
+        target_samples = 1 if (args.timeout_suitability_probe or args.model_suitability_probe or args.minimal_transport_sanity or args.full_input_tiny_output) else 3
     if args.live and args.dry_run:
         print(json.dumps({"status": "error", "error_code": "MODE_ARGUMENTS_INVALID"}))
         return 2
@@ -177,6 +184,21 @@ def main(argv: list[str] | None = None) -> int:
     ):
         print(json.dumps({"status": "error", "error_code": "MINIMAL_TRANSPORT_SANITY_ARGUMENTS_INVALID"}))
         return 2
+    if args.full_input_tiny_output and (
+        args.timeout_suitability_probe
+        or args.model_suitability_probe
+        or args.minimal_transport_sanity
+        or args.retry_unavailable_from is not None
+        or args.shape_diagnostic_from is not None
+        or args.contract_compliance_from is not None
+        or args.fixed_contract_compliance_from is not None
+        or args.case_ids is not None
+        or args.repeat != 1
+        or args.append_next_sample
+        or (args.target_samples is not None and args.target_samples != 1)
+    ):
+        print(json.dumps({"status": "error", "error_code": "FULL_INPUT_TINY_OUTPUT_ARGUMENTS_INVALID"}))
+        return 2
     if args.append_next_sample and args.fixed_contract_compliance_from is None:
         print(json.dumps({"status": "error", "error_code": "FIXED_COHORT_ARGUMENTS_INVALID"}))
         return 2
@@ -215,6 +237,17 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.minimal_transport_sanity:
             runner = MinimalTransportSanityRunner(ROOT, manifest_path=args.manifest)
+            result = runner.run(
+                live=args.live,
+                timeout_seconds=timeout_seconds,
+                max_transport_retries=max_transport_retries,
+                target_sample_count=target_samples,
+                expected_source_commit=args.probe_source_commit,
+                resume=args.resume,
+                output_path=args.output,
+            )
+        elif args.full_input_tiny_output:
+            runner = FullInputTinyOutputRunner(ROOT, manifest_path=args.manifest)
             result = runner.run(
                 live=args.live,
                 timeout_seconds=timeout_seconds,

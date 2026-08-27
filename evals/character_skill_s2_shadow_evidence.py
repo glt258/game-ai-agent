@@ -245,6 +245,30 @@ _MINIMAL_TRANSPORT_SANITY_RUN_ID_RE = re.compile(
     r"^cs-s2-minimal-transport-sanity-v0\.1\.0-opencode_go-deepseek-v4-pro-"
     r"t60-r0-n1-[0-9a-f]{40}-run-01$"
 )
+FULL_INPUT_TINY_OUTPUT_SCHEMA_VERSION = "character-skill-s2-shadow-full-input-tiny-output/0.1.0"
+FULL_INPUT_TINY_OUTPUT_EXPERIMENT_TYPE = "full_input_tiny_output"
+FULL_INPUT_TINY_OUTPUT_PROVIDER = "opencode_go"
+FULL_INPUT_TINY_OUTPUT_MODEL = "deepseek-v4-pro"
+FULL_INPUT_TINY_OUTPUT_TIMEOUT_SECONDS = 60
+FULL_INPUT_TINY_OUTPUT_MAX_TRANSPORT_RETRIES = 0
+FULL_INPUT_TINY_OUTPUT_TARGET = 1
+FULL_INPUT_TINY_OUTPUT_INPUT_CONTRACT_VERSION = EVIDENCE_SCHEMA_VERSION
+FULL_INPUT_TINY_OUTPUT_TINY_CONTRACT_VERSION = MINIMAL_TRANSPORT_SANITY_TINY_CONTRACT_VERSION
+FULL_INPUT_TINY_OUTPUT_RESULT_RELATIVE_PATH = (
+    "evals/results/character_skill_s2_shadow_full_input_tiny_output_opencode_go_pro_case_13_run_01_v0.1.0.json"
+)
+FULL_INPUT_TINY_OUTPUT_TEMP_RELATIVE_PATH = (
+    "evals/results/.character_skill_s2_shadow_full_input_tiny_output_opencode_go_pro_case_13_run_01_v0.1.0.json.tmp"
+)
+FULL_INPUT_TINY_OUTPUT_HISTORICAL_CHARS = 5157
+FULL_INPUT_TINY_OUTPUT_HISTORICAL_BYTES = 5281
+FULL_INPUT_TINY_OUTPUT_DIAGNOSTIC_INSTRUCTION = (
+    'For this diagnostic probe only, do not generate a SkillKit. Return exactly one JSON object with exactly one field: "status": "ok". Do not include any other fields, prose, Markdown, code fences, explanations, or SkillKit content.'
+)
+_FULL_INPUT_TINY_OUTPUT_RUN_ID_RE = re.compile(
+    r"^cs-s2-full-input-tiny-output-v0\.1\.0-opencode_go-deepseek-v4-pro-"
+    r"case_13-t60-r0-n1-[0-9a-f]{40}-[0-9a-f]{12}-run-01$"
+)
 
 
 class EvidenceRunnerError(RuntimeError):
@@ -3575,6 +3599,357 @@ class MinimalTransportSanityRunner:
         return bundle
 
 
+def _full_input_projection(case: ShadowEvidenceCase) -> dict[str, object]:
+    return {
+        "brief": case.brief,
+        "hard_constraints": list(case.hard_constraints),
+        "forbidden_elements": list(case.forbidden_elements),
+        "combat_role_profile": _role_mapping(case.combat_role_profile),
+    }
+
+
+def _full_input_prompt(case: ShadowEvidenceCase) -> AgentPrompt:
+    projection = _full_input_projection(case)
+    view = _ShadowProjectionView(
+        projection["brief"],
+        tuple(projection["hard_constraints"]),
+        tuple(projection["forbidden_elements"]),
+        projection["combat_role_profile"],
+    )
+    return AgentPrompt(
+        character_skill_kit_prompt_contract()
+        + "\n\n"
+        + FULL_INPUT_TINY_OUTPUT_DIAGNOSTIC_INSTRUCTION,
+        view,
+        view,
+        (ConversationMessage("user", _canonical_json(projection)),),
+        (),
+        "cs-s2-full-input-tiny-output",
+        1,
+        response_format=RESPONSE_CONTRACT,
+        authoring_payload=projection,
+        invocation_purpose="full_input_tiny_output",
+    )
+
+
+def _message_metrics(messages: Sequence[Mapping[str, object]]) -> dict[str, object]:
+    by_role: dict[str, dict[str, int]] = {}
+    for message in messages:
+        role = str(message.get("role", "unknown"))
+        content = message.get("content", "")
+        text = content if isinstance(content, str) else str(content)
+        by_role[role] = {
+            "chars": len(text),
+            "bytes": len(text.encode("utf-8")),
+            "lines": text.count("\n") + 1,
+        }
+    return {
+        "message_count": len(messages),
+        "chars": sum(item["chars"] for item in by_role.values()),
+        "bytes": sum(item["bytes"] for item in by_role.values()),
+        "by_role": by_role,
+    }
+
+
+def _historical_full_input_metrics(case: ShadowEvidenceCase) -> dict[str, object]:
+    messages = LiveLLMAdapter._provider_messages(
+        ShadowEvidenceModelRouter._rebuild_shadow_prompt(_full_input_prompt(case))
+    )
+    return _message_metrics(messages)
+
+
+class _FullInputTinyOutputAdapter(_MinimalTransportAdapter):
+    @classmethod
+    def _provider_messages(cls, prompt: AgentPrompt) -> list[dict[str, Any]]:
+        contract = prompt.system_contract
+        system = (
+            f"{contract}\n\n"
+            "Return only the requested Character SkillKit candidate root JSON object.\n\n"
+            f"{FULL_INPUT_TINY_OUTPUT_DIAGNOSTIC_INSTRUCTION}"
+        )
+        projection = prompt.authoring_payload or {}
+        return [
+            {"role": "system", "content": system},
+            {"role": "user", "content": _canonical_json(dict(projection))},
+        ]
+
+
+def _full_input_tiny_output_run_id(source_commit: str, manifest_digest: str) -> str:
+    return (
+        "cs-s2-full-input-tiny-output-v0.1.0-opencode_go-deepseek-v4-pro-case_13-"
+        f"t60-r0-n1-{source_commit}-{manifest_digest[:12]}-run-01"
+    )
+
+
+def _full_input_tiny_output_provider() -> dict[str, object]:
+    return {
+        "name": FULL_INPUT_TINY_OUTPUT_PROVIDER,
+        "model_requested": FULL_INPUT_TINY_OUTPUT_MODEL,
+        "model_reported": FULL_INPUT_TINY_OUTPUT_MODEL,
+        "transport": "openai_chat_completions",
+        "structured_output_mode": "json_object",
+        "timeout_seconds": FULL_INPUT_TINY_OUTPUT_TIMEOUT_SECONDS,
+        "max_transport_retries": FULL_INPUT_TINY_OUTPUT_MAX_TRANSPORT_RETRIES,
+    }
+
+
+def _full_input_tiny_output_bundle_digest(bundle: Mapping[str, object]) -> str:
+    return _digest_mapping({key: value for key, value in bundle.items() if key != "bundle_digest"})
+
+
+def validate_full_input_tiny_output_bundle(bundle: Mapping[str, object]) -> None:
+    expected = {
+        "schema_version", "protocol_version", "run_id", "experiment_type", "source_commit",
+        "manifest_digest", "input_manifest_digest", "inputs", "provider", "case_id",
+        "timeout_seconds", "max_transport_retries", "target_sample_count", "complete",
+        "input_contract_version", "tiny_output_contract_version", "historical_full_input",
+        "request_metrics", "sample_index", "observation", "bundle_digest",
+    }
+    _exact_keys(bundle, expected, "FULL_INPUT_TINY_OUTPUT_BUNDLE_KEYS_INVALID")
+    if (
+        bundle["schema_version"] != FULL_INPUT_TINY_OUTPUT_SCHEMA_VERSION
+        or bundle["protocol_version"] != PROTOCOL_VERSION
+        or bundle["experiment_type"] != FULL_INPUT_TINY_OUTPUT_EXPERIMENT_TYPE
+        or bundle["case_id"] != "case_13"
+        or bundle["timeout_seconds"] != 60
+        or bundle["max_transport_retries"] != 0
+        or bundle["target_sample_count"] != 1
+        or bundle["complete"] is not True
+        or bundle["input_contract_version"] != FULL_INPUT_TINY_OUTPUT_INPUT_CONTRACT_VERSION
+        or bundle["tiny_output_contract_version"] != FULL_INPUT_TINY_OUTPUT_TINY_CONTRACT_VERSION
+    ):
+        raise EvidenceContractError("FULL_INPUT_TINY_OUTPUT_CONFIG_INVALID")
+    if not isinstance(bundle["source_commit"], str) or not _GIT_SHA_RE.fullmatch(bundle["source_commit"]):
+        raise EvidenceContractError("FULL_INPUT_TINY_OUTPUT_SOURCE_COMMIT_INVALID")
+    if bundle["manifest_digest"] != bundle["input_manifest_digest"] or not _is_sha(bundle["manifest_digest"]):
+        raise EvidenceContractError("FULL_INPUT_TINY_OUTPUT_MANIFEST_INVALID")
+    if not isinstance(bundle["run_id"], str) or not _FULL_INPUT_TINY_OUTPUT_RUN_ID_RE.fullmatch(bundle["run_id"]):
+        raise EvidenceContractError("FULL_INPUT_TINY_OUTPUT_RUN_ID_INVALID")
+    if bundle["sample_index"] != 1:
+        raise EvidenceContractError("FULL_INPUT_TINY_OUTPUT_SAMPLE_INVALID")
+    for key in ("historical_full_input", "request_metrics"):
+        value = bundle[key]
+        if not isinstance(value, Mapping):
+            raise EvidenceContractError("FULL_INPUT_TINY_OUTPUT_METRICS_INVALID")
+    provider = bundle["provider"]
+    if provider != _full_input_tiny_output_provider():
+        raise EvidenceContractError("FULL_INPUT_TINY_OUTPUT_PROVIDER_INVALID")
+    observation = bundle["observation"]
+    if not isinstance(observation, Mapping):
+        raise EvidenceContractError("FULL_INPUT_TINY_OUTPUT_OBSERVATION_INVALID")
+    _exact_keys(
+        observation,
+        {"observation_id", "provider_outcome", "transport_attempts", "latency_ms", "json_extraction_outcome", "tiny_contract_outcome", "parsed_top_level_type", "expected_key_count", "actual_key_count", "failure_stage", "failure_code", "sanitization"},
+        "FULL_INPUT_TINY_OUTPUT_OBSERVATION_KEYS_INVALID",
+    )
+    if observation["observation_id"] != f"{bundle['run_id']}:sample-01" or observation["transport_attempts"] != 1:
+        raise EvidenceContractError("FULL_INPUT_TINY_OUTPUT_OBSERVATION_INVALID")
+    if observation["tiny_contract_outcome"] not in {"FULL_INPUT_TINY_OUTPUT_PASS", "PROVIDER_SUCCESS_TINY_CONTRACT_REJECTED", "FULL_INPUT_TINY_OUTPUT_UNAVAILABLE"}:
+        raise EvidenceContractError("FULL_INPUT_TINY_OUTPUT_OUTCOME_INVALID")
+    if observation["sanitization"] != _sanitization_mapping():
+        raise EvidenceContractError("FULL_INPUT_TINY_OUTPUT_SANITIZATION_INVALID")
+    if bundle["bundle_digest"] != _full_input_tiny_output_bundle_digest(bundle):
+        raise EvidenceContractError("FULL_INPUT_TINY_OUTPUT_BUNDLE_DIGEST_INVALID")
+
+
+class FullInputTinyOutputRunner:
+    """Probe the full SkillKit input with a tiny diagnostic completion."""
+
+    def __init__(self, repo_root: Path | str | None = None, *, manifest_path: Path | str | None = None) -> None:
+        self.root = Path(repo_root or ROOT).resolve()
+        self.manifest = load_manifest(self.root, manifest_path)
+        self.cases = _load_cases(self.root, self.manifest)
+
+    def _destination(self, output_path: Path | str | None) -> Path:
+        return (Path(output_path) if output_path is not None else self.root / FULL_INPUT_TINY_OUTPUT_RESULT_RELATIVE_PATH).resolve()
+
+    def _assert_historical_integrity(self) -> None:
+        specs = (
+            (RESULT_RELATIVE_TEMPLATE.format(repeat=1), validate_evidence_bundle, "b84bba6063f2b9bb77c0b9d88ba36a3d0f92a5e23a2b022b87d67d55f117b7a3"),
+            (RETRY_RESULT_RELATIVE_PATH, validate_retry_evidence_bundle, "7722165cae52cb858078ad9725a516d5ac04cdb8d41824e8d71826eea4989a31"),
+            (DIAGNOSTIC_RESULT_RELATIVE_PATH, validate_shape_diagnostic_bundle, "89b44f5413ab92a418958d2659880b69635ca0bc7a135123afd5579af8898215"),
+            (COMPLIANCE_RESULT_RELATIVE_PATH, validate_contract_compliance_bundle, "5ef5fde8fe677d634eedd017948e84c50802f04603df1144dc6360a7f8176803"),
+            (FIXED_COMPLIANCE_RESULT_RELATIVE_PATH, validate_fixed_contract_compliance_bundle, "99bd6f48e04c1262292468b64ded78c4eb9c6160f94ddba9386bea580d76e46d"),
+            (TIMEOUT_SUITABILITY_RESULT_RELATIVE_PATH, validate_timeout_suitability_bundle, MODEL_SUITABILITY_FLASH_TIMEOUT_SHA256),
+            (MODEL_SUITABILITY_RESULT_RELATIVE_PATH, validate_model_suitability_bundle, "b96e1a822af9af6f4f805e12c9d38750fecbb0eb76b488f183fe14005a7fdcbb"),
+            (MINIMAL_TRANSPORT_SANITY_RESULT_RELATIVE_PATH, validate_minimal_transport_sanity_bundle, "791c886de9ecbfe2e29893effb57f625d21d6f7670bdc7e1f0d0b038f03cbda0"),
+        )
+        for relative, validator, expected_sha in specs:
+            path = self.root / relative
+            try:
+                raw = path.read_bytes()
+                bundle, _ = _load_json(path)
+                validator(bundle)
+            except (OSError, EvidenceRunnerError) as error:
+                raise EvidenceRunnerError("FULL_INPUT_TINY_OUTPUT_HISTORY_INVALID") from error
+            if _digest_bytes(raw) != expected_sha:
+                raise EvidenceRunnerError("FULL_INPUT_TINY_OUTPUT_HISTORY_MUTATED")
+
+    def _identity(self, source_commit: str) -> str:
+        return _full_input_tiny_output_run_id(source_commit, self.manifest.raw_digest)
+
+    def _metrics(self) -> tuple[dict[str, object], dict[str, object]]:
+        case = self.cases["case_13"]
+        historical = _historical_full_input_metrics(case)
+        prompt = _full_input_prompt(case)
+        messages = _FullInputTinyOutputAdapter._provider_messages(prompt)
+        metrics = _message_metrics(messages)
+        if metrics["chars"] < FULL_INPUT_TINY_OUTPUT_HISTORICAL_CHARS * 0.9:
+            raise EvidenceRunnerError("BLOCKED_FULL_INPUT_NOT_PRESERVED")
+        return historical, metrics
+
+    def _load_existing(self, destination: Path, run_id: str) -> dict[str, Any] | None:
+        if not destination.exists():
+            return None
+        bundle, _ = _load_json(destination)
+        try:
+            validate_full_input_tiny_output_bundle(bundle)
+        except EvidenceContractError as error:
+            raise EvidenceRunnerError("FULL_INPUT_TINY_OUTPUT_EXISTING_INVALID") from error
+        if bundle["run_id"] != run_id:
+            raise EvidenceRunnerError("FULL_INPUT_TINY_OUTPUT_IDENTITY_MISMATCH")
+        return bundle
+
+    def dry_run(self, *, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, output_path: Path | str | None = None) -> dict[str, object]:
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1):
+            raise EvidenceRunnerError("FULL_INPUT_TINY_OUTPUT_VARIABLE_MISMATCH")
+        self._assert_historical_integrity()
+        historical, metrics = self._metrics()
+        source_commit = _source_commit(self.root)
+        destination = self._destination(output_path)
+        run_id = self._identity(source_commit)
+        existing = self._load_existing(destination, run_id)
+        return {
+            "status": "cohort_complete" if existing is not None else "dry_run_full_input_tiny_output",
+            "experiment_type": FULL_INPUT_TINY_OUTPUT_EXPERIMENT_TYPE,
+            "schema_version": FULL_INPUT_TINY_OUTPUT_SCHEMA_VERSION,
+            "input_contract_version": FULL_INPUT_TINY_OUTPUT_INPUT_CONTRACT_VERSION,
+            "tiny_output_contract_version": FULL_INPUT_TINY_OUTPUT_TINY_CONTRACT_VERSION,
+            "run_id": run_id,
+            "source_commit": source_commit,
+            "provider": FULL_INPUT_TINY_OUTPUT_PROVIDER,
+            "model": FULL_INPUT_TINY_OUTPUT_MODEL,
+            "timeout_seconds": 60,
+            "max_transport_retries": 0,
+            "target_sample_count": 1,
+            "historical_full_input": historical,
+            "request_metrics": metrics,
+            "existing_sample_count": 1 if existing is not None else 0,
+            "existing_sample_indexes": [1] if existing is not None else [],
+            "next_sample_index": None if existing is not None else 1,
+            "remaining_sample_count": 0 if existing is not None else 1,
+            "input_preservation_ratio": metrics["chars"] / FULL_INPUT_TINY_OUTPUT_HISTORICAL_CHARS,
+            "provider_factory_constructed": False,
+            "provider_called": False,
+            "output_path": destination.as_posix(),
+        }
+
+    def run(self, *, live: bool = False, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, expected_source_commit: str | None = None, resume: bool = False, output_path: Path | str | None = None, model_factory: Callable[[], Any] | None = None, enforce_clean_tree: bool = True) -> dict[str, object]:
+        if not live:
+            if resume or model_factory is not None:
+                raise EvidenceRunnerError("FULL_INPUT_TINY_OUTPUT_DRY_RUN_ARGUMENTS_INVALID")
+            return self.dry_run(timeout_seconds=timeout_seconds, max_transport_retries=max_transport_retries, target_sample_count=target_sample_count, output_path=output_path)
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1):
+            raise EvidenceRunnerError("FULL_INPUT_TINY_OUTPUT_VARIABLE_MISMATCH")
+        if expected_source_commit is None:
+            raise EvidenceRunnerError("FULL_INPUT_TINY_OUTPUT_SOURCE_COMMIT_REQUIRED")
+        source_commit = _source_commit(self.root)
+        if source_commit != expected_source_commit:
+            raise EvidenceRunnerError("FULL_INPUT_TINY_OUTPUT_SOURCE_COMMIT_MISMATCH")
+        self._assert_historical_integrity()
+        historical, metrics = self._metrics()
+        if enforce_clean_tree:
+            dirty = tuple(path for path in _dirty_paths(self.root) if path not in {FULL_INPUT_TINY_OUTPUT_RESULT_RELATIVE_PATH, FULL_INPUT_TINY_OUTPUT_TEMP_RELATIVE_PATH})
+            if dirty:
+                raise EvidenceRunnerError("LIVE_DIRTY_TREE")
+        destination = self._destination(output_path)
+        run_id = self._identity(source_commit)
+        if self._load_existing(destination, run_id) is not None:
+            raise EvidenceRunnerError("COHORT_ALREADY_COMPLETE")
+        if destination.exists() and not resume:
+            raise EvidenceRunnerError("FULL_INPUT_TINY_OUTPUT_RESULT_EXISTS")
+        if model_factory is not None:
+            provider_model = model_factory()
+        else:
+            environment = {
+                "NPC_AGENT_MODEL": "live",
+                "NPC_LLM_PROVIDER": FULL_INPUT_TINY_OUTPUT_PROVIDER,
+                "NPC_LLM_MODEL": FULL_INPUT_TINY_OUTPUT_MODEL,
+                "NPC_LLM_TRANSPORT": "openai_chat_completions",
+                "NPC_LLM_STRUCTURED_OUTPUT": "json_object",
+                "NPC_LLM_TIMEOUT_SECONDS": "60",
+                "NPC_LLM_MAX_RETRIES": "0",
+                **({"NPC_LLM_API_KEY": os.environ["NPC_LLM_API_KEY"]} if os.environ.get("NPC_LLM_API_KEY") else {}),
+            }
+            settings = __import__("agents.model_factory", fromlist=["LiveLLMSettings"]).LiveLLMSettings.from_environment(environment)
+            client = OpenAIChatClient(api_key=settings.api_key, base_url=settings.base_url, timeout_seconds=settings.timeout_seconds, request_options=settings.profile.provider_options)
+            provider_model = _FullInputTinyOutputAdapter(client, provider=settings.provider, model=settings.model, profile=settings.profile, timeout_seconds=settings.timeout_seconds, max_retries=settings.max_retries)
+        case = self.cases["case_13"]
+        prompt = _full_input_prompt(case)
+        try:
+            turn = provider_model.generate(prompt)
+            invocation = turn.invocation
+            provider_outcome = "success"
+            attempts = (invocation.retry_count + 1) if invocation is not None else 1
+            latency_ms = _bounded_latency(invocation)
+            json_result = _minimal_contract_result(turn.text)
+            if json_result["tiny_contract_outcome"] == "TRANSPORT_SUCCESS_CONTRACT_PASS":
+                contract_outcome = "FULL_INPUT_TINY_OUTPUT_PASS"
+            else:
+                contract_outcome = "PROVIDER_SUCCESS_TINY_CONTRACT_REJECTED"
+            failure_stage = None
+            failure_code = None
+        except ModelError as error:
+            invocation = error.audit
+            provider_outcome = "failure"
+            attempts = (invocation.retry_count + 1) if invocation is not None else 1
+            latency_ms = _bounded_latency(invocation)
+            json_result = {"json_extraction_outcome": "not_attempted", "tiny_contract_outcome": "TRANSPORT_UNAVAILABLE", "parsed_top_level_type": None, "actual_key_count": None}
+            contract_outcome = "FULL_INPUT_TINY_OUTPUT_UNAVAILABLE"
+            failure_stage = "provider"
+            failure_code = "PROVIDER_INVOCATION_FAILED"
+        observation = {
+            "observation_id": f"{run_id}:sample-01",
+            "provider_outcome": provider_outcome,
+            "transport_attempts": attempts,
+            "latency_ms": latency_ms,
+            "json_extraction_outcome": json_result["json_extraction_outcome"],
+            "tiny_contract_outcome": contract_outcome,
+            "parsed_top_level_type": json_result["parsed_top_level_type"],
+            "expected_key_count": 1,
+            "actual_key_count": json_result["actual_key_count"],
+            "failure_stage": failure_stage,
+            "failure_code": failure_code,
+            "sanitization": _sanitization_mapping(),
+        }
+        bundle = {
+            "schema_version": FULL_INPUT_TINY_OUTPUT_SCHEMA_VERSION,
+            "protocol_version": PROTOCOL_VERSION,
+            "run_id": run_id,
+            "experiment_type": FULL_INPUT_TINY_OUTPUT_EXPERIMENT_TYPE,
+            "source_commit": source_commit,
+            "manifest_digest": self.manifest.raw_digest,
+            "input_manifest_digest": self.manifest.raw_digest,
+            "inputs": [dict(item) for item in self.manifest.input_files],
+            "provider": _full_input_tiny_output_provider(),
+            "case_id": "case_13",
+            "timeout_seconds": 60,
+            "max_transport_retries": 0,
+            "target_sample_count": 1,
+            "complete": True,
+            "input_contract_version": FULL_INPUT_TINY_OUTPUT_INPUT_CONTRACT_VERSION,
+            "tiny_output_contract_version": FULL_INPUT_TINY_OUTPUT_TINY_CONTRACT_VERSION,
+            "historical_full_input": historical,
+            "request_metrics": metrics,
+            "sample_index": 1,
+            "observation": observation,
+        }
+        bundle["bundle_digest"] = _full_input_tiny_output_bundle_digest(bundle)
+        validate_full_input_tiny_output_bundle(bundle)
+        _write_bundle(destination, bundle, resume=False)
+        return bundle
+
+
 def _validate_fixed_target(target: object) -> int:
     if isinstance(target, bool) or not isinstance(target, int) or not 0 < target <= MAX_FIXED_COHORT_SAMPLES:
         raise EvidenceRunnerError("COHORT_TARGET_INVALID")
@@ -3733,6 +4108,32 @@ def run_minimal_transport_sanity(
     )
 
 
+def run_full_input_tiny_output(
+    *,
+    repo_root: Path | str | None = None,
+    live: bool = False,
+    timeout_seconds: int = 60,
+    max_transport_retries: int = 0,
+    target_sample_count: int = 1,
+    expected_source_commit: str | None = None,
+    resume: bool = False,
+    output_path: Path | str | None = None,
+    enforce_clean_tree: bool = True,
+    model_factory: Callable[[], Any] | None = None,
+) -> dict[str, object]:
+    return FullInputTinyOutputRunner(repo_root).run(
+        live=live,
+        timeout_seconds=timeout_seconds,
+        max_transport_retries=max_transport_retries,
+        target_sample_count=target_sample_count,
+        expected_source_commit=expected_source_commit,
+        resume=resume,
+        output_path=output_path,
+        enforce_clean_tree=enforce_clean_tree,
+        model_factory=model_factory,
+    )
+
+
 __all__ = [
     "CASE_IDS",
     "COMPLIANCE_SCHEMA_VERSION",
@@ -3780,5 +4181,12 @@ __all__ = [
     "validate_timeout_suitability_bundle",
     "validate_model_suitability_bundle",
     "validate_minimal_transport_sanity_bundle",
+    "FullInputTinyOutputRunner",
+    "FULL_INPUT_TINY_OUTPUT_SCHEMA_VERSION",
+    "FULL_INPUT_TINY_OUTPUT_RESULT_RELATIVE_PATH",
+    "FULL_INPUT_TINY_OUTPUT_TIMEOUT_SECONDS",
+    "FULL_INPUT_TINY_OUTPUT_MAX_TRANSPORT_RETRIES",
+    "FULL_INPUT_TINY_OUTPUT_TARGET",
+    "run_full_input_tiny_output",
     "validate_evidence_bundle",
 ]
