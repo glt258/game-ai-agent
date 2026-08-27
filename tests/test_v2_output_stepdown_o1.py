@@ -415,3 +415,14 @@ def test_o1_5_entry_only_probe_is_shortest_nested_variant(tmp_path: Path) -> Non
     assert result["existing_sample_count"] == 0
     assert result["provider_factory_constructed"] is False
     assert result["provider_called"] is False
+
+
+def test_o2_minimal_guidance_dry_run_is_independent(tmp_path: Path) -> None:
+    result = evidence.O2LocalStructureRunner(ROOT, minimal=True).dry_run(output_path=tmp_path / "plan.json")
+    assert result["output_contract_version"] == evidence.O2_MINIMAL_OUTPUT_CONTRACT_VERSION
+    assert result["request_metrics"]["chars"] == 1436
+    assert result["request_metrics"]["bytes"] == 1564
+    assert result["existing_sample_count"] == 0
+    assert result["next_sample_index"] == 1
+    assert result["provider_factory_constructed"] is False
+    assert result["provider_called"] is False

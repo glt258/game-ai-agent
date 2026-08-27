@@ -160,6 +160,11 @@ def main(argv: list[str] | None = None) -> int:
         help="plan or run the independent O1.5 single-entry cohort",
     )
     parser.add_argument(
+        "--o2-minimal-guidance",
+        action="store_true",
+        help="plan or run the independent shortest O2 protocol/effect guidance cohort",
+    )
+    parser.add_argument(
         "--timeout-seconds",
         type=int,
         default=60,
@@ -181,13 +186,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     timeout_seconds = 60 if args.timeout_seconds is None else args.timeout_seconds
     max_transport_retries = (
-        (0 if (args.minimal_transport_sanity or args.full_input_tiny_output or args.enum_expansion_stepdown or args.nested_shape_stepdown or args.compact_contract_v2 or args.minimal_skillkit or args.o1_root_only or args.o1_safe_diagnostic or args.o1_schema_guided_diagnostic or args.o2_local_structure or args.o2_local_structure_compact or args.o1_5_entry_only) else 2)
+        (0 if (args.minimal_transport_sanity or args.full_input_tiny_output or args.enum_expansion_stepdown or args.nested_shape_stepdown or args.compact_contract_v2 or args.minimal_skillkit or args.o1_root_only or args.o1_safe_diagnostic or args.o1_schema_guided_diagnostic or args.o2_local_structure or args.o2_local_structure_compact or args.o1_5_entry_only or args.o2_minimal_guidance) else 2)
         if args.max_transport_retries is None
         else args.max_transport_retries
     )
     target_samples = args.target_samples
     if target_samples is None:
-        target_samples = 1 if (args.timeout_suitability_probe or args.model_suitability_probe or args.minimal_transport_sanity or args.full_input_tiny_output or args.enum_expansion_stepdown or args.nested_shape_stepdown or args.compact_contract_v2 or args.minimal_skillkit or args.o1_root_only or args.o1_safe_diagnostic or args.o1_schema_guided_diagnostic or args.o2_local_structure or args.o2_local_structure_compact or args.o1_5_entry_only) else 3
+        target_samples = 1 if (args.timeout_suitability_probe or args.model_suitability_probe or args.minimal_transport_sanity or args.full_input_tiny_output or args.enum_expansion_stepdown or args.nested_shape_stepdown or args.compact_contract_v2 or args.minimal_skillkit or args.o1_root_only or args.o1_safe_diagnostic or args.o1_schema_guided_diagnostic or args.o2_local_structure or args.o2_local_structure_compact or args.o1_5_entry_only or args.o2_minimal_guidance) else 3
     if args.live and args.dry_run:
         print(json.dumps({"status": "error", "error_code": "MODE_ARGUMENTS_INVALID"}))
         return 2
@@ -348,15 +353,16 @@ def main(argv: list[str] | None = None) -> int:
     ):
         print(json.dumps({"status": "error", "error_code": "O1_SCHEMA_GUIDED_ARGUMENTS_INVALID"}))
         return 2
-    if (args.o1_5_entry_only and (args.o2_local_structure or args.o2_local_structure_compact)):
+    if (args.o1_5_entry_only and (args.o2_local_structure or args.o2_local_structure_compact or args.o2_minimal_guidance)):
         print(json.dumps({"status": "error", "error_code": "O1_5_ARGUMENTS_INVALID"}))
         return 2
-    if (args.o1_5_entry_only or args.o2_local_structure or args.o2_local_structure_compact) and (
+    if (args.o1_5_entry_only or args.o2_local_structure or args.o2_local_structure_compact or args.o2_minimal_guidance) and (
         args.timeout_suitability_probe or args.model_suitability_probe or args.minimal_transport_sanity
         or args.full_input_tiny_output or args.enum_expansion_stepdown or args.nested_shape_stepdown
         or args.compact_contract_v2 or args.minimal_skillkit or args.o1_root_only or args.o1_safe_diagnostic
         or args.o1_schema_guided_diagnostic or args.retry_unavailable_from is not None
         or (args.o2_local_structure and args.o2_local_structure_compact)
+        or (args.o2_minimal_guidance and (args.o2_local_structure or args.o2_local_structure_compact))
         or args.shape_diagnostic_from is not None or args.contract_compliance_from is not None
         or args.fixed_contract_compliance_from is not None or args.case_ids not in (None, ["case_13"])
         or args.repeat != 1 or args.append_next_sample or (args.target_samples is not None and args.target_samples != 1)
@@ -487,8 +493,8 @@ def main(argv: list[str] | None = None) -> int:
                 resume=args.resume,
                 output_path=args.output,
             )
-        elif args.o2_local_structure or args.o2_local_structure_compact or args.o1_5_entry_only:
-            runner = O2LocalStructureRunner(ROOT, manifest_path=args.manifest, compact=args.o2_local_structure_compact, entry_only=args.o1_5_entry_only)
+        elif args.o2_local_structure or args.o2_local_structure_compact or args.o1_5_entry_only or args.o2_minimal_guidance:
+            runner = O2LocalStructureRunner(ROOT, manifest_path=args.manifest, compact=args.o2_local_structure_compact, entry_only=args.o1_5_entry_only, minimal=args.o2_minimal_guidance)
             result = runner.run(
                 live=args.live,
                 timeout_seconds=timeout_seconds,
