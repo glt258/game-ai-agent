@@ -59,6 +59,16 @@ def _run_diagnostic(tmp_path: Path, model: _FakeModel, *, guided: bool = False) 
     )
 
 
+def _run_o2(tmp_path: Path, model: _FakeModel) -> dict[str, object]:
+    return evidence.O2LocalStructureRunner(ROOT).run(
+        live=True,
+        expected_source_commit=evidence._source_commit(ROOT),
+        output_path=tmp_path / "o2.json",
+        model_factory=lambda: model,
+        enforce_clean_tree=False,
+    )
+
+
 def _nested_fixture() -> dict[str, object]:
     source = json.loads(
         (ROOT / "evals/fixtures/character_skill_interface_prototype_cases_v0.1.1.json").read_text(
@@ -342,3 +352,39 @@ def test_schema_guided_diagnostic_dry_run_has_new_identity_and_no_provider(tmp_p
     assert result["provider_factory_constructed"] is False
     assert result["provider_called"] is False
     assert not (tmp_path / "plan.json").exists()
+
+
+def test_o2_local_structure_fixture_is_canonical_and_scoped() -> None:
+    fixture = evidence.build_o2_local_structure_fixture()
+    candidate = evidence.parse_candidate(fixture)
+    assert len(candidate.entries) == 1
+    assert len(candidate.entries[0].protocols) == 1
+    assert len(candidate.entries[0].protocols[0].causes) == 1
+    snapshot = evidence._o2_local_structure_snapshot(fixture)
+    assert snapshot == {
+        "root_schema_version_exact_match": True,
+        "collection_shape_valid": True,
+        "entry_count": 1,
+        "protocol_count": 1,
+        "effect_count": 1,
+        "typed_ref_count": 0,
+        "local_structure_complete": True,
+    }
+
+
+def test_o2_local_structure_dry_run_and_fake_provider_are_independent(tmp_path: Path) -> None:
+    result = evidence.O2LocalStructureRunner(ROOT).dry_run(output_path=tmp_path / "plan.json")
+    assert result["status"] == "dry_run_o2_local_structure"
+    assert result["existing_sample_count"] == 0
+    assert result["next_sample_index"] == 1
+    assert result["remaining_sample_count"] == 1
+    assert result["provider_factory_constructed"] is False
+    assert result["provider_called"] is False
+    assert result["request_metrics"]["chars"] == 1781
+    assert result["request_metrics"]["bytes"] == 1909
+    bundle = _run_o2(tmp_path / "live", _FakeModel(text=json.dumps(evidence.build_o2_local_structure_fixture())))
+    assert bundle["observation"]["provider_outcome"] == "success"
+    assert bundle["observation"]["parser_outcome"] == "PARSER_PASS"
+    assert bundle["observation"]["principal_verdict"] == "O2_LOCAL_STRUCTURE_STRUCTURAL_PASS"
+    assert bundle["observation"]["evaluator_invoked"] is False
+    evidence.validate_o2_local_structure_bundle(bundle)

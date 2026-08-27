@@ -395,6 +395,20 @@ O1_ROOT_ONLY_GUIDED_RESULT_RELATIVE_PATH = (
 O1_ROOT_ONLY_GUIDED_TEMP_RELATIVE_PATH = (
     "evals/results/.character_skill_s2_shadow_compact_contract_v2_output_stepdown_diagnostic_o1_root_only_schema_guided_opencode_go_pro_case_13_run_01_v0.3.0.json.tmp"
 )
+O2_LOCAL_STRUCTURE_SCHEMA_VERSION = "character-skill-s2-shadow-o2-local-structure/0.1.0"
+O2_LOCAL_STRUCTURE_EXPERIMENT_TYPE = "compact_contract_v2_output_stepdown_o2_local_structure"
+O2_LOCAL_STRUCTURE_LEVEL = "O2_LOCAL_STRUCTURE"
+O2_LOCAL_STRUCTURE_OUTPUT_CONTRACT_VERSION = "v2-output-stepdown-o2-local-structure/0.1.0"
+O2_LOCAL_STRUCTURE_RESULT_RELATIVE_PATH = (
+    "evals/results/character_skill_s2_shadow_compact_contract_v2_output_stepdown_o2_local_structure_opencode_go_pro_case_13_run_01_v0.1.0.json"
+)
+O2_LOCAL_STRUCTURE_TEMP_RELATIVE_PATH = (
+    "evals/results/.character_skill_s2_shadow_compact_contract_v2_output_stepdown_o2_local_structure_opencode_go_pro_case_13_run_01_v0.1.0.json.tmp"
+)
+_O2_LOCAL_STRUCTURE_RUN_ID_RE = re.compile(
+    r"^cs-s2-shadow-compact-contract-v2-output-stepdown-o2-local-structure-v0\.1\.0-"
+    r"opencode_go-deepseek-v4-pro-case_13-t60-r0-n1-[0-9a-f]{40}-[0-9a-f]{12}-[0-9a-f]{12}-run-01$"
+)
 _O1_ROOT_ONLY_RUN_ID_RE = re.compile(
     r"^cs-s2-shadow-compact-contract-v2-output-stepdown-o1-root-only-v0\.2\.0-opencode_go-deepseek-v4-pro-"
     r"case_13-t60-r0-n1-[0-9a-f]{40}-[0-9a-f]{12}-[0-9a-f]{12}-run-01$"
@@ -5057,6 +5071,13 @@ O1_ROOT_ONLY_GUIDED_OUTPUT_INSTRUCTION = (
     "skill-kit-candidate/0.1.1; keep all collections empty, use the shortest legal display_summary, and emit no "
     "nested content. JSON only."
 )
+O2_LOCAL_STRUCTURE_OUTPUT_INSTRUCTION = (
+    "Local-structure diagnostic: emit exactly one canonical CharacterSkillKit root with schema_version exactly "
+    "skill-kit-candidate/0.1.1. Include exactly one entry containing exactly one protocol with exactly one effect; "
+    "use protocol_id=trigger and effect_id=emit, set operation=direct_output, and use null for optional subjects, "
+    "object_ref, and trigger. Keep feedback_relations, resources, states, summons, and role_evidence empty. Keep "
+    "display_summary short, add no extra fields, and return JSON only. Do not create typed references."
+)
 
 
 def build_o1_root_only_fixture() -> dict[str, object]:
@@ -5102,12 +5123,58 @@ def _o1_root_only_guided_prompt(case: ShadowEvidenceCase) -> AgentPrompt:
         response_format=RESPONSE_CONTRACT, authoring_payload=projection,
         invocation_purpose=O1_SAFE_DIAGNOSTIC_EXPERIMENT_TYPE,
     )
+
+
+def _o2_local_structure_prompt(case: ShadowEvidenceCase) -> AgentPrompt:
+    projection = _full_input_projection(case)
+    view = _ShadowProjectionView(
+        projection["brief"], tuple(projection["hard_constraints"]),
+        tuple(projection["forbidden_elements"]), projection["combat_role_profile"],
+    )
+    return AgentPrompt(
+        _compact_v2_contract() + "\n\n" + O2_LOCAL_STRUCTURE_OUTPUT_INSTRUCTION,
+        view, view, (ConversationMessage("user", _canonical_json(projection)),), (),
+        "cs-s2-compact-contract-v2-output-stepdown-o2-local-structure", 1,
+        response_format=RESPONSE_CONTRACT, authoring_payload=projection,
+        invocation_purpose=O2_LOCAL_STRUCTURE_EXPERIMENT_TYPE,
+    )
+
+
 def _o1_root_only_output_contract_digest() -> str:
     return _digest_bytes(O1_ROOT_ONLY_OUTPUT_INSTRUCTION.encode("utf-8"))
 
 
 def _o1_root_only_guided_output_contract_digest() -> str:
     return _digest_bytes(O1_ROOT_ONLY_GUIDED_OUTPUT_INSTRUCTION.encode("utf-8"))
+
+
+def _o2_local_structure_output_contract_digest() -> str:
+    return _digest_bytes(O2_LOCAL_STRUCTURE_OUTPUT_INSTRUCTION.encode("utf-8"))
+
+
+def _o2_local_structure_run_id(source_commit: str, manifest_digest: str, output_digest: str) -> str:
+    return (
+        "cs-s2-shadow-compact-contract-v2-output-stepdown-o2-local-structure-v0.1.0-"
+        "opencode_go-deepseek-v4-pro-case_13-t60-r0-n1-"
+        f"{source_commit}-{manifest_digest[:12]}-{output_digest[:12]}-run-01"
+    )
+
+
+def build_o2_local_structure_fixture() -> dict[str, object]:
+    return {
+        "schema_version": CANDIDATE_SCHEMA_VERSION,
+        "entries": [{
+            "ability_id": "pulse", "name": "Pulse", "mode": "active",
+            "protocols": [{
+                "protocol_id": "trigger", "when": None, "causes": [{
+                    "effect_id": "emit", "subject": None, "operation": "direct_output",
+                    "object_ref": None, "description": "",
+                }],
+            }], "display_text": "",
+        }],
+        "feedback_relations": [], "resources": [], "states": [], "summons": [],
+        "role_evidence": [], "display_summary": "",
+    }
 
 
 def _o1_root_only_run_id(source_commit: str, manifest_digest: str, output_digest: str) -> str:
@@ -6307,6 +6374,255 @@ class O1SafeDiagnosticRunner:
         return bundle
 
 
+def _o2_local_structure_snapshot(payload: object) -> dict[str, object]:
+    if not isinstance(payload, Mapping):
+        return {
+            "root_schema_version_exact_match": False, "collection_shape_valid": False,
+            "entry_count": 0, "protocol_count": 0, "effect_count": 0,
+            "typed_ref_count": 0, "local_structure_complete": False,
+        }
+    collections = ("entries", "feedback_relations", "resources", "states", "summons", "role_evidence")
+    shape_valid = all(isinstance(payload.get(name), list) for name in collections)
+    entries = payload.get("entries") if isinstance(payload.get("entries"), list) else []
+    protocols = entries[0].get("protocols") if entries and isinstance(entries[0], Mapping) and isinstance(entries[0].get("protocols"), list) else []
+    effects = protocols[0].get("causes") if protocols and isinstance(protocols[0], Mapping) and isinstance(protocols[0].get("causes"), list) else []
+    ref_count = 0
+    def count_refs(value: object) -> None:
+        nonlocal ref_count
+        if ref_count >= 2:
+            return
+        if isinstance(value, Mapping):
+            for key, item in value.items():
+                if key in {"entity_ref", "source_ref", "object_ref"} and item is not None:
+                    ref_count += 1
+                else:
+                    count_refs(item)
+                    if ref_count >= 2:
+                        return
+        elif isinstance(value, list):
+            for item in value:
+                count_refs(item)
+                if ref_count >= 2:
+                    return
+    count_refs(payload)
+    entry_count = min(len(entries), 2)
+    protocol_count = min(len(protocols), 2)
+    effect_count = min(len(effects), 2)
+    local_complete = shape_valid and entry_count == 1 and protocol_count == 1 and effect_count == 1 and ref_count == 0
+    return {
+        "root_schema_version_exact_match": payload.get("schema_version") == CANDIDATE_SCHEMA_VERSION,
+        "collection_shape_valid": shape_valid, "entry_count": entry_count,
+        "protocol_count": protocol_count, "effect_count": effect_count,
+        "typed_ref_count": min(ref_count, 2), "local_structure_complete": local_complete,
+    }
+
+
+def _o2_local_structure_shape_ok(payload: object) -> bool:
+    snapshot = _o2_local_structure_snapshot(payload)
+    return snapshot["local_structure_complete"] is True
+
+
+def validate_o2_local_structure_bundle(bundle: Mapping[str, object]) -> None:
+    expected = {
+        "schema_version", "protocol_version", "run_id", "experiment_type", "level",
+        "contract_version", "contract_digest", "output_contract_version", "output_contract_digest",
+        "parser_contract_version", "source_commit", "manifest_digest", "input_manifest_digest",
+        "inputs", "provider", "model", "case_id", "timeout_seconds", "max_transport_retries",
+        "response_mode", "feature_flag", "record_only", "target_sample_count", "complete",
+        "request_metrics", "sample_index", "observation", "bundle_digest",
+    }
+    _exact_keys(bundle, expected, "O2_LOCAL_STRUCTURE_BUNDLE_KEYS_INVALID")
+    if (
+        bundle["schema_version"] != O2_LOCAL_STRUCTURE_SCHEMA_VERSION
+        or bundle["protocol_version"] != PROTOCOL_VERSION
+        or bundle["experiment_type"] != O2_LOCAL_STRUCTURE_EXPERIMENT_TYPE
+        or bundle["level"] != O2_LOCAL_STRUCTURE_LEVEL
+        or bundle["contract_version"] != COMPACT_V2_CONTRACT_VERSION
+        or bundle["output_contract_version"] != O2_LOCAL_STRUCTURE_OUTPUT_CONTRACT_VERSION
+        or bundle["parser_contract_version"] != O1_ROOT_ONLY_PARSER_CONTRACT_VERSION
+        or bundle["case_id"] != "case_13" or bundle["timeout_seconds"] != 60
+        or bundle["max_transport_retries"] != 0 or bundle["response_mode"] != "json_object"
+        or bundle["feature_flag"] != "OFF" or bundle["record_only"] is not True
+        or bundle["target_sample_count"] != 1 or bundle["complete"] is not True or bundle["sample_index"] != 1
+    ):
+        raise EvidenceContractError("O2_LOCAL_STRUCTURE_CONFIG_INVALID")
+    if not _is_sha(bundle["contract_digest"]) or not _is_sha(bundle["output_contract_digest"]):
+        raise EvidenceContractError("O2_LOCAL_STRUCTURE_IDENTITY_INVALID")
+    if bundle["output_contract_digest"] != _o2_local_structure_output_contract_digest():
+        raise EvidenceContractError("O2_LOCAL_STRUCTURE_OUTPUT_CONTRACT_INVALID")
+    if bundle["manifest_digest"] != bundle["input_manifest_digest"] or not isinstance(bundle["source_commit"], str) or not _GIT_SHA_RE.fullmatch(bundle["source_commit"]):
+        raise EvidenceContractError("O2_LOCAL_STRUCTURE_IDENTITY_INVALID")
+    if not isinstance(bundle["run_id"], str) or not _O2_LOCAL_STRUCTURE_RUN_ID_RE.fullmatch(bundle["run_id"]):
+        raise EvidenceContractError("O2_LOCAL_STRUCTURE_RUN_ID_INVALID")
+    if bundle["provider"] != _o1_root_only_provider() or bundle["model"] != O1_ROOT_ONLY_MODEL:
+        raise EvidenceContractError("O2_LOCAL_STRUCTURE_PROVIDER_INVALID")
+    observation = bundle["observation"]
+    if not isinstance(observation, Mapping):
+        raise EvidenceContractError("O2_LOCAL_STRUCTURE_OBSERVATION_INVALID")
+    expected_observation = {
+        "observation_id", "provider_outcome", "transport_attempts", "latency_ms", "json_extraction_outcome",
+        "parsed_top_level_type", "parser_invoked", "parser_outcome", "parser_failure_categories",
+        "parser_failure_counts", "evaluator_invoked", "evaluator_outcome", "principal_verdict", "repair_calls",
+        "failure_stage", "failure_code", "sanitization", "structural_diagnostics",
+    }
+    _exact_keys(observation, expected_observation, "O2_LOCAL_STRUCTURE_OBSERVATION_KEYS_INVALID")
+    if observation["observation_id"] != f"{bundle['run_id']}:case_13:sample-01" or observation["repair_calls"] != 0 or observation["evaluator_invoked"] is not False or observation["evaluator_outcome"] != "NOT_RUN" or observation["sanitization"] != _sanitization_mapping():
+        raise EvidenceContractError("O2_LOCAL_STRUCTURE_OBSERVATION_INVALID")
+    structural = observation["structural_diagnostics"]
+    if not isinstance(structural, Mapping):
+        raise EvidenceContractError("O2_LOCAL_STRUCTURE_DIAGNOSTICS_INVALID")
+    _exact_keys(structural, {"root_schema_version_exact_match", "collection_shape_valid", "entry_count", "protocol_count", "effect_count", "typed_ref_count", "local_structure_complete"}, "O2_LOCAL_STRUCTURE_DIAGNOSTICS_INVALID")
+    for key in ("root_schema_version_exact_match", "collection_shape_valid", "local_structure_complete"):
+        if not isinstance(structural[key], bool):
+            raise EvidenceContractError("O2_LOCAL_STRUCTURE_DIAGNOSTICS_INVALID")
+    for key in ("entry_count", "protocol_count", "effect_count", "typed_ref_count"):
+        if isinstance(structural[key], bool) or not isinstance(structural[key], int) or not 0 <= structural[key] <= 2:
+            raise EvidenceContractError("O2_LOCAL_STRUCTURE_DIAGNOSTICS_INVALID")
+    if observation["principal_verdict"] not in {"O2_LOCAL_STRUCTURE_STRUCTURAL_PASS", "O2_LOCAL_STRUCTURE_PARSE_REJECTED", "O2_LOCAL_STRUCTURE_MALFORMED", "O2_LOCAL_STRUCTURE_UNAVAILABLE"}:
+        raise EvidenceContractError("O2_LOCAL_STRUCTURE_VERDICT_INVALID")
+    if bundle["bundle_digest"] != _digest_mapping({key: value for key, value in bundle.items() if key != "bundle_digest"}):
+        raise EvidenceContractError("O2_LOCAL_STRUCTURE_BUNDLE_DIGEST_INVALID")
+
+
+class O2LocalStructureRunner:
+    """Independent O2 probe: one local protocol/effect, no typed references."""
+
+    def __init__(self, repo_root: Path | str | None = None, *, manifest_path: Path | str | None = None) -> None:
+        self.root = Path(repo_root or ROOT).resolve()
+        self.manifest = load_manifest(self.root, manifest_path)
+        self.cases = _load_cases(self.root, self.manifest)
+
+    def _destination(self, output_path: Path | str | None) -> Path:
+        return (Path(output_path) if output_path is not None else self.root / O2_LOCAL_STRUCTURE_RESULT_RELATIVE_PATH).resolve()
+
+    def _prepare(self, output_path: Path | str | None = None) -> dict[str, object]:
+        contract = _compact_v2_contract()
+        digest = _digest_bytes(contract.encode("utf-8"))
+        if digest != "5dd592925cb4cdc0e20cbb564deedba4c64fe74e8fd79bb2925db66cde801bce" or len(contract) != 981 or len(contract.encode("utf-8")) != 985:
+            raise EvidenceRunnerError("BLOCKED_V2_CONTRACT_DRIFT")
+        request_metrics = _message_metrics(LiveLLMAdapter._provider_messages(_o2_local_structure_prompt(self.cases["case_13"])))
+        output_digest = _o2_local_structure_output_contract_digest()
+        source_commit = _source_commit(self.root)
+        run_id = _o2_local_structure_run_id(source_commit, self.manifest.raw_digest, output_digest)
+        destination = self._destination(output_path)
+        existing = None
+        if destination.exists():
+            payload, _ = _load_json(destination)
+            validate_o2_local_structure_bundle(payload)
+            if payload["run_id"] != run_id:
+                raise EvidenceRunnerError("O2_LOCAL_STRUCTURE_IDENTITY_MISMATCH")
+            existing = payload
+        return {"request_metrics": request_metrics, "contract_digest": digest, "output_digest": output_digest, "source_commit": source_commit, "run_id": run_id, "destination": destination, "existing": existing}
+
+    def dry_run(self, *, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, output_path: Path | str | None = None) -> dict[str, object]:
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1):
+            raise EvidenceRunnerError("O2_LOCAL_STRUCTURE_VARIABLE_MISMATCH")
+        NestedShapeStepdownRunner(self.root, manifest_path=self.root / MANIFEST_RELATIVE_PATH)._assert_historical_integrity()
+        prepared = self._prepare(output_path)
+        existing = prepared["existing"] is not None
+        return {
+            "status": "COHORT_ALREADY_COMPLETE" if existing else "dry_run_o2_local_structure",
+            "experiment_type": O2_LOCAL_STRUCTURE_EXPERIMENT_TYPE, "level": O2_LOCAL_STRUCTURE_LEVEL,
+            "schema_version": O2_LOCAL_STRUCTURE_SCHEMA_VERSION, "contract_version": COMPACT_V2_CONTRACT_VERSION,
+            "contract_digest": prepared["contract_digest"], "output_contract_version": O2_LOCAL_STRUCTURE_OUTPUT_CONTRACT_VERSION,
+            "output_contract_digest": prepared["output_digest"], "run_id": prepared["run_id"], "source_commit": prepared["source_commit"],
+            "manifest_digest": self.manifest.raw_digest, "provider": O1_ROOT_ONLY_PROVIDER, "model": O1_ROOT_ONLY_MODEL,
+            "case_id": "case_13", "timeout_seconds": 60, "max_transport_retries": 0, "target_sample_count": 1,
+            "response_mode": "json_object", "feature_flag": "OFF", "record_only": True,
+            "request_metrics": prepared["request_metrics"], "existing_sample_count": 1 if existing else 0,
+            "existing_sample_indexes": [1] if existing else [], "next_sample_index": None if existing else 1,
+            "remaining_sample_count": 0 if existing else 1, "complete": existing,
+            "provider_factory_constructed": False, "provider_called": False, "evaluator_invoked": False,
+            "repair_calls": 0, "output_path": prepared["destination"].as_posix(),
+        }
+
+    def run(self, *, live: bool = False, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, expected_source_commit: str | None = None, resume: bool = False, output_path: Path | str | None = None, model_factory: Callable[[], Any] | None = None, enforce_clean_tree: bool = True, **_: object) -> dict[str, object]:
+        if not live:
+            if resume or model_factory is not None:
+                raise EvidenceRunnerError("O2_LOCAL_STRUCTURE_DRY_RUN_ARGUMENTS_INVALID")
+            return self.dry_run(timeout_seconds=timeout_seconds, max_transport_retries=max_transport_retries, target_sample_count=target_sample_count, output_path=output_path)
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1) or expected_source_commit is None or _source_commit(self.root) != expected_source_commit:
+            raise EvidenceRunnerError("O2_LOCAL_STRUCTURE_SOURCE_OR_VARIABLE_MISMATCH")
+        prepared = self._prepare(output_path)
+        if prepared["existing"] is not None:
+            raise EvidenceRunnerError("COHORT_ALREADY_COMPLETE")
+        if enforce_clean_tree and _dirty_paths(self.root):
+            raise EvidenceRunnerError("LIVE_DIRTY_TREE")
+        if prepared["destination"].exists() and not resume:
+            raise EvidenceRunnerError("O2_LOCAL_STRUCTURE_RESULT_EXISTS")
+        if model_factory is not None:
+            provider_model = model_factory()
+        else:
+            environment = {
+                "NPC_AGENT_MODEL": "live", "NPC_LLM_PROVIDER": O1_ROOT_ONLY_PROVIDER, "NPC_LLM_MODEL": O1_ROOT_ONLY_MODEL,
+                "NPC_LLM_TRANSPORT": TRANSPORT, "NPC_LLM_STRUCTURED_OUTPUT": STRUCTURED_OUTPUT_MODE,
+                "NPC_LLM_TIMEOUT_SECONDS": "60", "NPC_LLM_MAX_RETRIES": "0",
+                **({"NPC_LLM_API_KEY": os.environ["NPC_LLM_API_KEY"]} if os.environ.get("NPC_LLM_API_KEY") else {}),
+            }
+            try:
+                provider_model = character_model_from_environment(environment=environment, mode_override="live")
+            except Exception as error:
+                raise EvidenceRunnerError("PROVIDER_FACTORY_FAILED") from error
+        provider_outcome, attempts, latency_ms = "failure", 1, None
+        json_outcome, top_level, parser_invoked, parser_outcome = "not_attempted", None, False, "NOT_REACHED"
+        parser_categories: tuple[str, ...] = ()
+        parser_counts: dict[str, int] = {}
+        principal_verdict, failure_stage, failure_code = "O2_LOCAL_STRUCTURE_UNAVAILABLE", "provider", "PROVIDER_INVOCATION_FAILED"
+        structural = _o2_local_structure_snapshot(None)
+        try:
+            turn = provider_model.generate(_o2_local_structure_prompt(self.cases["case_13"]))
+            invocation = turn.invocation
+            provider_outcome, attempts, latency_ms = "success", (invocation.retry_count + 1) if invocation is not None else 1, _bounded_latency(invocation)
+            try:
+                payload = json.loads(turn.text)
+                top_level, json_outcome = _minimal_top_level_type(payload), "parsed"
+            except (TypeError, json.JSONDecodeError):
+                json_outcome, principal_verdict, failure_stage, failure_code = "failed", "O2_LOCAL_STRUCTURE_MALFORMED", "json", "RESPONSE_JSON_INVALID"
+            else:
+                structural, parser_invoked = _o2_local_structure_snapshot(payload), True
+                try:
+                    parse_candidate(payload)
+                except (SkillKitShapeError, TypeError, ValueError) as error:
+                    parser_outcome, parser_categories = "PARSER_REJECTED", _minimal_skillkit_failure_categories(error)
+                    parser_counts = {category: 1 for category in parser_categories}
+                    principal_verdict, failure_stage, failure_code = "O2_LOCAL_STRUCTURE_PARSE_REJECTED", "shape", "CANDIDATE_SHAPE_REJECTED"
+                else:
+                    if not _o2_local_structure_shape_ok(payload):
+                        parser_outcome, parser_categories = "PARSER_REJECTED", ("O2_LOCAL_STRUCTURE_MISMATCH",)
+                        parser_counts = {"O2_LOCAL_STRUCTURE_MISMATCH": 1}
+                        principal_verdict, failure_stage, failure_code = "O2_LOCAL_STRUCTURE_PARSE_REJECTED", "shape", "LOCAL_STRUCTURE_REJECTED"
+                    else:
+                        parser_outcome, principal_verdict, failure_stage, failure_code = "PARSER_PASS", "O2_LOCAL_STRUCTURE_STRUCTURAL_PASS", None, None
+        except ModelError as error:
+            invocation = error.audit
+            attempts, latency_ms = (invocation.retry_count + 1) if invocation is not None else 1, _bounded_latency(invocation)
+        observation = {
+            "observation_id": f"{prepared['run_id']}:case_13:sample-01", "provider_outcome": provider_outcome,
+            "transport_attempts": attempts, "latency_ms": latency_ms, "json_extraction_outcome": json_outcome,
+            "parsed_top_level_type": top_level, "parser_invoked": parser_invoked, "parser_outcome": parser_outcome,
+            "parser_failure_categories": parser_categories, "parser_failure_counts": parser_counts,
+            "evaluator_invoked": False, "evaluator_outcome": "NOT_RUN", "principal_verdict": principal_verdict,
+            "repair_calls": 0, "failure_stage": failure_stage, "failure_code": failure_code,
+            "sanitization": _sanitization_mapping(), "structural_diagnostics": structural,
+        }
+        bundle = {
+            "schema_version": O2_LOCAL_STRUCTURE_SCHEMA_VERSION, "protocol_version": PROTOCOL_VERSION,
+            "run_id": prepared["run_id"], "experiment_type": O2_LOCAL_STRUCTURE_EXPERIMENT_TYPE, "level": O2_LOCAL_STRUCTURE_LEVEL,
+            "contract_version": COMPACT_V2_CONTRACT_VERSION, "contract_digest": prepared["contract_digest"],
+            "output_contract_version": O2_LOCAL_STRUCTURE_OUTPUT_CONTRACT_VERSION, "output_contract_digest": prepared["output_digest"],
+            "parser_contract_version": O1_ROOT_ONLY_PARSER_CONTRACT_VERSION, "source_commit": prepared["source_commit"],
+            "manifest_digest": self.manifest.raw_digest, "input_manifest_digest": self.manifest.raw_digest,
+            "inputs": [dict(item) for item in self.manifest.input_files], "provider": _o1_root_only_provider(),
+            "model": O1_ROOT_ONLY_MODEL, "case_id": "case_13", "timeout_seconds": 60, "max_transport_retries": 0,
+            "response_mode": "json_object", "feature_flag": "OFF", "record_only": True, "target_sample_count": 1,
+            "complete": True, "request_metrics": prepared["request_metrics"], "sample_index": 1, "observation": observation,
+        }
+        bundle["bundle_digest"] = _digest_mapping(bundle)
+        validate_o2_local_structure_bundle(bundle)
+        _write_bundle(prepared["destination"], bundle, resume=False)
+        return bundle
+
+
 def _validate_fixed_target(target: object) -> int:
     if isinstance(target, bool) or not isinstance(target, int) or not 0 < target <= MAX_FIXED_COHORT_SAMPLES:
         raise EvidenceRunnerError("COHORT_TARGET_INVALID")
@@ -6615,10 +6931,18 @@ __all__ = [
     "MinimalSkillKitRunner",
     "OutputStepdownRunner",
     "O1SafeDiagnosticRunner",
+    "O2LocalStructureRunner",
     "O1SafeDiagnosticSnapshot",
     "build_o1_safe_diagnostic_snapshot",
     "classify_o1_safe_diagnostic",
     "validate_o1_safe_diagnostic_bundle",
+    "validate_o2_local_structure_bundle",
+    "build_o2_local_structure_fixture",
+    "O2_LOCAL_STRUCTURE_SCHEMA_VERSION",
+    "O2_LOCAL_STRUCTURE_EXPERIMENT_TYPE",
+    "O2_LOCAL_STRUCTURE_LEVEL",
+    "O2_LOCAL_STRUCTURE_OUTPUT_CONTRACT_VERSION",
+    "O2_LOCAL_STRUCTURE_RESULT_RELATIVE_PATH",
     "O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION",
     "O1_SAFE_DIAGNOSTIC_EXPERIMENT_TYPE",
     "O1_SAFE_DIAGNOSTIC_RESULT_RELATIVE_PATH",
