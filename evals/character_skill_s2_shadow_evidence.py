@@ -270,6 +270,32 @@ _FULL_INPUT_TINY_OUTPUT_RUN_ID_RE = re.compile(
     r"case_13-t60-r0-n1-[0-9a-f]{40}-[0-9a-f]{12}-run-01$"
 )
 
+# Diagnostic-only L1 enum step-down probe.  This deliberately lives beside the
+# evidence runner rather than in the production response-contract builder.
+ENUM_STEPOWDOWN_SCHEMA_VERSION = "character-skill-s2-shadow-enum-expansion-stepdown/0.1.0"
+ENUM_STEPOWDOWN_EXPERIMENT_TYPE = "enum_expansion_stepdown"
+ENUM_STEPOWDOWN_LEVEL = "L1_NO_ENUM_EXPANSION"
+ENUM_STEPOWDOWN_CONTRACT_VERSION = "skillkit-latency-contract-l1-no-enum/0.1.0"
+ENUM_STEPOWDOWN_PROVIDER = "opencode_go"
+ENUM_STEPOWDOWN_MODEL = "deepseek-v4-pro"
+ENUM_STEPOWDOWN_TIMEOUT_SECONDS = 60
+ENUM_STEPOWDOWN_MAX_TRANSPORT_RETRIES = 0
+ENUM_STEPOWDOWN_TARGET = 1
+ENUM_STEPOWDOWN_RESULT_RELATIVE_PATH = (
+    "evals/results/character_skill_s2_shadow_enum_expansion_stepdown_l1_opencode_go_pro_case_13_run_01_v0.1.0.json"
+)
+ENUM_STEPOWDOWN_TEMP_RELATIVE_PATH = (
+    "evals/results/.character_skill_s2_shadow_enum_expansion_stepdown_l1_opencode_go_pro_case_13_run_01_v0.1.0.json.tmp"
+)
+ENUM_STEPOWDOWN_L0_CHARS = 5617
+ENUM_STEPOWDOWN_L0_BYTES = 5741
+ENUM_STEPOWDOWN_L1_CHARS = 2131
+ENUM_STEPOWDOWN_L1_BYTES = 2255
+_ENUM_STEPOWDOWN_RUN_ID_RE = re.compile(
+    r"^cs-s2-enum-expansion-stepdown-v0\.1\.0-L1_NO_ENUM_EXPANSION-"
+    r"opencode_go-deepseek-v4-pro-case_13-t60-r0-n1-[0-9a-f]{40}-[0-9a-f]{12}-run-01$"
+)
+
 
 class EvidenceRunnerError(RuntimeError):
     """Stable, user-facing runner failure without raw provider material."""
@@ -3950,6 +3976,345 @@ class FullInputTinyOutputRunner:
         return bundle
 
 
+def _enum_stepdown_contract() -> str:
+    """Build the diagnostic L1 contract without changing production output."""
+
+    full = character_skill_kit_prompt_contract()
+    prefix, marker, enum_section = full.partition("\nClosed enum vocabulary:\n")
+    if not marker or len(full) != 4889 or len(enum_section.splitlines()) != 58:
+        raise EvidenceRunnerError("ENUM_STEPDOWN_CONTRACT_SOURCE_INVALID")
+    return prefix + "\n\nUse only valid canonical enum values defined by the SkillKit contract."
+
+
+def _enum_stepdown_prompt(case: ShadowEvidenceCase) -> AgentPrompt:
+    projection = _full_input_projection(case)
+    view = _ShadowProjectionView(
+        projection["brief"],
+        tuple(projection["hard_constraints"]),
+        tuple(projection["forbidden_elements"]),
+        projection["combat_role_profile"],
+    )
+    return AgentPrompt(
+        _enum_stepdown_contract() + "\n\n" + FULL_INPUT_TINY_OUTPUT_DIAGNOSTIC_INSTRUCTION,
+        view,
+        view,
+        (ConversationMessage("user", _canonical_json(projection)),),
+        (),
+        "cs-s2-enum-expansion-stepdown",
+        1,
+        response_format=RESPONSE_CONTRACT,
+        authoring_payload=projection,
+        invocation_purpose=ENUM_STEPOWDOWN_EXPERIMENT_TYPE,
+    )
+
+
+def _enum_stepdown_run_id(source_commit: str, manifest_digest: str) -> str:
+    return (
+        "cs-s2-enum-expansion-stepdown-v0.1.0-L1_NO_ENUM_EXPANSION-"
+        "opencode_go-deepseek-v4-pro-case_13-t60-r0-n1-"
+        f"{source_commit}-{manifest_digest[:12]}-run-01"
+    )
+
+
+def _enum_stepdown_provider() -> dict[str, object]:
+    return {
+        "name": ENUM_STEPOWDOWN_PROVIDER,
+        "model_requested": ENUM_STEPOWDOWN_MODEL,
+        "model_reported": ENUM_STEPOWDOWN_MODEL,
+        "transport": TRANSPORT,
+        "structured_output_mode": STRUCTURED_OUTPUT_MODE,
+        "timeout_seconds": ENUM_STEPOWDOWN_TIMEOUT_SECONDS,
+        "max_transport_retries": ENUM_STEPOWDOWN_MAX_TRANSPORT_RETRIES,
+    }
+
+
+def _enum_stepdown_bundle_digest(bundle: Mapping[str, object]) -> str:
+    return _digest_mapping({key: value for key, value in bundle.items() if key != "bundle_digest"})
+
+
+def validate_enum_stepdown_bundle(bundle: Mapping[str, object]) -> None:
+    expected = {
+        "schema_version", "protocol_version", "run_id", "experiment_type", "level",
+        "contract_variant_version", "source_commit", "manifest_digest", "input_manifest_digest",
+        "inputs", "provider", "case_id", "timeout_seconds", "max_transport_retries",
+        "target_sample_count", "complete", "input_contract_version", "tiny_output_contract_version",
+        "l0_request_metrics", "l1_request_metrics", "sample_index", "observation", "bundle_digest",
+    }
+    _exact_keys(bundle, expected, "ENUM_STEPDOWN_BUNDLE_KEYS_INVALID")
+    if (
+        bundle["schema_version"] != ENUM_STEPOWDOWN_SCHEMA_VERSION
+        or bundle["protocol_version"] != PROTOCOL_VERSION
+        or bundle["experiment_type"] != ENUM_STEPOWDOWN_EXPERIMENT_TYPE
+        or bundle["level"] != ENUM_STEPOWDOWN_LEVEL
+        or bundle["contract_variant_version"] != ENUM_STEPOWDOWN_CONTRACT_VERSION
+        or bundle["case_id"] != "case_13"
+        or bundle["timeout_seconds"] != ENUM_STEPOWDOWN_TIMEOUT_SECONDS
+        or bundle["max_transport_retries"] != ENUM_STEPOWDOWN_MAX_TRANSPORT_RETRIES
+        or bundle["target_sample_count"] != ENUM_STEPOWDOWN_TARGET
+        or bundle["complete"] is not True
+        or bundle["input_contract_version"] != ENUM_STEPOWDOWN_CONTRACT_VERSION
+        or bundle["tiny_output_contract_version"] != FULL_INPUT_TINY_OUTPUT_TINY_CONTRACT_VERSION
+        or bundle["sample_index"] != 1
+    ):
+        raise EvidenceContractError("ENUM_STEPDOWN_CONFIG_INVALID")
+    if not isinstance(bundle["source_commit"], str) or not _GIT_SHA_RE.fullmatch(bundle["source_commit"]):
+        raise EvidenceContractError("ENUM_STEPDOWN_SOURCE_COMMIT_INVALID")
+    if bundle["manifest_digest"] != bundle["input_manifest_digest"] or not _is_sha(bundle["manifest_digest"]):
+        raise EvidenceContractError("ENUM_STEPDOWN_MANIFEST_INVALID")
+    if not isinstance(bundle["run_id"], str) or not _ENUM_STEPOWDOWN_RUN_ID_RE.fullmatch(bundle["run_id"]):
+        raise EvidenceContractError("ENUM_STEPDOWN_RUN_ID_INVALID")
+    if bundle["provider"] != _enum_stepdown_provider():
+        raise EvidenceContractError("ENUM_STEPDOWN_PROVIDER_INVALID")
+    for key in ("l0_request_metrics", "l1_request_metrics"):
+        if not isinstance(bundle[key], Mapping):
+            raise EvidenceContractError("ENUM_STEPDOWN_METRICS_INVALID")
+    observation = bundle["observation"]
+    if not isinstance(observation, Mapping):
+        raise EvidenceContractError("ENUM_STEPDOWN_OBSERVATION_INVALID")
+    _exact_keys(
+        observation,
+        {
+            "observation_id", "provider_outcome", "transport_attempts", "latency_ms",
+            "json_extraction_outcome", "tiny_contract_outcome", "parsed_top_level_type",
+            "expected_key_count", "actual_key_count", "failure_stage", "failure_code", "sanitization",
+        },
+        "ENUM_STEPDOWN_OBSERVATION_KEYS_INVALID",
+    )
+    if observation["observation_id"] != f"{bundle['run_id']}:case_13:sample-01":
+        raise EvidenceContractError("ENUM_STEPDOWN_OBSERVATION_ID_INVALID")
+    if observation["transport_attempts"] != 1:
+        raise EvidenceContractError("ENUM_STEPDOWN_ATTEMPT_INVALID")
+    if observation["tiny_contract_outcome"] not in {
+        "L1_ENUM_STEPDOWN_PASS",
+        "L1_ENUM_STEPDOWN_TRANSPORT_REACHABLE_CONTRACT_REJECTED",
+        "L1_ENUM_STEPDOWN_UNAVAILABLE",
+    }:
+        raise EvidenceContractError("ENUM_STEPDOWN_OUTCOME_INVALID")
+    if observation["sanitization"] != _sanitization_mapping():
+        raise EvidenceContractError("ENUM_STEPDOWN_SANITIZATION_INVALID")
+    if bundle["bundle_digest"] != _enum_stepdown_bundle_digest(bundle):
+        raise EvidenceContractError("ENUM_STEPDOWN_BUNDLE_DIGEST_INVALID")
+
+
+class EnumExpansionStepdownRunner:
+    """Run the single, diagnostic-only L1 no-enum probe."""
+
+    def __init__(self, repo_root: Path | str | None = None, *, manifest_path: Path | str | None = None) -> None:
+        self.root = Path(repo_root or ROOT).resolve()
+        self.manifest = load_manifest(self.root, manifest_path)
+        self.cases = _load_cases(self.root, self.manifest)
+
+    def _destination(self, output_path: Path | str | None) -> Path:
+        return (Path(output_path) if output_path is not None else self.root / ENUM_STEPOWDOWN_RESULT_RELATIVE_PATH).resolve()
+
+    def _assert_historical_integrity(self) -> None:
+        FullInputTinyOutputRunner(self.root, manifest_path=self.root / MANIFEST_RELATIVE_PATH)._assert_historical_integrity()
+        path = self.root / FULL_INPUT_TINY_OUTPUT_RESULT_RELATIVE_PATH
+        try:
+            raw = path.read_bytes()
+            bundle, _ = _load_json(path)
+            validate_full_input_tiny_output_bundle(bundle)
+        except (OSError, EvidenceRunnerError) as error:
+            raise EvidenceRunnerError("ENUM_STEPDOWN_HISTORY_INVALID") from error
+        if _digest_bytes(raw) != "2810ea531ed4a1da501a95d946185d4201f926ee9ac7d6ed70bebcf1957ff9d9":
+            raise EvidenceRunnerError("ENUM_STEPDOWN_HISTORY_MUTATED")
+
+    def _metrics(self) -> tuple[dict[str, object], dict[str, object]]:
+        case = self.cases["case_13"]
+        l0 = _message_metrics(_FullInputTinyOutputAdapter._provider_messages(_full_input_prompt(case)))
+        l1 = _message_metrics(_FullInputTinyOutputAdapter._provider_messages(_enum_stepdown_prompt(case)))
+        if (l0["chars"], l0["bytes"]) != (ENUM_STEPOWDOWN_L0_CHARS, ENUM_STEPOWDOWN_L0_BYTES):
+            raise EvidenceRunnerError("BLOCKED_L0_DIAGNOSTIC_DRIFT")
+        if (l1["chars"], l1["bytes"]) != (ENUM_STEPOWDOWN_L1_CHARS, ENUM_STEPOWDOWN_L1_BYTES):
+            raise EvidenceRunnerError("BLOCKED_L1_CONSTRUCTION_DRIFT")
+        if not l1["chars"] < l0["chars"] * 0.5 or not l1["chars"] > 1000:
+            raise EvidenceRunnerError("BLOCKED_L1_REDUCTION_INSUFFICIENT")
+        system = _enum_stepdown_prompt(case).system_contract
+        if "Closed enum vocabulary:" in system or "Use only valid canonical enum values defined by the SkillKit contract." not in system:
+            raise EvidenceRunnerError("ENUM_STEPDOWN_STRUCTURE_INVALID")
+        return l0, l1
+
+    def _load_existing(self, destination: Path, run_id: str) -> dict[str, Any] | None:
+        if not destination.exists():
+            return None
+        bundle, _ = _load_json(destination)
+        validate_enum_stepdown_bundle(bundle)
+        if bundle["run_id"] != run_id:
+            raise EvidenceRunnerError("ENUM_STEPDOWN_IDENTITY_MISMATCH")
+        return bundle
+
+    def dry_run(
+        self,
+        *,
+        timeout_seconds: int = 60,
+        max_transport_retries: int = 0,
+        target_sample_count: int = 1,
+        output_path: Path | str | None = None,
+    ) -> dict[str, object]:
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1):
+            raise EvidenceRunnerError("ENUM_STEPDOWN_VARIABLE_MISMATCH")
+        self._assert_historical_integrity()
+        l0, l1 = self._metrics()
+        source_commit = _source_commit(self.root)
+        destination = self._destination(output_path)
+        run_id = _enum_stepdown_run_id(source_commit, self.manifest.raw_digest)
+        existing = self._load_existing(destination, run_id)
+        return {
+            "status": "COHORT_ALREADY_COMPLETE" if existing is not None else "dry_run_enum_expansion_stepdown",
+            "experiment_type": ENUM_STEPOWDOWN_EXPERIMENT_TYPE,
+            "level": ENUM_STEPOWDOWN_LEVEL,
+            "contract_variant_version": ENUM_STEPOWDOWN_CONTRACT_VERSION,
+            "run_id": run_id,
+            "source_commit": source_commit,
+            "provider": ENUM_STEPOWDOWN_PROVIDER,
+            "model": ENUM_STEPOWDOWN_MODEL,
+            "case_id": "case_13",
+            "timeout_seconds": 60,
+            "max_transport_retries": 0,
+            "target_sample_count": 1,
+            "l0_request_metrics": l0,
+            "l1_request_metrics": l1,
+            "l0_chars": l0["chars"],
+            "l0_bytes": l0["bytes"],
+            "l1_chars": l1["chars"],
+            "l1_bytes": l1["bytes"],
+            "char_reduction": l0["chars"] - l1["chars"],
+            "byte_reduction": l0["bytes"] - l1["bytes"],
+            "l1_l0_char_ratio": l1["chars"] / l0["chars"],
+            "l1_l0_byte_ratio": l1["bytes"] / l0["bytes"],
+            "enum_expansion_included": False,
+            "enum_semantic_guidance_reduced": True,
+            "nested_shape_included": True,
+            "existing_sample_count": 1 if existing is not None else 0,
+            "existing_sample_indexes": [1] if existing is not None else [],
+            "next_sample_index": None if existing is not None else 1,
+            "remaining_sample_count": 0 if existing is not None else 1,
+            "provider_factory_constructed": False,
+            "provider_called": False,
+            "output_path": destination.as_posix(),
+        }
+
+    def run(
+        self,
+        *,
+        live: bool = False,
+        timeout_seconds: int = 60,
+        max_transport_retries: int = 0,
+        target_sample_count: int = 1,
+        expected_source_commit: str | None = None,
+        resume: bool = False,
+        output_path: Path | str | None = None,
+        model_factory: Callable[[], Any] | None = None,
+        enforce_clean_tree: bool = True,
+    ) -> dict[str, object]:
+        if not live:
+            if resume or model_factory is not None:
+                raise EvidenceRunnerError("ENUM_STEPDOWN_DRY_RUN_ARGUMENTS_INVALID")
+            return self.dry_run(timeout_seconds=timeout_seconds, max_transport_retries=max_transport_retries, target_sample_count=target_sample_count, output_path=output_path)
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1):
+            raise EvidenceRunnerError("ENUM_STEPDOWN_VARIABLE_MISMATCH")
+        if expected_source_commit is None:
+            raise EvidenceRunnerError("ENUM_STEPDOWN_SOURCE_COMMIT_REQUIRED")
+        source_commit = _source_commit(self.root)
+        if source_commit != expected_source_commit:
+            raise EvidenceRunnerError("ENUM_STEPDOWN_SOURCE_COMMIT_MISMATCH")
+        self._assert_historical_integrity()
+        l0, l1 = self._metrics()
+        if enforce_clean_tree:
+            dirty = tuple(path for path in _dirty_paths(self.root) if path not in {ENUM_STEPOWDOWN_RESULT_RELATIVE_PATH, ENUM_STEPOWDOWN_TEMP_RELATIVE_PATH})
+            if dirty:
+                raise EvidenceRunnerError("LIVE_DIRTY_TREE")
+        destination = self._destination(output_path)
+        run_id = _enum_stepdown_run_id(source_commit, self.manifest.raw_digest)
+        if self._load_existing(destination, run_id) is not None:
+            raise EvidenceRunnerError("COHORT_ALREADY_COMPLETE")
+        if destination.exists() and not resume:
+            raise EvidenceRunnerError("ENUM_STEPDOWN_RESULT_EXISTS")
+        if model_factory is not None:
+            provider_model = model_factory()
+        else:
+            environment = {
+                "NPC_AGENT_MODEL": "live",
+                "NPC_LLM_PROVIDER": ENUM_STEPOWDOWN_PROVIDER,
+                "NPC_LLM_MODEL": ENUM_STEPOWDOWN_MODEL,
+                "NPC_LLM_TRANSPORT": TRANSPORT,
+                "NPC_LLM_STRUCTURED_OUTPUT": STRUCTURED_OUTPUT_MODE,
+                "NPC_LLM_TIMEOUT_SECONDS": "60",
+                "NPC_LLM_MAX_RETRIES": "0",
+                **({"NPC_LLM_API_KEY": os.environ["NPC_LLM_API_KEY"]} if os.environ.get("NPC_LLM_API_KEY") else {}),
+            }
+            settings = __import__("agents.model_factory", fromlist=["LiveLLMSettings"]).LiveLLMSettings.from_environment(environment)
+            client = OpenAIChatClient(api_key=settings.api_key, base_url=settings.base_url, timeout_seconds=settings.timeout_seconds, request_options=settings.profile.provider_options)
+            provider_model = _FullInputTinyOutputAdapter(client, provider=settings.provider, model=settings.model, profile=settings.profile, timeout_seconds=settings.timeout_seconds, max_retries=settings.max_retries)
+        provider_outcome = "failure"
+        attempts = 1
+        latency_ms = None
+        json_result = {"json_extraction_outcome": "not_attempted", "tiny_contract_outcome": "TRANSPORT_UNAVAILABLE", "parsed_top_level_type": None, "actual_key_count": None}
+        failure_stage = "provider"
+        failure_code = "PROVIDER_INVOCATION_FAILED"
+        try:
+            turn = provider_model.generate(_enum_stepdown_prompt(self.cases["case_13"]))
+            invocation = turn.invocation
+            provider_outcome = "success"
+            attempts = (invocation.retry_count + 1) if invocation is not None else 1
+            latency_ms = _bounded_latency(invocation)
+            json_result = _minimal_contract_result(turn.text)
+            contract_outcome = (
+                "L1_ENUM_STEPDOWN_PASS"
+                if json_result["tiny_contract_outcome"] == "TRANSPORT_SUCCESS_CONTRACT_PASS"
+                else "L1_ENUM_STEPDOWN_TRANSPORT_REACHABLE_CONTRACT_REJECTED"
+            )
+            failure_stage = None
+            failure_code = None
+        except ModelError as error:
+            invocation = error.audit
+            attempts = (invocation.retry_count + 1) if invocation is not None else 1
+            latency_ms = _bounded_latency(invocation)
+            contract_outcome = "L1_ENUM_STEPDOWN_UNAVAILABLE"
+        observation = {
+            "observation_id": f"{run_id}:case_13:sample-01",
+            "provider_outcome": provider_outcome,
+            "transport_attempts": attempts,
+            "latency_ms": latency_ms,
+            "json_extraction_outcome": json_result["json_extraction_outcome"],
+            "tiny_contract_outcome": contract_outcome,
+            "parsed_top_level_type": json_result["parsed_top_level_type"],
+            "expected_key_count": 1,
+            "actual_key_count": json_result["actual_key_count"],
+            "failure_stage": failure_stage,
+            "failure_code": failure_code,
+            "sanitization": _sanitization_mapping(),
+        }
+        bundle = {
+            "schema_version": ENUM_STEPOWDOWN_SCHEMA_VERSION,
+            "protocol_version": PROTOCOL_VERSION,
+            "run_id": run_id,
+            "experiment_type": ENUM_STEPOWDOWN_EXPERIMENT_TYPE,
+            "level": ENUM_STEPOWDOWN_LEVEL,
+            "contract_variant_version": ENUM_STEPOWDOWN_CONTRACT_VERSION,
+            "source_commit": source_commit,
+            "manifest_digest": self.manifest.raw_digest,
+            "input_manifest_digest": self.manifest.raw_digest,
+            "inputs": [dict(item) for item in self.manifest.input_files],
+            "provider": _enum_stepdown_provider(),
+            "case_id": "case_13",
+            "timeout_seconds": 60,
+            "max_transport_retries": 0,
+            "target_sample_count": 1,
+            "complete": True,
+            "input_contract_version": ENUM_STEPOWDOWN_CONTRACT_VERSION,
+            "tiny_output_contract_version": FULL_INPUT_TINY_OUTPUT_TINY_CONTRACT_VERSION,
+            "l0_request_metrics": l0,
+            "l1_request_metrics": l1,
+            "sample_index": 1,
+            "observation": observation,
+        }
+        bundle["bundle_digest"] = _enum_stepdown_bundle_digest(bundle)
+        validate_enum_stepdown_bundle(bundle)
+        _write_bundle(destination, bundle, resume=False)
+        return bundle
+
+
 def _validate_fixed_target(target: object) -> int:
     if isinstance(target, bool) or not isinstance(target, int) or not 0 < target <= MAX_FIXED_COHORT_SAMPLES:
         raise EvidenceRunnerError("COHORT_TARGET_INVALID")
@@ -4182,11 +4547,13 @@ __all__ = [
     "validate_model_suitability_bundle",
     "validate_minimal_transport_sanity_bundle",
     "FullInputTinyOutputRunner",
+    "EnumExpansionStepdownRunner",
     "FULL_INPUT_TINY_OUTPUT_SCHEMA_VERSION",
     "FULL_INPUT_TINY_OUTPUT_RESULT_RELATIVE_PATH",
     "FULL_INPUT_TINY_OUTPUT_TIMEOUT_SECONDS",
     "FULL_INPUT_TINY_OUTPUT_MAX_TRANSPORT_RETRIES",
     "FULL_INPUT_TINY_OUTPUT_TARGET",
     "run_full_input_tiny_output",
+    "validate_enum_stepdown_bundle",
     "validate_evidence_bundle",
 ]
