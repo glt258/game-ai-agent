@@ -55,8 +55,10 @@ def test_o1_dry_run_is_provider_free_and_preserves_frozen_v2_metrics(tmp_path: P
     assert result["experiment_type"] == "compact_contract_v2_output_stepdown"
     assert result["level"] == "O1_ROOT_ONLY"
     assert result["contract_digest"] == "5dd592925cb4cdc0e20cbb564deedba4c64fe74e8fd79bb2925db66cde801bce"
-    assert result["request_metrics"]["chars"] == 1841
-    assert result["request_metrics"]["bytes"] == 1969
+    assert result["request_metrics"]["chars"] == 1461
+    assert result["request_metrics"]["bytes"] == 1589
+    assert result["output_contract_version"] == "v2-output-stepdown-o1-root-only/0.2.0"
+    assert result["output_contract_digest"] == "961f19f4a40fa59c2078d73eae94d38041e92c967160d11d78b2eb0e250d98a6"
     assert result["v2_tiny_request_metrics"]["chars"] == 1709
     assert result["v2_minimal_request_metrics"]["chars"] == 1724
     assert result["output_fixture_metrics"] == {
@@ -168,8 +170,24 @@ def test_o1_identity_is_independent_and_complete_blocks_second_sample(tmp_path: 
 
 def test_o1_output_instruction_is_compact_and_does_not_embed_fixture() -> None:
     instruction = evidence.O1_ROOT_ONLY_OUTPUT_INSTRUCTION
+    assert len(instruction) == 210
+    assert "canonical CharacterSkillKit root" in instruction
+    assert "canonical schema_version" in instruction
+    assert "keep all collections empty" in instruction
+    assert "shortest legal display_summary" in instruction
+    assert "no nested content" in instruction
     assert "JSON only" in instruction
-    assert "wrapper" in instruction
-    assert "additional fields" in instruction
+    assert "wrapper" not in instruction
+    assert "additional fields" not in instruction
+    assert instruction.count("schema_version") == 1
     assert '"entries": []' not in instruction
     assert '"schema_version": "skill-kit-candidate/0.1.1"' not in instruction
+
+
+def test_o1_compression_is_versioned_and_identity_changes() -> None:
+    assert evidence.O1_ROOT_ONLY_OUTPUT_CONTRACT_VERSION != "v2-output-stepdown-o1-root-only/0.1.0"
+    assert evidence._o1_root_only_output_contract_digest() != "74a490909a43407384c1c04f807f82e65411b639e3b5c0f30aee404597516a16"
+    assert evidence.O1_ROOT_ONLY_OUTPUT_INSTRUCTION.count("feedback_relations") == 0
+    assert evidence.O1_ROOT_ONLY_OUTPUT_INSTRUCTION.count("role_evidence") == 0
+    assert evidence.O1_ROOT_ONLY_OUTPUT_INSTRUCTION.count("no wrapper") == 0
+    assert evidence.O1_ROOT_ONLY_OUTPUT_INSTRUCTION.count("additional fields") == 0

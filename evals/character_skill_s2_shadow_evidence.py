@@ -373,7 +373,7 @@ _MINIMAL_SKILLKIT_RUN_ID_RE = re.compile(
 O1_ROOT_ONLY_SCHEMA_VERSION = "character-skill-s2-shadow-compact-contract-v2-output-stepdown/0.1.0"
 O1_ROOT_ONLY_EXPERIMENT_TYPE = "compact_contract_v2_output_stepdown"
 O1_ROOT_ONLY_LEVEL = "O1_ROOT_ONLY"
-O1_ROOT_ONLY_OUTPUT_CONTRACT_VERSION = "v2-output-stepdown-o1-root-only/0.1.0"
+O1_ROOT_ONLY_OUTPUT_CONTRACT_VERSION = "v2-output-stepdown-o1-root-only/0.2.0"
 O1_ROOT_ONLY_PROVIDER = "opencode_go"
 O1_ROOT_ONLY_MODEL = "deepseek-v4-pro"
 O1_ROOT_ONLY_TIMEOUT_SECONDS = 60
@@ -383,13 +383,13 @@ O1_ROOT_ONLY_CASE_ID = "case_13"
 O1_ROOT_ONLY_RESPONSE_MODE = "json_object"
 O1_ROOT_ONLY_PARSER_CONTRACT_VERSION = "skill-kit-validator/0.1.1"
 O1_ROOT_ONLY_RESULT_RELATIVE_PATH = (
-    "evals/results/character_skill_s2_shadow_compact_contract_v2_output_stepdown_o1_root_only_opencode_go_pro_case_13_run_01_v0.1.0.json"
+    "evals/results/character_skill_s2_shadow_compact_contract_v2_output_stepdown_o1_root_only_opencode_go_pro_case_13_run_01_v0.2.0.json"
 )
 O1_ROOT_ONLY_TEMP_RELATIVE_PATH = (
-    "evals/results/.character_skill_s2_shadow_compact_contract_v2_output_stepdown_o1_root_only_opencode_go_pro_case_13_run_01_v0.1.0.json.tmp"
+    "evals/results/.character_skill_s2_shadow_compact_contract_v2_output_stepdown_o1_root_only_opencode_go_pro_case_13_run_01_v0.2.0.json.tmp"
 )
 _O1_ROOT_ONLY_RUN_ID_RE = re.compile(
-    r"^cs-s2-shadow-compact-contract-v2-output-stepdown-o1-root-only-v0\.1\.0-opencode_go-deepseek-v4-pro-"
+    r"^cs-s2-shadow-compact-contract-v2-output-stepdown-o1-root-only-v0\.2\.0-opencode_go-deepseek-v4-pro-"
     r"case_13-t60-r0-n1-[0-9a-f]{40}-[0-9a-f]{12}-[0-9a-f]{12}-run-01$"
 )
 
@@ -5030,12 +5030,8 @@ def validate_minimal_skillkit_bundle(bundle: Mapping[str, object]) -> None:
 
 
 O1_ROOT_ONLY_OUTPUT_INSTRUCTION = (
-    "For this structural latency diagnostic, return exactly one canonical CharacterSkillKit root JSON object. "
-    "Use the canonical schema_version and exactly these eight root keys: schema_version, entries, "
-    "feedback_relations, resources, states, summons, role_evidence, display_summary. "
-    "All seven collection values must be empty arrays; display_summary must be the shortest legal string. "
-    "Do not generate entries, protocols, effects, relations, role evidence, references, IDs, or nested semantic objects. "
-    "Return JSON only, as the direct root object: no prose, Markdown, wrapper, or additional fields."
+    "Root-only structural diagnostic: emit a canonical CharacterSkillKit root; use canonical schema_version, "
+    "keep all collections empty, use the shortest legal display_summary, and emit no nested content. JSON only."
 )
 
 
@@ -5075,7 +5071,7 @@ def _o1_root_only_output_contract_digest() -> str:
 
 def _o1_root_only_run_id(source_commit: str, manifest_digest: str, output_digest: str) -> str:
     return (
-        "cs-s2-shadow-compact-contract-v2-output-stepdown-o1-root-only-v0.1.0-"
+        "cs-s2-shadow-compact-contract-v2-output-stepdown-o1-root-only-v0.2.0-"
         "opencode_go-deepseek-v4-pro-case_13-t60-r0-n1-"
         f"{source_commit}-{manifest_digest[:12]}-{output_digest[:12]}-run-01"
     )
