@@ -374,6 +374,7 @@ O1_ROOT_ONLY_SCHEMA_VERSION = "character-skill-s2-shadow-compact-contract-v2-out
 O1_ROOT_ONLY_EXPERIMENT_TYPE = "compact_contract_v2_output_stepdown"
 O1_ROOT_ONLY_LEVEL = "O1_ROOT_ONLY"
 O1_ROOT_ONLY_OUTPUT_CONTRACT_VERSION = "v2-output-stepdown-o1-root-only/0.2.0"
+O1_ROOT_ONLY_GUIDED_OUTPUT_CONTRACT_VERSION = "v2-output-stepdown-o1-root-only-schema-guided/0.3.0"
 O1_ROOT_ONLY_PROVIDER = "opencode_go"
 O1_ROOT_ONLY_MODEL = "deepseek-v4-pro"
 O1_ROOT_ONLY_TIMEOUT_SECONDS = 60
@@ -387,6 +388,12 @@ O1_ROOT_ONLY_RESULT_RELATIVE_PATH = (
 )
 O1_ROOT_ONLY_TEMP_RELATIVE_PATH = (
     "evals/results/.character_skill_s2_shadow_compact_contract_v2_output_stepdown_o1_root_only_opencode_go_pro_case_13_run_01_v0.2.0.json.tmp"
+)
+O1_ROOT_ONLY_GUIDED_RESULT_RELATIVE_PATH = (
+    "evals/results/character_skill_s2_shadow_compact_contract_v2_output_stepdown_diagnostic_o1_root_only_schema_guided_opencode_go_pro_case_13_run_01_v0.3.0.json"
+)
+O1_ROOT_ONLY_GUIDED_TEMP_RELATIVE_PATH = (
+    "evals/results/.character_skill_s2_shadow_compact_contract_v2_output_stepdown_diagnostic_o1_root_only_schema_guided_opencode_go_pro_case_13_run_01_v0.3.0.json.tmp"
 )
 _O1_ROOT_ONLY_RUN_ID_RE = re.compile(
     r"^cs-s2-shadow-compact-contract-v2-output-stepdown-o1-root-only-v0\.2\.0-opencode_go-deepseek-v4-pro-"
@@ -5045,6 +5052,11 @@ O1_ROOT_ONLY_OUTPUT_INSTRUCTION = (
     "Root-only structural diagnostic: emit a canonical CharacterSkillKit root; use canonical schema_version, "
     "keep all collections empty, use the shortest legal display_summary, and emit no nested content. JSON only."
 )
+O1_ROOT_ONLY_GUIDED_OUTPUT_INSTRUCTION = (
+    "Root-only structural diagnostic: emit a canonical CharacterSkillKit root; set schema_version exactly to "
+    "skill-kit-candidate/0.1.1; keep all collections empty, use the shortest legal display_summary, and emit no "
+    "nested content. JSON only."
+)
 
 
 def build_o1_root_only_fixture() -> dict[str, object]:
@@ -5077,8 +5089,25 @@ def _o1_root_only_prompt(case: ShadowEvidenceCase) -> AgentPrompt:
     )
 
 
+def _o1_root_only_guided_prompt(case: ShadowEvidenceCase) -> AgentPrompt:
+    projection = _full_input_projection(case)
+    view = _ShadowProjectionView(
+        projection["brief"], tuple(projection["hard_constraints"]),
+        tuple(projection["forbidden_elements"]), projection["combat_role_profile"],
+    )
+    return AgentPrompt(
+        _compact_v2_contract() + "\n\n" + O1_ROOT_ONLY_GUIDED_OUTPUT_INSTRUCTION,
+        view, view, (ConversationMessage("user", _canonical_json(projection)),), (),
+        "cs-s2-compact-contract-v2-output-stepdown-o1-root-only-schema-guided", 1,
+        response_format=RESPONSE_CONTRACT, authoring_payload=projection,
+        invocation_purpose=O1_SAFE_DIAGNOSTIC_EXPERIMENT_TYPE,
+    )
 def _o1_root_only_output_contract_digest() -> str:
     return _digest_bytes(O1_ROOT_ONLY_OUTPUT_INSTRUCTION.encode("utf-8"))
+
+
+def _o1_root_only_guided_output_contract_digest() -> str:
+    return _digest_bytes(O1_ROOT_ONLY_GUIDED_OUTPUT_INSTRUCTION.encode("utf-8"))
 
 
 def _o1_root_only_run_id(source_commit: str, manifest_digest: str, output_digest: str) -> str:
@@ -6011,7 +6040,7 @@ def validate_o1_safe_diagnostic_bundle(bundle: Mapping[str, object]) -> None:
         or bundle["experiment_type"] != O1_SAFE_DIAGNOSTIC_EXPERIMENT_TYPE
         or bundle["level"] != O1_ROOT_ONLY_LEVEL
         or bundle["contract_version"] != COMPACT_V2_CONTRACT_VERSION
-        or bundle["output_contract_version"] != O1_ROOT_ONLY_OUTPUT_CONTRACT_VERSION
+        or bundle["output_contract_version"] not in {O1_ROOT_ONLY_OUTPUT_CONTRACT_VERSION, O1_ROOT_ONLY_GUIDED_OUTPUT_CONTRACT_VERSION}
         or bundle["parser_contract_version"] != O1_ROOT_ONLY_PARSER_CONTRACT_VERSION
         or bundle["case_id"] != O1_ROOT_ONLY_CASE_ID
         or bundle["timeout_seconds"] != 60
@@ -6024,6 +6053,13 @@ def validate_o1_safe_diagnostic_bundle(bundle: Mapping[str, object]) -> None:
         or bundle["sample_index"] != 1
     ):
         raise EvidenceContractError("O1_SAFE_DIAGNOSTIC_CONFIG_INVALID")
+    expected_output_digest = (
+        _o1_root_only_guided_output_contract_digest()
+        if bundle["output_contract_version"] == O1_ROOT_ONLY_GUIDED_OUTPUT_CONTRACT_VERSION
+        else _o1_root_only_output_contract_digest()
+    )
+    if bundle["output_contract_digest"] != expected_output_digest:
+        raise EvidenceContractError("O1_SAFE_DIAGNOSTIC_OUTPUT_CONTRACT_INVALID")
     for key in ("contract_digest", "output_contract_digest", "diagnostic_schema_version", "manifest_digest"):
         if key == "diagnostic_schema_version":
             if bundle[key] != O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION:
@@ -6077,13 +6113,29 @@ def _o1_safe_diagnostic_run_id(source_commit: str, manifest_digest: str, diagnos
 class O1SafeDiagnosticRunner:
     """Independent O1 diagnostic cohort; model-facing request is byte-identical to O1."""
 
-    def __init__(self, repo_root: Path | str | None = None, *, manifest_path: Path | str | None = None) -> None:
+    def __init__(self, repo_root: Path | str | None = None, *, manifest_path: Path | str | None = None, guided: bool = False) -> None:
         self.root = Path(repo_root or ROOT).resolve()
         self.manifest = load_manifest(self.root, manifest_path)
         self.cases = _load_cases(self.root, self.manifest)
+        self.guided = guided
+
+    def _prompt(self, case: ShadowEvidenceCase) -> AgentPrompt:
+        return _o1_root_only_guided_prompt(case) if self.guided else _o1_root_only_prompt(case)
+
+    def _output_contract_version(self) -> str:
+        return O1_ROOT_ONLY_GUIDED_OUTPUT_CONTRACT_VERSION if self.guided else O1_ROOT_ONLY_OUTPUT_CONTRACT_VERSION
+
+    def _output_contract_digest(self) -> str:
+        return _o1_root_only_guided_output_contract_digest() if self.guided else _o1_root_only_output_contract_digest()
+
+    def _identity_digest(self) -> str:
+        return self._output_contract_digest() if self.guided else _digest_bytes(O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION.encode("utf-8"))
+
+    def _result_relative_path(self) -> str:
+        return O1_ROOT_ONLY_GUIDED_RESULT_RELATIVE_PATH if self.guided else O1_SAFE_DIAGNOSTIC_RESULT_RELATIVE_PATH
 
     def _destination(self, output_path: Path | str | None) -> Path:
-        return (Path(output_path) if output_path is not None else self.root / O1_SAFE_DIAGNOSTIC_RESULT_RELATIVE_PATH).resolve()
+        return (Path(output_path) if output_path is not None else self.root / self._result_relative_path()).resolve()
 
     def _prepare(self, output_path: Path | str | None = None) -> dict[str, object]:
         historical_destination = self.root / O1_ROOT_ONLY_RESULT_RELATIVE_PATH
@@ -6101,9 +6153,10 @@ class O1SafeDiagnosticRunner:
             )
         if (base["o1"]["chars"], base["o1"]["bytes"]) != (1461, 1589):
             raise EvidenceRunnerError("BLOCKED_DIAGNOSTIC_REQUEST_DRIFT")
-        diagnostic_digest = _digest_bytes(O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION.encode("utf-8"))
+        diagnostic_digest = self._output_contract_digest()
+        identity_digest = self._identity_digest()
         source_commit = _source_commit(self.root)
-        run_id = _o1_safe_diagnostic_run_id(source_commit, self.manifest.raw_digest, diagnostic_digest)
+        run_id = _o1_safe_diagnostic_run_id(source_commit, self.manifest.raw_digest, identity_digest)
         if not _O1_SAFE_DIAGNOSTIC_RUN_ID_RE.fullmatch(run_id):
             raise EvidenceRunnerError("O1_SAFE_DIAGNOSTIC_RUN_ID_INVALID")
         destination = self._destination(output_path)
@@ -6115,7 +6168,7 @@ class O1SafeDiagnosticRunner:
                 raise EvidenceRunnerError("O1_SAFE_DIAGNOSTIC_IDENTITY_MISMATCH")
             existing = payload
         base["existing"] = historical_payload
-        return {"base": base, "run_id": run_id, "source_commit": source_commit, "diagnostic_digest": diagnostic_digest, "destination": destination, "existing": existing}
+        return {"base": base, "run_id": run_id, "source_commit": source_commit, "diagnostic_digest": diagnostic_digest, "identity_digest": identity_digest, "destination": destination, "existing": existing, "request_metrics": _message_metrics(LiveLLMAdapter._provider_messages(self._prompt(self.cases[O1_ROOT_ONLY_CASE_ID])))}
 
     def dry_run(self, *, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, output_path: Path | str | None = None) -> dict[str, object]:
         if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1):
@@ -6129,13 +6182,13 @@ class O1SafeDiagnosticRunner:
             "experiment_type": O1_SAFE_DIAGNOSTIC_EXPERIMENT_TYPE, "level": O1_ROOT_ONLY_LEVEL,
             "schema_version": O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION, "diagnostic_schema_version": O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION,
             "contract_version": COMPACT_V2_CONTRACT_VERSION, "contract_digest": old_plan["v2_digest"],
-            "output_contract_version": O1_ROOT_ONLY_OUTPUT_CONTRACT_VERSION, "output_contract_digest": old_plan["output_digest"],
+            "output_contract_version": self._output_contract_version(), "output_contract_digest": prepared["diagnostic_digest"],
             "parser_contract_version": O1_ROOT_ONLY_PARSER_CONTRACT_VERSION, "run_id": prepared["run_id"],
             "source_commit": prepared["source_commit"], "manifest_digest": self.manifest.raw_digest,
             "provider": O1_ROOT_ONLY_PROVIDER, "model": O1_ROOT_ONLY_MODEL, "case_id": O1_ROOT_ONLY_CASE_ID,
             "timeout_seconds": 60, "max_transport_retries": 0, "response_mode": O1_ROOT_ONLY_RESPONSE_MODE,
             "feature_flag": "OFF", "record_only": True, "target_sample_count": 1,
-            "request_metrics": old_plan["o1"], "output_fixture_metrics": old_plan["fixture_metrics"],
+            "request_metrics": prepared["request_metrics"], "output_fixture_metrics": old_plan["fixture_metrics"],
             "existing_sample_count": 1 if existing else 0, "existing_sample_indexes": [1] if existing else [],
             "next_sample_index": None if existing else 1, "remaining_sample_count": 0 if existing else 1,
             "complete": existing, "provider_factory_constructed": False, "provider_called": False,
@@ -6179,7 +6232,7 @@ class O1SafeDiagnosticRunner:
         safe_snapshot = build_o1_safe_diagnostic_snapshot(None)
         safe_class, safe_category, safe_resolution = "UNAVAILABLE", "INVALID_CANONICAL_VALUE_UNRESOLVED", "CLASS_ONLY"
         try:
-            turn = provider_model.generate(_o1_root_only_prompt(self.cases[O1_ROOT_ONLY_CASE_ID]))
+            turn = provider_model.generate(self._prompt(self.cases[O1_ROOT_ONLY_CASE_ID]))
             invocation = turn.invocation
             provider_outcome = "success"
             attempts = (invocation.retry_count + 1) if invocation is not None else 1
@@ -6237,15 +6290,15 @@ class O1SafeDiagnosticRunner:
             "schema_version": O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION, "protocol_version": PROTOCOL_VERSION,
             "run_id": prepared["run_id"], "experiment_type": O1_SAFE_DIAGNOSTIC_EXPERIMENT_TYPE,
             "level": O1_ROOT_ONLY_LEVEL, "contract_version": COMPACT_V2_CONTRACT_VERSION,
-            "contract_digest": prepared["base"]["v2_digest"], "output_contract_version": O1_ROOT_ONLY_OUTPUT_CONTRACT_VERSION,
-            "output_contract_digest": prepared["base"]["output_digest"], "diagnostic_schema_version": O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION,
+            "contract_digest": prepared["base"]["v2_digest"], "output_contract_version": self._output_contract_version(),
+            "output_contract_digest": prepared["diagnostic_digest"], "diagnostic_schema_version": O1_SAFE_DIAGNOSTIC_SCHEMA_VERSION,
             "parser_contract_version": O1_ROOT_ONLY_PARSER_CONTRACT_VERSION, "source_commit": prepared["source_commit"],
             "manifest_digest": self.manifest.raw_digest, "input_manifest_digest": self.manifest.raw_digest,
             "inputs": [dict(item) for item in self.manifest.input_files], "provider": _o1_root_only_provider(),
             "model": O1_ROOT_ONLY_MODEL, "case_id": O1_ROOT_ONLY_CASE_ID, "timeout_seconds": 60,
             "max_transport_retries": 0, "response_mode": O1_ROOT_ONLY_RESPONSE_MODE, "feature_flag": "OFF",
             "record_only": True, "target_sample_count": 1, "complete": True,
-            "request_metrics": prepared["base"]["o1"], "output_fixture_metrics": prepared["base"]["fixture_metrics"],
+            "request_metrics": prepared["request_metrics"], "output_fixture_metrics": prepared["base"]["fixture_metrics"],
             "sample_index": 1, "observation": observation,
         }
         bundle["bundle_digest"] = _digest_mapping(bundle)

@@ -49,8 +49,8 @@ def _run(tmp_path: Path, model: _FakeModel) -> dict[str, object]:
     )
 
 
-def _run_diagnostic(tmp_path: Path, model: _FakeModel) -> dict[str, object]:
-    return evidence.O1SafeDiagnosticRunner(ROOT).run(
+def _run_diagnostic(tmp_path: Path, model: _FakeModel, *, guided: bool = False) -> dict[str, object]:
+    return evidence.O1SafeDiagnosticRunner(ROOT, guided=guided).run(
         live=True,
         expected_source_commit=evidence._source_commit(ROOT),
         output_path=tmp_path / "diagnostic.json",
@@ -308,6 +308,37 @@ def test_safe_diagnostic_dry_run_is_independent_and_provider_free(tmp_path: Path
     assert result["next_sample_index"] == 1
     assert result["remaining_sample_count"] == 1
     assert result["old_o1_cohort_complete"] is True
+    assert result["provider_factory_constructed"] is False
+    assert result["provider_called"] is False
+    assert not (tmp_path / "plan.json").exists()
+
+
+def test_schema_guided_diagnostic_is_independent_and_preserves_parser_boundary(tmp_path: Path) -> None:
+    prompt = evidence._o1_root_only_guided_prompt(evidence.O1SafeDiagnosticRunner(ROOT).cases["case_13"])
+    assert "schema_version exactly to skill-kit-candidate/0.1.1" in prompt.system_contract
+    metrics = evidence._message_metrics(evidence.LiveLLMAdapter._provider_messages(prompt))
+    assert metrics["chars"] == 1488
+    assert metrics["bytes"] == 1616
+    guided = _run_diagnostic(tmp_path / "guided", _FakeModel(), guided=True)
+    assert guided["output_contract_version"] == evidence.O1_ROOT_ONLY_GUIDED_OUTPUT_CONTRACT_VERSION
+    assert guided["output_contract_digest"] == evidence._o1_root_only_guided_output_contract_digest()
+    assert guided["observation"]["parser_outcome"] == "PARSER_PASS"
+    assert guided["observation"]["principal_verdict"] == "O1_ROOT_ONLY_STRUCTURAL_PASS"
+    assert guided["observation"]["evaluator_invoked"] is False
+    assert guided["observation"]["safe_diagnostics"]["diagnostic_category"] == "NO_DIAGNOSTIC"
+    evidence.validate_o1_safe_diagnostic_bundle(guided)
+
+
+def test_schema_guided_diagnostic_dry_run_has_new_identity_and_no_provider(tmp_path: Path) -> None:
+    result = evidence.O1SafeDiagnosticRunner(ROOT, guided=True).dry_run(output_path=tmp_path / "plan.json")
+    assert result["status"] == "dry_run_o1_safe_diagnostic"
+    assert result["output_contract_version"] == evidence.O1_ROOT_ONLY_GUIDED_OUTPUT_CONTRACT_VERSION
+    assert result["output_contract_digest"] == evidence._o1_root_only_guided_output_contract_digest()
+    assert result["request_metrics"]["chars"] == 1488
+    assert result["request_metrics"]["bytes"] == 1616
+    assert result["existing_sample_count"] == 0
+    assert result["next_sample_index"] == 1
+    assert result["remaining_sample_count"] == 1
     assert result["provider_factory_constructed"] is False
     assert result["provider_called"] is False
     assert not (tmp_path / "plan.json").exists()
