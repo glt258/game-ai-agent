@@ -295,6 +295,27 @@ _ENUM_STEPOWDOWN_RUN_ID_RE = re.compile(
     r"^cs-s2-enum-expansion-stepdown-v0\.1\.0-L1_NO_ENUM_EXPANSION-"
     r"opencode_go-deepseek-v4-pro-case_13-t60-r0-n1-[0-9a-f]{40}-[0-9a-f]{12}-run-01$"
 )
+NESTED_SHAPE_STEPOWDOWN_SCHEMA_VERSION = "character-skill-s2-shadow-nested-shape-stepdown/0.1.0"
+NESTED_SHAPE_STEPOWDOWN_EXPERIMENT_TYPE = "nested_shape_stepdown"
+NESTED_SHAPE_STEPOWDOWN_LEVEL = "L2_ROOT_PLUS_MINIMAL_SHAPE"
+NESTED_SHAPE_STEPOWDOWN_CONTRACT_VERSION = "skillkit-latency-contract-l2-root-minimal-shape/0.1.0"
+NESTED_SHAPE_STEPOWDOWN_PROVIDER = "opencode_go"
+NESTED_SHAPE_STEPOWDOWN_MODEL = "deepseek-v4-pro"
+NESTED_SHAPE_STEPOWDOWN_TIMEOUT_SECONDS = 60
+NESTED_SHAPE_STEPOWDOWN_MAX_TRANSPORT_RETRIES = 0
+NESTED_SHAPE_STEPOWDOWN_TARGET = 1
+NESTED_SHAPE_STEPOWDOWN_RESULT_RELATIVE_PATH = (
+    "evals/results/character_skill_s2_shadow_nested_shape_stepdown_l2_opencode_go_pro_case_13_run_01_v0.1.0.json"
+)
+NESTED_SHAPE_STEPOWDOWN_TEMP_RELATIVE_PATH = (
+    "evals/results/.character_skill_s2_shadow_nested_shape_stepdown_l2_opencode_go_pro_case_13_run_01_v0.1.0.json.tmp"
+)
+NESTED_SHAPE_STEPOWDOWN_L2_CHARS = 1351
+NESTED_SHAPE_STEPOWDOWN_L2_BYTES = 1475
+_NESTED_SHAPE_STEPOWDOWN_RUN_ID_RE = re.compile(
+    r"^cs-s2-nested-shape-stepdown-v0\.1\.0-L2_ROOT_PLUS_MINIMAL_SHAPE-"
+    r"opencode_go-deepseek-v4-pro-case_13-t60-r0-n1-[0-9a-f]{40}-[0-9a-f]{12}-run-01$"
+)
 
 
 class EvidenceRunnerError(RuntimeError):
@@ -4315,6 +4336,349 @@ class EnumExpansionStepdownRunner:
         return bundle
 
 
+def _nested_shape_stepdown_contract() -> str:
+    """Build the diagnostic L2 root-plus-minimal-shape contract from schema."""
+
+    from agents.response_contracts import CHARACTER_SKILL_KIT_JSON_SCHEMA
+
+    required = tuple(CHARACTER_SKILL_KIT_JSON_SCHEMA["required"])
+    properties = CHARACTER_SKILL_KIT_JSON_SCHEMA["properties"]
+    types = "; ".join(f"{name}={properties[name]['type']}" for name in required)
+    lines = [
+        "Return exactly one SkillKit candidate JSON object, directly at the root.",
+        "The root object must contain exactly these 8 required keys (all required):",
+        *[f"- {name}" for name in required],
+        f"Root field types: {types}.",
+        "Array-valued sections may be empty; do not omit their keys.",
+        "Do not add any other root keys or wrap the object.",
+        "Return JSON only: no prose, Markdown, code fences, explanations, or reasoning.",
+    ]
+    return "\n".join(lines)
+
+
+def _nested_shape_stepdown_prompt(case: ShadowEvidenceCase) -> AgentPrompt:
+    projection = _full_input_projection(case)
+    view = _ShadowProjectionView(
+        projection["brief"],
+        tuple(projection["hard_constraints"]),
+        tuple(projection["forbidden_elements"]),
+        projection["combat_role_profile"],
+    )
+    return AgentPrompt(
+        _nested_shape_stepdown_contract() + "\n\n" + FULL_INPUT_TINY_OUTPUT_DIAGNOSTIC_INSTRUCTION,
+        view,
+        view,
+        (ConversationMessage("user", _canonical_json(projection)),),
+        (),
+        "cs-s2-nested-shape-stepdown",
+        1,
+        response_format=RESPONSE_CONTRACT,
+        authoring_payload=projection,
+        invocation_purpose=NESTED_SHAPE_STEPOWDOWN_EXPERIMENT_TYPE,
+    )
+
+
+def _nested_shape_stepdown_run_id(source_commit: str, manifest_digest: str) -> str:
+    return (
+        "cs-s2-nested-shape-stepdown-v0.1.0-L2_ROOT_PLUS_MINIMAL_SHAPE-"
+        "opencode_go-deepseek-v4-pro-case_13-t60-r0-n1-"
+        f"{source_commit}-{manifest_digest[:12]}-run-01"
+    )
+
+
+def _nested_shape_stepdown_provider() -> dict[str, object]:
+    return {
+        "name": NESTED_SHAPE_STEPOWDOWN_PROVIDER,
+        "model_requested": NESTED_SHAPE_STEPOWDOWN_MODEL,
+        "model_reported": NESTED_SHAPE_STEPOWDOWN_MODEL,
+        "transport": TRANSPORT,
+        "structured_output_mode": STRUCTURED_OUTPUT_MODE,
+        "timeout_seconds": NESTED_SHAPE_STEPOWDOWN_TIMEOUT_SECONDS,
+        "max_transport_retries": NESTED_SHAPE_STEPOWDOWN_MAX_TRANSPORT_RETRIES,
+    }
+
+
+def _nested_shape_stepdown_bundle_digest(bundle: Mapping[str, object]) -> str:
+    return _digest_mapping({key: value for key, value in bundle.items() if key != "bundle_digest"})
+
+
+def validate_nested_shape_stepdown_bundle(bundle: Mapping[str, object]) -> None:
+    expected = {
+        "schema_version", "protocol_version", "run_id", "experiment_type", "level",
+        "contract_variant_version", "source_commit", "manifest_digest", "input_manifest_digest",
+        "inputs", "provider", "case_id", "timeout_seconds", "max_transport_retries",
+        "target_sample_count", "complete", "input_contract_version", "tiny_output_contract_version",
+        "l0_request_metrics", "l1_request_metrics", "l2_request_metrics", "sample_index",
+        "observation", "bundle_digest",
+    }
+    _exact_keys(bundle, expected, "NESTED_SHAPE_STEPDOWN_BUNDLE_KEYS_INVALID")
+    if (
+        bundle["schema_version"] != NESTED_SHAPE_STEPOWDOWN_SCHEMA_VERSION
+        or bundle["protocol_version"] != PROTOCOL_VERSION
+        or bundle["experiment_type"] != NESTED_SHAPE_STEPOWDOWN_EXPERIMENT_TYPE
+        or bundle["level"] != NESTED_SHAPE_STEPOWDOWN_LEVEL
+        or bundle["contract_variant_version"] != NESTED_SHAPE_STEPOWDOWN_CONTRACT_VERSION
+        or bundle["case_id"] != "case_13"
+        or bundle["timeout_seconds"] != 60
+        or bundle["max_transport_retries"] != 0
+        or bundle["target_sample_count"] != 1
+        or bundle["complete"] is not True
+        or bundle["input_contract_version"] != NESTED_SHAPE_STEPOWDOWN_CONTRACT_VERSION
+        or bundle["tiny_output_contract_version"] != FULL_INPUT_TINY_OUTPUT_TINY_CONTRACT_VERSION
+        or bundle["sample_index"] != 1
+    ):
+        raise EvidenceContractError("NESTED_SHAPE_STEPDOWN_CONFIG_INVALID")
+    if not isinstance(bundle["source_commit"], str) or not _GIT_SHA_RE.fullmatch(bundle["source_commit"]):
+        raise EvidenceContractError("NESTED_SHAPE_STEPDOWN_SOURCE_COMMIT_INVALID")
+    if bundle["manifest_digest"] != bundle["input_manifest_digest"] or not _is_sha(bundle["manifest_digest"]):
+        raise EvidenceContractError("NESTED_SHAPE_STEPDOWN_MANIFEST_INVALID")
+    if not isinstance(bundle["run_id"], str) or not _NESTED_SHAPE_STEPOWDOWN_RUN_ID_RE.fullmatch(bundle["run_id"]):
+        raise EvidenceContractError("NESTED_SHAPE_STEPDOWN_RUN_ID_INVALID")
+    if bundle["provider"] != _nested_shape_stepdown_provider():
+        raise EvidenceContractError("NESTED_SHAPE_STEPDOWN_PROVIDER_INVALID")
+    for key in ("l0_request_metrics", "l1_request_metrics", "l2_request_metrics"):
+        if not isinstance(bundle[key], Mapping):
+            raise EvidenceContractError("NESTED_SHAPE_STEPDOWN_METRICS_INVALID")
+    observation = bundle["observation"]
+    if not isinstance(observation, Mapping):
+        raise EvidenceContractError("NESTED_SHAPE_STEPDOWN_OBSERVATION_INVALID")
+    _exact_keys(
+        observation,
+        {
+            "observation_id", "provider_outcome", "transport_attempts", "latency_ms",
+            "json_extraction_outcome", "tiny_contract_outcome", "parsed_top_level_type",
+            "expected_key_count", "actual_key_count", "failure_stage", "failure_code", "sanitization",
+        },
+        "NESTED_SHAPE_STEPDOWN_OBSERVATION_KEYS_INVALID",
+    )
+    if observation["observation_id"] != f"{bundle['run_id']}:case_13:sample-01":
+        raise EvidenceContractError("NESTED_SHAPE_STEPDOWN_OBSERVATION_ID_INVALID")
+    if observation["transport_attempts"] != 1:
+        raise EvidenceContractError("NESTED_SHAPE_STEPDOWN_ATTEMPT_INVALID")
+    if observation["tiny_contract_outcome"] not in {
+        "L2_SHAPE_STEPDOWN_PASS",
+        "L2_SHAPE_STEPDOWN_TRANSPORT_REACHABLE_CONTRACT_REJECTED",
+        "L2_SHAPE_STEPDOWN_UNAVAILABLE",
+    }:
+        raise EvidenceContractError("NESTED_SHAPE_STEPDOWN_OUTCOME_INVALID")
+    if observation["sanitization"] != _sanitization_mapping():
+        raise EvidenceContractError("NESTED_SHAPE_STEPDOWN_SANITIZATION_INVALID")
+    if bundle["bundle_digest"] != _nested_shape_stepdown_bundle_digest(bundle):
+        raise EvidenceContractError("NESTED_SHAPE_STEPDOWN_BUNDLE_DIGEST_INVALID")
+
+
+class NestedShapeStepdownRunner:
+    """Run the single, diagnostic-only L2 root-plus-minimal-shape probe."""
+
+    def __init__(self, repo_root: Path | str | None = None, *, manifest_path: Path | str | None = None) -> None:
+        self.root = Path(repo_root or ROOT).resolve()
+        self.manifest = load_manifest(self.root, manifest_path)
+        self.cases = _load_cases(self.root, self.manifest)
+
+    def _destination(self, output_path: Path | str | None) -> Path:
+        return (Path(output_path) if output_path is not None else self.root / NESTED_SHAPE_STEPOWDOWN_RESULT_RELATIVE_PATH).resolve()
+
+    def _assert_historical_integrity(self) -> None:
+        EnumExpansionStepdownRunner(self.root, manifest_path=self.root / MANIFEST_RELATIVE_PATH)._assert_historical_integrity()
+        path = self.root / ENUM_STEPOWDOWN_RESULT_RELATIVE_PATH
+        try:
+            raw = path.read_bytes()
+            bundle, _ = _load_json(path)
+            validate_enum_stepdown_bundle(bundle)
+        except (OSError, EvidenceRunnerError) as error:
+            raise EvidenceRunnerError("NESTED_SHAPE_STEPDOWN_HISTORY_INVALID") from error
+        if _digest_bytes(raw) != "2ada4b1edade77a050de346701defcba60bf9155564589a07442a0eda16a6a3f":
+            raise EvidenceRunnerError("NESTED_SHAPE_STEPDOWN_HISTORY_MUTATED")
+
+    def _metrics(self) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
+        case = self.cases["case_13"]
+        l0 = _message_metrics(_FullInputTinyOutputAdapter._provider_messages(_full_input_prompt(case)))
+        l1 = _message_metrics(_FullInputTinyOutputAdapter._provider_messages(_enum_stepdown_prompt(case)))
+        l2 = _message_metrics(_FullInputTinyOutputAdapter._provider_messages(_nested_shape_stepdown_prompt(case)))
+        if (l0["chars"], l0["bytes"]) != (5617, 5741):
+            raise EvidenceRunnerError("BLOCKED_L0_DIAGNOSTIC_DRIFT")
+        if (l1["chars"], l1["bytes"]) != (2131, 2255):
+            raise EvidenceRunnerError("BLOCKED_L1_DIAGNOSTIC_DRIFT")
+        if (l2["chars"], l2["bytes"]) != (NESTED_SHAPE_STEPOWDOWN_L2_CHARS, NESTED_SHAPE_STEPOWDOWN_L2_BYTES):
+            raise EvidenceRunnerError("BLOCKED_L2_CONSTRUCTION_DRIFT")
+        if not l2["chars"] < l1["chars"] or l2["chars"] > l1["chars"] * 0.75:
+            raise EvidenceRunnerError("BLOCKED_L2_REDUCTION_INSUFFICIENT")
+        if l2["chars"] < 1102 * 1.10:
+            raise EvidenceRunnerError("BLOCKED_L2_L3_BOUNDARY_COLLAPSED")
+        system = _nested_shape_stepdown_prompt(case).system_contract
+        required_markers = (
+            "directly at the root", "exactly these 8 required keys", "Root field types:",
+            "Array-valued sections may be empty", "Do not add any other root keys",
+            "Return JSON only:",
+        )
+        if any(marker not in system for marker in required_markers):
+            raise EvidenceRunnerError("NESTED_SHAPE_STEPDOWN_STRUCTURE_INVALID")
+        if "Closed enum vocabulary:" in system or "Nested shape summary" in system:
+            raise EvidenceRunnerError("NESTED_SHAPE_STEPDOWN_STRUCTURE_INVALID")
+        return l0, l1, l2
+
+    def _load_existing(self, destination: Path, run_id: str) -> dict[str, Any] | None:
+        if not destination.exists():
+            return None
+        bundle, _ = _load_json(destination)
+        validate_nested_shape_stepdown_bundle(bundle)
+        if bundle["run_id"] != run_id:
+            raise EvidenceRunnerError("NESTED_SHAPE_STEPDOWN_IDENTITY_MISMATCH")
+        return bundle
+
+    def dry_run(self, *, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, output_path: Path | str | None = None) -> dict[str, object]:
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1):
+            raise EvidenceRunnerError("NESTED_SHAPE_STEPDOWN_VARIABLE_MISMATCH")
+        self._assert_historical_integrity()
+        l0, l1, l2 = self._metrics()
+        source_commit = _source_commit(self.root)
+        destination = self._destination(output_path)
+        run_id = _nested_shape_stepdown_run_id(source_commit, self.manifest.raw_digest)
+        existing = self._load_existing(destination, run_id)
+        return {
+            "status": "COHORT_ALREADY_COMPLETE" if existing is not None else "dry_run_nested_shape_stepdown",
+            "experiment_type": NESTED_SHAPE_STEPOWDOWN_EXPERIMENT_TYPE,
+            "level": NESTED_SHAPE_STEPOWDOWN_LEVEL,
+            "contract_variant_version": NESTED_SHAPE_STEPOWDOWN_CONTRACT_VERSION,
+            "run_id": run_id,
+            "source_commit": source_commit,
+            "provider": NESTED_SHAPE_STEPOWDOWN_PROVIDER,
+            "model": NESTED_SHAPE_STEPOWDOWN_MODEL,
+            "case_id": "case_13",
+            "timeout_seconds": 60,
+            "max_transport_retries": 0,
+            "target_sample_count": 1,
+            "l0_chars": l0["chars"], "l0_bytes": l0["bytes"],
+            "l1_chars": l1["chars"], "l1_bytes": l1["bytes"],
+            "l2_chars": l2["chars"], "l2_bytes": l2["bytes"],
+            "l2_l1_char_ratio": l2["chars"] / l1["chars"],
+            "l2_l1_byte_ratio": l2["bytes"] / l1["bytes"],
+            "l2_l0_char_ratio": l2["chars"] / l0["chars"],
+            "l2_l0_byte_ratio": l2["bytes"] / l0["bytes"],
+            "enum_expansion_included": False,
+            "detailed_nested_shape_included": False,
+            "root_type_summary_included": True,
+            "tiny_output": True,
+            "l0_request_metrics": l0, "l1_request_metrics": l1, "l2_request_metrics": l2,
+            "existing_sample_count": 1 if existing is not None else 0,
+            "existing_sample_indexes": [1] if existing is not None else [],
+            "next_sample_index": None if existing is not None else 1,
+            "remaining_sample_count": 0 if existing is not None else 1,
+            "provider_factory_constructed": False,
+            "provider_called": False,
+            "output_path": destination.as_posix(),
+        }
+
+    def run(self, *, live: bool = False, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, expected_source_commit: str | None = None, resume: bool = False, output_path: Path | str | None = None, model_factory: Callable[[], Any] | None = None, enforce_clean_tree: bool = True) -> dict[str, object]:
+        if not live:
+            if resume or model_factory is not None:
+                raise EvidenceRunnerError("NESTED_SHAPE_STEPDOWN_DRY_RUN_ARGUMENTS_INVALID")
+            return self.dry_run(timeout_seconds=timeout_seconds, max_transport_retries=max_transport_retries, target_sample_count=target_sample_count, output_path=output_path)
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1):
+            raise EvidenceRunnerError("NESTED_SHAPE_STEPDOWN_VARIABLE_MISMATCH")
+        if expected_source_commit is None:
+            raise EvidenceRunnerError("NESTED_SHAPE_STEPDOWN_SOURCE_COMMIT_REQUIRED")
+        source_commit = _source_commit(self.root)
+        if source_commit != expected_source_commit:
+            raise EvidenceRunnerError("NESTED_SHAPE_STEPDOWN_SOURCE_COMMIT_MISMATCH")
+        self._assert_historical_integrity()
+        l0, l1, l2 = self._metrics()
+        if enforce_clean_tree:
+            dirty = tuple(path for path in _dirty_paths(self.root) if path not in {NESTED_SHAPE_STEPOWDOWN_RESULT_RELATIVE_PATH, NESTED_SHAPE_STEPOWDOWN_TEMP_RELATIVE_PATH})
+            if dirty:
+                raise EvidenceRunnerError("LIVE_DIRTY_TREE")
+        destination = self._destination(output_path)
+        run_id = _nested_shape_stepdown_run_id(source_commit, self.manifest.raw_digest)
+        if self._load_existing(destination, run_id) is not None:
+            raise EvidenceRunnerError("COHORT_ALREADY_COMPLETE")
+        if destination.exists() and not resume:
+            raise EvidenceRunnerError("NESTED_SHAPE_STEPDOWN_RESULT_EXISTS")
+        if model_factory is not None:
+            provider_model = model_factory()
+        else:
+            environment = {
+                "NPC_AGENT_MODEL": "live",
+                "NPC_LLM_PROVIDER": NESTED_SHAPE_STEPOWDOWN_PROVIDER,
+                "NPC_LLM_MODEL": NESTED_SHAPE_STEPOWDOWN_MODEL,
+                "NPC_LLM_TRANSPORT": TRANSPORT,
+                "NPC_LLM_STRUCTURED_OUTPUT": STRUCTURED_OUTPUT_MODE,
+                "NPC_LLM_TIMEOUT_SECONDS": "60",
+                "NPC_LLM_MAX_RETRIES": "0",
+                **({"NPC_LLM_API_KEY": os.environ["NPC_LLM_API_KEY"]} if os.environ.get("NPC_LLM_API_KEY") else {}),
+            }
+            settings = __import__("agents.model_factory", fromlist=["LiveLLMSettings"]).LiveLLMSettings.from_environment(environment)
+            client = OpenAIChatClient(api_key=settings.api_key, base_url=settings.base_url, timeout_seconds=settings.timeout_seconds, request_options=settings.profile.provider_options)
+            provider_model = _FullInputTinyOutputAdapter(client, provider=settings.provider, model=settings.model, profile=settings.profile, timeout_seconds=settings.timeout_seconds, max_retries=settings.max_retries)
+        provider_outcome = "failure"
+        attempts = 1
+        latency_ms = None
+        json_result = {"json_extraction_outcome": "not_attempted", "tiny_contract_outcome": "TRANSPORT_UNAVAILABLE", "parsed_top_level_type": None, "actual_key_count": None}
+        failure_stage = "provider"
+        failure_code = "PROVIDER_INVOCATION_FAILED"
+        try:
+            turn = provider_model.generate(_nested_shape_stepdown_prompt(self.cases["case_13"]))
+            invocation = turn.invocation
+            provider_outcome = "success"
+            attempts = (invocation.retry_count + 1) if invocation is not None else 1
+            latency_ms = _bounded_latency(invocation)
+            json_result = _minimal_contract_result(turn.text)
+            contract_outcome = (
+                "L2_SHAPE_STEPDOWN_PASS"
+                if json_result["tiny_contract_outcome"] == "TRANSPORT_SUCCESS_CONTRACT_PASS"
+                else "L2_SHAPE_STEPDOWN_TRANSPORT_REACHABLE_CONTRACT_REJECTED"
+            )
+            failure_stage = None
+            failure_code = None
+        except ModelError as error:
+            invocation = error.audit
+            attempts = (invocation.retry_count + 1) if invocation is not None else 1
+            latency_ms = _bounded_latency(invocation)
+            contract_outcome = "L2_SHAPE_STEPDOWN_UNAVAILABLE"
+        observation = {
+            "observation_id": f"{run_id}:case_13:sample-01",
+            "provider_outcome": provider_outcome,
+            "transport_attempts": attempts,
+            "latency_ms": latency_ms,
+            "json_extraction_outcome": json_result["json_extraction_outcome"],
+            "tiny_contract_outcome": contract_outcome,
+            "parsed_top_level_type": json_result["parsed_top_level_type"],
+            "expected_key_count": 1,
+            "actual_key_count": json_result["actual_key_count"],
+            "failure_stage": failure_stage,
+            "failure_code": failure_code,
+            "sanitization": _sanitization_mapping(),
+        }
+        bundle = {
+            "schema_version": NESTED_SHAPE_STEPOWDOWN_SCHEMA_VERSION,
+            "protocol_version": PROTOCOL_VERSION,
+            "run_id": run_id,
+            "experiment_type": NESTED_SHAPE_STEPOWDOWN_EXPERIMENT_TYPE,
+            "level": NESTED_SHAPE_STEPOWDOWN_LEVEL,
+            "contract_variant_version": NESTED_SHAPE_STEPOWDOWN_CONTRACT_VERSION,
+            "source_commit": source_commit,
+            "manifest_digest": self.manifest.raw_digest,
+            "input_manifest_digest": self.manifest.raw_digest,
+            "inputs": [dict(item) for item in self.manifest.input_files],
+            "provider": _nested_shape_stepdown_provider(),
+            "case_id": "case_13",
+            "timeout_seconds": 60,
+            "max_transport_retries": 0,
+            "target_sample_count": 1,
+            "complete": True,
+            "input_contract_version": NESTED_SHAPE_STEPOWDOWN_CONTRACT_VERSION,
+            "tiny_output_contract_version": FULL_INPUT_TINY_OUTPUT_TINY_CONTRACT_VERSION,
+            "l0_request_metrics": l0,
+            "l1_request_metrics": l1,
+            "l2_request_metrics": l2,
+            "sample_index": 1,
+            "observation": observation,
+        }
+        bundle["bundle_digest"] = _nested_shape_stepdown_bundle_digest(bundle)
+        validate_nested_shape_stepdown_bundle(bundle)
+        _write_bundle(destination, bundle, resume=False)
+        return bundle
+
+
 def _validate_fixed_target(target: object) -> int:
     if isinstance(target, bool) or not isinstance(target, int) or not 0 < target <= MAX_FIXED_COHORT_SAMPLES:
         raise EvidenceRunnerError("COHORT_TARGET_INVALID")
@@ -4548,6 +4912,7 @@ __all__ = [
     "validate_minimal_transport_sanity_bundle",
     "FullInputTinyOutputRunner",
     "EnumExpansionStepdownRunner",
+    "NestedShapeStepdownRunner",
     "FULL_INPUT_TINY_OUTPUT_SCHEMA_VERSION",
     "FULL_INPUT_TINY_OUTPUT_RESULT_RELATIVE_PATH",
     "FULL_INPUT_TINY_OUTPUT_TIMEOUT_SECONDS",
@@ -4555,5 +4920,6 @@ __all__ = [
     "FULL_INPUT_TINY_OUTPUT_TARGET",
     "run_full_input_tiny_output",
     "validate_enum_stepdown_bundle",
+    "validate_nested_shape_stepdown_bundle",
     "validate_evidence_bundle",
 ]
