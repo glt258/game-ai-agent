@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import re
 import subprocess
 import tempfile
 from collections.abc import Mapping
@@ -32,8 +34,10 @@ from ..semantic_ir import (
 from .contract import ModelFacingRequest, build_model_facing_request
 from .projection import HybridGenerationContext
 
-HYBRID_EVIDENCE_VERSION = "character-skill-s2-hybrid-ir-shadow/0.1.0"
+HYBRID_EVIDENCE_VERSION = "character-skill-s2-hybrid-ir-shadow/0.2.0"
 HYBRID_EXPERIMENT = "character_skill_s2_hybrid_semantic_ir"
+HYBRID_RUN_ID_PREFIX = "cs-s2-hybrid-semantic-ir-v1"
+_RUN_ID_RE = re.compile(rf"^{re.escape(HYBRID_RUN_ID_PREFIX)}-sample-\d{{2,}}-[0-9a-f]{{64}}$")
 FIRST_FAILURE_LAYERS = (
     "PROVIDER",
     "JSON",
@@ -65,6 +69,28 @@ class HybridExperimentIdentity:
     feature_flag: str = "OFF"
     record_only: bool = True
 
+    @classmethod
+    def from_mapping(cls, payload: Mapping[str, object]) -> "HybridExperimentIdentity":
+        expected = {
+            "experiment", "source_commit", "ir_schema_version",
+            "model_facing_contract_version", "model_facing_contract_digest",
+            "compiler_version", "canonical_schema_version", "provider", "model",
+            "case_id", "timeout_seconds", "max_transport_retries", "target_sample_count",
+            "response_mode", "feature_flag", "record_only",
+        }
+        if not isinstance(payload, Mapping) or set(payload) != expected:
+            raise ValueError("HYBRID_IDENTITY_SCHEMA_INVALID")
+        values = dict(payload)
+        for key in expected - {"timeout_seconds", "max_transport_retries", "target_sample_count", "record_only"}:
+            if not isinstance(values[key], str):
+                raise ValueError("HYBRID_IDENTITY_FIELD_INVALID")
+        for key in ("timeout_seconds", "max_transport_retries", "target_sample_count"):
+            if isinstance(values[key], bool) or not isinstance(values[key], int):
+                raise ValueError("HYBRID_IDENTITY_FIELD_INVALID")
+        if not isinstance(values["record_only"], bool):
+            raise ValueError("HYBRID_IDENTITY_FIELD_INVALID")
+        return cls(**values)
+
     def to_mapping(self) -> dict[str, object]:
         return {
             "experiment": self.experiment,
@@ -84,6 +110,27 @@ class HybridExperimentIdentity:
             "feature_flag": self.feature_flag,
             "record_only": self.record_only,
         }
+
+
+def _canonical_identity_payload(identity: HybridExperimentIdentity, sample_index: int) -> dict[str, object]:
+    if isinstance(sample_index, bool) or not isinstance(sample_index, int) or sample_index < 1:
+        raise ValueError("HYBRID_SAMPLE_INDEX_INVALID")
+    return {**identity.to_mapping(), "sample_index": sample_index}
+
+
+def build_hybrid_run_id(identity: HybridExperimentIdentity, *, sample_index: int) -> str:
+    """Build the sole deterministic Hybrid observation identity."""
+
+    if not isinstance(identity, HybridExperimentIdentity):
+        raise TypeError("identity must be HybridExperimentIdentity")
+    canonical = json.dumps(
+        _canonical_identity_payload(identity, sample_index),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    digest = hashlib.sha256(canonical).hexdigest()
+    return f"{HYBRID_RUN_ID_PREFIX}-sample-{sample_index:02d}-{digest}"
 
 
 @dataclass(frozen=True)
@@ -117,6 +164,8 @@ class SafeIRDiagnostics:
 @dataclass(frozen=True)
 class HybridEvidence:
     identity: HybridExperimentIdentity
+    sample_index: int
+    run_id: str
     request_metrics: Mapping[str, int]
     first_failure_layer: str | None
     failure_code: str | None
@@ -140,6 +189,8 @@ class HybridEvidence:
         return {
             "evidence_version": HYBRID_EVIDENCE_VERSION,
             "identity": self.identity.to_mapping(),
+            "sample_index": self.sample_index,
+            "run_id": self.run_id,
             "request_metrics": dict(self.request_metrics),
             "first_failure_layer": self.first_failure_layer,
             "failure_code": self.failure_code,
@@ -239,6 +290,7 @@ def _failure(
     candidate_digest: str | None = None,
     principal_verdict: str = "FAIL",
     relationship_failure_category: str | None = None,
+    sample_index: int = 1,
 ) -> FakePipelineResult:
     if layer not in FIRST_FAILURE_LAYERS:
         raise ValueError("unknown first failure layer")
@@ -246,6 +298,8 @@ def _failure(
         diagnostics = SafeIRDiagnostics(**{**diagnostics.to_mapping(), "relationship_failure_category": relationship_failure_category})
     evidence = HybridEvidence(
         identity,
+        sample_index,
+        build_hybrid_run_id(identity, sample_index=sample_index),
         _request_metrics(request),
         layer,
         code,
@@ -269,16 +323,18 @@ def run_fake_pipeline(
     *,
     repo_root: Path | str,
     compiler_registry: SemanticMappingRegistry = DEFAULT_MAPPING_REGISTRY,
+    sample_index: int = 1,
 ) -> FakePipelineResult:
     """Run every H3 layer using an in-memory provider and safe evidence only."""
 
     request = build_model_facing_request(context)
     identity = _identity(Path(repo_root), request.contract.digest)
+    run_id = build_hybrid_run_id(identity, sample_index=sample_index)
     response = provider.complete(request.text)
     try:
         payload = _parse_json(response)
     except (ValueError, json.JSONDecodeError):
-        return _failure(identity, request, provider, "JSON", "JSON_MALFORMED", SafeIRDiagnostics())
+        return _failure(identity, request, provider, "JSON", "JSON_MALFORMED", SafeIRDiagnostics(), sample_index=sample_index)
     diagnostics = _shape_diagnostics(payload)
     try:
         ir = parse_semantic_ir(payload)
@@ -288,7 +344,7 @@ def run_fake_pipeline(
             "UNKNOWN_FIELD": "IR_UNKNOWN_FIELD",
             "IR_INVALID": "IR_WRONG_TYPE",
         }.get(error.code, "IR_OTHER_PARSE_FAILURE")
-        return _failure(identity, request, provider, "IR_PARSE", code, diagnostics)
+        return _failure(identity, request, provider, "IR_PARSE", code, diagnostics, sample_index=sample_index)
     try:
         validated = validate_skill_semantic_ir(ir)
     except SemanticIRValidationError as error:
@@ -305,12 +361,13 @@ def run_fake_pipeline(
             code,
             diagnostics,
             relationship_failure_category=relationship,
+            sample_index=sample_index,
         )
     assert isinstance(validated, ValidatedSkillSemanticIR)
     try:
         compiled = compile_skill_semantic_ir(validated, registry=compiler_registry)
     except SkillKitCompilerError as error:
-        return _failure(identity, request, provider, "COMPILER", error.code, diagnostics, semantic_ir_digest=validated.digest)
+        return _failure(identity, request, provider, "COMPILER", error.code, diagnostics, semantic_ir_digest=validated.digest, sample_index=sample_index)
     candidate_digest = compiled.candidate_digest
     try:
         parsed = parse_candidate(compiled.candidate.to_mapping())
@@ -325,6 +382,7 @@ def run_fake_pipeline(
             parser_invoked=True,
             semantic_ir_digest=validated.digest,
             candidate_digest=candidate_digest,
+            sample_index=sample_index,
         )
     if not isinstance(parsed, ProtocolSkillKitCandidate):
         return _failure(
@@ -337,6 +395,7 @@ def run_fake_pipeline(
             parser_invoked=True,
             semantic_ir_digest=validated.digest,
             candidate_digest=candidate_digest,
+            sample_index=sample_index,
         )
     try:
         validate_reference_integrity(parsed)
@@ -351,12 +410,15 @@ def run_fake_pipeline(
             parser_invoked=True,
             semantic_ir_digest=validated.digest,
             candidate_digest=candidate_digest,
+            sample_index=sample_index,
         )
     report = evaluate(parsed, evaluation_context)
     verdict = "PASS" if report.outcome == "PASS" else "EVALUATOR_" + report.outcome
     return FakePipelineResult(
         HybridEvidence(
             identity,
+            sample_index,
+            run_id,
             _request_metrics(request),
             "EVALUATOR" if report.outcome != "PASS" else None,
             None if report.outcome == "PASS" else report.outcome,
@@ -381,6 +443,8 @@ def validate_hybrid_evidence(payload: Mapping[str, object]) -> None:
     required = {
         "evidence_version",
         "identity",
+        "sample_index",
+        "run_id",
         "request_metrics",
         "first_failure_layer",
         "failure_code",
@@ -399,6 +463,14 @@ def validate_hybrid_evidence(payload: Mapping[str, object]) -> None:
         raise ValueError("HYBRID_EVIDENCE_SCHEMA_INVALID")
     if payload["evidence_version"] != HYBRID_EVIDENCE_VERSION:
         raise ValueError("HYBRID_EVIDENCE_VERSION_INVALID")
+    identity = HybridExperimentIdentity.from_mapping(payload["identity"])
+    sample_index = payload["sample_index"]
+    if isinstance(sample_index, bool) or not isinstance(sample_index, int) or sample_index < 1:
+        raise ValueError("HYBRID_SAMPLE_INDEX_INVALID")
+    if not isinstance(payload["run_id"], str) or not _RUN_ID_RE.fullmatch(payload["run_id"]):
+        raise ValueError("HYBRID_RUN_ID_INVALID")
+    if payload["run_id"] != build_hybrid_run_id(identity, sample_index=sample_index):
+        raise ValueError("HYBRID_IDENTITY_MISMATCH")
     layer = payload["first_failure_layer"]
     if layer is not None and layer not in FIRST_FAILURE_LAYERS:
         raise ValueError("HYBRID_FIRST_FAILURE_LAYER_INVALID")
@@ -460,9 +532,12 @@ class HybridSemanticIRRunner:
         next_index = (self.existing_sample_indexes[-1] + 1) if self.existing_sample_indexes else 1
         remaining = max(self.target_sample_count - existing, 0)
         identity = _identity(self.repo_root, contract.digest)
+        sample_index = (self.existing_sample_indexes[-1] + 1) if self.existing_sample_indexes else 1
         return {
             "status": "dry_run_hybrid_semantic_ir",
             "identity": identity.to_mapping(),
+            "sample_index": sample_index,
+            "run_id": build_hybrid_run_id(identity, sample_index=sample_index),
             "target_sample_count": self.target_sample_count,
             "existing_sample_count": existing,
             "existing_sample_indexes": list(self.existing_sample_indexes),
@@ -481,10 +556,12 @@ __all__ = [
     "FakeProvider",
     "HYBRID_EVIDENCE_VERSION",
     "HYBRID_EXPERIMENT",
+    "HYBRID_RUN_ID_PREFIX",
     "HybridEvidence",
     "HybridExperimentIdentity",
     "HybridSemanticIRRunner",
     "SafeIRDiagnostics",
+    "build_hybrid_run_id",
     "run_fake_pipeline",
     "validate_hybrid_evidence",
     "write_evidence_atomic",
