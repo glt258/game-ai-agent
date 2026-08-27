@@ -1407,6 +1407,45 @@ def _source_commit(root: Path) -> str:
     return value
 
 
+def _historical_source_commit(bundle: Mapping[str, object]) -> str:
+    """Return a validated source commit frozen into an evidence bundle."""
+
+    value = bundle.get("source_commit")
+    if not isinstance(value, str) or not _GIT_SHA_RE.fullmatch(value):
+        raise EvidenceContractError("HISTORICAL_SOURCE_COMMIT_INVALID")
+    return value
+
+
+def _historical_identity(
+    bundle: Mapping[str, object],
+    identity_builder: Callable[[str], str],
+) -> str:
+    """Rebuild an existing run identity from its historical source commit."""
+
+    return identity_builder(_historical_source_commit(bundle))
+
+
+def _validate_historical_bundle_identity(
+    bundle: Mapping[str, object],
+    *,
+    current_manifest_digest: str,
+    identity_builder: Callable[[str, str], str],
+    mismatch_code: str,
+) -> None:
+    """Validate a completed bundle against its frozen, not current, identity."""
+
+    try:
+        source_commit = _historical_source_commit(bundle)
+        manifest_digest = bundle.get("manifest_digest")
+        if not isinstance(manifest_digest, str) or not _is_sha(manifest_digest):
+            raise EvidenceContractError("HISTORICAL_MANIFEST_DIGEST_INVALID")
+        expected = identity_builder(source_commit, manifest_digest)
+    except (EvidenceContractError, TypeError, ValueError) as error:
+        raise EvidenceRunnerError(mismatch_code) from error
+    if manifest_digest != current_manifest_digest or bundle.get("run_id") != expected:
+        raise EvidenceRunnerError(mismatch_code)
+
+
 def _dirty_paths(root: Path) -> tuple[str, ...]:
     try:
         output = subprocess.run(
@@ -1554,7 +1593,7 @@ class ShadowEvidenceRunner:
                 raise EvidenceRunnerError("RESUME_RESULT_MISSING")
             existing_bundle, _ = _load_json(destination)
             validate_evidence_bundle(existing_bundle)
-            self._validate_bundle_identity(existing_bundle, run_id, source_commit)
+            self._validate_bundle_identity(existing_bundle, repeat=repeat)
             existing = list(existing_bundle["observations"])
         elif destination.exists():
             raise EvidenceRunnerError("RESULT_EXISTS_WITHOUT_RESUME")
@@ -1649,12 +1688,22 @@ class ShadowEvidenceRunner:
     def _validate_bundle_identity(
         self,
         bundle: Mapping[str, object],
-        run_id: str,
-        source_commit: str,
+        *,
+        repeat: int,
     ) -> None:
+        try:
+            historical_run_id = _historical_identity(
+                bundle,
+                lambda frozen_source: _run_id(
+                    frozen_source,
+                    str(bundle["input_manifest_digest"]),
+                    repeat,
+                ),
+            )
+        except (EvidenceContractError, KeyError, TypeError, ValueError) as error:
+            raise EvidenceRunnerError("RESUME_IDENTITY_MISMATCH") from error
         if (
-            bundle.get("run_id") != run_id
-            or bundle.get("source_commit") != source_commit
+            bundle.get("run_id") != historical_run_id
             or bundle.get("input_manifest_digest") != self.manifest.raw_digest
             or bundle.get("protocol_version") != PROTOCOL_VERSION
         ):
@@ -3030,8 +3079,12 @@ class TimeoutSuitabilityProbeRunner:
             validate_timeout_suitability_bundle(bundle)
         except EvidenceContractError as error:
             raise EvidenceRunnerError("TIMEOUT_SUITABILITY_EXISTING_INVALID") from error
-        if bundle["run_id"] != run_id:
-            raise EvidenceRunnerError("TIMEOUT_SUITABILITY_IDENTITY_MISMATCH")
+        _validate_historical_bundle_identity(
+            bundle,
+            current_manifest_digest=self.manifest.raw_digest,
+            identity_builder=lambda source, manifest: _timeout_suitability_run_id(source, manifest),
+            mismatch_code="TIMEOUT_SUITABILITY_IDENTITY_MISMATCH",
+        )
         return bundle
 
     def dry_run(
@@ -3252,8 +3305,12 @@ class ModelSuitabilityProbeRunner:
             validate_model_suitability_bundle(bundle)
         except EvidenceContractError as error:
             raise EvidenceRunnerError("MODEL_SUITABILITY_EXISTING_INVALID") from error
-        if bundle["run_id"] != run_id:
-            raise EvidenceRunnerError("MODEL_SUITABILITY_IDENTITY_MISMATCH")
+        _validate_historical_bundle_identity(
+            bundle,
+            current_manifest_digest=self.manifest.raw_digest,
+            identity_builder=lambda source, manifest: _model_suitability_run_id(source, manifest),
+            mismatch_code="MODEL_SUITABILITY_IDENTITY_MISMATCH",
+        )
         return bundle
 
     def dry_run(
@@ -3560,8 +3617,12 @@ class MinimalTransportSanityRunner:
             validate_minimal_transport_sanity_bundle(bundle)
         except EvidenceContractError as error:
             raise EvidenceRunnerError("MINIMAL_TRANSPORT_SANITY_EXISTING_INVALID") from error
-        if bundle["run_id"] != run_id:
-            raise EvidenceRunnerError("MINIMAL_TRANSPORT_SANITY_IDENTITY_MISMATCH")
+        _validate_historical_bundle_identity(
+            bundle,
+            current_manifest_digest=self.manifest.raw_digest,
+            identity_builder=lambda source, manifest: _minimal_transport_sanity_run_id(source),
+            mismatch_code="MINIMAL_TRANSPORT_SANITY_IDENTITY_MISMATCH",
+        )
         return bundle
 
     def dry_run(self, *, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, output_path: Path | str | None = None) -> dict[str, object]:
@@ -3907,8 +3968,12 @@ class FullInputTinyOutputRunner:
             validate_full_input_tiny_output_bundle(bundle)
         except EvidenceContractError as error:
             raise EvidenceRunnerError("FULL_INPUT_TINY_OUTPUT_EXISTING_INVALID") from error
-        if bundle["run_id"] != run_id:
-            raise EvidenceRunnerError("FULL_INPUT_TINY_OUTPUT_IDENTITY_MISMATCH")
+        _validate_historical_bundle_identity(
+            bundle,
+            current_manifest_digest=self.manifest.raw_digest,
+            identity_builder=lambda source, manifest: _full_input_tiny_output_run_id(source, manifest),
+            mismatch_code="FULL_INPUT_TINY_OUTPUT_IDENTITY_MISMATCH",
+        )
         return bundle
 
     def dry_run(self, *, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, output_path: Path | str | None = None) -> dict[str, object]:
@@ -4214,8 +4279,12 @@ class EnumExpansionStepdownRunner:
             return None
         bundle, _ = _load_json(destination)
         validate_enum_stepdown_bundle(bundle)
-        if bundle["run_id"] != run_id:
-            raise EvidenceRunnerError("ENUM_STEPDOWN_IDENTITY_MISMATCH")
+        _validate_historical_bundle_identity(
+            bundle,
+            current_manifest_digest=self.manifest.raw_digest,
+            identity_builder=lambda source, manifest: _enum_stepdown_run_id(source, manifest),
+            mismatch_code="ENUM_STEPDOWN_IDENTITY_MISMATCH",
+        )
         return bundle
 
     def dry_run(
@@ -4576,8 +4645,12 @@ class NestedShapeStepdownRunner:
             return None
         bundle, _ = _load_json(destination)
         validate_nested_shape_stepdown_bundle(bundle)
-        if bundle["run_id"] != run_id:
-            raise EvidenceRunnerError("NESTED_SHAPE_STEPDOWN_IDENTITY_MISMATCH")
+        _validate_historical_bundle_identity(
+            bundle,
+            current_manifest_digest=self.manifest.raw_digest,
+            identity_builder=lambda source, manifest: _nested_shape_stepdown_run_id(source, manifest),
+            mismatch_code="NESTED_SHAPE_STEPDOWN_IDENTITY_MISMATCH",
+        )
         return bundle
 
     def dry_run(self, *, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, output_path: Path | str | None = None) -> dict[str, object]:
@@ -4971,6 +5044,22 @@ def _compact_v2_bundle_digest(bundle: Mapping[str, object]) -> str:
     return _digest_mapping({key: value for key, value in bundle.items() if key != "bundle_digest"})
 
 
+def _compact_v2_identity_from_bundle(bundle: Mapping[str, object]) -> str:
+    manifest_digest = bundle.get("manifest_digest")
+    contract_digest = bundle.get("contract_digest")
+    if (
+        not isinstance(manifest_digest, str)
+        or not _is_sha(manifest_digest)
+        or not isinstance(contract_digest, str)
+        or not _is_sha(contract_digest)
+    ):
+        raise EvidenceContractError("COMPACT_V2_IDENTITY_INVALID")
+    return _historical_identity(
+        bundle,
+        lambda source_commit: _compact_v2_run_id(source_commit, manifest_digest, contract_digest),
+    )
+
+
 def validate_compact_v2_bundle(bundle: Mapping[str, object]) -> None:
     expected = {
         "schema_version", "protocol_version", "run_id", "experiment_type", "contract_version",
@@ -5002,6 +5091,8 @@ def validate_compact_v2_bundle(bundle: Mapping[str, object]) -> None:
         raise EvidenceContractError("COMPACT_V2_MANIFEST_INVALID")
     if not isinstance(bundle["run_id"], str) or not _COMPACT_V2_RUN_ID_RE.fullmatch(bundle["run_id"]):
         raise EvidenceContractError("COMPACT_V2_RUN_ID_INVALID")
+    if bundle["run_id"] != _compact_v2_identity_from_bundle(bundle):
+        raise EvidenceContractError("COMPACT_V2_IDENTITY_MISMATCH")
     if bundle["provider"] != _compact_v2_provider() or bundle["model"] != COMPACT_V2_MODEL:
         raise EvidenceContractError("COMPACT_V2_PROVIDER_INVALID")
     observation = bundle["observation"]
@@ -5030,14 +5121,20 @@ class CompactContractV2Runner:
         self.manifest = load_manifest(self.root, manifest_path)
         self.cases = _load_cases(self.root, self.manifest)
 
-    def _existing_complete(self, destination: Path, run_id: str) -> bool:
+    def _existing_complete(self, destination: Path, *, contract_digest: str) -> bool:
         if not destination.exists():
             return False
         try:
             payload, _ = _load_json(destination)
         except EvidenceRunnerError as error:
             raise EvidenceRunnerError("COMPACT_V2_EXISTING_INVALID") from error
-        if payload.get("run_id") != run_id or payload.get("complete") is not True or payload.get("sample_index") != 1:
+        if (
+            payload.get("complete") is not True
+            or payload.get("sample_index") != 1
+            or payload.get("manifest_digest") != self.manifest.raw_digest
+            or payload.get("contract_digest") != contract_digest
+            or payload.get("run_id") != _compact_v2_identity_from_bundle(payload)
+        ):
             raise EvidenceRunnerError("COMPACT_V2_IDENTITY_MISMATCH")
         return True
 
@@ -5063,7 +5160,7 @@ class CompactContractV2Runner:
         if not _COMPACT_V2_RUN_ID_RE.fullmatch(run_id):
             raise EvidenceRunnerError("COMPACT_V2_RUN_ID_INVALID")
         destination = (Path(output_path) if output_path is not None else self.root / COMPACT_V2_RESULT_RELATIVE_PATH).resolve()
-        existing = self._existing_complete(destination, run_id)
+        existing = self._existing_complete(destination, contract_digest=digest)
         return {
             "status": "COHORT_ALREADY_COMPLETE" if existing else "dry_run_compact_contract_v2_a", "experiment_type": COMPACT_V2_EXPERIMENT_TYPE,
             "schema_version": COMPACT_V2_SCHEMA_VERSION, "contract_version": COMPACT_V2_CONTRACT_VERSION,

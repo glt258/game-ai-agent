@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import copy
+import json
 from pathlib import Path
 
 import pytest
@@ -115,10 +117,28 @@ def test_v2_live_fake_observation_is_single_and_sanitized(tmp_path: Path) -> Non
 def test_v2_complete_cohort_blocks_second_sample(tmp_path: Path) -> None:
     output = tmp_path / "v2.json"
     runner = evidence.CompactContractV2Runner(ROOT)
-    planned = runner.dry_run(output_path=output)
-    output.write_text(
-        '{"run_id":"' + planned["run_id"] + '","complete":true,"sample_index":1}',
-        encoding="utf-8",
+    class CompleteModel:
+        calls = 0
+
+        def generate(self, prompt: object) -> ModelTurn:
+            del prompt
+            self.calls += 1
+            return ModelTurn(
+                text='{"status":"ok"}',
+                invocation=ModelInvocationAudit(
+                    session_id="v2-complete-test", turn_number=1,
+                    provider="opencode_go", model="deepseek-v4-pro", outcome="success",
+                    latency_ms=1.0, retry_count=0, transport="openai_chat_completions",
+                    response_contract="json_object",
+                ),
+            )
+
+    runner.run(
+        live=True,
+        expected_source_commit=evidence._source_commit(ROOT),
+        output_path=output,
+        model_factory=lambda: CompleteModel(),
+        enforce_clean_tree=False,
     )
     complete = runner.dry_run(output_path=output)
     assert complete["status"] == "COHORT_ALREADY_COMPLETE"
@@ -126,6 +146,36 @@ def test_v2_complete_cohort_blocks_second_sample(tmp_path: Path) -> None:
     assert complete["next_sample_index"] is None
     assert complete["provider_factory_constructed"] is False
     assert complete["provider_called"] is False
+
+
+def test_historical_v2_identity_uses_bundle_source_not_current_head() -> None:
+    path = ROOT / evidence.COMPACT_V2_RESULT_RELATIVE_PATH
+    bundle = json.loads(path.read_text(encoding="utf-8"))
+    evidence.validate_compact_v2_bundle(bundle)
+    assert bundle["source_commit"] == "dd3bbdfbab644c36cdd7f7e8cb8661a6322abb4e"
+    assert evidence._compact_v2_identity_from_bundle(bundle) == bundle["run_id"]
+    assert evidence._source_commit(ROOT) != bundle["source_commit"]
+
+
+@pytest.mark.parametrize("field", ["source_commit", "run_id", "contract_digest", "manifest_digest"])
+def test_historical_v2_identity_tampering_fails_closed(field: str) -> None:
+    path = ROOT / evidence.COMPACT_V2_RESULT_RELATIVE_PATH
+    bundle = json.loads(path.read_text(encoding="utf-8"))
+    tampered = copy.deepcopy(bundle)
+    if field == "run_id":
+        tampered[field] = "0" * 40
+    elif field == "source_commit":
+        tampered[field] = "0" * 40
+    else:
+        tampered[field] = "0" * 64
+    with pytest.raises(evidence.EvidenceContractError):
+        evidence.validate_compact_v2_bundle(tampered)
+
+
+def test_new_identity_remains_bound_to_current_source() -> None:
+    result = evidence.CompactContractV2Runner(ROOT).dry_run()
+    assert evidence._source_commit(ROOT) in result["run_id"]
+    assert "dd3bbdfbab644c36cdd7f7e8cb8661a6322abb4e" not in result["run_id"]
 
 
 def test_production_contract_builder_remains_separate() -> None:
