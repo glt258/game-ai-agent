@@ -317,6 +317,36 @@ _NESTED_SHAPE_STEPOWDOWN_RUN_ID_RE = re.compile(
     r"opencode_go-deepseek-v4-pro-case_13-t60-r0-n1-[0-9a-f]{40}-[0-9a-f]{12}-run-01$"
 )
 
+# Compact model-facing Contract V2-A is deliberately isolated from the frozen
+# production contract and all prior diagnostic ladders.  This stage exposes a
+# deterministic dry-run only; a live call is an explicit protocol violation.
+COMPACT_V2_SCHEMA_VERSION = "character-skill-s2-shadow-compact-contract-v2-a/0.1.0"
+COMPACT_V2_EXPERIMENT_TYPE = "compact_contract_v2_latency"
+COMPACT_V2_CONTRACT_VERSION = "compact-skillkit-contract-v2-a/0.1.0"
+COMPACT_V2_PROVIDER = "opencode_go"
+COMPACT_V2_MODEL = "deepseek-v4-pro"
+COMPACT_V2_TIMEOUT_SECONDS = 60
+COMPACT_V2_MAX_TRANSPORT_RETRIES = 0
+COMPACT_V2_TARGET = 1
+COMPACT_V2_CASE_ID = "case_13"
+COMPACT_V2_TINY_OUTPUT_CONTRACT_VERSION = MINIMAL_TRANSPORT_SANITY_TINY_CONTRACT_VERSION
+COMPACT_V2_RESULT_RELATIVE_PATH = (
+    "evals/results/character_skill_s2_shadow_compact_contract_v2_a_opencode_go_pro_case_13_run_01_v0.1.0.json"
+)
+COMPACT_V2_TEMP_RELATIVE_PATH = (
+    "evals/results/.character_skill_s2_shadow_compact_contract_v2_a_opencode_go_pro_case_13_run_01_v0.1.0.json.tmp"
+)
+_COMPACT_V2_RUN_ID_RE = re.compile(
+    r"^cs-s2-shadow-compact-contract-v2-a-v0\.1\.0-opencode_go-deepseek-v4-pro-"
+    r"case_13-t60-r0-n1-[0-9a-f]{40}-[0-9a-f]{12}-[0-9a-f]{12}-run-01$"
+)
+COMPACT_V2_L0_CHARS = 5617
+COMPACT_V2_L0_BYTES = 5741
+COMPACT_V2_L1_CHARS = 2131
+COMPACT_V2_L1_BYTES = 2255
+COMPACT_V2_L2_CHARS = 1351
+COMPACT_V2_L2_BYTES = 1475
+
 
 class EvidenceRunnerError(RuntimeError):
     """Stable, user-facing runner failure without raw provider material."""
@@ -4679,6 +4709,171 @@ class NestedShapeStepdownRunner:
         return bundle
 
 
+_COMPACT_V2_DEFINITION_ALIASES = (
+    ("typed_ref", "Ref"),
+    ("subject_object", "Subject"),
+    ("ability", "Entry"),
+    ("protocol", "Protocol"),
+    ("trigger_object", "Trigger"),
+    ("effect", "Effect"),
+    ("feedback", "Feedback"),
+    ("resource", "Resource"),
+    ("state", "State"),
+    ("summon", "Summon"),
+    ("role_evidence", "RoleEvidence"),
+)
+
+
+def _compact_v2_ref_alias(ref: object) -> str | None:
+    if not isinstance(ref, str) or not ref.startswith("#/$defs/"):
+        return None
+    definition = ref.rsplit("/", 1)[-1]
+    for canonical_name, alias in _COMPACT_V2_DEFINITION_ALIASES:
+        if definition == canonical_name:
+            return alias
+    return definition
+
+
+def _compact_v2_field_token(field: str, field_schema: Mapping[str, object]) -> str:
+    field_type = field_schema.get("type")
+    if field_type == "array":
+        item = field_schema.get("items")
+        alias = _compact_v2_ref_alias(item.get("$ref")) if isinstance(item, Mapping) else None
+        return f"{field}:{alias}[]" if alias is not None else f"{field}[]"
+    alias = _compact_v2_ref_alias(field_schema.get("$ref"))
+    return f"{field}:{alias}" if alias is not None else field
+
+
+def _compact_v2_contract() -> str:
+    """Render compact grammar from canonical schema definitions."""
+
+    from agents.response_contracts import CHARACTER_SKILL_KIT_JSON_SCHEMA
+
+    schema = CHARACTER_SKILL_KIT_JSON_SCHEMA
+    properties = schema["properties"]
+    required = tuple(schema["required"])
+    root_types = ",".join(f"{name}:{properties[name]['type']}" for name in required)
+    lines = [
+        "Root JSON object (direct; no wrapper/extras; JSON only): required " + root_types + "; arrays may be empty.",
+    ]
+    definitions = schema["$defs"]
+    for definition_name, alias in _COMPACT_V2_DEFINITION_ALIASES:
+        definition = definitions.get(definition_name)
+        if not isinstance(definition, Mapping):
+            raise EvidenceRunnerError("COMPACT_V2_CANONICAL_DEFINITION_MISSING")
+        if definition_name == "typed_ref":
+            tokens = ("kind", "id")
+        else:
+            canonical_required = tuple(definition.get("required", ()))
+            field_properties = definition.get("properties", {})
+            if not isinstance(field_properties, Mapping):
+                raise EvidenceRunnerError("COMPACT_V2_CANONICAL_FIELDS_INVALID")
+            # Field names remain canonical-derived; compact type annotations are
+            # intentionally omitted here because the root and Ref/edge rules
+            # already carry the generation-critical type information.
+            tokens = canonical_required
+        lines.append(f"{alias}{{{','.join(tokens)}}}")
+    lines.append("Edges: Trigger→Effect→Feedback; *_ref(s) are Ref(kind,id).")
+    lines.append("RoleEvidence.effect_refs link effects; centrality marks combat-role support.")
+    lines.append("Canonical enum values only; validator enforces legality.")
+    return " ".join(lines)
+
+
+def build_compact_skillkit_contract_v2() -> str:
+    """Public deterministic renderer for the experimental V2-A contract."""
+
+    return _compact_v2_contract()
+
+
+def _compact_v2_prompt(case: ShadowEvidenceCase) -> AgentPrompt:
+    projection = _full_input_projection(case)
+    view = _ShadowProjectionView(
+        projection["brief"], tuple(projection["hard_constraints"]),
+        tuple(projection["forbidden_elements"]), projection["combat_role_profile"],
+    )
+    return AgentPrompt(
+        _compact_v2_contract() + "\n\n" + FULL_INPUT_TINY_OUTPUT_DIAGNOSTIC_INSTRUCTION,
+        view, view, (ConversationMessage("user", _canonical_json(projection)),), (),
+        "cs-s2-compact-contract-v2-a", 1, response_format=RESPONSE_CONTRACT,
+        authoring_payload=projection, invocation_purpose=COMPACT_V2_EXPERIMENT_TYPE,
+    )
+
+
+def _compact_v2_run_id(source_commit: str, manifest_digest: str, contract_digest: str) -> str:
+    return (
+        "cs-s2-shadow-compact-contract-v2-a-v0.1.0-opencode_go-deepseek-v4-pro-"
+        f"case_13-t60-r0-n1-{source_commit}-{manifest_digest[:12]}-{contract_digest[:12]}-run-01"
+    )
+
+
+class CompactContractV2Runner:
+    """Offline-only V2-A contract gate and future identity planner."""
+
+    def __init__(self, repo_root: Path | str | None = None, *, manifest_path: Path | str | None = None) -> None:
+        self.root = Path(repo_root or ROOT).resolve()
+        self.manifest = load_manifest(self.root, manifest_path)
+        self.cases = _load_cases(self.root, self.manifest)
+
+    def _existing_complete(self, destination: Path, run_id: str) -> bool:
+        if not destination.exists():
+            return False
+        try:
+            payload, _ = _load_json(destination)
+        except EvidenceRunnerError as error:
+            raise EvidenceRunnerError("COMPACT_V2_EXISTING_INVALID") from error
+        if payload.get("run_id") != run_id or payload.get("complete") is not True or payload.get("sample_index") != 1:
+            raise EvidenceRunnerError("COMPACT_V2_IDENTITY_MISMATCH")
+        return True
+
+    def dry_run(self, *, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, output_path: Path | str | None = None) -> dict[str, object]:
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1):
+            raise EvidenceRunnerError("COMPACT_V2_VARIABLE_MISMATCH")
+        NestedShapeStepdownRunner(self.root, manifest_path=self.root / MANIFEST_RELATIVE_PATH)._assert_historical_integrity()
+        case = self.cases[COMPACT_V2_CASE_ID]
+        l0 = _message_metrics(_FullInputTinyOutputAdapter._provider_messages(_full_input_prompt(case)))
+        l1 = _message_metrics(_FullInputTinyOutputAdapter._provider_messages(_enum_stepdown_prompt(case)))
+        l2 = _message_metrics(_FullInputTinyOutputAdapter._provider_messages(_nested_shape_stepdown_prompt(case)))
+        contract = _compact_v2_contract()
+        v2 = _message_metrics(_FullInputTinyOutputAdapter._provider_messages(_compact_v2_prompt(case)))
+        if (l0["chars"], l0["bytes"]) != (COMPACT_V2_L0_CHARS, COMPACT_V2_L0_BYTES):
+            raise EvidenceRunnerError("BLOCKED_L0_DIAGNOSTIC_DRIFT")
+        if (l1["chars"], l1["bytes"]) != (COMPACT_V2_L1_CHARS, COMPACT_V2_L1_BYTES):
+            raise EvidenceRunnerError("BLOCKED_L1_DIAGNOSTIC_DRIFT")
+        if (l2["chars"], l2["bytes"]) != (COMPACT_V2_L2_CHARS, COMPACT_V2_L2_BYTES):
+            raise EvidenceRunnerError("BLOCKED_L2_CONSTRUCTION_DRIFT")
+        digest = _digest_bytes(contract.encode("utf-8"))
+        source_commit = _source_commit(self.root)
+        run_id = _compact_v2_run_id(source_commit, self.manifest.raw_digest, digest)
+        if not _COMPACT_V2_RUN_ID_RE.fullmatch(run_id):
+            raise EvidenceRunnerError("COMPACT_V2_RUN_ID_INVALID")
+        destination = (Path(output_path) if output_path is not None else self.root / COMPACT_V2_RESULT_RELATIVE_PATH).resolve()
+        existing = self._existing_complete(destination, run_id)
+        return {
+            "status": "COHORT_ALREADY_COMPLETE" if existing else "dry_run_compact_contract_v2_a", "experiment_type": COMPACT_V2_EXPERIMENT_TYPE,
+            "schema_version": COMPACT_V2_SCHEMA_VERSION, "contract_version": COMPACT_V2_CONTRACT_VERSION,
+            "contract_digest": digest, "run_id": run_id, "source_commit": source_commit,
+            "manifest_digest": self.manifest.raw_digest, "provider": COMPACT_V2_PROVIDER,
+            "model": COMPACT_V2_MODEL, "case_id": COMPACT_V2_CASE_ID, "timeout_seconds": 60,
+            "max_transport_retries": 0, "target_sample_count": 1,
+            "tiny_output_contract_version": COMPACT_V2_TINY_OUTPUT_CONTRACT_VERSION,
+            "l0_request_metrics": l0, "l1_request_metrics": l1, "l2_request_metrics": l2,
+            "v2_request_metrics": v2, "v2_contract_chars": len(contract),
+            "v2_contract_bytes": len(contract.encode("utf-8")),
+            "v2_chars_vs_l2": v2["chars"] / l2["chars"], "v2_chars_vs_l1": v2["chars"] / l1["chars"],
+            "v2_chars_vs_l0": v2["chars"] / l0["chars"],
+            "semantic_coverage": {"root_contract": "FULL", "nested_structure": "COMPACT", "enum_guidance": "MINIMAL", "relationship_semantics": "COMPACT", "role_evidence": "COMPACT", "cross_refs": "COMPACT", "request_semantics": "FULL", "formatting": "FULL"},
+            "full_enum_expansion_included": False, "feature_flag": "OFF", "record_only": True,
+            "existing_sample_count": 1 if existing else 0, "existing_sample_indexes": [1] if existing else [], "next_sample_index": None if existing else 1,
+            "remaining_sample_count": 0 if existing else 1, "provider_factory_constructed": False, "provider_called": False,
+            "output_path": destination.as_posix(),
+        }
+
+    def run(self, *, live: bool = False, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, output_path: Path | str | None = None, **_: object) -> dict[str, object]:
+        if live:
+            raise EvidenceRunnerError("COMPACT_V2_LIVE_DISABLED")
+        return self.dry_run(timeout_seconds=timeout_seconds, max_transport_retries=max_transport_retries, target_sample_count=target_sample_count, output_path=output_path)
+
+
 def _validate_fixed_target(target: object) -> int:
     if isinstance(target, bool) or not isinstance(target, int) or not 0 < target <= MAX_FIXED_COHORT_SAMPLES:
         raise EvidenceRunnerError("COHORT_TARGET_INVALID")
@@ -4863,6 +5058,24 @@ def run_full_input_tiny_output(
     )
 
 
+def run_compact_contract_v2(
+    *,
+    repo_root: Path | str | None = None,
+    live: bool = False,
+    timeout_seconds: int = COMPACT_V2_TIMEOUT_SECONDS,
+    max_transport_retries: int = COMPACT_V2_MAX_TRANSPORT_RETRIES,
+    target_sample_count: int = COMPACT_V2_TARGET,
+    output_path: Path | str | None = None,
+) -> dict[str, object]:
+    return CompactContractV2Runner(repo_root).run(
+        live=live,
+        timeout_seconds=timeout_seconds,
+        max_transport_retries=max_transport_retries,
+        target_sample_count=target_sample_count,
+        output_path=output_path,
+    )
+
+
 __all__ = [
     "CASE_IDS",
     "COMPLIANCE_SCHEMA_VERSION",
@@ -4913,6 +5126,16 @@ __all__ = [
     "FullInputTinyOutputRunner",
     "EnumExpansionStepdownRunner",
     "NestedShapeStepdownRunner",
+    "CompactContractV2Runner",
+    "COMPACT_V2_SCHEMA_VERSION",
+    "COMPACT_V2_EXPERIMENT_TYPE",
+    "COMPACT_V2_CONTRACT_VERSION",
+    "COMPACT_V2_RESULT_RELATIVE_PATH",
+    "COMPACT_V2_TIMEOUT_SECONDS",
+    "COMPACT_V2_MAX_TRANSPORT_RETRIES",
+    "COMPACT_V2_TARGET",
+    "build_compact_skillkit_contract_v2",
+    "run_compact_contract_v2",
     "FULL_INPUT_TINY_OUTPUT_SCHEMA_VERSION",
     "FULL_INPUT_TINY_OUTPUT_RESULT_RELATIVE_PATH",
     "FULL_INPUT_TINY_OUTPUT_TIMEOUT_SECONDS",
