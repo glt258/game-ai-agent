@@ -13,6 +13,27 @@ from .intent import (
     DeterministicCharacterDesignIntentParser,
 )
 from .planner import CharacterDesignPlan
+from .compiler import (
+    CompileResult,
+    CompilerProvenance,
+    CompilerProvenanceEntry,
+    SemanticMappingRegistry,
+    SkillKitCompilerError,
+    compile_skill_semantic_ir,
+    validate_reference_integrity,
+)
+from .semantic_ir import (
+    SemanticEffect,
+    SemanticFeedback,
+    SemanticMechanic,
+    SemanticRolePath,
+    SemanticTrigger,
+    SkillSemanticIR,
+    SemanticIRValidator,
+    ValidatedSkillSemanticIR,
+    parse_semantic_ir,
+    validate_skill_semantic_ir,
+)
 
 __all__ = [
     "CharacterDesignIntent",
@@ -23,4 +44,21 @@ __all__ = [
     "CombatRole",
     "CombatRoleNormalization",
     "CombatRoleProfile",
+    "CompileResult",
+    "CompilerProvenance",
+    "CompilerProvenanceEntry",
+    "SemanticMappingRegistry",
+    "SkillKitCompilerError",
+    "SemanticEffect",
+    "SemanticFeedback",
+    "SemanticMechanic",
+    "SemanticRolePath",
+    "SemanticTrigger",
+    "SkillSemanticIR",
+    "SemanticIRValidator",
+    "ValidatedSkillSemanticIR",
+    "compile_skill_semantic_ir",
+    "parse_semantic_ir",
+    "validate_reference_integrity",
+    "validate_skill_semantic_ir",
 ]

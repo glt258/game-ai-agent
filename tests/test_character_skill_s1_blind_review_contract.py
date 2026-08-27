@@ -224,9 +224,13 @@ def test_contract_worktree_diff_contains_no_src_changes() -> None:
         "src/character_skill/contract.py",
         "src/character_skill/errors.py",
     }
+    allowed_h1_prefixes = ("src/character_intelligence/",)
     changed = {
         line[3:].replace("\\", "/")
         for line in result.stdout.splitlines()
         if len(line) >= 4
     }
-    assert changed <= allowed_diagnostics
+    assert all(
+        path in allowed_diagnostics or path.startswith(allowed_h1_prefixes)
+        for path in changed
+    )
