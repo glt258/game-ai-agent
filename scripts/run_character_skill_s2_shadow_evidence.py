@@ -155,6 +155,11 @@ def main(argv: list[str] | None = None) -> int:
         help="plan or run the independent compressed O2 local-structure cohort",
     )
     parser.add_argument(
+        "--o1-5-entry-only",
+        action="store_true",
+        help="plan or run the independent O1.5 single-entry cohort",
+    )
+    parser.add_argument(
         "--timeout-seconds",
         type=int,
         default=60,
@@ -176,13 +181,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     timeout_seconds = 60 if args.timeout_seconds is None else args.timeout_seconds
     max_transport_retries = (
-        (0 if (args.minimal_transport_sanity or args.full_input_tiny_output or args.enum_expansion_stepdown or args.nested_shape_stepdown or args.compact_contract_v2 or args.minimal_skillkit or args.o1_root_only or args.o1_safe_diagnostic or args.o1_schema_guided_diagnostic or args.o2_local_structure or args.o2_local_structure_compact) else 2)
+        (0 if (args.minimal_transport_sanity or args.full_input_tiny_output or args.enum_expansion_stepdown or args.nested_shape_stepdown or args.compact_contract_v2 or args.minimal_skillkit or args.o1_root_only or args.o1_safe_diagnostic or args.o1_schema_guided_diagnostic or args.o2_local_structure or args.o2_local_structure_compact or args.o1_5_entry_only) else 2)
         if args.max_transport_retries is None
         else args.max_transport_retries
     )
     target_samples = args.target_samples
     if target_samples is None:
-        target_samples = 1 if (args.timeout_suitability_probe or args.model_suitability_probe or args.minimal_transport_sanity or args.full_input_tiny_output or args.enum_expansion_stepdown or args.nested_shape_stepdown or args.compact_contract_v2 or args.minimal_skillkit or args.o1_root_only or args.o1_safe_diagnostic or args.o1_schema_guided_diagnostic or args.o2_local_structure or args.o2_local_structure_compact) else 3
+        target_samples = 1 if (args.timeout_suitability_probe or args.model_suitability_probe or args.minimal_transport_sanity or args.full_input_tiny_output or args.enum_expansion_stepdown or args.nested_shape_stepdown or args.compact_contract_v2 or args.minimal_skillkit or args.o1_root_only or args.o1_safe_diagnostic or args.o1_schema_guided_diagnostic or args.o2_local_structure or args.o2_local_structure_compact or args.o1_5_entry_only) else 3
     if args.live and args.dry_run:
         print(json.dumps({"status": "error", "error_code": "MODE_ARGUMENTS_INVALID"}))
         return 2
@@ -343,7 +348,10 @@ def main(argv: list[str] | None = None) -> int:
     ):
         print(json.dumps({"status": "error", "error_code": "O1_SCHEMA_GUIDED_ARGUMENTS_INVALID"}))
         return 2
-    if (args.o2_local_structure or args.o2_local_structure_compact) and (
+    if (args.o1_5_entry_only and (args.o2_local_structure or args.o2_local_structure_compact)):
+        print(json.dumps({"status": "error", "error_code": "O1_5_ARGUMENTS_INVALID"}))
+        return 2
+    if (args.o1_5_entry_only or args.o2_local_structure or args.o2_local_structure_compact) and (
         args.timeout_suitability_probe or args.model_suitability_probe or args.minimal_transport_sanity
         or args.full_input_tiny_output or args.enum_expansion_stepdown or args.nested_shape_stepdown
         or args.compact_contract_v2 or args.minimal_skillkit or args.o1_root_only or args.o1_safe_diagnostic
@@ -479,8 +487,8 @@ def main(argv: list[str] | None = None) -> int:
                 resume=args.resume,
                 output_path=args.output,
             )
-        elif args.o2_local_structure or args.o2_local_structure_compact:
-            runner = O2LocalStructureRunner(ROOT, manifest_path=args.manifest, compact=args.o2_local_structure_compact)
+        elif args.o2_local_structure or args.o2_local_structure_compact or args.o1_5_entry_only:
+            runner = O2LocalStructureRunner(ROOT, manifest_path=args.manifest, compact=args.o2_local_structure_compact, entry_only=args.o1_5_entry_only)
             result = runner.run(
                 live=args.live,
                 timeout_seconds=timeout_seconds,

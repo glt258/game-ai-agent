@@ -400,3 +400,18 @@ def test_o2_compact_contract_is_a_new_shorter_identity(tmp_path: Path) -> None:
     assert result["existing_sample_count"] == 0
     assert result["provider_factory_constructed"] is False
     assert result["provider_called"] is False
+
+
+def test_o1_5_entry_only_probe_is_shortest_nested_variant(tmp_path: Path) -> None:
+    prompt = evidence._o2_entry_only_prompt(evidence.O2LocalStructureRunner(ROOT).cases["case_13"])
+    metrics = evidence._message_metrics(evidence.LiveLLMAdapter._provider_messages(prompt))
+    assert metrics["chars"] == 1454
+    assert metrics["bytes"] == 1582
+    payload = evidence.build_o2_local_structure_fixture()
+    payload["entries"][0]["protocols"] = []
+    assert evidence.parse_candidate(payload).entries[0].protocols == ()
+    result = evidence.O2LocalStructureRunner(ROOT, entry_only=True).dry_run(output_path=tmp_path / "plan.json")
+    assert result["output_contract_version"] == evidence.O2_ENTRY_ONLY_OUTPUT_CONTRACT_VERSION
+    assert result["existing_sample_count"] == 0
+    assert result["provider_factory_constructed"] is False
+    assert result["provider_called"] is False

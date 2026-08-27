@@ -400,6 +400,7 @@ O2_LOCAL_STRUCTURE_EXPERIMENT_TYPE = "compact_contract_v2_output_stepdown_o2_loc
 O2_LOCAL_STRUCTURE_LEVEL = "O2_LOCAL_STRUCTURE"
 O2_LOCAL_STRUCTURE_OUTPUT_CONTRACT_VERSION = "v2-output-stepdown-o2-local-structure/0.1.0"
 O2_LOCAL_STRUCTURE_COMPACT_OUTPUT_CONTRACT_VERSION = "v2-output-stepdown-o2-local-structure-compact/0.2.0"
+O2_ENTRY_ONLY_OUTPUT_CONTRACT_VERSION = "v2-output-stepdown-o1.5-entry-only/0.3.0"
 O2_LOCAL_STRUCTURE_RESULT_RELATIVE_PATH = (
     "evals/results/character_skill_s2_shadow_compact_contract_v2_output_stepdown_o2_local_structure_opencode_go_pro_case_13_run_01_v0.1.0.json"
 )
@@ -408,6 +409,9 @@ O2_LOCAL_STRUCTURE_TEMP_RELATIVE_PATH = (
 )
 O2_LOCAL_STRUCTURE_COMPACT_RESULT_RELATIVE_PATH = (
     "evals/results/character_skill_s2_shadow_compact_contract_v2_output_stepdown_o2_local_structure_compact_opencode_go_pro_case_13_run_01_v0.2.0.json"
+)
+O2_ENTRY_ONLY_RESULT_RELATIVE_PATH = (
+    "evals/results/character_skill_s2_shadow_compact_contract_v2_output_stepdown_o1_5_entry_only_opencode_go_pro_case_13_run_01_v0.3.0.json"
 )
 _O2_LOCAL_STRUCTURE_RUN_ID_RE = re.compile(
     r"^cs-s2-shadow-compact-contract-v2-output-stepdown-o2-local-structure-v0\.1\.0-"
@@ -5087,6 +5091,10 @@ O2_LOCAL_STRUCTURE_COMPACT_OUTPUT_INSTRUCTION = (
     "one trigger protocol causing one direct_output effect; all other arrays are empty; optional refs are null; no "
     "typed refs or extra fields; display_summary is an empty string."
 )
+O2_ENTRY_ONLY_OUTPUT_INSTRUCTION = (
+    "JSON only: schema_version=skill-kit-candidate/0.1.1; use the exact 8 root keys; entries has one ability with "
+    "protocols=[]; all other arrays are empty; display_summary is an empty string; no extra fields."
+)
 
 
 def build_o1_root_only_fixture() -> dict[str, object]:
@@ -5162,6 +5170,21 @@ def _o2_local_structure_compact_prompt(case: ShadowEvidenceCase) -> AgentPrompt:
         response_format=RESPONSE_CONTRACT, authoring_payload=projection,
         invocation_purpose=O2_LOCAL_STRUCTURE_EXPERIMENT_TYPE,
     )
+
+
+def _o2_entry_only_prompt(case: ShadowEvidenceCase) -> AgentPrompt:
+    projection = _full_input_projection(case)
+    view = _ShadowProjectionView(
+        projection["brief"], tuple(projection["hard_constraints"]),
+        tuple(projection["forbidden_elements"]), projection["combat_role_profile"],
+    )
+    return AgentPrompt(
+        _compact_v2_contract() + "\n\n" + O2_ENTRY_ONLY_OUTPUT_INSTRUCTION,
+        view, view, (ConversationMessage("user", _canonical_json(projection)),), (),
+        "cs-s2-compact-contract-v2-output-stepdown-o1-5-entry-only", 1,
+        response_format=RESPONSE_CONTRACT, authoring_payload=projection,
+        invocation_purpose=O2_LOCAL_STRUCTURE_EXPERIMENT_TYPE,
+    )
 def _o1_root_only_output_contract_digest() -> str:
     return _digest_bytes(O1_ROOT_ONLY_OUTPUT_INSTRUCTION.encode("utf-8"))
 
@@ -5176,6 +5199,10 @@ def _o2_local_structure_output_contract_digest() -> str:
 
 def _o2_local_structure_compact_output_contract_digest() -> str:
     return _digest_bytes(O2_LOCAL_STRUCTURE_COMPACT_OUTPUT_INSTRUCTION.encode("utf-8"))
+
+
+def _o2_entry_only_output_contract_digest() -> str:
+    return _digest_bytes(O2_ENTRY_ONLY_OUTPUT_INSTRUCTION.encode("utf-8"))
 
 
 def _o2_local_structure_run_id(source_commit: str, manifest_digest: str, output_digest: str) -> str:
@@ -6464,7 +6491,7 @@ def validate_o2_local_structure_bundle(bundle: Mapping[str, object]) -> None:
         or bundle["experiment_type"] != O2_LOCAL_STRUCTURE_EXPERIMENT_TYPE
         or bundle["level"] != O2_LOCAL_STRUCTURE_LEVEL
         or bundle["contract_version"] != COMPACT_V2_CONTRACT_VERSION
-        or bundle["output_contract_version"] not in {O2_LOCAL_STRUCTURE_OUTPUT_CONTRACT_VERSION, O2_LOCAL_STRUCTURE_COMPACT_OUTPUT_CONTRACT_VERSION}
+        or bundle["output_contract_version"] not in {O2_LOCAL_STRUCTURE_OUTPUT_CONTRACT_VERSION, O2_LOCAL_STRUCTURE_COMPACT_OUTPUT_CONTRACT_VERSION, O2_ENTRY_ONLY_OUTPUT_CONTRACT_VERSION}
         or bundle["parser_contract_version"] != O1_ROOT_ONLY_PARSER_CONTRACT_VERSION
         or bundle["case_id"] != "case_13" or bundle["timeout_seconds"] != 60
         or bundle["max_transport_retries"] != 0 or bundle["response_mode"] != "json_object"
@@ -6475,7 +6502,9 @@ def validate_o2_local_structure_bundle(bundle: Mapping[str, object]) -> None:
     if not _is_sha(bundle["contract_digest"]) or not _is_sha(bundle["output_contract_digest"]):
         raise EvidenceContractError("O2_LOCAL_STRUCTURE_IDENTITY_INVALID")
     expected_output_digest = (
-        _o2_local_structure_compact_output_contract_digest()
+        _o2_entry_only_output_contract_digest()
+        if bundle["output_contract_version"] == O2_ENTRY_ONLY_OUTPUT_CONTRACT_VERSION
+        else _o2_local_structure_compact_output_contract_digest()
         if bundle["output_contract_version"] == O2_LOCAL_STRUCTURE_COMPACT_OUTPUT_CONTRACT_VERSION
         else _o2_local_structure_output_contract_digest()
     )
@@ -6518,22 +6547,31 @@ def validate_o2_local_structure_bundle(bundle: Mapping[str, object]) -> None:
 class O2LocalStructureRunner:
     """Independent O2 probe: one local protocol/effect, no typed references."""
 
-    def __init__(self, repo_root: Path | str | None = None, *, manifest_path: Path | str | None = None, compact: bool = False) -> None:
+    def __init__(self, repo_root: Path | str | None = None, *, manifest_path: Path | str | None = None, compact: bool = False, entry_only: bool = False) -> None:
         self.root = Path(repo_root or ROOT).resolve()
         self.manifest = load_manifest(self.root, manifest_path)
         self.cases = _load_cases(self.root, self.manifest)
         self.compact = compact
+        self.entry_only = entry_only
 
     def _prompt(self, case: ShadowEvidenceCase) -> AgentPrompt:
+        if self.entry_only:
+            return _o2_entry_only_prompt(case)
         return _o2_local_structure_compact_prompt(case) if self.compact else _o2_local_structure_prompt(case)
 
     def _output_contract_version(self) -> str:
+        if self.entry_only:
+            return O2_ENTRY_ONLY_OUTPUT_CONTRACT_VERSION
         return O2_LOCAL_STRUCTURE_COMPACT_OUTPUT_CONTRACT_VERSION if self.compact else O2_LOCAL_STRUCTURE_OUTPUT_CONTRACT_VERSION
 
     def _output_contract_digest(self) -> str:
+        if self.entry_only:
+            return _o2_entry_only_output_contract_digest()
         return _o2_local_structure_compact_output_contract_digest() if self.compact else _o2_local_structure_output_contract_digest()
 
     def _result_path(self) -> str:
+        if self.entry_only:
+            return O2_ENTRY_ONLY_RESULT_RELATIVE_PATH
         return O2_LOCAL_STRUCTURE_COMPACT_RESULT_RELATIVE_PATH if self.compact else O2_LOCAL_STRUCTURE_RESULT_RELATIVE_PATH
 
     def _destination(self, output_path: Path | str | None) -> Path:
@@ -6631,7 +6669,11 @@ class O2LocalStructureRunner:
                     parser_counts = {category: 1 for category in parser_categories}
                     principal_verdict, failure_stage, failure_code = "O2_LOCAL_STRUCTURE_PARSE_REJECTED", "shape", "CANDIDATE_SHAPE_REJECTED"
                 else:
-                    if not _o2_local_structure_shape_ok(payload):
+                    if not self.entry_only and not _o2_local_structure_shape_ok(payload):
+                        parser_outcome, parser_categories = "PARSER_REJECTED", ("O2_LOCAL_STRUCTURE_MISMATCH",)
+                        parser_counts = {"O2_LOCAL_STRUCTURE_MISMATCH": 1}
+                        principal_verdict, failure_stage, failure_code = "O2_LOCAL_STRUCTURE_PARSE_REJECTED", "shape", "LOCAL_STRUCTURE_REJECTED"
+                    elif self.entry_only and not (structural["collection_shape_valid"] is True and structural["entry_count"] == 1 and structural["protocol_count"] == 0 and structural["effect_count"] == 0 and structural["typed_ref_count"] == 0):
                         parser_outcome, parser_categories = "PARSER_REJECTED", ("O2_LOCAL_STRUCTURE_MISMATCH",)
                         parser_counts = {"O2_LOCAL_STRUCTURE_MISMATCH": 1}
                         principal_verdict, failure_stage, failure_code = "O2_LOCAL_STRUCTURE_PARSE_REJECTED", "shape", "LOCAL_STRUCTURE_REJECTED"
@@ -6978,6 +7020,8 @@ __all__ = [
     "O2LocalStructureRunner",
     "O2_LOCAL_STRUCTURE_COMPACT_OUTPUT_CONTRACT_VERSION",
     "O2_LOCAL_STRUCTURE_COMPACT_RESULT_RELATIVE_PATH",
+    "O2_ENTRY_ONLY_OUTPUT_CONTRACT_VERSION",
+    "O2_ENTRY_ONLY_RESULT_RELATIVE_PATH",
     "O1SafeDiagnosticSnapshot",
     "build_o1_safe_diagnostic_snapshot",
     "classify_o1_safe_diagnostic",
