@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from agents.models import ModelInvocationAudit, ModelTurn
 from agents.response_contracts import CHARACTER_SKILL_KIT_JSON_SCHEMA
 from evals import character_skill_s2_shadow_evidence as evidence
 
@@ -67,7 +68,7 @@ def test_v2_identity_is_independent_and_digest_bound() -> None:
     assert evidence._COMPACT_V2_RUN_ID_RE.fullmatch(result["run_id"])
 
 
-def test_v2_live_is_fail_closed_without_constructing_provider() -> None:
+def test_v2_live_requires_frozen_source_before_provider_construction() -> None:
     factory_called = False
 
     def factory() -> object:
@@ -75,9 +76,40 @@ def test_v2_live_is_fail_closed_without_constructing_provider() -> None:
         factory_called = True
         return object()
 
-    with pytest.raises(evidence.EvidenceRunnerError, match="COMPACT_V2_LIVE_DISABLED"):
+    with pytest.raises(evidence.EvidenceRunnerError, match="COMPACT_V2_SOURCE_COMMIT_REQUIRED"):
         evidence.CompactContractV2Runner(ROOT).run(live=True, model_factory=factory)
     assert factory_called is False
+
+
+def test_v2_live_fake_observation_is_single_and_sanitized(tmp_path: Path) -> None:
+    class FakeModel:
+        calls = 0
+
+        def generate(self, prompt: object) -> ModelTurn:
+            self.calls += 1
+            return ModelTurn(
+                text='{"status":"ok"}',
+                invocation=ModelInvocationAudit(
+                    session_id="v2-test", turn_number=1, provider="opencode_go",
+                    model="deepseek-v4-pro", outcome="success", latency_ms=1.0,
+                    retry_count=0, transport="openai_chat_completions",
+                    response_contract="json_object",
+                ),
+            )
+
+    model = FakeModel()
+    output = tmp_path / "v2.json"
+    bundle = evidence.CompactContractV2Runner(ROOT).run(
+        live=True,
+        expected_source_commit=evidence._source_commit(ROOT),
+        output_path=output,
+        model_factory=lambda: model,
+        enforce_clean_tree=False,
+    )
+    assert model.calls == 1
+    assert bundle["observation"]["tiny_contract_outcome"] == "V2_A_TINY_OUTPUT_PASS"
+    assert bundle["observation"]["failure_stage"] is None
+    evidence.validate_compact_v2_bundle(bundle)
 
 
 def test_v2_complete_cohort_blocks_second_sample(tmp_path: Path) -> None:

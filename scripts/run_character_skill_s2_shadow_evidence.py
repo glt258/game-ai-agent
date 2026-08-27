@@ -350,6 +350,8 @@ def main(argv: list[str] | None = None) -> int:
                 timeout_seconds=timeout_seconds,
                 max_transport_retries=max_transport_retries,
                 target_sample_count=target_samples,
+                expected_source_commit=args.probe_source_commit,
+                resume=args.resume,
                 output_path=args.output,
             )
         elif args.contract_compliance_from is not None:

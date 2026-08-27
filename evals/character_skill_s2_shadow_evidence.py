@@ -4806,6 +4806,73 @@ def _compact_v2_run_id(source_commit: str, manifest_digest: str, contract_digest
     )
 
 
+def _compact_v2_provider() -> dict[str, object]:
+    return {
+        "name": COMPACT_V2_PROVIDER,
+        "model_requested": COMPACT_V2_MODEL,
+        "model_reported": COMPACT_V2_MODEL,
+        "transport": TRANSPORT,
+        "structured_output_mode": STRUCTURED_OUTPUT_MODE,
+        "timeout_seconds": COMPACT_V2_TIMEOUT_SECONDS,
+        "max_transport_retries": COMPACT_V2_MAX_TRANSPORT_RETRIES,
+    }
+
+
+def _compact_v2_bundle_digest(bundle: Mapping[str, object]) -> str:
+    return _digest_mapping({key: value for key, value in bundle.items() if key != "bundle_digest"})
+
+
+def validate_compact_v2_bundle(bundle: Mapping[str, object]) -> None:
+    expected = {
+        "schema_version", "protocol_version", "run_id", "experiment_type", "contract_version",
+        "contract_digest", "source_commit", "manifest_digest", "input_manifest_digest", "inputs",
+        "provider", "model", "case_id", "timeout_seconds", "max_transport_retries",
+        "target_sample_count", "complete", "tiny_output_contract_version", "l2_request_metrics",
+        "v2_request_metrics", "sample_index", "observation", "bundle_digest",
+    }
+    _exact_keys(bundle, expected, "COMPACT_V2_BUNDLE_KEYS_INVALID")
+    if (
+        bundle["schema_version"] != COMPACT_V2_SCHEMA_VERSION
+        or bundle["protocol_version"] != PROTOCOL_VERSION
+        or bundle["experiment_type"] != COMPACT_V2_EXPERIMENT_TYPE
+        or bundle["contract_version"] != COMPACT_V2_CONTRACT_VERSION
+        or bundle["case_id"] != COMPACT_V2_CASE_ID
+        or bundle["timeout_seconds"] != COMPACT_V2_TIMEOUT_SECONDS
+        or bundle["max_transport_retries"] != COMPACT_V2_MAX_TRANSPORT_RETRIES
+        or bundle["target_sample_count"] != COMPACT_V2_TARGET
+        or bundle["complete"] is not True
+        or bundle["tiny_output_contract_version"] != COMPACT_V2_TINY_OUTPUT_CONTRACT_VERSION
+        or bundle["sample_index"] != 1
+    ):
+        raise EvidenceContractError("COMPACT_V2_CONFIG_INVALID")
+    if not _is_sha(bundle["contract_digest"]):
+        raise EvidenceContractError("COMPACT_V2_CONTRACT_DIGEST_INVALID")
+    if not isinstance(bundle["source_commit"], str) or not _GIT_SHA_RE.fullmatch(bundle["source_commit"]):
+        raise EvidenceContractError("COMPACT_V2_SOURCE_COMMIT_INVALID")
+    if bundle["manifest_digest"] != bundle["input_manifest_digest"] or not _is_sha(bundle["manifest_digest"]):
+        raise EvidenceContractError("COMPACT_V2_MANIFEST_INVALID")
+    if not isinstance(bundle["run_id"], str) or not _COMPACT_V2_RUN_ID_RE.fullmatch(bundle["run_id"]):
+        raise EvidenceContractError("COMPACT_V2_RUN_ID_INVALID")
+    if bundle["provider"] != _compact_v2_provider() or bundle["model"] != COMPACT_V2_MODEL:
+        raise EvidenceContractError("COMPACT_V2_PROVIDER_INVALID")
+    observation = bundle["observation"]
+    if not isinstance(observation, Mapping):
+        raise EvidenceContractError("COMPACT_V2_OBSERVATION_INVALID")
+    _exact_keys(
+        observation,
+        {"observation_id", "provider_outcome", "transport_attempts", "latency_ms", "json_extraction_outcome", "tiny_contract_outcome", "parsed_top_level_type", "expected_key_count", "actual_key_count", "failure_stage", "failure_code", "sanitization"},
+        "COMPACT_V2_OBSERVATION_KEYS_INVALID",
+    )
+    if observation["observation_id"] != f"{bundle['run_id']}:case_13:sample-01":
+        raise EvidenceContractError("COMPACT_V2_OBSERVATION_ID_INVALID")
+    if observation["transport_attempts"] != 1 or observation["tiny_contract_outcome"] not in {"V2_A_TINY_OUTPUT_PASS", "V2_A_TRANSPORT_REACHABLE_CONTRACT_REJECTED", "V2_A_TINY_OUTPUT_UNAVAILABLE"}:
+        raise EvidenceContractError("COMPACT_V2_OBSERVATION_INVALID")
+    if observation["sanitization"] != _sanitization_mapping():
+        raise EvidenceContractError("COMPACT_V2_SANITIZATION_INVALID")
+    if bundle["bundle_digest"] != _compact_v2_bundle_digest(bundle):
+        raise EvidenceContractError("COMPACT_V2_BUNDLE_DIGEST_INVALID")
+
+
 class CompactContractV2Runner:
     """Offline-only V2-A contract gate and future identity planner."""
 
@@ -4868,10 +4935,107 @@ class CompactContractV2Runner:
             "output_path": destination.as_posix(),
         }
 
-    def run(self, *, live: bool = False, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, output_path: Path | str | None = None, **_: object) -> dict[str, object]:
-        if live:
-            raise EvidenceRunnerError("COMPACT_V2_LIVE_DISABLED")
-        return self.dry_run(timeout_seconds=timeout_seconds, max_transport_retries=max_transport_retries, target_sample_count=target_sample_count, output_path=output_path)
+    def run(self, *, live: bool = False, timeout_seconds: int = 60, max_transport_retries: int = 0, target_sample_count: int = 1, expected_source_commit: str | None = None, resume: bool = False, output_path: Path | str | None = None, model_factory: Callable[[], Any] | None = None, enforce_clean_tree: bool = True, **_: object) -> dict[str, object]:
+        if not live:
+            if resume or model_factory is not None:
+                raise EvidenceRunnerError("COMPACT_V2_DRY_RUN_ARGUMENTS_INVALID")
+            return self.dry_run(timeout_seconds=timeout_seconds, max_transport_retries=max_transport_retries, target_sample_count=target_sample_count, output_path=output_path)
+        if (timeout_seconds, max_transport_retries, target_sample_count) != (60, 0, 1):
+            raise EvidenceRunnerError("COMPACT_V2_VARIABLE_MISMATCH")
+        if expected_source_commit is None:
+            raise EvidenceRunnerError("COMPACT_V2_SOURCE_COMMIT_REQUIRED")
+        source_commit = _source_commit(self.root)
+        if source_commit != expected_source_commit:
+            raise EvidenceRunnerError("COMPACT_V2_SOURCE_COMMIT_MISMATCH")
+        planned = self.dry_run(timeout_seconds=60, max_transport_retries=0, target_sample_count=1, output_path=output_path)
+        if planned["existing_sample_count"]:
+            raise EvidenceRunnerError("COHORT_ALREADY_COMPLETE")
+        if enforce_clean_tree:
+            dirty = tuple(path for path in _dirty_paths(self.root) if path not in {COMPACT_V2_RESULT_RELATIVE_PATH, COMPACT_V2_TEMP_RELATIVE_PATH})
+            if dirty:
+                raise EvidenceRunnerError("LIVE_DIRTY_TREE")
+        destination = Path(planned["output_path"])
+        if destination.exists() and not resume:
+            raise EvidenceRunnerError("COMPACT_V2_RESULT_EXISTS")
+        if model_factory is not None:
+            provider_model = model_factory()
+        else:
+            environment = {
+                "NPC_AGENT_MODEL": "live",
+                "NPC_LLM_PROVIDER": COMPACT_V2_PROVIDER,
+                "NPC_LLM_MODEL": COMPACT_V2_MODEL,
+                "NPC_LLM_TRANSPORT": TRANSPORT,
+                "NPC_LLM_STRUCTURED_OUTPUT": STRUCTURED_OUTPUT_MODE,
+                "NPC_LLM_TIMEOUT_SECONDS": "60",
+                "NPC_LLM_MAX_RETRIES": "0",
+                **({"NPC_LLM_API_KEY": os.environ["NPC_LLM_API_KEY"]} if os.environ.get("NPC_LLM_API_KEY") else {}),
+            }
+            settings = __import__("agents.model_factory", fromlist=["LiveLLMSettings"]).LiveLLMSettings.from_environment(environment)
+            client = OpenAIChatClient(api_key=settings.api_key, base_url=settings.base_url, timeout_seconds=settings.timeout_seconds, request_options=settings.profile.provider_options)
+            provider_model = _FullInputTinyOutputAdapter(client, provider=settings.provider, model=settings.model, profile=settings.profile, timeout_seconds=settings.timeout_seconds, max_retries=settings.max_retries)
+        provider_outcome = "failure"
+        attempts = 1
+        latency_ms = None
+        json_result = {"json_extraction_outcome": "not_attempted", "tiny_contract_outcome": "TRANSPORT_UNAVAILABLE", "parsed_top_level_type": None, "actual_key_count": None}
+        failure_stage = "provider"
+        failure_code = "PROVIDER_INVOCATION_FAILED"
+        try:
+            turn = provider_model.generate(_compact_v2_prompt(self.cases[COMPACT_V2_CASE_ID]))
+            invocation = turn.invocation
+            provider_outcome = "success"
+            attempts = (invocation.retry_count + 1) if invocation is not None else 1
+            latency_ms = _bounded_latency(invocation)
+            json_result = _minimal_contract_result(turn.text)
+            contract_outcome = "V2_A_TINY_OUTPUT_PASS" if json_result["tiny_contract_outcome"] == "TRANSPORT_SUCCESS_CONTRACT_PASS" else "V2_A_TRANSPORT_REACHABLE_CONTRACT_REJECTED"
+            failure_stage = None
+            failure_code = None
+        except ModelError as error:
+            invocation = error.audit
+            attempts = (invocation.retry_count + 1) if invocation is not None else 1
+            latency_ms = _bounded_latency(invocation)
+            contract_outcome = "V2_A_TINY_OUTPUT_UNAVAILABLE"
+        observation = {
+            "observation_id": f"{planned['run_id']}:case_13:sample-01",
+            "provider_outcome": provider_outcome,
+            "transport_attempts": attempts,
+            "latency_ms": latency_ms,
+            "json_extraction_outcome": json_result["json_extraction_outcome"],
+            "tiny_contract_outcome": contract_outcome,
+            "parsed_top_level_type": json_result["parsed_top_level_type"],
+            "expected_key_count": 1,
+            "actual_key_count": json_result["actual_key_count"],
+            "failure_stage": failure_stage,
+            "failure_code": failure_code,
+            "sanitization": _sanitization_mapping(),
+        }
+        bundle = {
+            "schema_version": COMPACT_V2_SCHEMA_VERSION,
+            "protocol_version": PROTOCOL_VERSION,
+            "run_id": planned["run_id"],
+            "experiment_type": COMPACT_V2_EXPERIMENT_TYPE,
+            "contract_version": COMPACT_V2_CONTRACT_VERSION,
+            "contract_digest": planned["contract_digest"],
+            "source_commit": source_commit,
+            "manifest_digest": self.manifest.raw_digest,
+            "input_manifest_digest": self.manifest.raw_digest,
+            "inputs": [dict(item) for item in self.manifest.input_files],
+            "provider": _compact_v2_provider(),
+            "model": COMPACT_V2_MODEL,
+            "case_id": COMPACT_V2_CASE_ID,
+            "timeout_seconds": COMPACT_V2_TIMEOUT_SECONDS,
+            "max_transport_retries": COMPACT_V2_MAX_TRANSPORT_RETRIES,
+            "target_sample_count": COMPACT_V2_TARGET,
+            "complete": True,
+            "tiny_output_contract_version": COMPACT_V2_TINY_OUTPUT_CONTRACT_VERSION,
+            "l2_request_metrics": planned["l2_request_metrics"],
+            "v2_request_metrics": planned["v2_request_metrics"],
+            "sample_index": 1,
+            "observation": observation,
+        }
+        bundle["bundle_digest"] = _compact_v2_bundle_digest(bundle)
+        validate_compact_v2_bundle(bundle)
+        _write_bundle(destination, bundle, resume=False)
+        return bundle
 
 
 def _validate_fixed_target(target: object) -> int:
@@ -5065,6 +5229,8 @@ def run_compact_contract_v2(
     timeout_seconds: int = COMPACT_V2_TIMEOUT_SECONDS,
     max_transport_retries: int = COMPACT_V2_MAX_TRANSPORT_RETRIES,
     target_sample_count: int = COMPACT_V2_TARGET,
+    expected_source_commit: str | None = None,
+    resume: bool = False,
     output_path: Path | str | None = None,
 ) -> dict[str, object]:
     return CompactContractV2Runner(repo_root).run(
@@ -5072,6 +5238,8 @@ def run_compact_contract_v2(
         timeout_seconds=timeout_seconds,
         max_transport_retries=max_transport_retries,
         target_sample_count=target_sample_count,
+        expected_source_commit=expected_source_commit,
+        resume=resume,
         output_path=output_path,
     )
 
