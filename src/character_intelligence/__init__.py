@@ -7,12 +7,6 @@ from combat_semantics import (
     CombatRoleProfile,
 )
 
-from .intent import (
-    CharacterDesignIntent,
-    CharacterDesignIntentParser,
-    DeterministicCharacterDesignIntentParser,
-)
-from .planner import CharacterDesignPlan
 from .compiler import (
     CompileResult,
     CompilerProvenance,
@@ -22,14 +16,28 @@ from .compiler import (
     compile_skill_semantic_ir,
     validate_reference_integrity,
 )
+from .hybrid_ir import (
+    FakeProvider,
+    HybridGenerationContext,
+    HybridSemanticIRRunner,
+    build_model_facing_contract,
+    build_model_facing_request,
+    run_fake_pipeline,
+)
+from .intent import (
+    CharacterDesignIntent,
+    CharacterDesignIntentParser,
+    DeterministicCharacterDesignIntentParser,
+)
+from .planner import CharacterDesignPlan
 from .semantic_ir import (
     SemanticEffect,
     SemanticFeedback,
+    SemanticIRValidator,
     SemanticMechanic,
     SemanticRolePath,
     SemanticTrigger,
     SkillSemanticIR,
-    SemanticIRValidator,
     ValidatedSkillSemanticIR,
     parse_semantic_ir,
     validate_skill_semantic_ir,
@@ -47,6 +55,9 @@ __all__ = [
     "CompileResult",
     "CompilerProvenance",
     "CompilerProvenanceEntry",
+    "FakeProvider",
+    "HybridGenerationContext",
+    "HybridSemanticIRRunner",
     "SemanticMappingRegistry",
     "SkillKitCompilerError",
     "SemanticEffect",
@@ -58,7 +69,10 @@ __all__ = [
     "SemanticIRValidator",
     "ValidatedSkillSemanticIR",
     "compile_skill_semantic_ir",
+    "build_model_facing_contract",
+    "build_model_facing_request",
     "parse_semantic_ir",
+    "run_fake_pipeline",
     "validate_reference_integrity",
     "validate_skill_semantic_ir",
 ]
