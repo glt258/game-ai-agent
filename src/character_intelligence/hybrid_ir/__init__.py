@@ -9,6 +9,15 @@ from .contract import (
     build_model_facing_contract,
     build_model_facing_request,
 )
+from .diagnostics import (
+    RAW_FINDING_CODE_MAPPING,
+    SAFE_EVALUATOR_DIAGNOSTIC_VERSION,
+    FindingCategory,
+    Repairability,
+    SafeEvaluatorDiagnostics,
+    SemanticDimension,
+    adapt_skill_validation_report,
+)
 from .projection import (
     GLOBAL_STRUCTURAL_TRIGGER_EVENTS,
     PROJECTION_SOURCES,
@@ -24,6 +33,7 @@ from .runner import (
     FIRST_FAILURE_LAYERS,
     HYBRID_DEFAULT_EVIDENCE_RELATIVE_PATH,
     HYBRID_EVIDENCE_VERSION,
+    HYBRID_EVIDENCE_VERSION_V020,
     HYBRID_EXPERIMENT,
     HYBRID_FROZEN_CONTRACT_DIGEST,
     HYBRID_FROZEN_REQUEST_BYTES,
@@ -47,6 +57,7 @@ from .runner import (
 
 __all__ = [
     "EnumDomainProjection",
+    "FindingCategory",
     "GLOBAL_STRUCTURAL_TRIGGER_EVENTS",
     "FIRST_FAILURE_LAYERS",
     "HYBRID_DEFAULT_EVIDENCE_RELATIVE_PATH",
@@ -54,6 +65,7 @@ __all__ = [
     "FakePipelineResult",
     "FakeProvider",
     "HYBRID_EVIDENCE_VERSION",
+    "HYBRID_EVIDENCE_VERSION_V020",
     "HYBRID_EXPERIMENT",
     "HYBRID_FROZEN_CONTRACT_DIGEST",
     "HYBRID_FROZEN_REQUEST_BYTES",
@@ -75,12 +87,18 @@ __all__ = [
     "SEMANTIC_ACTORS",
     "SEMANTIC_INTENTS",
     "SafeIRDiagnostics",
+    "SafeEvaluatorDiagnostics",
+    "SemanticDimension",
+    "Repairability",
+    "RAW_FINDING_CODE_MAPPING",
+    "SAFE_EVALUATOR_DIAGNOSTIC_VERSION",
     "SemanticEnumProjection",
     "build_model_facing_contract",
     "build_model_facing_request",
     "build_hybrid_run_id",
     "OpenCodeGoHybridProvider",
     "project_semantic_enums",
+    "adapt_skill_validation_report",
     "run_fake_pipeline",
     "validate_hybrid_evidence",
     "write_evidence_atomic",

@@ -34,13 +34,15 @@ from ..semantic_ir import (
     validate_skill_semantic_ir,
 )
 from .contract import ModelFacingRequest, build_model_facing_request
+from .diagnostics import SafeEvaluatorDiagnostics, adapt_skill_validation_report
 from .projection import HybridGenerationContext
 
-HYBRID_EVIDENCE_VERSION = "character-skill-s2-hybrid-ir-shadow/0.2.0"
+HYBRID_EVIDENCE_VERSION_V020 = "character-skill-s2-hybrid-ir-shadow/0.2.0"
+HYBRID_EVIDENCE_VERSION = "character-skill-s2-hybrid-ir-shadow/0.3.0"
 HYBRID_EXPERIMENT = "character_skill_s2_hybrid_semantic_ir"
 HYBRID_RUN_ID_PREFIX = "cs-s2-hybrid-semantic-ir-v1"
-HYBRID_DEFAULT_EVIDENCE_RELATIVE_PATH = "evals/results/character_skill_s2_hybrid_ir_run_01_v0.2.0.json"
-HYBRID_DEFAULT_TEMP_RELATIVE_PATH = "evals/results/.character_skill_s2_hybrid_ir_run_01_v0.2.0.json.tmp"
+HYBRID_DEFAULT_EVIDENCE_RELATIVE_PATH = "evals/results/character_skill_s2_hybrid_ir_run_01_v0.3.0.json"
+HYBRID_DEFAULT_TEMP_RELATIVE_PATH = "evals/results/.character_skill_s2_hybrid_ir_run_01_v0.3.0.json.tmp"
 HYBRID_FROZEN_REQUEST_CHARS = 1032
 HYBRID_FROZEN_REQUEST_BYTES = 1032
 HYBRID_FROZEN_CONTRACT_DIGEST = "8716a5770d4b1d12c92c546990b5274d7de4f95528cbd06445540a404efa806b"
@@ -264,6 +266,7 @@ class HybridEvidence:
     semantic_ir_digest: str | None
     candidate_digest: str | None
     diagnostics: SafeIRDiagnostics
+    evaluator_diagnostics: SafeEvaluatorDiagnostics | None = None
     raw_ir_stored: bool = False
     raw_prompt_stored: bool = False
     raw_response_stored: bool = False
@@ -289,6 +292,11 @@ class HybridEvidence:
             "semantic_ir_digest": self.semantic_ir_digest,
             "candidate_digest": self.candidate_digest,
             "diagnostics": self.diagnostics.to_mapping(),
+            "evaluator_diagnostics": (
+                self.evaluator_diagnostics.to_mapping()
+                if self.evaluator_diagnostics is not None
+                else None
+            ),
             "sanitization": {
                 "raw_ir_stored": self.raw_ir_stored,
                 "raw_prompt_stored": self.raw_prompt_stored,
@@ -534,6 +542,7 @@ def _run_pipeline(
             validated.digest,
             candidate_digest,
             diagnostics,
+            evaluator_diagnostics=adapt_skill_validation_report(report),
         ),
         parsed,
         report,
@@ -562,31 +571,25 @@ def run_fake_pipeline(
 
 
 def validate_hybrid_evidence(payload: Mapping[str, object]) -> None:
-    """Validate the safe positive-allowlist evidence shape."""
+    """Validate either the frozen v0.2.0 or the diagnostic v0.3.0 shape."""
 
-    required = {
-        "evidence_version",
-        "identity",
-        "sample_index",
-        "run_id",
-        "request_metrics",
-        "first_failure_layer",
-        "failure_code",
-        "principal_verdict",
-        "fake_provider_called",
-        "fake_transport_attempts",
-        "parser_invoked",
-        "evaluator_invoked",
-        "evaluator_outcome",
-        "semantic_ir_digest",
-        "candidate_digest",
-        "diagnostics",
-        "sanitization",
-    }
+    if not isinstance(payload, Mapping):
+        raise ValueError("HYBRID_EVIDENCE_SCHEMA_INVALID")
+    version = payload.get("evidence_version")
+    if version == HYBRID_EVIDENCE_VERSION_V020:
+        _validate_hybrid_evidence_v020(payload)
+        return
+    if version == HYBRID_EVIDENCE_VERSION:
+        _validate_hybrid_evidence_v030(payload)
+        return
+    raise ValueError("HYBRID_EVIDENCE_SCHEMA_INVALID")
+
+
+def _validate_hybrid_evidence_common(payload: Mapping[str, object], required: set[str]) -> None:
+    """Validate fields shared by both evidence schema versions."""
+
     if set(payload) != required:
         raise ValueError("HYBRID_EVIDENCE_SCHEMA_INVALID")
-    if payload["evidence_version"] != HYBRID_EVIDENCE_VERSION:
-        raise ValueError("HYBRID_EVIDENCE_VERSION_INVALID")
     identity = HybridExperimentIdentity.from_mapping(payload["identity"])
     sample_index = payload["sample_index"]
     if isinstance(sample_index, bool) or not isinstance(sample_index, int) or sample_index < 1:
@@ -595,6 +598,9 @@ def validate_hybrid_evidence(payload: Mapping[str, object]) -> None:
         raise ValueError("HYBRID_RUN_ID_INVALID")
     if payload["run_id"] != build_hybrid_run_id(identity, sample_index=sample_index):
         raise ValueError("HYBRID_IDENTITY_MISMATCH")
+    for key in ("fake_provider_called", "parser_invoked", "evaluator_invoked"):
+        if not isinstance(payload[key], bool):
+            raise ValueError("HYBRID_BOOLEAN_FIELD_INVALID")
     layer = payload["first_failure_layer"]
     if layer is not None and layer not in FIRST_FAILURE_LAYERS:
         raise ValueError("HYBRID_FIRST_FAILURE_LAYER_INVALID")
@@ -608,6 +614,43 @@ def validate_hybrid_evidence(payload: Mapping[str, object]) -> None:
         "secrets_detected": False,
     }:
         raise ValueError("HYBRID_SANITIZATION_INVALID")
+
+
+def _validate_hybrid_evidence_v020(payload: Mapping[str, object]) -> None:
+    required = {
+        "evidence_version", "identity", "sample_index", "run_id", "request_metrics",
+        "first_failure_layer", "failure_code", "principal_verdict", "fake_provider_called",
+        "fake_transport_attempts", "parser_invoked", "evaluator_invoked", "evaluator_outcome",
+        "semantic_ir_digest", "candidate_digest", "diagnostics", "sanitization",
+    }
+    _validate_hybrid_evidence_common(payload, required)
+
+
+def _validate_hybrid_evidence_v030(payload: Mapping[str, object]) -> None:
+    required = {
+        "evidence_version", "identity", "sample_index", "run_id", "request_metrics",
+        "first_failure_layer", "failure_code", "principal_verdict", "fake_provider_called",
+        "fake_transport_attempts", "parser_invoked", "evaluator_invoked", "evaluator_outcome",
+        "semantic_ir_digest", "candidate_digest", "diagnostics", "evaluator_diagnostics",
+        "sanitization",
+    }
+    _validate_hybrid_evidence_common(payload, required)
+    diagnostic = payload["evaluator_diagnostics"]
+    if payload["evaluator_invoked"]:
+        if payload["evaluator_outcome"] not in {"PASS", "REPAIR", "FAIL"}:
+            raise ValueError("HYBRID_EVALUATOR_OUTCOME_INVALID")
+        if not isinstance(diagnostic, Mapping):
+            raise ValueError("HYBRID_EVALUATOR_DIAGNOSTICS_REQUIRED")
+        try:
+            parsed = SafeEvaluatorDiagnostics.from_mapping(diagnostic)
+        except (TypeError, ValueError):
+            raise ValueError("HYBRID_EVALUATOR_DIAGNOSTICS_INVALID") from None
+        if payload["evaluator_outcome"] == "PASS" and parsed.finding_count != 0:
+            raise ValueError("HYBRID_PASS_DIAGNOSTICS_INVALID")
+    elif diagnostic is not None:
+        raise ValueError("HYBRID_EVALUATOR_DIAGNOSTICS_UNEXPECTED")
+    elif payload["evaluator_outcome"] != "NOT_RUN":
+        raise ValueError("HYBRID_EVALUATOR_OUTCOME_INVALID")
 
 
 def write_evidence_atomic(evidence: HybridEvidence | Mapping[str, object], path: Path | str) -> Path:
@@ -836,6 +879,7 @@ __all__ = [
     "FakePipelineResult",
     "FakeProvider",
     "HYBRID_EVIDENCE_VERSION",
+    "HYBRID_EVIDENCE_VERSION_V020",
     "HYBRID_EXPERIMENT",
     "HYBRID_RUN_ID_PREFIX",
     "HybridEvidence",
