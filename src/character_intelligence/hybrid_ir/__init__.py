@@ -22,6 +22,7 @@ from .diagnostics import (
 )
 from .projection import (
     CONTEXT_CONTRACT_PROFILES,
+    CONTEXT_PROJECTION_VERSION,
     GLOBAL_STRUCTURAL_TRIGGER_EVENTS,
     PROJECTION_SOURCES,
     SEMANTIC_ACTORS,
@@ -61,6 +62,7 @@ from .runner import (
 __all__ = [
     "EnumDomainProjection",
     "CONTEXT_CONTRACT_PROFILES",
+    "CONTEXT_PROJECTION_VERSION",
     "FindingCategory",
     "GLOBAL_STRUCTURAL_TRIGGER_EVENTS",
     "FIRST_FAILURE_LAYERS",

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Iterable
 from dataclasses import dataclass
 
@@ -18,9 +20,16 @@ from combat_semantics import CANONICAL_COMBAT_ROLES
 from ..planner import CharacterDesignPlan
 
 PROJECTION_SOURCES = frozenset(
-    {"REQUEST_ALLOWED", "PLAN_ALLOWED", "GLOBAL_STRUCTURAL", "VOCABULARY_REQUIRED"}
+    {
+        "REQUEST_ALLOWED",
+        "CASE_REQUIREMENT",
+        "PLAN_ALLOWED",
+        "GLOBAL_STRUCTURAL",
+        "VOCABULARY_REQUIRED",
+    }
 )
 CONTEXT_CONTRACT_PROFILES = frozenset({"frozen_h3", "aligned_v1"})
+CONTEXT_PROJECTION_VERSION = "hybrid-semantic-context-projection/0.1.0"
 SEMANTIC_ACTORS = tuple(sorted(SUBJECT_KINDS - {"summon"}))
 SEMANTIC_INTENTS = ("enable_ally",)
 GLOBAL_STRUCTURAL_TRIGGER_EVENTS = (
@@ -89,6 +98,14 @@ class HybridGenerationContext:
             if values is not None:
                 object.__setattr__(self, name, _clean_values(values, name))
 
+    @property
+    def context_projection_version(self) -> str:
+        return CONTEXT_PROJECTION_VERSION
+
+    @property
+    def context_projection_digest(self) -> str:
+        return context_projection_digest(self)
+
 
 @dataclass(frozen=True)
 class EnumDomainProjection:
@@ -137,6 +154,7 @@ def _domain(
     allowed: Iterable[str],
     *,
     source_if_default: str = "GLOBAL_STRUCTURAL",
+    source_if_requested: str = "REQUEST_ALLOWED",
     default_values: Iterable[str] | None = None,
 ) -> EnumDomainProjection:
     legal = frozenset(allowed)
@@ -144,7 +162,11 @@ def _domain(
     cleaned = _clean_values(values, name)
     if not set(cleaned) <= legal:
         raise ProjectionError("PROJECTION_VALUE_INVALID", name, "value is outside the semantic vocabulary")
-    return EnumDomainProjection(name, cleaned, "REQUEST_ALLOWED" if requested is not None else source_if_default)
+    return EnumDomainProjection(
+        name,
+        cleaned,
+        source_if_requested if requested is not None else source_if_default,
+    )
 
 
 def project_semantic_enums(context: HybridGenerationContext) -> SemanticEnumProjection:
@@ -154,35 +176,104 @@ def project_semantic_enums(context: HybridGenerationContext) -> SemanticEnumProj
         raise TypeError("context must be HybridGenerationContext")
     role_values = context.allowed_roles
     role_source = "GLOBAL_STRUCTURAL"
+    requested_source = "CASE_REQUIREMENT" if context.contract_profile == "aligned_v1" else "REQUEST_ALLOWED"
     if role_values is None and context.plan is not None:
         primary = context.plan.combat_role_profile.primary_role
         role_values = (primary,)
         role_source = "PLAN_ALLOWED"
     domains = (
-        _domain("actor", context.allowed_actors, SEMANTIC_ACTORS),
+        _domain(
+            "actor",
+            context.allowed_actors,
+            SEMANTIC_ACTORS,
+            source_if_requested=requested_source,
+        ),
         _domain(
             "trigger_event",
             context.allowed_trigger_events,
             TRIGGER_EVENTS,
+            source_if_requested=requested_source,
             default_values=GLOBAL_STRUCTURAL_TRIGGER_EVENTS,
         ),
-        _domain("feedback_event", context.allowed_feedback_events, FEEDBACK_EVENTS),
-        _domain("feedback_relation", context.allowed_feedback_relations, FEEDBACK_OPERATIONS),
-        _domain("mode", context.allowed_modes, ABILITY_MODES),
+        _domain(
+            "feedback_event",
+            context.allowed_feedback_events,
+            FEEDBACK_EVENTS,
+            source_if_requested=requested_source,
+        ),
+        _domain(
+            "feedback_relation",
+            context.allowed_feedback_relations,
+            FEEDBACK_OPERATIONS,
+            source_if_requested=requested_source,
+        ),
+        _domain(
+            "mode",
+            context.allowed_modes,
+            ABILITY_MODES,
+            source_if_requested=requested_source,
+        ),
         EnumDomainProjection(
             "role",
             _clean_values(role_values or tuple(sorted(CANONICAL_COMBAT_ROLES)), "role"),
-            "REQUEST_ALLOWED" if context.allowed_roles is not None else role_source,
+            requested_source if context.allowed_roles is not None else role_source,
         ),
-        _domain("centrality", context.allowed_centralities, CENTRALITIES),
+        _domain(
+            "centrality",
+            context.allowed_centralities,
+            CENTRALITIES,
+            source_if_requested=requested_source,
+        ),
         EnumDomainProjection("intent", SEMANTIC_INTENTS, "VOCABULARY_REQUIRED"),
     )
     return SemanticEnumProjection(domains)
 
 
+def _context_plan_payload(plan: CharacterDesignPlan | None) -> dict[str, object] | None:
+    if plan is None:
+        return None
+    payload = plan.to_dict()
+    payload["generation_constraints"] = sorted(plan.generation_constraints)
+    payload["recommended_traits"] = sorted(plan.recommended_traits)
+    return payload
+
+
+def context_projection_payload(context: HybridGenerationContext) -> dict[str, object]:
+    """Return the canonical, provider-facing context identity payload."""
+
+    return {
+        "version": CONTEXT_PROJECTION_VERSION,
+        "case_id": context.case_id,
+        "contract_profile": context.contract_profile,
+        "brief": context.brief,
+        "plan": _context_plan_payload(context.plan),
+        "allowed_actors": list(context.allowed_actors or ()),
+        "allowed_trigger_events": list(context.allowed_trigger_events or ()),
+        "allowed_feedback_events": list(context.allowed_feedback_events or ()),
+        "allowed_feedback_relations": list(context.allowed_feedback_relations or ()),
+        "allowed_modes": list(context.allowed_modes or ()),
+        "allowed_roles": list(context.allowed_roles or ()),
+        "allowed_centralities": list(context.allowed_centralities or ()),
+        "semantic_projection": project_semantic_enums(context).to_mapping(),
+    }
+
+
+def context_projection_digest(context: HybridGenerationContext) -> str:
+    """Hash the canonical context projection deterministically."""
+
+    canonical = json.dumps(
+        context_projection_payload(context),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
 __all__ = [
     "EnumDomainProjection",
     "CONTEXT_CONTRACT_PROFILES",
+    "CONTEXT_PROJECTION_VERSION",
     "HybridGenerationContext",
     "PROJECTION_SOURCES",
     "ProjectionError",
@@ -191,4 +282,6 @@ __all__ = [
     "GLOBAL_STRUCTURAL_TRIGGER_EVENTS",
     "SemanticEnumProjection",
     "project_semantic_enums",
+    "context_projection_payload",
+    "context_projection_digest",
 ]

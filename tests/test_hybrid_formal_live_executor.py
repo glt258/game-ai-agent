@@ -279,7 +279,9 @@ def test_pre_provider_request_credential_and_cohort_gates_are_safe(tmp_path: Pat
     assert factory_calls == 0
 
 
-def test_dirty_tracked_source_blocks_before_factory(tmp_path: Path) -> None:
+def test_dirty_tracked_source_blocks_before_factory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     calls = 0
 
     def factory() -> CountingProvider:
@@ -287,6 +289,14 @@ def test_dirty_tracked_source_blocks_before_factory(tmp_path: Path) -> None:
         calls += 1
         return CountingProvider(_ir())
 
+    real_check_output = hybrid_runner.subprocess.check_output
+
+    def simulated_git_status(args, *call_args, **call_kwargs):
+        if list(args)[-2:] == ["--porcelain", "--untracked-files=no"]:
+            return " M simulated_tracked_source.py\n"
+        return real_check_output(args, *call_args, **call_kwargs)
+
+    monkeypatch.setattr(hybrid_runner.subprocess, "check_output", simulated_git_status)
     result = HybridSemanticIRRunner(ROOT, _context()).run_live(
         _evaluation_context(),
         provider_factory=factory,

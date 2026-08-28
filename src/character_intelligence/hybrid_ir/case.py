@@ -43,8 +43,8 @@ class HybridSemanticCase:
             contract_profile="aligned_v1",
             allowed_actors=self.allowed_actors,
             allowed_trigger_events=self.allowed_trigger_events,
-            # Feedback values are intentionally not selective projections of
-            # evaluator expectations; the model receives public vocabulary.
+            allowed_feedback_events=self.evaluator_feedback_events,
+            allowed_feedback_relations=self.evaluator_feedback_operations,
         )
 
     def evaluation_context(self) -> Mapping[str, object]:
@@ -100,7 +100,10 @@ class HybridSemanticCase:
 def build_authoritative_support_case() -> HybridSemanticCase:
     """Create the generic support case used by the aligned configuration."""
 
-    brief = "Design a support ability that enables an ally after the ability is invoked."
+    brief = (
+        "Design a support ability: when the ability is invoked, it enables an ally; "
+        "after the effect is resolved, feedback enables the continuation."
+    )
     return HybridSemanticCase(
         case_id="case_13_support_alignment_v1",
         brief=brief,

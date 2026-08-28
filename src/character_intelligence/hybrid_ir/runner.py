@@ -35,7 +35,10 @@ from ..semantic_ir import (
 )
 from .contract import ModelFacingRequest, build_model_facing_request
 from .diagnostics import SafeEvaluatorDiagnostics, adapt_skill_validation_report
-from .projection import HybridGenerationContext
+from .projection import (
+    CONTEXT_PROJECTION_VERSION,
+    HybridGenerationContext,
+)
 
 HYBRID_EVIDENCE_VERSION_V020 = "character-skill-s2-hybrid-ir-shadow/0.2.0"
 HYBRID_EVIDENCE_VERSION = "character-skill-s2-hybrid-ir-shadow/0.3.0"
@@ -71,6 +74,8 @@ class HybridExperimentIdentity:
     provider: str = "opencode_go"
     model: str = "deepseek-v4-pro"
     case_id: str = "case_13"
+    context_projection_version: str = ""
+    context_projection_digest: str = ""
     timeout_seconds: int = 60
     max_transport_retries: int = 0
     target_sample_count: int = 1
@@ -80,19 +85,31 @@ class HybridExperimentIdentity:
 
     @classmethod
     def from_mapping(cls, payload: Mapping[str, object]) -> "HybridExperimentIdentity":
-        expected = {
+        base_expected = {
             "experiment", "source_commit", "ir_schema_version",
             "model_facing_contract_version", "model_facing_contract_digest",
             "compiler_version", "canonical_schema_version", "provider", "model",
             "case_id", "timeout_seconds", "max_transport_retries", "target_sample_count",
             "response_mode", "feature_flag", "record_only",
         }
-        if not isinstance(payload, Mapping) or set(payload) != expected:
+        context_expected = {"context_projection_version", "context_projection_digest"}
+        if not isinstance(payload, Mapping) or set(payload) not in (
+            base_expected,
+            base_expected | context_expected,
+        ):
             raise ValueError("HYBRID_IDENTITY_SCHEMA_INVALID")
         values = dict(payload)
-        for key in expected - {"timeout_seconds", "max_transport_retries", "target_sample_count", "record_only"}:
+        if set(payload) == base_expected:
+            values.update(context_projection_version="", context_projection_digest="")
+        for key in (set(values) - {"timeout_seconds", "max_transport_retries", "target_sample_count", "record_only"}):
             if not isinstance(values[key], str):
                 raise ValueError("HYBRID_IDENTITY_FIELD_INVALID")
+        if bool(values["context_projection_version"]) != bool(values["context_projection_digest"]):
+            raise ValueError("HYBRID_IDENTITY_FIELD_INVALID")
+        if values["context_projection_digest"] and not re.fullmatch(
+            r"[0-9a-f]{64}", values["context_projection_digest"]
+        ):
+            raise ValueError("HYBRID_IDENTITY_FIELD_INVALID")
         for key in ("timeout_seconds", "max_transport_retries", "target_sample_count"):
             if isinstance(values[key], bool) or not isinstance(values[key], int):
                 raise ValueError("HYBRID_IDENTITY_FIELD_INVALID")
@@ -101,7 +118,7 @@ class HybridExperimentIdentity:
         return cls(**values)
 
     def to_mapping(self) -> dict[str, object]:
-        return {
+        payload = {
             "experiment": self.experiment,
             "source_commit": self.source_commit,
             "ir_schema_version": self.ir_schema_version,
@@ -119,6 +136,12 @@ class HybridExperimentIdentity:
             "feature_flag": self.feature_flag,
             "record_only": self.record_only,
         }
+        if self.context_projection_version or self.context_projection_digest:
+            if not self.context_projection_version or not self.context_projection_digest:
+                raise ValueError("HYBRID_IDENTITY_FIELD_INVALID")
+            payload["context_projection_version"] = self.context_projection_version
+            payload["context_projection_digest"] = self.context_projection_digest
+        return payload
 
 
 @runtime_checkable
@@ -364,6 +387,8 @@ def _identity(
     contract_digest: str,
     case_id: str = "case_13",
     contract_version: str = "semantic-skill-plan-ir-contract/0.1.0",
+    context_projection_version: str = "",
+    context_projection_digest: str = "",
 ) -> HybridExperimentIdentity:
     source_commit = subprocess.check_output(
         ["git", "-C", str(repo_root), "rev-parse", "HEAD"], text=True
@@ -374,6 +399,8 @@ def _identity(
         model_facing_contract_version=contract_version,
         model_facing_contract_digest=contract_digest,
         case_id=case_id,
+        context_projection_version=context_projection_version,
+        context_projection_digest=context_projection_digest,
     )
 
 
@@ -439,7 +466,12 @@ def _run_pipeline(
 
     request = build_model_facing_request(context)
     identity = _identity(
-        Path(repo_root), request.contract.digest, context.case_id, request.contract.version
+        Path(repo_root),
+        request.contract.digest,
+        context.case_id,
+        request.contract.version,
+        context.context_projection_version,
+        context.context_projection_digest,
     )
     run_id = build_hybrid_run_id(identity, sample_index=sample_index)
     try:
@@ -789,7 +821,12 @@ class HybridSemanticIRRunner:
         next_index = (self.existing_sample_indexes[-1] + 1) if self.existing_sample_indexes else 1
         remaining = max(self.target_sample_count - existing, 0)
         identity = _identity(
-            self.repo_root, contract.digest, self.context.case_id, contract.version
+            self.repo_root,
+            contract.digest,
+            self.context.case_id,
+            contract.version,
+            self.context.context_projection_version,
+            self.context.context_projection_digest,
         )
         sample_index = (self.existing_sample_indexes[-1] + 1) if self.existing_sample_indexes else 1
         return {
@@ -831,15 +868,19 @@ class HybridSemanticIRRunner:
         if self.target_sample_count != 1 or self.existing_sample_indexes:
             return _blocked_live_result("COHORT_ALREADY_COMPLETE" if self.existing_sample_indexes == (1,) else "BLOCKED_INVALID_HYBRID_COHORT_STATE")
         request = build_model_facing_request(self.context)
-        if self.context.contract_profile != "frozen_h3":
-            return _blocked_live_result("BLOCKED_ALIGNMENT_CONFIGURATION_REQUIRES_REVIEW")
         metrics = request.metrics.to_mapping()
-        if (
+        if self.context.contract_profile == "frozen_h3" and (
             metrics["total_chars"] != HYBRID_FROZEN_REQUEST_CHARS
             or metrics["total_bytes"] != HYBRID_FROZEN_REQUEST_BYTES
             or request.contract.digest != HYBRID_FROZEN_CONTRACT_DIGEST
         ):
             return _blocked_live_result("BLOCKED_HYBRID_REQUEST_DRIFT")
+        if self.context.contract_profile == "aligned_v1" and (
+            request.contract.version != "semantic-skill-plan-ir-contract/0.2.0"
+            or self.context.context_projection_version != CONTEXT_PROJECTION_VERSION
+            or not self.context.context_projection_digest
+        ):
+            return _blocked_live_result("BLOCKED_CONTEXT_IDENTITY")
         if enforce_clean_tree:
             dirty = subprocess.check_output(
                 ["git", "-C", str(self.repo_root), "status", "--porcelain", "--untracked-files=no"],
@@ -852,6 +893,8 @@ class HybridSemanticIRRunner:
             request.contract.digest,
             self.context.case_id,
             request.contract.version,
+            self.context.context_projection_version,
+            self.context.context_projection_digest,
         )
         run_id = build_hybrid_run_id(identity, sample_index=sample_index)
         if expected_run_id is not None and expected_run_id != run_id:
