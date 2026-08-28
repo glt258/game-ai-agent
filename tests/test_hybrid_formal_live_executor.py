@@ -10,11 +10,16 @@ import pytest
 import character_intelligence.hybrid_ir.runner as hybrid_runner
 from character_intelligence.compiler import SemanticMappingRegistry
 from character_intelligence.hybrid_ir import (
+    HYBRID_REPLICATION_COHORT_PURPOSE,
+    FakeProvider,
     HybridGenerationContext,
     HybridProviderInvocationError,
     HybridSemanticIRRunner,
     OpenCodeGoHybridProvider,
+    build_hybrid_run_id,
+    run_fake_pipeline,
     validate_hybrid_evidence,
+    write_evidence_atomic,
 )
 from character_intelligence.semantic_ir import SEMANTIC_IR_VERSION
 
@@ -322,3 +327,169 @@ def test_complete_cohort_blocks_second_formal_execution(tmp_path: Path) -> None:
     )
     assert second.status == "COHORT_ALREADY_COMPLETE"
     assert second_provider.calls == 0 and second.provider_factory_constructed is False
+
+
+def test_n2_dry_run_and_formal_lifecycle_use_one_call_per_sample(tmp_path: Path) -> None:
+    runner = HybridSemanticIRRunner(
+        ROOT,
+        _context(),
+        target_sample_count=2,
+        cohort_purpose=HYBRID_REPLICATION_COHORT_PURPOSE,
+    )
+    empty = runner.dry_run()
+    assert (empty["existing_sample_count"], empty["existing_sample_indexes"]) == (0, [])
+    assert (empty["next_sample_index"], empty["remaining_sample_count"], empty["complete"]) == (1, 2, False)
+    identity = runner.cohort_identity
+    assert identity.target_sample_count == 2
+    assert identity.cohort_purpose == HYBRID_REPLICATION_COHORT_PURPOSE
+    assert identity.to_mapping()["cohort_purpose"] == HYBRID_REPLICATION_COHORT_PURPOSE
+
+    first_provider = CountingProvider(_ir())
+    first = runner.run_live(
+        _evaluation_context(),
+        provider_factory=lambda: first_provider,
+        output_path=tmp_path / "sample-01.json",
+        enforce_clean_tree=False,
+    )
+    assert first.consumed is True and first_provider.calls == 1
+    partial = runner.dry_run()
+    assert (partial["existing_sample_count"], partial["existing_sample_indexes"]) == (1, [1])
+    assert (partial["next_sample_index"], partial["remaining_sample_count"], partial["complete"]) == (2, 1, False)
+
+    second_provider = CountingProvider(_ir())
+    second = runner.run_live(
+        _evaluation_context(),
+        provider_factory=lambda: second_provider,
+        output_path=tmp_path / "sample-02.json",
+        enforce_clean_tree=False,
+    )
+    assert second.consumed is True and second_provider.calls == 1
+    assert first.evidence is not None and second.evidence is not None
+    assert first.evidence.run_id != second.evidence.run_id
+    assert first.evidence.identity == second.evidence.identity
+    assert first.evidence.sample_index == 1 and second.evidence.sample_index == 2
+    assert first.evidence.identity.target_sample_count == 2
+    assert first.evidence.run_id == build_hybrid_run_id(identity, sample_index=1)
+    assert second.evidence.run_id == build_hybrid_run_id(identity, sample_index=2)
+
+    complete = runner.dry_run()
+    assert (complete["existing_sample_count"], complete["existing_sample_indexes"]) == (2, [1, 2])
+    assert complete["remaining_sample_count"] == 0 and complete["complete"] is True
+    factory_calls = 0
+
+    def forbidden_factory() -> CountingProvider:
+        nonlocal factory_calls
+        factory_calls += 1
+        return CountingProvider(_ir())
+
+    blocked = runner.run_live(
+        _evaluation_context(),
+        provider_factory=forbidden_factory,
+        output_path=tmp_path / "sample-03.json",
+        enforce_clean_tree=False,
+    )
+    assert blocked.status == "COHORT_ALREADY_COMPLETE"
+    assert blocked.provider_factory_constructed is False and factory_calls == 0
+
+
+def test_n2_resume_discovers_only_exact_matching_evidence(tmp_path: Path) -> None:
+    first_path = tmp_path / "sample-01.json"
+    runner = HybridSemanticIRRunner(
+        ROOT,
+        _context(),
+        target_sample_count=2,
+        cohort_purpose=HYBRID_REPLICATION_COHORT_PURPOSE,
+    )
+    first = runner.run_live(
+        _evaluation_context(),
+        provider_factory=lambda: CountingProvider(_ir()),
+        output_path=first_path,
+        enforce_clean_tree=False,
+    )
+    assert first.evidence_path == first_path
+    resumed = HybridSemanticIRRunner(
+        ROOT,
+        _context(),
+        target_sample_count=2,
+        cohort_purpose=HYBRID_REPLICATION_COHORT_PURPOSE,
+        existing_evidence_paths=(first_path,),
+    )
+    plan = resumed.dry_run()
+    assert plan["existing_sample_indexes"] == [1]
+    assert plan["next_sample_index"] == 2
+
+    baseline = run_fake_pipeline(
+        FakeProvider(_ir()),
+        _context(),
+        _evaluation_context(),
+        repo_root=ROOT,
+    )
+    baseline_path = tmp_path / "baseline.json"
+    write_evidence_atomic(baseline.evidence, baseline_path)
+    with pytest.raises(ValueError, match="HYBRID_COHORT_IDENTITY_MISMATCH"):
+        HybridSemanticIRRunner(
+            ROOT,
+            _context(),
+            target_sample_count=2,
+            cohort_purpose=HYBRID_REPLICATION_COHORT_PURPOSE,
+            existing_evidence_paths=(baseline_path,),
+        )
+
+
+def test_n2_evaluator_failure_consumes_sample_and_allows_next(tmp_path: Path) -> None:
+    failing_context = _evaluation_context()
+    failing_context["combat_role_profile"] = {"primary_role": "control", "secondary_roles": []}
+    runner = HybridSemanticIRRunner(
+        ROOT,
+        _context(),
+        target_sample_count=2,
+        cohort_purpose=HYBRID_REPLICATION_COHORT_PURPOSE,
+    )
+    first_provider = CountingProvider(_ir())
+    first = runner.run_live(
+        failing_context,
+        provider_factory=lambda: first_provider,
+        output_path=tmp_path / "fail-01.json",
+        enforce_clean_tree=False,
+    )
+    assert first.status == "HYBRID_SEMANTIC_IR_EVALUATOR_REJECTED"
+    assert first.consumed is True and first_provider.calls == 1
+    assert runner.dry_run()["next_sample_index"] == 2
+
+    second_provider = CountingProvider(_ir())
+    second = runner.run_live(
+        _evaluation_context(),
+        provider_factory=lambda: second_provider,
+        output_path=tmp_path / "pass-02.json",
+        enforce_clean_tree=False,
+    )
+    assert second.consumed is True and second_provider.calls == 1
+    assert runner.dry_run()["complete"] is True
+
+
+def test_n2_provider_failure_is_consumed_without_retry_and_allows_next(tmp_path: Path) -> None:
+    runner = HybridSemanticIRRunner(
+        ROOT,
+        _context(),
+        target_sample_count=2,
+        cohort_purpose=HYBRID_REPLICATION_COHORT_PURPOSE,
+    )
+    timed_out = CountingProvider(None, error="TIMEOUT")
+    first = runner.run_live(
+        _evaluation_context(),
+        provider_factory=lambda: timed_out,
+        output_path=tmp_path / "timeout-01.json",
+        enforce_clean_tree=False,
+    )
+    assert first.status == "HYBRID_SEMANTIC_IR_UNAVAILABLE"
+    assert first.consumed is True and timed_out.calls == 1 and timed_out.transport_attempts == 1
+    assert runner.dry_run()["existing_sample_indexes"] == [1]
+
+    second = runner.run_live(
+        _evaluation_context(),
+        provider_factory=lambda: CountingProvider(_ir()),
+        output_path=tmp_path / "after-timeout-02.json",
+        enforce_clean_tree=False,
+    )
+    assert second.consumed is True
+    assert runner.dry_run()["existing_sample_indexes"] == [1, 2]

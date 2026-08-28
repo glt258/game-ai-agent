@@ -44,6 +44,7 @@ HYBRID_EVIDENCE_VERSION_V020 = "character-skill-s2-hybrid-ir-shadow/0.2.0"
 HYBRID_EVIDENCE_VERSION = "character-skill-s2-hybrid-ir-shadow/0.3.0"
 HYBRID_EXPERIMENT = "character_skill_s2_hybrid_semantic_ir"
 HYBRID_RUN_ID_PREFIX = "cs-s2-hybrid-semantic-ir-v1"
+HYBRID_REPLICATION_COHORT_PURPOSE = "same-config-replication"
 HYBRID_DEFAULT_EVIDENCE_RELATIVE_PATH = "evals/results/character_skill_s2_hybrid_ir_run_01_v0.3.0.json"
 HYBRID_DEFAULT_TEMP_RELATIVE_PATH = "evals/results/.character_skill_s2_hybrid_ir_run_01_v0.3.0.json.tmp"
 HYBRID_FROZEN_REQUEST_CHARS = 1032
@@ -82,6 +83,9 @@ class HybridExperimentIdentity:
     response_mode: str = "json_object"
     feature_flag: str = "OFF"
     record_only: bool = True
+    # Optional cohort discriminator.  It is omitted from legacy identities so
+    # v0.2/v0.3 historical evidence keeps its original serialized shape.
+    cohort_purpose: str = ""
 
     @classmethod
     def from_mapping(cls, payload: Mapping[str, object]) -> "HybridExperimentIdentity":
@@ -93,14 +97,20 @@ class HybridExperimentIdentity:
             "response_mode", "feature_flag", "record_only",
         }
         context_expected = {"context_projection_version", "context_projection_digest"}
-        if not isinstance(payload, Mapping) or set(payload) not in (
-            base_expected,
-            base_expected | context_expected,
-        ):
+        cohort_expected = {"cohort_purpose"}
+        allowed_shapes = {
+            frozenset(base_expected),
+            frozenset(base_expected | context_expected),
+            frozenset(base_expected | cohort_expected),
+            frozenset(base_expected | context_expected | cohort_expected),
+        }
+        if not isinstance(payload, Mapping) or frozenset(payload) not in allowed_shapes:
             raise ValueError("HYBRID_IDENTITY_SCHEMA_INVALID")
         values = dict(payload)
-        if set(payload) == base_expected:
+        if "context_projection_version" not in values:
             values.update(context_projection_version="", context_projection_digest="")
+        if "cohort_purpose" not in values:
+            values["cohort_purpose"] = ""
         for key in (set(values) - {"timeout_seconds", "max_transport_retries", "target_sample_count", "record_only"}):
             if not isinstance(values[key], str):
                 raise ValueError("HYBRID_IDENTITY_FIELD_INVALID")
@@ -113,7 +123,11 @@ class HybridExperimentIdentity:
         for key in ("timeout_seconds", "max_transport_retries", "target_sample_count"):
             if isinstance(values[key], bool) or not isinstance(values[key], int):
                 raise ValueError("HYBRID_IDENTITY_FIELD_INVALID")
+        if values["target_sample_count"] < 1:
+            raise ValueError("HYBRID_IDENTITY_FIELD_INVALID")
         if not isinstance(values["record_only"], bool):
+            raise ValueError("HYBRID_IDENTITY_FIELD_INVALID")
+        if not isinstance(values["cohort_purpose"], str):
             raise ValueError("HYBRID_IDENTITY_FIELD_INVALID")
         return cls(**values)
 
@@ -141,6 +155,10 @@ class HybridExperimentIdentity:
                 raise ValueError("HYBRID_IDENTITY_FIELD_INVALID")
             payload["context_projection_version"] = self.context_projection_version
             payload["context_projection_digest"] = self.context_projection_digest
+        if not isinstance(self.cohort_purpose, str):
+            raise ValueError("HYBRID_IDENTITY_FIELD_INVALID")
+        if self.cohort_purpose:
+            payload["cohort_purpose"] = self.cohort_purpose
         return payload
 
 
@@ -389,6 +407,8 @@ def _identity(
     contract_version: str = "semantic-skill-plan-ir-contract/0.1.0",
     context_projection_version: str = "",
     context_projection_digest: str = "",
+    target_sample_count: int = 1,
+    cohort_purpose: str = "",
 ) -> HybridExperimentIdentity:
     source_commit = subprocess.check_output(
         ["git", "-C", str(repo_root), "rev-parse", "HEAD"], text=True
@@ -401,6 +421,8 @@ def _identity(
         case_id=case_id,
         context_projection_version=context_projection_version,
         context_projection_digest=context_projection_digest,
+        target_sample_count=target_sample_count,
+        cohort_purpose=cohort_purpose,
     )
 
 
@@ -461,24 +483,29 @@ def _run_pipeline(
     repo_root: Path | str,
     compiler_registry: SemanticMappingRegistry = DEFAULT_MAPPING_REGISTRY,
     sample_index: int = 1,
+    target_sample_count: int = 1,
+    cohort_purpose: str = "",
+    identity: HybridExperimentIdentity | None = None,
 ) -> FakePipelineResult:
     """Run every Hybrid layer after a provider adapter has been selected."""
 
     request = build_model_facing_request(context)
-    identity = _identity(
+    resolved_identity = identity or _identity(
         Path(repo_root),
         request.contract.digest,
         context.case_id,
         request.contract.version,
         context.context_projection_version,
         context.context_projection_digest,
+        target_sample_count,
+        cohort_purpose,
     )
-    run_id = build_hybrid_run_id(identity, sample_index=sample_index)
+    run_id = build_hybrid_run_id(resolved_identity, sample_index=sample_index)
     try:
         response = provider.complete(request.text)
     except HybridProviderInvocationError as error:
         return _failure(
-            identity,
+            resolved_identity,
             request,
             provider,
             "PROVIDER",
@@ -490,7 +517,7 @@ def _run_pipeline(
     try:
         payload = _parse_json(response)
     except (ValueError, json.JSONDecodeError):
-        return _failure(identity, request, provider, "JSON", "JSON_MALFORMED", SafeIRDiagnostics(), sample_index=sample_index)
+        return _failure(resolved_identity, request, provider, "JSON", "JSON_MALFORMED", SafeIRDiagnostics(), sample_index=sample_index)
     diagnostics = _shape_diagnostics(payload)
     try:
         ir = parse_semantic_ir(payload)
@@ -500,7 +527,7 @@ def _run_pipeline(
             "UNKNOWN_FIELD": "IR_UNKNOWN_FIELD",
             "IR_INVALID": "IR_WRONG_TYPE",
         }.get(error.code, "IR_OTHER_PARSE_FAILURE")
-        return _failure(identity, request, provider, "IR_PARSE", code, diagnostics, sample_index=sample_index)
+        return _failure(resolved_identity, request, provider, "IR_PARSE", code, diagnostics, sample_index=sample_index)
     try:
         validated = validate_skill_semantic_ir(ir)
     except SemanticIRValidationError as error:
@@ -510,7 +537,7 @@ def _run_pipeline(
         }.get(error.code, "IR_OTHER_VALIDATION_FAILURE")
         relationship = "INVALID_RELATIONSHIP" if "feedback" in error.path and "actor" in error.path else None
         return _failure(
-            identity,
+            resolved_identity,
             request,
             provider,
             "IR_VALIDATION",
@@ -523,13 +550,13 @@ def _run_pipeline(
     try:
         compiled = compile_skill_semantic_ir(validated, registry=compiler_registry)
     except SkillKitCompilerError as error:
-        return _failure(identity, request, provider, "COMPILER", error.code, diagnostics, semantic_ir_digest=validated.digest, sample_index=sample_index)
+        return _failure(resolved_identity, request, provider, "COMPILER", error.code, diagnostics, semantic_ir_digest=validated.digest, sample_index=sample_index)
     candidate_digest = compiled.candidate_digest
     try:
         parsed = parse_candidate(compiled.candidate.to_mapping())
     except Exception:
         return _failure(
-            identity,
+            resolved_identity,
             request,
             provider,
             "CANONICAL_PARSER",
@@ -542,7 +569,7 @@ def _run_pipeline(
         )
     if not isinstance(parsed, ProtocolSkillKitCandidate):
         return _failure(
-            identity,
+            resolved_identity,
             request,
             provider,
             "CANONICAL_PARSER",
@@ -557,7 +584,7 @@ def _run_pipeline(
         validate_reference_integrity(parsed)
     except SkillKitCompilerError:
         return _failure(
-            identity,
+            resolved_identity,
             request,
             provider,
             "REFERENCE_INTEGRITY",
@@ -572,7 +599,7 @@ def _run_pipeline(
     verdict = "PASS" if report.outcome == "PASS" else "EVALUATOR_" + report.outcome
     return FakePipelineResult(
         HybridEvidence(
-            identity,
+            resolved_identity,
             sample_index,
             run_id,
             _request_metrics(request),
@@ -602,6 +629,8 @@ def run_fake_pipeline(
     repo_root: Path | str,
     compiler_registry: SemanticMappingRegistry = DEFAULT_MAPPING_REGISTRY,
     sample_index: int = 1,
+    target_sample_count: int = 1,
+    cohort_purpose: str = "",
 ) -> FakePipelineResult:
     """Run the formal pipeline with an in-memory provider adapter."""
 
@@ -612,6 +641,8 @@ def run_fake_pipeline(
         repo_root=repo_root,
         compiler_registry=compiler_registry,
         sample_index=sample_index,
+        target_sample_count=target_sample_count,
+        cohort_purpose=cohort_purpose,
     )
 
 
@@ -797,8 +828,65 @@ def _default_hybrid_provider_factory() -> HybridProvider:
     )
 
 
+def _normalize_cohort_indexes(
+    indexes: tuple[int, ...] | list[int] | tuple[object, ...],
+    *,
+    target_sample_count: int,
+) -> tuple[int, ...]:
+    """Validate the contiguous, append-only state of a cohort."""
+
+    values = tuple(indexes)
+    if any(isinstance(index, bool) or not isinstance(index, int) for index in values):
+        raise ValueError("HYBRID_COHORT_SAMPLE_INDEX_INVALID")
+    if any(index < 1 or index > target_sample_count for index in values):
+        raise ValueError("HYBRID_COHORT_SAMPLE_INDEX_INVALID")
+    if values != tuple(sorted(values)) or len(set(values)) != len(values):
+        raise ValueError("HYBRID_COHORT_STATE_INVALID")
+    expected = tuple(range(1, len(values) + 1))
+    if values != expected:
+        raise ValueError("HYBRID_COHORT_STATE_INVALID")
+    return values
+
+
+def _discover_cohort_indexes(
+    evidence_paths: tuple[Path, ...],
+    *,
+    expected_identity: HybridExperimentIdentity,
+) -> tuple[int, ...]:
+    """Load explicitly supplied evidence and retain only exact cohort members.
+
+    Evidence files are never selected by filename.  Every existing path must
+    validate and carry the exact identity (including target and purpose) of the
+    runner's cohort, otherwise the fail-closed mismatch is surfaced before a
+    provider factory can be constructed.
+    """
+
+    indexes: list[int] = []
+    for path in evidence_paths:
+        if not path.exists():
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            validate_hybrid_evidence(payload)
+            identity = HybridExperimentIdentity.from_mapping(payload["identity"])
+            sample_index = payload["sample_index"]
+        except (OSError, ValueError, TypeError, json.JSONDecodeError, KeyError):
+            raise ValueError("HYBRID_COHORT_EVIDENCE_INVALID") from None
+        if identity != expected_identity:
+            raise ValueError("HYBRID_COHORT_IDENTITY_MISMATCH")
+        if isinstance(sample_index, bool) or not isinstance(sample_index, int):
+            raise ValueError("HYBRID_COHORT_SAMPLE_INDEX_INVALID")
+        indexes.append(sample_index)
+    return _normalize_cohort_indexes(indexes, target_sample_count=expected_identity.target_sample_count)
+
+
 class HybridSemanticIRRunner:
-    """Independent H3 cohort planner with a provider-free dry-run seam."""
+    """Formal cohort planner with a provider-free dry-run seam.
+
+    A runner invocation still consumes exactly one observation.  The cohort
+    state only controls which deterministic sample index is legal next and
+    whether the provider may be constructed at all.
+    """
 
     def __init__(
         self,
@@ -807,33 +895,61 @@ class HybridSemanticIRRunner:
         *,
         target_sample_count: int = 1,
         existing_sample_indexes: tuple[int, ...] = (),
+        existing_evidence_paths: tuple[Path | str, ...] = (),
+        cohort_purpose: str = "",
     ) -> None:
-        if target_sample_count != 1:
-            raise ValueError("H2 dry-run only supports independent N=1")
+        if isinstance(target_sample_count, bool) or not isinstance(target_sample_count, int) or target_sample_count < 1:
+            raise ValueError("HYBRID_TARGET_SAMPLE_COUNT_INVALID")
+        if not isinstance(cohort_purpose, str):
+            raise ValueError("HYBRID_COHORT_PURPOSE_INVALID")
         self.repo_root = Path(repo_root)
         self.context = context
         self.target_sample_count = target_sample_count
-        self.existing_sample_indexes = tuple(sorted(existing_sample_indexes))
+        self.cohort_purpose = cohort_purpose
+        self.existing_evidence_paths = tuple(Path(path).resolve() for path in existing_evidence_paths)
 
-    def dry_run(self) -> dict[str, object]:
-        contract = build_model_facing_request(self.context).contract
-        existing = len(self.existing_sample_indexes)
-        next_index = (self.existing_sample_indexes[-1] + 1) if self.existing_sample_indexes else 1
-        remaining = max(self.target_sample_count - existing, 0)
-        identity = _identity(
+        request = build_model_facing_request(self.context)
+        self._identity = _identity(
             self.repo_root,
-            contract.digest,
+            request.contract.digest,
             self.context.case_id,
-            contract.version,
+            request.contract.version,
             self.context.context_projection_version,
             self.context.context_projection_digest,
+            target_sample_count=self.target_sample_count,
+            cohort_purpose=self.cohort_purpose,
         )
-        sample_index = (self.existing_sample_indexes[-1] + 1) if self.existing_sample_indexes else 1
+        explicit_indexes = _normalize_cohort_indexes(
+            existing_sample_indexes,
+            target_sample_count=self.target_sample_count,
+        )
+        discovered_indexes = _discover_cohort_indexes(
+            self.existing_evidence_paths,
+            expected_identity=self._identity,
+        )
+        if explicit_indexes and discovered_indexes and explicit_indexes != discovered_indexes:
+            raise ValueError("HYBRID_COHORT_STATE_MISMATCH")
+        self.existing_sample_indexes = discovered_indexes or explicit_indexes
+
+    @property
+    def cohort_identity(self) -> HybridExperimentIdentity:
+        """Return the identity bound to this cohort, without provider access."""
+
+        return self._identity
+
+    def _next_sample_index(self) -> int:
+        return len(self.existing_sample_indexes) + 1
+
+    def dry_run(self) -> dict[str, object]:
+        existing = len(self.existing_sample_indexes)
+        next_index = self._next_sample_index()
+        remaining = max(self.target_sample_count - existing, 0)
+        sample_index = next_index
         return {
             "status": "dry_run_hybrid_semantic_ir",
-            "identity": identity.to_mapping(),
+            "identity": self._identity.to_mapping(),
             "sample_index": sample_index,
-            "run_id": build_hybrid_run_id(identity, sample_index=sample_index),
+            "run_id": build_hybrid_run_id(self._identity, sample_index=sample_index),
             "target_sample_count": self.target_sample_count,
             "existing_sample_count": existing,
             "existing_sample_indexes": list(self.existing_sample_indexes),
@@ -852,21 +968,30 @@ class HybridSemanticIRRunner:
         provider_factory: Callable[[], HybridProvider] | None = None,
         output_path: Path | str | None = None,
         expected_run_id: str | None = None,
-        sample_index: int = 1,
+        sample_index: int | None = None,
         enforce_clean_tree: bool = True,
         compiler_registry: SemanticMappingRegistry = DEFAULT_MAPPING_REGISTRY,
     ) -> HybridLiveResult:
-        """Execute exactly one frozen H3 observation after all safety gates pass.
+        """Execute exactly one observation after all safety gates pass.
 
         The default factory is intentionally resolved only after pre-provider
         checks. Tests inject an adapter at this seam; production remains
         RECORD_ONLY and never activates the character-generation path.
         """
 
-        if sample_index != 1:
+        if self.existing_sample_indexes and self._next_sample_index() > self.target_sample_count:
+            return _blocked_live_result("COHORT_ALREADY_COMPLETE")
+        next_index = self._next_sample_index()
+        if sample_index is None:
+            sample_index = next_index
+        if isinstance(sample_index, bool) or not isinstance(sample_index, int):
             return _blocked_live_result("BLOCKED_INVALID_HYBRID_COHORT_STATE")
-        if self.target_sample_count != 1 or self.existing_sample_indexes:
-            return _blocked_live_result("COHORT_ALREADY_COMPLETE" if self.existing_sample_indexes == (1,) else "BLOCKED_INVALID_HYBRID_COHORT_STATE")
+        if sample_index != next_index or sample_index > self.target_sample_count:
+            return _blocked_live_result(
+                "COHORT_ALREADY_COMPLETE"
+                if next_index > self.target_sample_count
+                else "BLOCKED_INVALID_HYBRID_COHORT_STATE"
+            )
         request = build_model_facing_request(self.context)
         metrics = request.metrics.to_mapping()
         if self.context.contract_profile == "frozen_h3" and (
@@ -888,20 +1013,25 @@ class HybridSemanticIRRunner:
             ).strip()
             if dirty:
                 return _blocked_live_result("BLOCKED_SOURCE_BASELINE_DRIFT")
-        identity = _identity(
+        identity = self._identity
+        current_identity = _identity(
             self.repo_root,
             request.contract.digest,
             self.context.case_id,
             request.contract.version,
             self.context.context_projection_version,
             self.context.context_projection_digest,
+            target_sample_count=self.target_sample_count,
+            cohort_purpose=self.cohort_purpose,
         )
+        if current_identity != identity:
+            return _blocked_live_result("BLOCKED_HYBRID_IDENTITY_DRIFT")
         run_id = build_hybrid_run_id(identity, sample_index=sample_index)
         if expected_run_id is not None and expected_run_id != run_id:
             return _blocked_live_result("BLOCKED_HYBRID_IDENTITY_DRIFT")
         destination = (Path(output_path) if output_path is not None else self.repo_root / HYBRID_DEFAULT_EVIDENCE_RELATIVE_PATH).resolve()
         if destination.exists():
-            return _blocked_live_result("COHORT_ALREADY_COMPLETE")
+            return _blocked_live_result("COHORT_SAMPLE_ALREADY_RECORDED")
         if not os.environ.get("NPC_LLM_API_KEY", "").strip():
             return _blocked_live_result("BLOCKED_PROVIDER_CREDENTIAL_MISSING")
         factory = provider_factory or _default_hybrid_provider_factory
@@ -918,9 +1048,15 @@ class HybridSemanticIRRunner:
             repo_root=self.repo_root,
             compiler_registry=compiler_registry,
             sample_index=sample_index,
+            target_sample_count=self.target_sample_count,
+            cohort_purpose=self.cohort_purpose,
+            identity=identity,
         )
         evidence_path = write_evidence_atomic(pipeline.evidence, destination)
         evidence = pipeline.evidence
+        self.existing_sample_indexes = tuple((*self.existing_sample_indexes, sample_index))
+        if destination not in self.existing_evidence_paths:
+            self.existing_evidence_paths = (*self.existing_evidence_paths, destination)
         return HybridLiveResult(
             status=_live_status(evidence),
             consumed=provider.calls > 0,
@@ -947,6 +1083,7 @@ __all__ = [
     "HYBRID_EVIDENCE_VERSION_V020",
     "HYBRID_EXPERIMENT",
     "HYBRID_RUN_ID_PREFIX",
+    "HYBRID_REPLICATION_COHORT_PURPOSE",
     "HybridEvidence",
     "HybridExperimentIdentity",
     "HybridLiveResult",

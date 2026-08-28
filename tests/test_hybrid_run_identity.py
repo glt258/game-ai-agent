@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from character_intelligence.hybrid_ir import (
+    HYBRID_REPLICATION_COHORT_PURPOSE,
     HYBRID_RUN_ID_PREFIX,
     HybridExperimentIdentity,
     HybridGenerationContext,
@@ -115,6 +116,20 @@ def test_identity_mapping_round_trip_and_schema_fail_closed() -> None:
         HybridExperimentIdentity.from_mapping({**identity.to_mapping(), "unexpected": True})
     with pytest.raises(ValueError, match="HYBRID_IDENTITY_FIELD_INVALID"):
         HybridExperimentIdentity.from_mapping({**identity.to_mapping(), "timeout_seconds": True})
+
+
+def test_replication_identity_optional_purpose_round_trips_without_legacy_field() -> None:
+    identity = HybridExperimentIdentity(
+        **{
+            **_identity().to_mapping(),
+            "target_sample_count": 2,
+            "cohort_purpose": HYBRID_REPLICATION_COHORT_PURPOSE,
+        }
+    )
+    mapping = identity.to_mapping()
+    assert mapping["cohort_purpose"] == HYBRID_REPLICATION_COHORT_PURPOSE
+    assert HybridExperimentIdentity.from_mapping(mapping) == identity
+    assert "cohort_purpose" not in _identity().to_mapping()
 
 
 def test_evidence_run_id_recomputes_and_rejects_tampering() -> None:
