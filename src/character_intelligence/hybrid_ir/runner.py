@@ -8,10 +8,12 @@ import os
 import re
 import subprocess
 import tempfile
+import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
+from typing import Callable, Protocol, runtime_checkable
 
 from character_skill.contract import parse_candidate
 from character_skill.evaluation import evaluate
@@ -37,6 +39,11 @@ from .projection import HybridGenerationContext
 HYBRID_EVIDENCE_VERSION = "character-skill-s2-hybrid-ir-shadow/0.2.0"
 HYBRID_EXPERIMENT = "character_skill_s2_hybrid_semantic_ir"
 HYBRID_RUN_ID_PREFIX = "cs-s2-hybrid-semantic-ir-v1"
+HYBRID_DEFAULT_EVIDENCE_RELATIVE_PATH = "evals/results/character_skill_s2_hybrid_ir_run_01_v0.2.0.json"
+HYBRID_DEFAULT_TEMP_RELATIVE_PATH = "evals/results/.character_skill_s2_hybrid_ir_run_01_v0.2.0.json.tmp"
+HYBRID_FROZEN_REQUEST_CHARS = 1032
+HYBRID_FROZEN_REQUEST_BYTES = 1032
+HYBRID_FROZEN_CONTRACT_DIGEST = "8716a5770d4b1d12c92c546990b5274d7de4f95528cbd06445540a404efa806b"
 _RUN_ID_RE = re.compile(rf"^{re.escape(HYBRID_RUN_ID_PREFIX)}-sample-\d{{2,}}-[0-9a-f]{{64}}$")
 FIRST_FAILURE_LAYERS = (
     "PROVIDER",
@@ -111,6 +118,85 @@ class HybridExperimentIdentity:
             "record_only": self.record_only,
         }
 
+
+@runtime_checkable
+class HybridProvider(Protocol):
+    """Provider adapter seam consumed by the formal Hybrid executor."""
+
+    calls: int
+    transport_attempts: int
+    latency_ms: float | None
+    outcome: str
+
+    def complete(self, request_text: str) -> object: ...
+
+
+class HybridProviderInvocationError(RuntimeError):
+    """Safe provider failure with no raw transport details."""
+
+    def __init__(self, outcome: str) -> None:
+        if outcome not in {"TIMEOUT", "TRANSPORT_FAILURE"}:
+            raise ValueError("unsupported Hybrid provider outcome")
+        self.outcome = outcome
+        super().__init__(outcome)
+
+
+class OpenCodeGoHybridProvider:
+    """Shared OpenAI-compatible transport adapter for the Hybrid seam."""
+
+    def __init__(self, client: object, *, model: str, timeout_seconds: int) -> None:
+        self._client = client
+        self._model = model
+        self._timeout_seconds = timeout_seconds
+        self.calls = 0
+        self.transport_attempts = 0
+        self.latency_ms: float | None = None
+        self.outcome = "NOT_CALLED"
+
+    def complete(self, request_text: str) -> object:
+        from agents.provider_protocol import (
+            NegotiatedResponseContract,
+            ProviderClientError,
+            ResponseMode,
+        )
+
+        self.calls += 1
+        self.transport_attempts += 1
+        started = time.monotonic()
+        try:
+            response = self._client.complete(
+                model=self._model,
+                messages=({"role": "user", "content": request_text},),
+                tools=(),
+                timeout_seconds=self._timeout_seconds,
+                response_contract=NegotiatedResponseContract("hybrid_semantic_ir", ResponseMode.JSON_OBJECT),
+            )
+        except ProviderClientError as error:
+            self.latency_ms = (time.monotonic() - started) * 1000
+            self.outcome = "TIMEOUT" if error.kind == "timeout" else "TRANSPORT_FAILURE"
+            raise HybridProviderInvocationError(self.outcome) from None
+        self.latency_ms = (time.monotonic() - started) * 1000
+        self.outcome = "SUCCESS"
+        return response.text
+
+
+@dataclass(frozen=True)
+class HybridLiveResult:
+    """Safe result for one formal Hybrid execution or pre-provider block."""
+
+    status: str
+    consumed: bool
+    provider_factory_constructed: bool
+    provider_called: bool
+    transport_attempts: int
+    latency_ms: float | None
+    provider_outcome: str
+    first_failure_layer: str | None
+    stages: Mapping[str, str]
+    evidence: HybridEvidence | None = None
+    evidence_path: Path | None = None
+    candidate: ProtocolSkillKitCandidate | None = field(default=None, repr=False)
+    report: SkillValidationReport | None = field(default=None, repr=False)
 
 def _canonical_identity_payload(identity: HybridExperimentIdentity, sample_index: int) -> dict[str, object]:
     if isinstance(sample_index, bool) or not isinstance(sample_index, int) or sample_index < 1:
@@ -225,10 +311,15 @@ class FakeProvider:
     def __init__(self, response: object) -> None:
         self.response = response
         self.calls = 0
+        self.transport_attempts = 0
+        self.latency_ms: float | None = 0.0
+        self.outcome = "NOT_CALLED"
 
     def complete(self, request_text: str) -> object:
         del request_text
         self.calls += 1
+        self.transport_attempts += 1
+        self.outcome = "SUCCESS"
         return self.response
 
 
@@ -278,7 +369,7 @@ def _parse_json(response: object) -> object:
 def _failure(
     identity: HybridExperimentIdentity,
     request: ModelFacingRequest,
-    provider: FakeProvider,
+    provider: HybridProvider,
     layer: str,
     code: str,
     diagnostics: SafeIRDiagnostics,
@@ -305,7 +396,7 @@ def _failure(
         code,
         principal_verdict,
         provider.calls > 0,
-        provider.calls,
+        provider.transport_attempts,
         parser_invoked,
         evaluator_invoked,
         evaluator_outcome,
@@ -316,8 +407,8 @@ def _failure(
     return FakePipelineResult(evidence)
 
 
-def run_fake_pipeline(
-    provider: FakeProvider,
+def _run_pipeline(
+    provider: HybridProvider,
     context: HybridGenerationContext,
     evaluation_context: Mapping[str, object],
     *,
@@ -325,12 +416,24 @@ def run_fake_pipeline(
     compiler_registry: SemanticMappingRegistry = DEFAULT_MAPPING_REGISTRY,
     sample_index: int = 1,
 ) -> FakePipelineResult:
-    """Run every H3 layer using an in-memory provider and safe evidence only."""
+    """Run every Hybrid layer after a provider adapter has been selected."""
 
     request = build_model_facing_request(context)
     identity = _identity(Path(repo_root), request.contract.digest)
     run_id = build_hybrid_run_id(identity, sample_index=sample_index)
-    response = provider.complete(request.text)
+    try:
+        response = provider.complete(request.text)
+    except HybridProviderInvocationError as error:
+        return _failure(
+            identity,
+            request,
+            provider,
+            "PROVIDER",
+            "PROVIDER_TIMEOUT" if error.outcome == "TIMEOUT" else "PROVIDER_TRANSPORT_FAILURE",
+            SafeIRDiagnostics(),
+            principal_verdict="UNAVAILABLE",
+            sample_index=sample_index,
+        )
     try:
         payload = _parse_json(response)
     except (ValueError, json.JSONDecodeError):
@@ -424,7 +527,7 @@ def run_fake_pipeline(
             None if report.outcome == "PASS" else report.outcome,
             verdict,
             provider.calls > 0,
-            provider.calls,
+            provider.transport_attempts,
             True,
             True,
             report.outcome,
@@ -434,6 +537,27 @@ def run_fake_pipeline(
         ),
         parsed,
         report,
+    )
+
+
+def run_fake_pipeline(
+    provider: FakeProvider,
+    context: HybridGenerationContext,
+    evaluation_context: Mapping[str, object],
+    *,
+    repo_root: Path | str,
+    compiler_registry: SemanticMappingRegistry = DEFAULT_MAPPING_REGISTRY,
+    sample_index: int = 1,
+) -> FakePipelineResult:
+    """Run the formal pipeline with an in-memory provider adapter."""
+
+    return _run_pipeline(
+        provider,
+        context,
+        evaluation_context,
+        repo_root=repo_root,
+        compiler_registry=compiler_registry,
+        sample_index=sample_index,
     )
 
 
@@ -508,6 +632,83 @@ def write_evidence_atomic(evidence: HybridEvidence | Mapping[str, object], path:
     return target
 
 
+def _stage_statuses(first_failure_layer: str | None) -> Mapping[str, str]:
+    if first_failure_layer is None:
+        return MappingProxyType({layer.lower(): "PASS" for layer in FIRST_FAILURE_LAYERS})
+    failed = FIRST_FAILURE_LAYERS.index(first_failure_layer)
+    return MappingProxyType(
+        {
+            layer.lower(): ("PASS" if index < failed else "FAIL" if index == failed else "NOT_REACHED")
+            for index, layer in enumerate(FIRST_FAILURE_LAYERS)
+        }
+    )
+
+
+def _live_status(evidence: HybridEvidence) -> str:
+    if evidence.first_failure_layer == "PROVIDER":
+        return "HYBRID_SEMANTIC_IR_UNAVAILABLE"
+    if evidence.first_failure_layer == "JSON":
+        return "HYBRID_SEMANTIC_IR_JSON_REJECTED"
+    if evidence.first_failure_layer in {"IR_PARSE", "IR_VALIDATION"}:
+        return "HYBRID_SEMANTIC_IR_IR_REJECTED"
+    if evidence.first_failure_layer == "COMPILER":
+        return "HYBRID_COMPILER_FAILURE"
+    if evidence.first_failure_layer == "CANONICAL_PARSER":
+        return "HYBRID_POST_COMPILE_CANONICAL_DEFECT"
+    if evidence.first_failure_layer == "REFERENCE_INTEGRITY":
+        return "HYBRID_POST_COMPILE_REFERENCE_DEFECT"
+    if evidence.first_failure_layer == "EVALUATOR":
+        return (
+            "HYBRID_SEMANTIC_IR_EVALUATOR_REPAIR"
+            if evidence.evaluator_outcome == "REPAIR"
+            else "HYBRID_SEMANTIC_IR_EVALUATOR_REJECTED"
+        )
+    return "HYBRID_SEMANTIC_IR_END_TO_END_PASS"
+
+
+def _blocked_live_result(status: str) -> HybridLiveResult:
+    return HybridLiveResult(
+        status=status,
+        consumed=False,
+        provider_factory_constructed=False,
+        provider_called=False,
+        transport_attempts=0,
+        latency_ms=None,
+        provider_outcome="NOT_CALLED",
+        first_failure_layer=None,
+        stages=MappingProxyType({layer.lower(): "NOT_REACHED" for layer in FIRST_FAILURE_LAYERS}),
+    )
+
+
+def _default_hybrid_provider_factory() -> HybridProvider:
+    from agents.model_factory import LiveLLMSettings
+    from agents.openai_provider import OpenAIChatClient
+
+    api_key = os.environ.get("NPC_LLM_API_KEY", "").strip()
+    environment = {
+        "NPC_AGENT_MODEL": "live",
+        "NPC_LLM_PROVIDER": "opencode_go",
+        "NPC_LLM_MODEL": "deepseek-v4-pro",
+        "NPC_LLM_TRANSPORT": "openai_chat_completions",
+        "NPC_LLM_STRUCTURED_OUTPUT": "json_object",
+        "NPC_LLM_TIMEOUT_SECONDS": "60",
+        "NPC_LLM_MAX_RETRIES": "0",
+        "NPC_LLM_API_KEY": api_key,
+    }
+    settings = LiveLLMSettings.from_environment(environment)
+    client = OpenAIChatClient(
+        api_key=settings.api_key,
+        base_url=settings.base_url,
+        timeout_seconds=settings.timeout_seconds,
+        request_options=settings.profile.provider_options,
+    )
+    return OpenCodeGoHybridProvider(
+        client,
+        model=settings.model,
+        timeout_seconds=int(settings.timeout_seconds),
+    )
+
+
 class HybridSemanticIRRunner:
     """Independent H3 cohort planner with a provider-free dry-run seam."""
 
@@ -549,9 +750,89 @@ class HybridSemanticIRRunner:
             "transport_attempts": 0,
         }
 
+    def run_live(
+        self,
+        evaluation_context: Mapping[str, object],
+        *,
+        provider_factory: Callable[[], HybridProvider] | None = None,
+        output_path: Path | str | None = None,
+        expected_run_id: str | None = None,
+        sample_index: int = 1,
+        enforce_clean_tree: bool = True,
+        compiler_registry: SemanticMappingRegistry = DEFAULT_MAPPING_REGISTRY,
+    ) -> HybridLiveResult:
+        """Execute exactly one frozen H3 observation after all safety gates pass.
+
+        The default factory is intentionally resolved only after pre-provider
+        checks. Tests inject an adapter at this seam; production remains
+        RECORD_ONLY and never activates the character-generation path.
+        """
+
+        if sample_index != 1:
+            return _blocked_live_result("BLOCKED_INVALID_HYBRID_COHORT_STATE")
+        if self.target_sample_count != 1 or self.existing_sample_indexes:
+            return _blocked_live_result("COHORT_ALREADY_COMPLETE" if self.existing_sample_indexes == (1,) else "BLOCKED_INVALID_HYBRID_COHORT_STATE")
+        request = build_model_facing_request(self.context)
+        metrics = request.metrics.to_mapping()
+        if (
+            metrics["total_chars"] != HYBRID_FROZEN_REQUEST_CHARS
+            or metrics["total_bytes"] != HYBRID_FROZEN_REQUEST_BYTES
+            or request.contract.digest != HYBRID_FROZEN_CONTRACT_DIGEST
+        ):
+            return _blocked_live_result("BLOCKED_HYBRID_REQUEST_DRIFT")
+        if enforce_clean_tree:
+            dirty = subprocess.check_output(
+                ["git", "-C", str(self.repo_root), "status", "--porcelain", "--untracked-files=no"],
+                text=True,
+            ).strip()
+            if dirty:
+                return _blocked_live_result("BLOCKED_SOURCE_BASELINE_DRIFT")
+        identity = _identity(self.repo_root, request.contract.digest)
+        run_id = build_hybrid_run_id(identity, sample_index=sample_index)
+        if expected_run_id is not None and expected_run_id != run_id:
+            return _blocked_live_result("BLOCKED_HYBRID_IDENTITY_DRIFT")
+        destination = (Path(output_path) if output_path is not None else self.repo_root / HYBRID_DEFAULT_EVIDENCE_RELATIVE_PATH).resolve()
+        if destination.exists():
+            return _blocked_live_result("COHORT_ALREADY_COMPLETE")
+        if not os.environ.get("NPC_LLM_API_KEY", "").strip():
+            return _blocked_live_result("BLOCKED_PROVIDER_CREDENTIAL_MISSING")
+        factory = provider_factory or _default_hybrid_provider_factory
+        try:
+            provider = factory()
+        except Exception:
+            return _blocked_live_result("BLOCKED_PROVIDER_CONFIGURATION")
+        if not isinstance(provider, HybridProvider):
+            raise TypeError("provider_factory must return a HybridProvider")
+        pipeline = _run_pipeline(
+            provider,
+            self.context,
+            evaluation_context,
+            repo_root=self.repo_root,
+            compiler_registry=compiler_registry,
+            sample_index=sample_index,
+        )
+        evidence_path = write_evidence_atomic(pipeline.evidence, destination)
+        evidence = pipeline.evidence
+        return HybridLiveResult(
+            status=_live_status(evidence),
+            consumed=provider.calls > 0,
+            provider_factory_constructed=True,
+            provider_called=provider.calls > 0,
+            transport_attempts=provider.transport_attempts,
+            latency_ms=provider.latency_ms,
+            provider_outcome=provider.outcome,
+            first_failure_layer=evidence.first_failure_layer,
+            stages=_stage_statuses(evidence.first_failure_layer),
+            evidence=evidence,
+            evidence_path=evidence_path,
+            candidate=pipeline.candidate,
+            report=pipeline.report,
+        )
+
 
 __all__ = [
     "FIRST_FAILURE_LAYERS",
+    "HYBRID_DEFAULT_EVIDENCE_RELATIVE_PATH",
     "FakePipelineResult",
     "FakeProvider",
     "HYBRID_EVIDENCE_VERSION",
@@ -559,7 +840,11 @@ __all__ = [
     "HYBRID_RUN_ID_PREFIX",
     "HybridEvidence",
     "HybridExperimentIdentity",
+    "HybridLiveResult",
+    "HybridProvider",
+    "HybridProviderInvocationError",
     "HybridSemanticIRRunner",
+    "OpenCodeGoHybridProvider",
     "SafeIRDiagnostics",
     "build_hybrid_run_id",
     "run_fake_pipeline",
