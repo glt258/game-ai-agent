@@ -1,8 +1,10 @@
 """Offline model-facing Hybrid Semantic IR contract and fake runner."""
 
+from .case import HybridSemanticCase, build_authoritative_support_case
 from .contract import (
     FORBIDDEN_MODEL_TOKENS,
     MODEL_FACING_IR_CONTRACT_VERSION,
+    MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED,
     ModelFacingContract,
     ModelFacingRequest,
     RequestSectionMetrics,
@@ -19,6 +21,7 @@ from .diagnostics import (
     adapt_skill_validation_report,
 )
 from .projection import (
+    CONTEXT_CONTRACT_PROFILES,
     GLOBAL_STRUCTURAL_TRIGGER_EVENTS,
     PROJECTION_SOURCES,
     SEMANTIC_ACTORS,
@@ -57,6 +60,7 @@ from .runner import (
 
 __all__ = [
     "EnumDomainProjection",
+    "CONTEXT_CONTRACT_PROFILES",
     "FindingCategory",
     "GLOBAL_STRUCTURAL_TRIGGER_EVENTS",
     "FIRST_FAILURE_LAYERS",
@@ -78,7 +82,10 @@ __all__ = [
     "HybridProviderInvocationError",
     "HybridGenerationContext",
     "HybridSemanticIRRunner",
+    "HybridSemanticCase",
+    "build_authoritative_support_case",
     "MODEL_FACING_IR_CONTRACT_VERSION",
+    "MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED",
     "ModelFacingContract",
     "ModelFacingRequest",
     "PROJECTION_SOURCES",

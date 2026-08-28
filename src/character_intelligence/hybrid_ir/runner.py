@@ -359,11 +359,22 @@ def _request_metrics(request: ModelFacingRequest) -> Mapping[str, int]:
     return MappingProxyType(request.metrics.to_mapping())
 
 
-def _identity(repo_root: Path, contract_digest: str) -> HybridExperimentIdentity:
+def _identity(
+    repo_root: Path,
+    contract_digest: str,
+    case_id: str = "case_13",
+    contract_version: str = "semantic-skill-plan-ir-contract/0.1.0",
+) -> HybridExperimentIdentity:
     source_commit = subprocess.check_output(
         ["git", "-C", str(repo_root), "rev-parse", "HEAD"], text=True
     ).strip()
-    return HybridExperimentIdentity(HYBRID_EXPERIMENT, source_commit, model_facing_contract_digest=contract_digest)
+    return HybridExperimentIdentity(
+        HYBRID_EXPERIMENT,
+        source_commit,
+        model_facing_contract_version=contract_version,
+        model_facing_contract_digest=contract_digest,
+        case_id=case_id,
+    )
 
 
 def _parse_json(response: object) -> object:
@@ -427,7 +438,9 @@ def _run_pipeline(
     """Run every Hybrid layer after a provider adapter has been selected."""
 
     request = build_model_facing_request(context)
-    identity = _identity(Path(repo_root), request.contract.digest)
+    identity = _identity(
+        Path(repo_root), request.contract.digest, context.case_id, request.contract.version
+    )
     run_id = build_hybrid_run_id(identity, sample_index=sample_index)
     try:
         response = provider.complete(request.text)
@@ -775,7 +788,9 @@ class HybridSemanticIRRunner:
         existing = len(self.existing_sample_indexes)
         next_index = (self.existing_sample_indexes[-1] + 1) if self.existing_sample_indexes else 1
         remaining = max(self.target_sample_count - existing, 0)
-        identity = _identity(self.repo_root, contract.digest)
+        identity = _identity(
+            self.repo_root, contract.digest, self.context.case_id, contract.version
+        )
         sample_index = (self.existing_sample_indexes[-1] + 1) if self.existing_sample_indexes else 1
         return {
             "status": "dry_run_hybrid_semantic_ir",
@@ -816,6 +831,8 @@ class HybridSemanticIRRunner:
         if self.target_sample_count != 1 or self.existing_sample_indexes:
             return _blocked_live_result("COHORT_ALREADY_COMPLETE" if self.existing_sample_indexes == (1,) else "BLOCKED_INVALID_HYBRID_COHORT_STATE")
         request = build_model_facing_request(self.context)
+        if self.context.contract_profile != "frozen_h3":
+            return _blocked_live_result("BLOCKED_ALIGNMENT_CONFIGURATION_REQUIRES_REVIEW")
         metrics = request.metrics.to_mapping()
         if (
             metrics["total_chars"] != HYBRID_FROZEN_REQUEST_CHARS
@@ -830,7 +847,12 @@ class HybridSemanticIRRunner:
             ).strip()
             if dirty:
                 return _blocked_live_result("BLOCKED_SOURCE_BASELINE_DRIFT")
-        identity = _identity(self.repo_root, request.contract.digest)
+        identity = _identity(
+            self.repo_root,
+            request.contract.digest,
+            self.context.case_id,
+            request.contract.version,
+        )
         run_id = build_hybrid_run_id(identity, sample_index=sample_index)
         if expected_run_id is not None and expected_run_id != run_id:
             return _blocked_live_result("BLOCKED_HYBRID_IDENTITY_DRIFT")

@@ -20,6 +20,7 @@ from ..planner import CharacterDesignPlan
 PROJECTION_SOURCES = frozenset(
     {"REQUEST_ALLOWED", "PLAN_ALLOWED", "GLOBAL_STRUCTURAL", "VOCABULARY_REQUIRED"}
 )
+CONTEXT_CONTRACT_PROFILES = frozenset({"frozen_h3", "aligned_v1"})
 SEMANTIC_ACTORS = tuple(sorted(SUBJECT_KINDS - {"summon"}))
 SEMANTIC_INTENTS = ("enable_ally",)
 GLOBAL_STRUCTURAL_TRIGGER_EVENTS = (
@@ -54,6 +55,8 @@ class HybridGenerationContext:
 
     brief: str
     plan: CharacterDesignPlan | None = None
+    case_id: str = "case_13"
+    contract_profile: str = "frozen_h3"
     allowed_actors: tuple[str, ...] | None = None
     allowed_trigger_events: tuple[str, ...] | None = None
     allowed_feedback_events: tuple[str, ...] | None = None
@@ -66,6 +69,11 @@ class HybridGenerationContext:
         if not isinstance(self.brief, str) or not self.brief.strip():
             raise ValueError("brief must be a non-empty string")
         object.__setattr__(self, "brief", self.brief.strip())
+        if not isinstance(self.case_id, str) or not self.case_id.strip():
+            raise ValueError("case_id must be a non-empty string")
+        object.__setattr__(self, "case_id", self.case_id.strip())
+        if self.contract_profile not in CONTEXT_CONTRACT_PROFILES:
+            raise ValueError("unsupported contract profile")
         if self.plan is not None and not isinstance(self.plan, CharacterDesignPlan):
             raise TypeError("plan must be CharacterDesignPlan or None")
         for name in (
@@ -174,6 +182,7 @@ def project_semantic_enums(context: HybridGenerationContext) -> SemanticEnumProj
 
 __all__ = [
     "EnumDomainProjection",
+    "CONTEXT_CONTRACT_PROFILES",
     "HybridGenerationContext",
     "PROJECTION_SOURCES",
     "ProjectionError",

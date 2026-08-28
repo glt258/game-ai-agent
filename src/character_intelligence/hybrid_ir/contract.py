@@ -13,6 +13,7 @@ from .projection import (
 )
 
 MODEL_FACING_IR_CONTRACT_VERSION = "semantic-skill-plan-ir-contract/0.1.0"
+MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED = "semantic-skill-plan-ir-contract/0.2.0"
 FORBIDDEN_MODEL_TOKENS = (
     "schema_version",
     "ability_id",
@@ -93,14 +94,24 @@ class ModelFacingRequest:
     metrics: RequestSectionMetrics
 
 
-def _base_text() -> str:
-    return (
+def _base_text(*, aligned: bool = False) -> str:
+    text = (
         "Output exactly one JSON object for the semantic skill plan. Required root keys: "
         "ir_version, ability_name, summary, mode, role, centrality, mechanic, role_path. "
         "mechanic requires trigger, effect, feedback; feedback requires event, relation, "
         "response_trigger, response_effect; role_path requires trigger and effect. "
         "A trigger has actor, event, qualifier; an effect has actor, intent, description."
     )
+    if aligned:
+        text += (
+            " Semantic guidance: the trigger describes what starts a mechanic and the effect "
+            "describes its immediate gameplay consequence. Feedback describes downstream "
+            "continuation enabled or modified by the preceding mechanic; its response trigger "
+            "and response effect describe that continuation. The role path provides gameplay "
+            "evidence for the selected role, while centrality distinguishes core from secondary "
+            "evidence."
+        )
+    return text
 
 
 def _enum_text(projection: SemanticEnumProjection) -> str:
@@ -137,16 +148,18 @@ def build_model_facing_contract(context: HybridGenerationContext) -> ModelFacing
     """Build an example-free contract from public request/plan context."""
 
     projection = project_semantic_enums(context)
-    base, enum, suffix = _base_text(), _enum_text(projection), _suffix_text()
+    aligned = context.contract_profile == "aligned_v1"
+    version = MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED if aligned else MODEL_FACING_IR_CONTRACT_VERSION
+    base, enum, suffix = _base_text(aligned=aligned), _enum_text(projection), _suffix_text()
     contract = ModelFacingContract(
-        MODEL_FACING_IR_CONTRACT_VERSION,
+        version,
         "semantic-skill-plan-ir/0.1.0",
         base,
         enum,
         suffix,
         projection,
         _contract_digest(
-            MODEL_FACING_IR_CONTRACT_VERSION,
+            version,
             "semantic-skill-plan-ir/0.1.0",
             base,
             enum,
@@ -198,6 +211,7 @@ def build_model_facing_request(
 __all__ = [
     "FORBIDDEN_MODEL_TOKENS",
     "MODEL_FACING_IR_CONTRACT_VERSION",
+    "MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED",
     "ModelFacingContract",
     "ModelFacingRequest",
     "RequestSectionMetrics",
