@@ -14,7 +14,7 @@ from dataclasses import fields, is_dataclass
 from typing import Any
 
 from ._graph import DerivedGraph, build_graph, exists_in_other_namespace, resolve_ref
-from .context import VALIDATOR_CONTRACT, SkillValidationContext
+from .context import SkillValidationContext
 from .context import MechanicRequirement
 from .models import (
     AbilityEntry,
@@ -165,19 +165,6 @@ def _canonical_json(value: object) -> str:
         sort_keys=True,
         separators=(",", ":"),
     )
-
-
-def _context_plain(context: SkillValidationContext) -> dict[str, object]:
-    return {
-        "intent": _plain(context.intent),
-        "combat_role_profile": _plain(context.combat_role_profile),
-        "reference_review_context": _plain(context.reference_review_context),
-        "validator_contract": VALIDATOR_CONTRACT,
-    }
-
-
-def _context_digest(context: SkillValidationContext) -> str:
-    return hashlib.sha256(_canonical_json(_context_plain(context)).encode("utf-8")).hexdigest()
 
 
 def _report_digest(
@@ -1262,7 +1249,7 @@ def evaluate(
     else:
         outcome = "PASS"
     candidate_digest = candidate.digest
-    context_digest = _context_digest(context_value)
+    context_digest = context_value.digest
     return SkillValidationReport(
         outcome=outcome,
         blocking=outcome != "PASS",

@@ -1,0 +1,53 @@
+{
+  "schema_version": "character-skill-s2-shadow-evidence-manifest/0.2.1",
+  "protocol_version": "0.2.1",
+  "input_files": [
+    {
+      "path": "evals/fixtures/hermes_character_skill_s0_blind_cases_v0.1.1.json",
+      "sha256": "055505916bf82fc60cb55d2deb84b9aaacd7028431ac5d38d2f84791dd77fe90",
+      "role": "provider"
+    },
+    {
+      "path": "evals/fixtures/character_skill_interface_prototype_cases_v0.1.1.public.json",
+      "sha256": "11e936df853927154ace426c3a22e073b739b9b1dce536817851f70cf855ec04",
+      "role": "evaluator"
+    }
+  ],
+  "output_schema": {
+    "path": "evals/fixtures/character_skill_s2_shadow_evidence_output_schema_v0.2.1.json",
+    "sha256": "17a09972d2bef66d76b80d58688169780ab493b6b755515cf423d48a2276b7ef"
+  },
+  "provider": {
+    "name": "opencode_go",
+    "model_requested": "deepseek-v4-flash",
+    "transport": "openai_chat_completions",
+    "structured_output_mode": "json_object",
+    "response_contract": "character_skill_kit",
+    "candidate_schema_version": "skill-kit-candidate/0.1.1",
+    "timeout_seconds": 30,
+    "max_transport_retries": 2
+  },
+  "case_order": [
+    "case_01",
+    "case_13",
+    "case_19",
+    "case_02",
+    "case_03",
+    "case_04",
+    "case_05",
+    "case_06",
+    "case_07",
+    "case_08",
+    "case_09",
+    "case_10",
+    "case_11",
+    "case_12",
+    "case_14",
+    "case_15",
+    "case_16",
+    "case_17",
+    "case_18"
+  ],
+  "smoke_cases": ["case_01", "case_13", "case_19"],
+  "repeat_count": 3
+}

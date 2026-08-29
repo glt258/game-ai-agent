@@ -3,11 +3,13 @@
 The context parser is deliberately request-owned and fail-closed.  The
 evaluation report produced in this commit is structural-only; later reviewed
 commits may consume the same context for mechanic, role, or reference checks.
-No production caller is connected to this module yet.
+The production shadow evaluator supplies this context explicitly; provider
+adapters never receive it.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from collections.abc import Mapping, Sequence
@@ -413,6 +415,12 @@ class SkillValidationContext:
         payload = dict(self.to_mapping())
         payload["validator_contract"] = VALIDATOR_CONTRACT
         return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+    @property
+    def digest(self) -> str:
+        """Return the single canonical digest for this validation context."""
+
+        return hashlib.sha256(self.canonical_json().encode("utf-8")).hexdigest()
 
 
 __all__ = [

@@ -5,8 +5,9 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 
-from .errors import SkillKitShapeError
+from .errors import SkillKitShapeError, build_shape_diagnostic
 from .models import (
+    SCHEMA_VERSION,
     AbilityEntry,
     BehaviorProtocol,
     Effect,
@@ -15,14 +16,12 @@ from .models import (
     ProtocolSkillKitCandidate,
     ResourceLease,
     RoleEvidence,
-    SCHEMA_VERSION,
     StateLease,
     Subject,
     SummonLease,
     Trigger,
     TypedRef,
 )
-
 
 REF_KINDS = frozenset({"protocol", "effect", "resource", "state", "summon"})
 SUBJECT_KINDS = frozenset({"self", "ally", "team", "enemy", "scene", "summon"})
@@ -453,16 +452,20 @@ def _validate_unique_ids(candidate: ProtocolSkillKitCandidate, path: str) -> Non
 
 def parse_candidate(payload: Mapping[str, object]) -> ProtocolSkillKitCandidate | LegacyAbilityConcept:
     """Parse a strict candidate or the explicit legacy display seam."""
-
-    if not isinstance(payload, Mapping):
-        raise SkillKitShapeError("TYPE_MISMATCH", "/", "candidate must be an object")
-    if "skill_kit" in payload:
-        _require_exact_keys(payload, frozenset({"skill_kit"}), "")
-        return _parse_root(payload["skill_kit"], "/skill_kit")
-    if "ability_concept" in payload and "schema_version" not in payload:
-        _require_exact_keys(payload, frozenset({"ability_concept"}), "")
-        return LegacyAbilityConcept(_string(payload["ability_concept"], "/ability_concept"))
-    return _parse_root(payload, "")
+    try:
+        if not isinstance(payload, Mapping):
+            raise SkillKitShapeError("TYPE_MISMATCH", "/", "candidate must be an object")
+        if "skill_kit" in payload:
+            _require_exact_keys(payload, frozenset({"skill_kit"}), "")
+            return _parse_root(payload["skill_kit"], "/skill_kit")
+        if "ability_concept" in payload and "schema_version" not in payload:
+            _require_exact_keys(payload, frozenset({"ability_concept"}), "")
+            return LegacyAbilityConcept(_string(payload["ability_concept"], "/ability_concept"))
+        return _parse_root(payload, "")
+    except SkillKitShapeError as error:
+        if error.diagnostic is None:
+            error.attach_diagnostic(build_shape_diagnostic(payload, error))
+        raise
 
 
 __all__ = ["parse_candidate"]

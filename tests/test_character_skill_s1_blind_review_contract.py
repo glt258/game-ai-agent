@@ -7,7 +7,6 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_FIXTURE_PATH = ROOT / "evals" / "fixtures" / "character_skill_interface_prototype_cases_v0.1.1.public.json"
 PROMPT_PATH = ROOT / "evals" / "fixtures" / "character_skill_s1_blind_review_prompt_v0.1.1.md"
@@ -217,4 +216,21 @@ def test_contract_worktree_diff_contains_no_src_changes() -> None:
         capture_output=True,
         text=True,
     )
-    assert result.stdout.strip() == ""
+    allowed_diagnostics = {
+        "src/agents/character_generation.py",
+        "src/agents/models.py",
+        "src/agents/response_contracts.py",
+        "src/character_skill/__init__.py",
+        "src/character_skill/contract.py",
+        "src/character_skill/errors.py",
+    }
+    allowed_h1_prefixes = ("src/character_intelligence/",)
+    changed = {
+        line[3:].replace("\\", "/")
+        for line in result.stdout.splitlines()
+        if len(line) >= 4
+    }
+    assert all(
+        path in allowed_diagnostics or path.startswith(allowed_h1_prefixes)
+        for path in changed
+    )

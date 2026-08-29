@@ -20,12 +20,12 @@ from character_skill import (
     ProtocolSkillKitCandidate,
     SkillKitPatchError,
     SkillKitShapeError,
+    SkillValidationContext,
     evaluate,
     parse_candidate,
     render_ability_concept,
     repair_once,
 )
-
 
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_FIXTURE = (
@@ -314,3 +314,35 @@ def test_s2_gate_shadow_findings_do_not_mutate_legacy_draft() -> None:
     assert result.skill_shadow.validation_report.outcome == "REPAIR"
     assert result.draft.status == "draft"
     assert result.draft.ability_concept == result.skill_shadow.legacy_ability_concept
+
+
+@pytest.mark.parametrize(
+    ("case_id", "expected_outcome", "expected_code"),
+    [
+        ("case_13", "FAIL", "MECHANIC_SKELETON_ABSENT"),
+        ("case_19", "REPAIR", "REQUESTED_MECHANIC_UNREPRESENTED"),
+    ],
+)
+def test_s2_role_refactor_compatibility_preserves_case13_case19_semantics(
+    case_id: str, expected_outcome: str, expected_code: str
+) -> None:
+    candidate_payload, context_payload = _case(case_id)
+    model = _GateShadowModel(shadow=ModelTurn(structured_output=candidate_payload))
+    result = CharacterGenerationAgent(
+        model,
+        shadow_config=SkillShadowConfig(enabled=True),
+        retrieval_strategy="deterministic",
+    ).generate(
+        _request(f"compat_{case_id}"),
+        skill_shadow_context=SkillValidationContext.from_mapping(context_payload),
+    )
+
+    assert result.skill_shadow is not None
+    report = result.skill_shadow.validation_report
+    assert report is not None
+    assert report.outcome == expected_outcome
+    assert report.finding_codes == (expected_code,)
+    assert result.skill_shadow.audit.request_alignment_measured is True
+    assert result.skill_shadow.audit.context_digest == report.context_digest
+    assert result.draft.status == "draft"
+    assert sum(prompt.response_format == "character_skill_kit" for prompt in model.prompts) == 1

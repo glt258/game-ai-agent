@@ -10,6 +10,7 @@ from agents.character_generation import (
     DeterministicCharacterGenerationModel,
 )
 from agents.models import ModelInvocationAudit, ModelTurn, SkillShadowConfig
+from character_skill import SkillValidationContext
 
 
 def _candidate_payload() -> dict[str, object]:
@@ -61,11 +62,43 @@ class _ShadowModel:
         return self.legacy.generate(prompt)
 
 
+class _RecoveryProbeModel:
+    """Local legacy model plus one independent candidate response."""
+
+    def __init__(self, candidate_payload: dict[str, object]):
+        self.legacy = DeterministicCharacterGenerationModel()
+        self.candidate_payload = candidate_payload
+        self.prompts = []
+
+    def generate(self, prompt):
+        self.prompts.append(prompt)
+        if prompt.response_format == "character_skill_kit":
+            return ModelTurn(structured_output=self.candidate_payload)
+        if prompt.invocation_purpose == "character_draft_recovery":
+            return self.legacy.generate(prompt)
+        if prompt.response_format == "character_draft":
+            turn = self.legacy.generate(prompt)
+            payload = dict(turn.structured_output)
+            payload.pop("canon_basis")
+            return ModelTurn(structured_output=payload)
+        return self.legacy.generate(prompt)
+
+
 def _request() -> CharacterDesignRequest:
     return CharacterDesignRequest(
         "设计一个角色",
         request_id="shadow_request",
     )
+
+
+def _public_context(case_id: str) -> SkillValidationContext:
+    fixture = json.loads(
+        Path(
+            "evals/fixtures/character_skill_interface_prototype_cases_v0.1.1.public.json"
+        ).read_text(encoding="utf-8")
+    )
+    row = next(item for item in fixture["cases"] if item["case_id"] == case_id)
+    return SkillValidationContext.from_mapping(copy.deepcopy(row["context"]))
 
 
 def _enabled_model(**kwargs) -> _ShadowModel:
@@ -79,6 +112,17 @@ def test_skill_shadow_config_is_disabled_by_default():
     config = SkillShadowConfig()
 
     assert config.enabled is False
+
+
+def test_flag_off_ignores_explicit_context_without_reading_or_validating_it():
+    model = _ShadowModel()
+    result = CharacterGenerationAgent(model).generate(
+        _request(),
+        skill_shadow_context=object(),
+    )
+
+    assert result.skill_shadow is None
+    assert all(prompt.response_format != "character_skill_kit" for prompt in model.prompts)
 
 
 def test_disabled_shadow_has_exact_legacy_output_audit_and_call_parity():
@@ -127,6 +171,73 @@ def test_enabled_shadow_parses_and_structurally_validates_without_changing_draft
     assert shadow.ability_concept_diff["matches"] is False
     assert len([prompt for prompt in model.prompts if prompt.response_format == "character_skill_kit"]) == 1
     assert all(prompt.available_tools == () for prompt in model.prompts if prompt.response_format == "character_skill_kit")
+
+
+def test_deterministic_retrieval_keeps_context_digest_and_coverage_on_shadow_audit():
+    context = _public_context("case_19")
+    model = _enabled_model(payload=_repair_candidate_payload())
+    result = CharacterGenerationAgent(
+        model,
+        shadow_config=SkillShadowConfig(enabled=True),
+        retrieval_strategy="deterministic",
+    ).generate(_request(), skill_shadow_context=context)
+
+    assert result.skill_shadow is not None
+    assert result.skill_shadow.validation_report is not None
+    assert result.skill_shadow.audit.context_digest == context.digest
+    assert result.skill_shadow.validation_report.context_digest == context.digest
+    assert result.skill_shadow.audit.request_alignment_measured is True
+    assert result.skill_shadow.audit.reference_review_measured is False
+    assert sum(prompt.response_format == "character_skill_kit" for prompt in model.prompts) == 1
+
+
+def test_case15_reference_fingerprint_stays_out_of_shadow_prompt():
+    context = _public_context("case_15")
+    model = _enabled_model(payload=_candidate_payload())
+    result = CharacterGenerationAgent(
+        model,
+        shadow_config=SkillShadowConfig(enabled=True),
+        retrieval_strategy="deterministic",
+    ).generate(_request(), skill_shadow_context=context)
+
+    shadow_prompt = next(
+        prompt for prompt in model.prompts if prompt.response_format == "character_skill_kit"
+    )
+    serialized = json.dumps(
+        {
+            "system": shadow_prompt.system_contract,
+            "messages": [message.content for message in shadow_prompt.messages],
+            "payload": shadow_prompt.authoring_payload,
+            "runtime": shadow_prompt.runtime.__dict__ if hasattr(shadow_prompt.runtime, "__dict__") else repr(shadow_prompt.runtime),
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        default=str,
+    )
+    reference = context.reference_review_context
+    assert reference is not None
+    assert result.skill_shadow is not None
+    assert result.skill_shadow.audit.reference_review_measured is True
+    for fingerprint in reference.structural_fingerprints:
+        assert fingerprint.sha256 not in serialized
+        assert fingerprint.record_id not in serialized
+
+
+def test_role_refactor_recovery_does_not_add_candidate_provider_calls():
+    model = _RecoveryProbeModel(_candidate_payload())
+    result = CharacterGenerationAgent(
+        model,
+        shadow_config=SkillShadowConfig(enabled=True),
+        retrieval_strategy="deterministic",
+    ).generate(
+        _request(),
+        skill_shadow_context=_public_context("case_19"),
+    )
+
+    assert result.audit.contract_recovery.status == "applied"
+    assert result.skill_shadow is not None
+    assert sum(prompt.response_format == "character_skill_kit" for prompt in model.prompts) == 1
+    assert sum(prompt.invocation_purpose == "character_draft_recovery" for prompt in model.prompts) == 1
 
 
 def test_shadow_provider_failure_is_contained_and_not_added_to_legacy_audit():
