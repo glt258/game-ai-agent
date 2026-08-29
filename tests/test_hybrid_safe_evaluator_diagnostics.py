@@ -10,6 +10,7 @@ import pytest
 
 from character_intelligence.hybrid_ir import (
     SAFE_EVALUATOR_DIAGNOSTIC_VERSION,
+    SAFE_EVALUATOR_DIAGNOSTIC_VERSION_V010,
     FindingCategory,
     Repairability,
     SafeEvaluatorDiagnostics,
@@ -22,6 +23,7 @@ from tests.historical_fixtures import historical_fixture_path
 
 ROOT = Path(__file__).resolve().parents[1]
 HISTORICAL = historical_fixture_path("character_skill_s2_hybrid_ir_run_01_v0.2.0.json")
+HISTORICAL_DIAGNOSTIC = historical_fixture_path("character_skill_s2_hybrid_ir_run_01_v0.3.0.json")
 
 
 def _report(*findings: SkillFinding, outcome: str = "FAIL") -> SkillValidationReport:
@@ -148,3 +150,28 @@ def test_v030_diagnostic_schema_rejects_unknown_fields_and_bad_counts() -> None:
             {FindingCategory.ROLE_EVIDENCE_MISMATCH: 1},
             Repairability.NON_REPAIRABLE,
         )
+
+
+def test_v010_diagnostic_payload_remains_readable_after_wire_version_bump() -> None:
+    payload = json.loads(HISTORICAL_DIAGNOSTIC.read_text(encoding="utf-8"))
+    validate_hybrid_evidence(payload)
+    diagnostic = SafeEvaluatorDiagnostics.from_mapping(payload["evaluator_diagnostics"])
+    assert diagnostic.schema_version == SAFE_EVALUATOR_DIAGNOSTIC_VERSION_V010
+    assert diagnostic.to_mapping() == payload["evaluator_diagnostics"]
+
+
+def test_new_finding_codes_have_safe_semantic_dimensions() -> None:
+    report = _report(
+        SkillFinding("MECHANIC_MODE_MISMATCH", "/entries", False, False),
+        SkillFinding("CONTINUATION_FAMILY_MISMATCH", "/feedback_relations", False, False),
+    )
+    diagnostic = adapt_skill_validation_report(report)
+    assert diagnostic.schema_version == SAFE_EVALUATOR_DIAGNOSTIC_VERSION
+    assert diagnostic.complete is True
+    assert diagnostic.finding_count == 2
+    assert diagnostic.dimensions == (
+        SemanticDimension.CONTINUATION_FAMILY,
+        SemanticDimension.MODE,
+    )
+    assert diagnostic.categories == (FindingCategory.SEMANTIC_MISMATCH,)
+    assert diagnostic.repairability is Repairability.NON_REPAIRABLE

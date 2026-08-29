@@ -13,7 +13,10 @@ from character_intelligence.hybrid_ir import (
     HYBRID_MULTI_CASE_EXPERIMENT,
     MODEL_FACING_SCHEMA_PATHS,
     FakeProvider,
+    FindingCategory,
     HybridSemanticIRRunner,
+    SemanticDimension,
+    adapt_skill_validation_report,
     build_authoritative_case_registry,
     build_authoritative_generalization_cases,
     build_model_facing_request,
@@ -247,3 +250,82 @@ def test_continuation_family_requirements_reject_semantic_drift() -> None:
             finding.code == "CONTINUATION_FAMILY_MISMATCH"
             for finding in result.report.findings
         )
+
+
+def test_safe_diagnostics_classify_wrong_mode_only() -> None:
+    cases = _cases_by_id()
+    goldens = _goldens()
+    for case_id, wrong_mode in {
+        "generalization_control_v1": "passive",
+        "generalization_reaction_heal_v1": "active",
+    }.items():
+        payload = copy.deepcopy(goldens[case_id])
+        payload["mode"] = wrong_mode
+        result = run_fake_pipeline(
+            FakeProvider(payload),
+            cases[case_id].generation_context(),
+            cases[case_id].evaluation_context(),
+            repo_root=ROOT,
+        )
+        diagnostic = adapt_skill_validation_report(result.report)
+        assert [finding.code for finding in result.report.findings] == [
+            "MECHANIC_MODE_MISMATCH"
+        ]
+        assert diagnostic.complete is True
+        assert diagnostic.finding_count == 1
+        assert diagnostic.dimensions == (SemanticDimension.MODE,)
+        assert diagnostic.categories == (FindingCategory.SEMANTIC_MISMATCH,)
+
+
+def test_safe_diagnostics_classify_wrong_continuation_family_only() -> None:
+    cases = _cases_by_id()
+    goldens = _goldens()
+    for case_id, wrong_intent in {
+        "generalization_support_alternate_v1": "deal_damage",
+        "generalization_dps_v1": "enable_ally",
+        "generalization_control_v1": "deal_damage",
+        "generalization_reaction_heal_v1": "enable_ally",
+    }.items():
+        payload = copy.deepcopy(goldens[case_id])
+        payload["mechanic"]["feedback"]["response_effect"]["intent"] = wrong_intent
+        result = run_fake_pipeline(
+            FakeProvider(payload),
+            cases[case_id].generation_context(),
+            cases[case_id].evaluation_context(),
+            repo_root=ROOT,
+        )
+        diagnostic = adapt_skill_validation_report(result.report)
+        assert [finding.code for finding in result.report.findings] == [
+            "CONTINUATION_FAMILY_MISMATCH"
+        ]
+        assert diagnostic.complete is True
+        assert diagnostic.finding_count == 1
+        assert diagnostic.dimensions == (SemanticDimension.CONTINUATION_FAMILY,)
+        assert diagnostic.categories == (FindingCategory.SEMANTIC_MISMATCH,)
+
+
+def test_safe_diagnostics_preserve_distinct_dimensions_when_both_are_wrong() -> None:
+    case = _cases_by_id()["generalization_reaction_heal_v1"]
+    payload = copy.deepcopy(_goldens()[case.case_id])
+    payload["mode"] = "active"
+    payload["mechanic"]["feedback"]["response_effect"]["intent"] = "enable_ally"
+    result = run_fake_pipeline(
+        FakeProvider(payload),
+        case.generation_context(),
+        case.evaluation_context(),
+        repo_root=ROOT,
+    )
+    diagnostic = adapt_skill_validation_report(result.report)
+    assert {finding.code for finding in result.report.findings} == {
+        "MECHANIC_MODE_MISMATCH",
+        "CONTINUATION_FAMILY_MISMATCH",
+    }
+    assert diagnostic.complete is True
+    assert diagnostic.finding_count == 2
+    assert diagnostic.dimensions == (
+        SemanticDimension.CONTINUATION_FAMILY,
+        SemanticDimension.MODE,
+    )
+    assert diagnostic.categories == (FindingCategory.SEMANTIC_MISMATCH,)
+    assert "OTHER_SEMANTIC" not in diagnostic.to_mapping()["dimensions"]
+    assert "UNKNOWN" not in diagnostic.to_mapping()["categories"]

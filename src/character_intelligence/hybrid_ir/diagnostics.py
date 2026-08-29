@@ -13,10 +13,13 @@ from types import MappingProxyType
 
 from character_skill.models import SkillFinding, SkillValidationReport
 
-SAFE_EVALUATOR_DIAGNOSTIC_VERSION = "hybrid-safe-evaluator-diagnostics/0.1.0"
+SAFE_EVALUATOR_DIAGNOSTIC_VERSION = "hybrid-safe-evaluator-diagnostics/0.2.0"
+SAFE_EVALUATOR_DIAGNOSTIC_VERSION_V010 = "hybrid-safe-evaluator-diagnostics/0.1.0"
 
 
 class SemanticDimension(str, Enum):
+    MODE = "MODE"
+    CONTINUATION_FAMILY = "CONTINUATION_FAMILY"
     ROLE_ALIGNMENT = "ROLE_ALIGNMENT"
     ROLE_EVIDENCE = "ROLE_EVIDENCE"
     MECHANIC_SKELETON = "MECHANIC_SKELETON"
@@ -78,8 +81,22 @@ _M = {
     "STATE_EXIT_MISSING": (SemanticDimension.LIFECYCLE, FindingCategory.LIFECYCLE_INCOMPLETE),
     "SUMMON_LIFECYCLE_INCOMPLETE": (SemanticDimension.LIFECYCLE, FindingCategory.LIFECYCLE_INCOMPLETE),
     "REFERENCE_COPYING": (SemanticDimension.REFERENCE_AUTHORITY, FindingCategory.REFERENCE_POLICY),
+    "MECHANIC_MODE_MISMATCH": (SemanticDimension.MODE, FindingCategory.SEMANTIC_MISMATCH),
+    "CONTINUATION_FAMILY_MISMATCH": (
+        SemanticDimension.CONTINUATION_FAMILY,
+        FindingCategory.SEMANTIC_MISMATCH,
+    ),
 }
 RAW_FINDING_CODE_MAPPING = MappingProxyType(_M)
+
+_SUPPORTED_DIAGNOSTIC_VERSIONS = frozenset({
+    SAFE_EVALUATOR_DIAGNOSTIC_VERSION,
+    SAFE_EVALUATOR_DIAGNOSTIC_VERSION_V010,
+})
+_V010_DIMENSIONS = frozenset(SemanticDimension) - {
+    SemanticDimension.MODE,
+    SemanticDimension.CONTINUATION_FAMILY,
+}
 
 
 @dataclass(frozen=True)
@@ -96,7 +113,7 @@ class SafeEvaluatorDiagnostics:
     repairability: Repairability
 
     def __post_init__(self) -> None:
-        if self.schema_version != SAFE_EVALUATOR_DIAGNOSTIC_VERSION:
+        if self.schema_version not in _SUPPORTED_DIAGNOSTIC_VERSIONS:
             raise ValueError("SAFE_DIAGNOSTIC_VERSION_INVALID")
         if not isinstance(self.complete, bool):
             raise TypeError("complete must be bool")
@@ -120,6 +137,8 @@ class SafeEvaluatorDiagnostics:
             raise ValueError("SAFE_DIAGNOSTIC_CATEGORY_COUNTS_INVALID")
         if tuple(dimension_counts) != dimensions or tuple(category_counts) != categories:
             raise ValueError("SAFE_DIAGNOSTIC_KEYS_INVALID")
+        if self.schema_version == SAFE_EVALUATOR_DIAGNOSTIC_VERSION_V010 and not set(dimension_counts) <= _V010_DIMENSIONS:
+            raise ValueError("SAFE_DIAGNOSTIC_LEGACY_DIMENSION_INVALID")
         if not isinstance(self.repairability, Repairability):
             raise TypeError("repairability must be Repairability")
         if not self.complete:
@@ -248,6 +267,7 @@ __all__ = [
     "RAW_FINDING_CODE_MAPPING",
     "Repairability",
     "SAFE_EVALUATOR_DIAGNOSTIC_VERSION",
+    "SAFE_EVALUATOR_DIAGNOSTIC_VERSION_V010",
     "SafeEvaluatorDiagnostics",
     "SemanticDimension",
     "adapt_skill_validation_report",
