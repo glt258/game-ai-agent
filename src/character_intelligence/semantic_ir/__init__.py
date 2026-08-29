@@ -2,6 +2,8 @@
 
 from .schema import (
     SEMANTIC_EFFECT_INTENTS,
+    SEMANTIC_EFFECT_INTENTS_V2,
+    SEMANTIC_IR_V2_VERSION,
     SEMANTIC_IR_VERSION,
     SemanticEffect,
     SemanticFeedback,
@@ -10,6 +12,11 @@ from .schema import (
     SemanticRolePath,
     SemanticTrigger,
     SkillSemanticIR,
+    SkillSemanticIRV2,
+    TriggeredMechanicV2,
+    TriggeredRolePathV2,
+    PassiveMechanicV2,
+    PassiveRolePathV2,
     parse_semantic_ir,
 )
 from .validator import (
@@ -24,6 +31,8 @@ from .validator import (
 __all__ = [
     "MAX_TEXT_LENGTH",
     "SEMANTIC_EFFECT_INTENTS",
+    "SEMANTIC_EFFECT_INTENTS_V2",
+    "SEMANTIC_IR_V2_VERSION",
     "SEMANTIC_IR_VERSION",
     "SUPPORTED_SEMANTIC_ACTORS",
     "SemanticEffect",
@@ -35,6 +44,11 @@ __all__ = [
     "SemanticRolePath",
     "SemanticTrigger",
     "SkillSemanticIR",
+    "SkillSemanticIRV2",
+    "TriggeredMechanicV2",
+    "TriggeredRolePathV2",
+    "PassiveMechanicV2",
+    "PassiveRolePathV2",
     "ValidatedSkillSemanticIR",
     "validate_skill_semantic_ir",
     "parse_semantic_ir",

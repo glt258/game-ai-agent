@@ -18,7 +18,10 @@ from ..compiler import DEFAULT_MAPPING_REGISTRY, SemanticMappingRegistry
 from ..semantic_ir import (
     SemanticIRShapeError,
     SemanticIRValidationError,
+    SEMANTIC_IR_V2_VERSION,
+    SEMANTIC_IR_VERSION,
     SkillSemanticIR,
+    SkillSemanticIRV2,
     ValidatedSkillSemanticIR,
     parse_semantic_ir,
     validate_skill_semantic_ir,
@@ -41,8 +44,8 @@ from .runner import (
 
 MAX_REPAIR_ATTEMPTS = 1
 SEMANTIC_REPAIR_CONTRACT_VERSION = "semantic-skill-ir-repair-contract/0.2.0"
+SEMANTIC_REPAIR_CONTRACT_VERSION_V2 = "semantic-skill-ir-repair-contract/0.3.0"
 SEMANTIC_REPAIR_EVIDENCE_VERSION = "character-skill-s2-hybrid-ir-semantic-repair/0.1.0"
-SEMANTIC_IR_VERSION = "semantic-skill-plan-ir/0.1.0"
 
 
 @dataclass(frozen=True)
@@ -56,28 +59,48 @@ class SemanticRepairContract:
 
     def __post_init__(self) -> None:
         expected = hashlib.sha256(self.text.encode("utf-8")).hexdigest()
-        if self.version != SEMANTIC_REPAIR_CONTRACT_VERSION:
+        valid_pair = {
+            (SEMANTIC_REPAIR_CONTRACT_VERSION, SEMANTIC_IR_VERSION),
+            (SEMANTIC_REPAIR_CONTRACT_VERSION_V2, SEMANTIC_IR_V2_VERSION),
+        }
+        if (self.version, self.ir_version) not in valid_pair:
             raise ValueError("SEMANTIC_REPAIR_CONTRACT_VERSION_INVALID")
-        if self.ir_version != SEMANTIC_IR_VERSION:
-            raise ValueError("SEMANTIC_REPAIR_IR_VERSION_INVALID")
         if self.digest != expected:
             raise ValueError("SEMANTIC_REPAIR_CONTRACT_DIGEST_INVALID")
 
 
-def build_semantic_repair_contract() -> SemanticRepairContract:
-    text = (
-        f"Semantic skill IR repair contract {SEMANTIC_REPAIR_CONTRACT_VERSION}. "
-        f"Return exactly one JSON object using IR version {SEMANTIC_IR_VERSION}. "
-        "Required root keys: ir_version, ability_name, summary, mode, role, centrality, "
-        "mechanic, role_path. Mechanic requires trigger, effect, feedback; feedback "
-        "requires event, relation, response_trigger, response_effect; role_path requires "
-        "trigger and effect. A trigger has actor, event, qualifier; an effect has actor, "
-        "intent, description. Return the full corrected plan, preserve valid semantics, "
-        "use only authoritative projected values, and add no wrapper or extra keys."
-    )
+def build_semantic_repair_contract(
+    ir_version: str = SEMANTIC_IR_VERSION,
+) -> SemanticRepairContract:
+    if ir_version == SEMANTIC_IR_VERSION:
+        version = SEMANTIC_REPAIR_CONTRACT_VERSION
+        text = (
+            f"Semantic skill IR repair contract {version}. "
+            f"Return exactly one JSON object using IR version {ir_version}. "
+            "Required root keys: ir_version, ability_name, summary, mode, role, centrality, "
+            "mechanic, role_path. Mechanic requires trigger, effect, feedback; feedback "
+            "requires event, relation, response_trigger, response_effect; role_path requires "
+            "trigger and effect. A trigger has actor, event, qualifier; an effect has actor, "
+            "intent, description. Return the full corrected plan, preserve valid semantics, "
+            "use only authoritative projected values, and add no wrapper or extra keys."
+        )
+    elif ir_version == SEMANTIC_IR_V2_VERSION:
+        version = SEMANTIC_REPAIR_CONTRACT_VERSION_V2
+        text = (
+            f"Semantic skill IR repair contract {version}. Return exactly one JSON object using "
+            f"IR version {ir_version}. Required root keys: ir_version, ability_name, summary, "
+            "mode, role, centrality, mechanic, role_path. A triggered mechanic has kind, "
+            "trigger, effect, and optional feedback; a passive mechanic has kind, persistence "
+            "always_on, and effect only, with no trigger or feedback. Match role_path to the "
+            "mechanic variant. A trigger has actor, event, qualifier; an effect has actor, "
+            "intent, description. Return the full corrected plan, preserve valid semantics, "
+            "use only authoritative projected values, and add no wrapper or extra keys."
+        )
+    else:
+        raise ValueError("SEMANTIC_REPAIR_IR_VERSION_INVALID")
     return SemanticRepairContract(
-        version=SEMANTIC_REPAIR_CONTRACT_VERSION,
-        ir_version=SEMANTIC_IR_VERSION,
+        version=version,
+        ir_version=ir_version,
         text=text,
         digest=hashlib.sha256(text.encode("utf-8")).hexdigest(),
     )
@@ -118,7 +141,7 @@ class SemanticRepairRequest:
     """The small interface exposed to one repair adapter call."""
 
     original_request: ModelFacingRequest
-    candidate: SkillSemanticIR
+    candidate: SkillSemanticIR | SkillSemanticIRV2
     diagnostics: SafeEvaluatorDiagnostics
     attempt_index: int = 1
     repair_contract: SemanticRepairContract = field(default_factory=build_semantic_repair_contract)
@@ -126,8 +149,8 @@ class SemanticRepairRequest:
     def __post_init__(self) -> None:
         if not isinstance(self.original_request, ModelFacingRequest):
             raise TypeError("original_request must be a ModelFacingRequest")
-        if not isinstance(self.candidate, SkillSemanticIR):
-            raise TypeError("candidate must be a SkillSemanticIR")
+        if not isinstance(self.candidate, (SkillSemanticIR, SkillSemanticIRV2)):
+            raise TypeError("candidate must be a supported SkillSemanticIR")
         if not isinstance(self.diagnostics, SafeEvaluatorDiagnostics):
             raise TypeError("diagnostics must be SafeEvaluatorDiagnostics")
         if not isinstance(self.repair_contract, SemanticRepairContract):
@@ -210,12 +233,18 @@ class SemanticRepairIdentity:
             or identity.context_projection_digest != context.context_projection_digest
         ):
             raise ValueError("SEMANTIC_REPAIR_GENERATION_IDENTITY_MISMATCH")
+        repair_contract_version = (
+            SEMANTIC_REPAIR_CONTRACT_VERSION_V2
+            if identity.ir_schema_version == SEMANTIC_IR_V2_VERSION
+            else SEMANTIC_REPAIR_CONTRACT_VERSION
+        )
         return cls(
             source_commit=identity.source_commit,
             original_run_id=initial.evidence.run_id,
             case_id=context.case_id,
             generation_contract_digest=request.contract.digest,
             context_digest=context.context_projection_digest,
+            repair_contract_version=repair_contract_version,
         )
 
     def to_mapping(self) -> dict[str, object]:
@@ -276,7 +305,7 @@ class SemanticRepairResult:
     outcome: RepairOutcome
     evidence: SemanticRepairEvidence
     repair_attempts: int
-    repaired_ir: SkillSemanticIR | None = field(default=None, repr=False)
+    repaired_ir: SkillSemanticIR | SkillSemanticIRV2 | None = field(default=None, repr=False)
     revalidation: FakePipelineResult | None = field(default=None, repr=False)
 
     def to_mapping(self) -> dict[str, object]:
@@ -351,7 +380,7 @@ class SemanticRepairSession:
         furthest_layer: str | None = None,
         repaired_evaluator_outcome: str = "NOT_RUN",
         repaired_diagnostics: SafeEvaluatorDiagnostics | None = None,
-        repaired_ir: SkillSemanticIR | None = None,
+        repaired_ir: SkillSemanticIR | SkillSemanticIRV2 | None = None,
         revalidation: FakePipelineResult | None = None,
     ) -> SemanticRepairResult:
         evidence = SemanticRepairEvidence(
@@ -399,6 +428,11 @@ class SemanticRepairSession:
             original_request=build_model_facing_request(self.context),
             candidate=self.initial.validated_ir.value,
             diagnostics=_initial_diagnostics(self.initial),
+            repair_contract=build_semantic_repair_contract(
+                SEMANTIC_IR_V2_VERSION
+                if self.context.contract_profile == "generalization_v2"
+                else SEMANTIC_IR_VERSION
+            ),
         )
         try:
             response = repair_provider(request)
@@ -546,6 +580,7 @@ __all__ = [
     "MAX_REPAIR_ATTEMPTS",
     "RepairOutcome",
     "SEMANTIC_REPAIR_CONTRACT_VERSION",
+    "SEMANTIC_REPAIR_CONTRACT_VERSION_V2",
     "SEMANTIC_REPAIR_EVIDENCE_VERSION",
     "SEMANTIC_IR_VERSION",
     "SemanticRepairContract",

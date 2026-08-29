@@ -86,6 +86,10 @@ _M = {
         SemanticDimension.CONTINUATION_FAMILY,
         FindingCategory.SEMANTIC_MISMATCH,
     ),
+    "PASSIVE_FEEDBACK_FORBIDDEN": (
+        SemanticDimension.REPRESENTATION,
+        FindingCategory.RELATIONSHIP_MISMATCH,
+    ),
 }
 RAW_FINDING_CODE_MAPPING = MappingProxyType(_M)
 

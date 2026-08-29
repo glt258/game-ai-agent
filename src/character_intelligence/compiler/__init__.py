@@ -1,6 +1,6 @@
 """Deterministic semantic-to-canonical SkillKit compiler seam."""
 
-from .provenance import COMPILER_VERSION, CompilerProvenance, CompilerProvenanceEntry
+from .provenance import COMPILER_VERSION, COMPILER_VERSION_V2, CompilerProvenance, CompilerProvenanceEntry
 from .skillkit_compiler import (
     DEFAULT_MAPPING_REGISTRY,
     SEMANTIC_EFFECT_OPERATION_MAP,
@@ -14,6 +14,7 @@ from .skillkit_compiler import (
 
 __all__ = [
     "COMPILER_VERSION",
+    "COMPILER_VERSION_V2",
     "DEFAULT_MAPPING_REGISTRY",
     "SEMANTIC_EFFECT_OPERATION_MAP",
     "CompilerProvenance",

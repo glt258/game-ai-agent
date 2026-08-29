@@ -1,0 +1,97 @@
+{
+  "generalization_sub_dps_v1": {
+    "ir_version": "semantic-skill-plan-ir/0.2.0",
+    "ability_name": "Echo Volley",
+    "summary": "An ally action completed triggers follow-up damage.",
+    "mode": "active",
+    "role": "sub_dps",
+    "centrality": "core",
+    "mechanic": {
+      "kind": "triggered",
+      "trigger": {
+        "actor": "ally",
+        "event": "action_completed",
+        "qualifier": null
+      },
+      "effect": {
+        "actor": "enemy",
+        "intent": "deal_follow_up_damage",
+        "description": "Deal follow-up damage to an enemy."
+      },
+      "feedback": null
+    },
+    "role_path": {
+      "kind": "triggered",
+      "trigger": {
+        "actor": "ally",
+        "event": "action_completed",
+        "qualifier": null
+      },
+      "effect": {
+        "actor": "enemy",
+        "intent": "deal_follow_up_damage",
+        "description": "Provide follow-up damage role evidence."
+      }
+    }
+  },
+  "generalization_defense_v1": {
+    "ir_version": "semantic-skill-plan-ir/0.2.0",
+    "ability_name": "Guardian Intercept",
+    "summary": "Ally damage received triggers threat protection.",
+    "mode": "reaction",
+    "role": "defense",
+    "centrality": "core",
+    "mechanic": {
+      "kind": "triggered",
+      "trigger": {
+        "actor": "ally",
+        "event": "damage_received",
+        "qualifier": null
+      },
+      "effect": {
+        "actor": "ally",
+        "intent": "protect_ally",
+        "description": "Protect the damaged ally from threat."
+      },
+      "feedback": null
+    },
+    "role_path": {
+      "kind": "triggered",
+      "trigger": {
+        "actor": "ally",
+        "event": "damage_received",
+        "qualifier": null
+      },
+      "effect": {
+        "actor": "ally",
+        "intent": "protect_ally",
+        "description": "Provide threat protection role evidence."
+      }
+    }
+  },
+  "generalization_basic_passive_v1": {
+    "ir_version": "semantic-skill-plan-ir/0.2.0",
+    "ability_name": "Steady Formation",
+    "summary": "An always-on team support trait.",
+    "mode": "passive",
+    "role": "support",
+    "centrality": "core",
+    "mechanic": {
+      "kind": "passive",
+      "persistence": "always_on",
+      "effect": {
+        "actor": "team",
+        "intent": "enable_ally",
+        "description": "Provide an always-on team enablement trait."
+      }
+    },
+    "role_path": {
+      "kind": "passive",
+      "effect": {
+        "actor": "team",
+        "intent": "enable_ally",
+        "description": "Provide passive support role evidence."
+      }
+    }
+  }
+}

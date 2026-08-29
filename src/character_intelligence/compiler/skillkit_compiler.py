@@ -21,12 +21,17 @@ from character_skill import (
 from character_skill._graph import build_graph, resolve_ref
 
 from ..semantic_ir import (
+    PassiveMechanicV2,
+    PassiveRolePathV2,
     SemanticEffect,
     SemanticTrigger,
     SkillSemanticIR,
+    SkillSemanticIRV2,
+    TriggeredMechanicV2,
+    TriggeredRolePathV2,
     ValidatedSkillSemanticIR,
 )
-from .provenance import COMPILER_VERSION, CompilerProvenance, CompilerProvenanceEntry
+from .provenance import COMPILER_VERSION, COMPILER_VERSION_V2, CompilerProvenance, CompilerProvenanceEntry
 
 
 SEMANTIC_EFFECT_OPERATION_MAP: Mapping[str, str] = MappingProxyType(
@@ -35,6 +40,8 @@ SEMANTIC_EFFECT_OPERATION_MAP: Mapping[str, str] = MappingProxyType(
         "deal_damage": "direct_output",
         "control_enemy": "enemy_action_control",
         "mitigate_ally": "recover_or_mitigate",
+        "deal_follow_up_damage": "follow_up_output",
+        "protect_ally": "threat_protection",
     }
 )
 
@@ -202,6 +209,88 @@ def _entry_and_provenance(
     return entry, relation, role_evidence, provenance
 
 
+def _entry_and_provenance_v2(
+    ir: SkillSemanticIRV2,
+    registry: SemanticMappingRegistry,
+) -> tuple[AbilityEntry, tuple[FeedbackRelation, ...], tuple[RoleEvidence, ...], CompilerProvenance]:
+    entry_id = "skill_01"
+    protocols: list[BehaviorProtocol] = []
+    feedback_relations: list[FeedbackRelation] = []
+
+    if isinstance(ir.mechanic, TriggeredMechanicV2):
+        trigger_effect = _effect(ir.mechanic.effect, registry, "/mechanic/effect", "apply")
+        trigger_ref = TypedRef("effect", f"{entry_id}/mechanic_trigger/{trigger_effect.effect_id}")
+        protocols.append(BehaviorProtocol("mechanic_trigger", _trigger(ir.mechanic.trigger), (trigger_effect,)))
+        if ir.mechanic.feedback is not None:
+            response_effect = _effect(
+                ir.mechanic.feedback.response_effect,
+                registry,
+                "/mechanic/feedback/response_effect",
+                "continue",
+            )
+            protocols.append(
+                BehaviorProtocol(
+                    "mechanic_feedback",
+                    _trigger(ir.mechanic.feedback.response_trigger, trigger_ref),
+                    (response_effect,),
+                )
+            )
+            feedback_relations.append(
+                FeedbackRelation(
+                    "feedback_01",
+                    trigger_ref,
+                    TypedRef("protocol", f"{entry_id}/mechanic_feedback"),
+                    ir.mechanic.feedback.event,
+                    ir.mechanic.feedback.relation,
+                )
+            )
+        role_path = ir.role_path
+        if not isinstance(role_path, TriggeredRolePathV2):
+            raise SkillKitCompilerError("IR_INVALID", "/role_path/kind", "triggered mechanic requires triggered role path")
+        role_effect = _effect(role_path.effect, registry, "/role_path/effect", "support")
+        protocols.append(BehaviorProtocol("role_path", _trigger(role_path.trigger), (role_effect,)))
+        role_effect_ref = TypedRef("effect", f"{entry_id}/role_path/{role_effect.effect_id}")
+        role_protocol_index = 2 if ir.mechanic.feedback is not None else 1
+        provenance = CompilerProvenance(
+            compiler_version=COMPILER_VERSION_V2,
+            entries=(
+                CompilerProvenanceEntry("/entries", "COMPILER_DERIVED", rule_id="C-V2-ROOT-ENVELOPE"),
+                CompilerProvenanceEntry("/entries/0/mode", "IR_SEMANTIC", "/mode"),
+                CompilerProvenanceEntry("/entries/0/protocols/0/when", "IR_SEMANTIC", "/mechanic/trigger"),
+                CompilerProvenanceEntry("/entries/0/protocols/0/causes/0/operation", "IR_SEMANTIC", "/mechanic/effect/intent"),
+                CompilerProvenanceEntry(f"/entries/0/protocols/{role_protocol_index}/when", "IR_SEMANTIC", "/role_path/trigger"),
+                CompilerProvenanceEntry(f"/entries/0/protocols/{role_protocol_index}/causes/0/operation", "IR_SEMANTIC", "/role_path/effect/intent"),
+                CompilerProvenanceEntry("/feedback_relations", "COMPILER_DERIVED", rule_id="C-V2-OPTIONAL-FEEDBACK"),
+            )
+        )
+    else:
+        if not isinstance(ir.mechanic, PassiveMechanicV2) or not isinstance(ir.role_path, PassiveRolePathV2):
+            raise SkillKitCompilerError("IR_INVALID", "/semantic_skill_plan", "passive variants must be paired")
+        passive_effect = _effect(ir.mechanic.effect, registry, "/mechanic/effect", "apply")
+        role_effect = _effect(ir.role_path.effect, registry, "/role_path/effect", "support")
+        protocols.extend(
+            (
+                BehaviorProtocol("passive_effect", None, (passive_effect,)),
+                BehaviorProtocol("passive_role_path", None, (role_effect,)),
+            )
+        )
+        role_effect_ref = TypedRef("effect", f"{entry_id}/passive_role_path/{role_effect.effect_id}")
+        provenance = CompilerProvenance(
+            compiler_version=COMPILER_VERSION_V2,
+            entries=(
+                CompilerProvenanceEntry("/entries", "COMPILER_DERIVED", rule_id="C-V2-ROOT-ENVELOPE"),
+                CompilerProvenanceEntry("/entries/0/mode", "IR_SEMANTIC", "/mode"),
+                CompilerProvenanceEntry("/entries/0/protocols/0/when", "COMPILER_DERIVED", rule_id="C-V2-TRIGGERLESS-PASSIVE"),
+                CompilerProvenanceEntry("/entries/0/protocols/0/causes/0/operation", "IR_SEMANTIC", "/mechanic/effect/intent"),
+                CompilerProvenanceEntry("/entries/0/protocols/1/when", "COMPILER_DERIVED", rule_id="C-V2-TRIGGERLESS-PASSIVE-ROLE"),
+                CompilerProvenanceEntry("/feedback_relations", "COMPILER_DEFAULT", rule_id="C-V2-EMPTY-FEEDBACK"),
+            )
+        )
+    entry = AbilityEntry(entry_id, ir.ability_name, ir.mode, tuple(protocols), ir.summary)
+    role_evidence = (RoleEvidence((role_effect_ref,), ir.centrality),)
+    return entry, tuple(feedback_relations), role_evidence, provenance
+
+
 def compile_skill_semantic_ir(
     validated_ir: ValidatedSkillSemanticIR,
     *,
@@ -213,11 +302,15 @@ def compile_skill_semantic_ir(
         raise SkillKitCompilerError("IR_INVALID", "/semantic_skill_plan", "input must be validated IR")
     if not isinstance(registry, SemanticMappingRegistry):
         raise TypeError("registry must be a SemanticMappingRegistry")
-    entry, relation, role_evidence, provenance = _entry_and_provenance(validated_ir.value, registry)
+    if isinstance(validated_ir.value, SkillSemanticIRV2):
+        entry, relations, role_evidence, provenance = _entry_and_provenance_v2(validated_ir.value, registry)
+    else:
+        entry, relation, role_evidence, provenance = _entry_and_provenance(validated_ir.value, registry)
+        relations = (relation,)
     candidate = ProtocolSkillKitCandidate(
         SCHEMA_VERSION,
         (entry,),
-        (relation,),
+        relations,
         (),
         (),
         (),

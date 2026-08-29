@@ -20,6 +20,8 @@ from character_skill.evaluation import evaluate
 from character_skill.models import ProtocolSkillKitCandidate, SkillValidationReport
 
 from ..compiler import (
+    COMPILER_VERSION,
+    COMPILER_VERSION_V2,
     DEFAULT_MAPPING_REGISTRY,
     SemanticMappingRegistry,
     SkillKitCompilerError,
@@ -27,6 +29,8 @@ from ..compiler import (
     validate_reference_integrity,
 )
 from ..semantic_ir import (
+    SEMANTIC_IR_V2_VERSION,
+    SEMANTIC_IR_VERSION,
     SemanticIRShapeError,
     SemanticIRValidationError,
     ValidatedSkillSemanticIR,
@@ -36,12 +40,14 @@ from ..semantic_ir import (
 from .contract import (
     MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED,
     MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION,
+    MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2,
     ModelFacingRequest,
     build_model_facing_request,
 )
 from .diagnostics import SafeEvaluatorDiagnostics, adapt_skill_validation_report
 from .projection import (
     CONTEXT_PROJECTION_VERSION,
+    CONTEXT_PROJECTION_VERSION_V2,
     HybridGenerationContext,
 )
 
@@ -418,6 +424,8 @@ def _identity(
     target_sample_count: int = 1,
     cohort_purpose: str = "",
     *,
+    ir_schema_version: str = SEMANTIC_IR_VERSION,
+    compiler_version: str = COMPILER_VERSION,
     experiment: str = HYBRID_EXPERIMENT,
 ) -> HybridExperimentIdentity:
     source_commit = subprocess.check_output(
@@ -426,8 +434,10 @@ def _identity(
     return HybridExperimentIdentity(
         experiment,
         source_commit,
+        ir_schema_version=ir_schema_version,
         model_facing_contract_version=contract_version,
         model_facing_contract_digest=contract_digest,
+        compiler_version=compiler_version,
         case_id=case_id,
         context_projection_version=context_projection_version,
         context_projection_digest=context_projection_digest,
@@ -501,6 +511,7 @@ def _run_pipeline(
     """Run every Hybrid layer after a provider adapter has been selected."""
 
     request = build_model_facing_request(context)
+    v2 = context.contract_profile == "generalization_v2"
     resolved_identity = identity or _identity(
         Path(repo_root),
         request.contract.digest,
@@ -508,8 +519,10 @@ def _run_pipeline(
         request.contract.version,
         context.context_projection_version,
         context.context_projection_digest,
-        target_sample_count,
-        cohort_purpose,
+        ir_schema_version=SEMANTIC_IR_V2_VERSION if v2 else SEMANTIC_IR_VERSION,
+        compiler_version=COMPILER_VERSION_V2 if v2 else COMPILER_VERSION,
+        target_sample_count=target_sample_count,
+        cohort_purpose=cohort_purpose,
         experiment=experiment,
     )
     run_id = build_hybrid_run_id(resolved_identity, sample_index=sample_index)
@@ -926,6 +939,7 @@ class HybridSemanticIRRunner:
         self.existing_evidence_paths = tuple(Path(path).resolve() for path in existing_evidence_paths)
 
         request = build_model_facing_request(self.context)
+        v2 = self.context.contract_profile == "generalization_v2"
         self._identity = _identity(
             self.repo_root,
             request.contract.digest,
@@ -933,6 +947,8 @@ class HybridSemanticIRRunner:
             request.contract.version,
             self.context.context_projection_version,
             self.context.context_projection_digest,
+            ir_schema_version=SEMANTIC_IR_V2_VERSION if v2 else SEMANTIC_IR_VERSION,
+            compiler_version=COMPILER_VERSION_V2 if v2 else COMPILER_VERSION,
             target_sample_count=self.target_sample_count,
             cohort_purpose=self.cohort_purpose,
             experiment=self.experiment,
@@ -1018,14 +1034,23 @@ class HybridSemanticIRRunner:
             or request.contract.digest != HYBRID_FROZEN_CONTRACT_DIGEST
         ):
             return _blocked_live_result("BLOCKED_HYBRID_REQUEST_DRIFT")
-        if self.context.contract_profile in {"aligned_v1", "generalization_v1"} and (
+        if self.context.contract_profile in {"aligned_v1", "generalization_v1", "generalization_v2"} and (
             request.contract.version
             != (
-                MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION
-                if self.context.contract_profile == "generalization_v1"
-                else MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED
+                MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2
+                if self.context.contract_profile == "generalization_v2"
+                else (
+                    MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION
+                    if self.context.contract_profile == "generalization_v1"
+                    else MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED
+                )
             )
-            or self.context.context_projection_version != CONTEXT_PROJECTION_VERSION
+            or self.context.context_projection_version
+            != (
+                CONTEXT_PROJECTION_VERSION_V2
+                if self.context.contract_profile == "generalization_v2"
+                else CONTEXT_PROJECTION_VERSION
+            )
             or not self.context.context_projection_digest
         ):
             return _blocked_live_result("BLOCKED_CONTEXT_IDENTITY")
@@ -1046,6 +1071,16 @@ class HybridSemanticIRRunner:
             self.context.context_projection_digest,
             target_sample_count=self.target_sample_count,
             cohort_purpose=self.cohort_purpose,
+            ir_schema_version=(
+                SEMANTIC_IR_V2_VERSION
+                if self.context.contract_profile == "generalization_v2"
+                else SEMANTIC_IR_VERSION
+            ),
+            compiler_version=(
+                COMPILER_VERSION_V2
+                if self.context.contract_profile == "generalization_v2"
+                else COMPILER_VERSION
+            ),
             experiment=self.experiment,
         )
         if current_identity != identity:

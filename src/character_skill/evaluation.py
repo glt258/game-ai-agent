@@ -623,12 +623,17 @@ def _role_findings(
                     else (None, None)
                 )
                 effect = location.effect
-                if (
+                responsibility_ok = (
                     effect.operation == row["duty"]
                     and effect.subject is not None
                     and effect.subject.kind in row["subjects"]
-                    and pair in row["triggers"]
-                ):
+                )
+                triggered_ok = pair in row["triggers"]
+                passive_ok = (
+                    location.entry.mode == "passive"
+                    and trigger is None
+                )
+                if responsibility_ok and (triggered_ok or passive_ok):
                     valid = True
                     break
             if valid:
@@ -645,14 +650,19 @@ def _skeletons(
     matches: list[tuple[BehaviorProtocol, object]] = []
     for _, _, entry, protocol in _all_protocols(candidate):
         trigger = protocol.when
-        if (
-            trigger is None
-            or trigger.subject is None
-            or trigger.subject.kind not in requirement.trigger.subject_kinds
-            or trigger.event not in requirement.trigger.events
-        ):
-            continue
-        if requirement.trigger.source_kinds:
+        if requirement.mechanic_kind == "passive":
+            if entry.mode != "passive" or trigger is not None:
+                continue
+        else:
+            if (
+                trigger is None
+                or trigger.subject is None
+                or requirement.trigger is None
+                or trigger.subject.kind not in requirement.trigger.subject_kinds
+                or trigger.event not in requirement.trigger.events
+            ):
+                continue
+        if requirement.mechanic_kind == "triggered" and requirement.trigger is not None and requirement.trigger.source_kinds:
             source = trigger.source_ref
             if (
                 source is None
@@ -873,6 +883,14 @@ def _mechanic_findings(
                         repairable=False,
                     )
                 )
+        if requirement.mechanic_kind == "passive" and candidate.feedback_relations:
+            findings.append(
+                _finding(
+                    "PASSIVE_FEEDBACK_FORBIDDEN",
+                    "/feedback_relations",
+                    repairable=False,
+                )
+            )
     return matched
 
 

@@ -13,10 +13,12 @@ from .projection import (
     SemanticEnumProjection,
     project_semantic_enums,
 )
+from ..semantic_ir import SEMANTIC_IR_V2_VERSION
 
 MODEL_FACING_IR_CONTRACT_VERSION = "semantic-skill-plan-ir-contract/0.1.0"
 MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED = "semantic-skill-plan-ir-contract/0.4.0"
 MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION = "semantic-skill-plan-ir-contract/0.6.0"
+MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2 = "semantic-skill-plan-ir-contract/0.7.0"
 FORBIDDEN_MODEL_TOKENS = (
     "schema_version",
     "ability_id",
@@ -61,6 +63,13 @@ MODEL_FACING_SCHEMA_PATHS = MappingProxyType(
             "mechanic.feedback.response_effect.intent",
             "role_path.effect.intent",
         ),
+    }
+)
+MODEL_FACING_SCHEMA_PATHS_V2 = MappingProxyType(
+    {
+        **MODEL_FACING_SCHEMA_PATHS,
+        "mechanic_kind": ("mechanic.kind", "role_path.kind"),
+        "persistence": ("mechanic.persistence",),
     }
 )
 _SCHEMA_LIKE_ASSIGNMENT = re.compile(r"(?<![\w.])([a-z][a-z0-9_.]*)\s*=\s*\[")
@@ -161,6 +170,18 @@ def _base_text(*, aligned: bool = False) -> str:
     return text
 
 
+def _base_text_v2() -> str:
+    return (
+        "Output exactly one JSON object for the semantic skill plan. Required root keys: "
+        "ir_version, ability_name, summary, mode, role, centrality, mechanic, role_path. "
+        "A triggered mechanic has kind, trigger, effect, and optional feedback; trigger and "
+        "effect are required. A passive mechanic has kind, persistence, and effect only; "
+        "persistence must be always_on and passive mechanics have no trigger or feedback. "
+        "Triggered role_path has kind, trigger, effect. Passive role_path has kind and effect. "
+        "A trigger has actor, event, qualifier; an effect has actor, intent, description."
+    )
+
+
 def _legacy_enum_text(projection: SemanticEnumProjection) -> str:
     lines = ["Use only these projected semantic values:"]
     for item in projection.domains:
@@ -168,10 +189,14 @@ def _legacy_enum_text(projection: SemanticEnumProjection) -> str:
     return " ".join(lines)
 
 
-def _enum_text(projection: SemanticEnumProjection) -> str:
+def _enum_text(
+    projection: SemanticEnumProjection,
+    *,
+    schema_paths=MODEL_FACING_SCHEMA_PATHS,
+) -> str:
     lines = ["Use only these projected semantic values:"]
     for item in projection.domains:
-        paths = MODEL_FACING_SCHEMA_PATHS.get(item.domain)
+        paths = schema_paths.get(item.domain)
         if paths is None:
             raise ValueError(f"MODEL_FACING_DOMAIN_WITHOUT_IR_PATH: {item.domain}")
         rendered_paths = ", ".join(paths)
@@ -186,7 +211,9 @@ def validate_model_facing_schema_surface(text: str) -> None:
     if not isinstance(text, str):
         raise TypeError("model-facing text must be a string")
     allowed_paths = {
-        path for paths in MODEL_FACING_SCHEMA_PATHS.values() for path in paths
+        path
+        for paths in MODEL_FACING_SCHEMA_PATHS_V2.values()
+        for path in paths
     }
     invalid = sorted(
         label
@@ -197,7 +224,14 @@ def validate_model_facing_schema_surface(text: str) -> None:
         raise ValueError(f"MODEL_FACING_NON_SCHEMA_FIELD: {invalid[0]}")
 
 
-def _suffix_text() -> str:
+def _suffix_text(*, v2: bool = False) -> str:
+    if v2:
+        return (
+            "Use IR version semantic-skill-plan-ir/0.2.0. Keep qualifier null when absent. "
+            "Return only finite semantic variants and projected intent values. Names, summaries, "
+            "descriptions, and qualifiers are strings of at most 512 characters; required narrative "
+            "fields are non-empty. Return JSON only with no wrapper, commentary, or extra keys."
+        )
     return (
         "Use IR version semantic-skill-plan-ir/0.1.0. Keep qualifier null when absent. "
         "Names, summaries, descriptions, and qualifiers are strings of at most 512 characters; "
@@ -236,28 +270,35 @@ def build_model_facing_contract(context: HybridGenerationContext) -> ModelFacing
     """Build an example-free contract from public request/plan context."""
 
     projection = project_semantic_enums(context)
-    aligned = context.contract_profile in {"aligned_v1", "generalization_v1"}
-    if context.contract_profile == "generalization_v1":
+    aligned = context.contract_profile in {"aligned_v1", "generalization_v1", "generalization_v2"}
+    if context.contract_profile == "generalization_v2":
+        version = MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2
+        ir_version = SEMANTIC_IR_V2_VERSION
+        base = _base_text_v2()
+        enum = _enum_text(projection, schema_paths=MODEL_FACING_SCHEMA_PATHS_V2)
+        suffix = _suffix_text(v2=True)
+    elif context.contract_profile == "generalization_v1":
         version = MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION
+        ir_version = "semantic-skill-plan-ir/0.1.0"
+        base = _base_text(aligned=aligned)
+        enum = _enum_text(projection)
+        suffix = _suffix_text()
     else:
         version = MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED if aligned else MODEL_FACING_IR_CONTRACT_VERSION
-    base = _base_text(aligned=aligned)
-    enum = (
-        _enum_text(projection)
-        if context.contract_profile == "generalization_v1"
-        else _legacy_enum_text(projection)
-    )
-    suffix = _suffix_text()
+        ir_version = "semantic-skill-plan-ir/0.1.0"
+        base = _base_text(aligned=aligned)
+        enum = _legacy_enum_text(projection)
+        suffix = _suffix_text()
     contract = ModelFacingContract(
         version,
-        "semantic-skill-plan-ir/0.1.0",
+        ir_version,
         base,
         enum,
         suffix,
         projection,
         _contract_digest(
             version,
-            "semantic-skill-plan-ir/0.1.0",
+            ir_version,
             base,
             enum,
             suffix,
@@ -267,7 +308,7 @@ def build_model_facing_contract(context: HybridGenerationContext) -> ModelFacing
     leaked = [token for token in FORBIDDEN_MODEL_TOKENS if token in contract.text]
     if leaked:
         raise ValueError("model-facing contract contains compiler responsibility")
-    if context.contract_profile == "generalization_v1":
+    if context.contract_profile in {"generalization_v1", "generalization_v2"}:
         validate_model_facing_schema_surface(contract.text)
     return contract
 
@@ -318,9 +359,11 @@ def build_model_facing_request(
 __all__ = [
     "FORBIDDEN_MODEL_TOKENS",
     "MODEL_FACING_SCHEMA_PATHS",
+    "MODEL_FACING_SCHEMA_PATHS_V2",
     "MODEL_FACING_IR_CONTRACT_VERSION",
     "MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED",
     "MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION",
+    "MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2",
     "ModelFacingContract",
     "ModelFacingRequest",
     "RequestSectionMetrics",

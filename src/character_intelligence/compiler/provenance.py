@@ -6,6 +6,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 COMPILER_VERSION = "skillkit-compiler/0.1.0"
+COMPILER_VERSION_V2 = "skillkit-compiler/0.2.0"
 PROVENANCE_SOURCE_KINDS = frozenset(
     {"IR_SEMANTIC", "COMPILER_CONSTANT", "COMPILER_DERIVED", "COMPILER_DEFAULT"}
 )
@@ -50,7 +51,7 @@ class CompilerProvenance:
     entries: tuple[CompilerProvenanceEntry, ...] = field(default_factory=tuple)
 
     def __post_init__(self) -> None:
-        if self.compiler_version != COMPILER_VERSION:
+        if self.compiler_version not in {COMPILER_VERSION, COMPILER_VERSION_V2}:
             raise ValueError("unsupported compiler version")
         if not all(isinstance(item, CompilerProvenanceEntry) for item in self.entries):
             raise TypeError("entries must contain CompilerProvenanceEntry values")
@@ -77,6 +78,7 @@ class CompilerProvenance:
 
 __all__ = [
     "COMPILER_VERSION",
+    "COMPILER_VERSION_V2",
     "CompilerProvenance",
     "CompilerProvenanceEntry",
     "PROVENANCE_SOURCE_KINDS",

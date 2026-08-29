@@ -29,8 +29,9 @@ PROJECTION_SOURCES = frozenset(
         "VOCABULARY_REQUIRED",
     }
 )
-CONTEXT_CONTRACT_PROFILES = frozenset({"frozen_h3", "aligned_v1", "generalization_v1"})
+CONTEXT_CONTRACT_PROFILES = frozenset({"frozen_h3", "aligned_v1", "generalization_v1", "generalization_v2"})
 CONTEXT_PROJECTION_VERSION = "hybrid-semantic-context-projection/0.2.0"
+CONTEXT_PROJECTION_VERSION_V2 = "hybrid-semantic-context-projection/0.3.0"
 SEMANTIC_ACTORS = tuple(sorted(SUBJECT_KINDS - {"summon"}))
 # Keep the aligned v1 projection frozen. The generalization profile exposes
 # the small generic vocabulary needed by distinct role families.
@@ -40,6 +41,14 @@ GENERALIZATION_SEMANTIC_INTENTS = (
     "deal_damage",
     "enable_ally",
     "mitigate_ally",
+)
+GENERALIZATION_V2_SEMANTIC_INTENTS = (
+    "control_enemy",
+    "deal_damage",
+    "deal_follow_up_damage",
+    "enable_ally",
+    "mitigate_ally",
+    "protect_ally",
 )
 GLOBAL_STRUCTURAL_TRIGGER_EVENTS = (
     "ability_invoked",
@@ -115,7 +124,11 @@ class HybridGenerationContext:
 
     @property
     def context_projection_version(self) -> str:
-        return CONTEXT_PROJECTION_VERSION
+        return (
+            CONTEXT_PROJECTION_VERSION_V2
+            if self.contract_profile == "generalization_v2"
+            else CONTEXT_PROJECTION_VERSION
+        )
 
     @property
     def context_projection_digest(self) -> str:
@@ -248,13 +261,24 @@ def project_semantic_enums(context: HybridGenerationContext) -> SemanticEnumProj
         EnumDomainProjection(
             "intent",
             (
-                GENERALIZATION_SEMANTIC_INTENTS
-                if context.contract_profile == "generalization_v1"
-                else SEMANTIC_INTENTS
+                 GENERALIZATION_V2_SEMANTIC_INTENTS
+                 if context.contract_profile == "generalization_v2"
+                 else (
+                     GENERALIZATION_SEMANTIC_INTENTS
+                     if context.contract_profile == "generalization_v1"
+                     else SEMANTIC_INTENTS
+                 )
             ),
             "VOCABULARY_REQUIRED",
         ),
     ]
+    if context.contract_profile == "generalization_v2":
+        domains.extend(
+            (
+                EnumDomainProjection("mechanic_kind", ("passive", "triggered"), "VOCABULARY_REQUIRED"),
+                EnumDomainProjection("persistence", ("always_on",), "VOCABULARY_REQUIRED"),
+            )
+        )
     return SemanticEnumProjection(tuple(domains))
 
 
@@ -271,7 +295,7 @@ def context_projection_payload(context: HybridGenerationContext) -> dict[str, ob
     """Return the canonical, provider-facing context identity payload."""
 
     payload = {
-        "version": CONTEXT_PROJECTION_VERSION,
+        "version": context.context_projection_version,
         "case_id": context.case_id,
         "contract_profile": context.contract_profile,
         "brief": context.brief,
@@ -289,6 +313,8 @@ def context_projection_payload(context: HybridGenerationContext) -> dict[str, ob
         payload["allowed_response_effect_families"] = list(
             context.allowed_response_effect_families
         )
+    if context.contract_profile == "generalization_v2":
+        payload["semantic_ir_version"] = "semantic-skill-plan-ir/0.2.0"
     return payload
 
 
@@ -308,12 +334,14 @@ __all__ = [
     "EnumDomainProjection",
     "CONTEXT_CONTRACT_PROFILES",
     "CONTEXT_PROJECTION_VERSION",
+    "CONTEXT_PROJECTION_VERSION_V2",
     "HybridGenerationContext",
     "PROJECTION_SOURCES",
     "ProjectionError",
     "SEMANTIC_ACTORS",
     "SEMANTIC_INTENTS",
     "GENERALIZATION_SEMANTIC_INTENTS",
+    "GENERALIZATION_V2_SEMANTIC_INTENTS",
     "GLOBAL_STRUCTURAL_TRIGGER_EVENTS",
     "STRUCTURAL_FEEDBACK_TRIGGER_EVENT",
     "SemanticEnumProjection",

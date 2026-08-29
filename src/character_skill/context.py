@@ -69,6 +69,7 @@ _EFFECT_OPERATIONS = frozenset(
         "emit_event",
     }
 )
+_MECHANIC_KINDS = frozenset({"triggered", "passive"})
 # Generic semantic families used to constrain a continuation without pinning
 # the model to one exact response operation or wording.
 RESPONSE_EFFECT_FAMILIES = frozenset({"damage", "control", "support", "recovery"})
@@ -85,6 +86,7 @@ def _plain(value: object) -> object:
     if isinstance(value, MechanicRequirement):
         payload = {
             "requirement_id": value.requirement_id,
+            **({"mechanic_kind": value.mechanic_kind} if value.mechanic_kind != "triggered" else {}),
             "trigger": _plain(value.trigger),
             "effect": _plain(value.effect),
             "feedback": _plain(value.feedback),
@@ -255,9 +257,10 @@ class FeedbackPredicate:
 @dataclass(frozen=True)
 class MechanicRequirement:
     requirement_id: str
-    trigger: TriggerPredicate
+    trigger: TriggerPredicate | None
     effect: EffectPredicate
     feedback: FeedbackPredicate
+    mechanic_kind: str = "triggered"
     allowed_modes: frozenset[str] = frozenset()
     allowed_response_effect_families: frozenset[str] = frozenset()
 
@@ -271,21 +274,38 @@ class MechanicRequirement:
     @classmethod
     def from_mapping(cls, value: object, path: str) -> "MechanicRequirement":
         payload = _mapping_value(value, path)
-        required_keys = frozenset({"requirement_id", "trigger", "effect", "feedback"})
+        mechanic_kind = payload.get("mechanic_kind", "triggered")
+        if mechanic_kind not in _MECHANIC_KINDS:
+            _fail("UNSUPPORTED_VALUE", f"{path}/mechanic_kind", "unsupported mechanic kind")
+        required_keys = frozenset({"requirement_id", "effect", "feedback"})
+        if mechanic_kind == "triggered":
+            required_keys = required_keys | {"trigger"}
         optional_keys = frozenset({"allowed_modes", "allowed_response_effect_families"})
-        _require_exact_keys(payload, required_keys | (set(payload) & optional_keys), path)
-        unknown = sorted(set(payload) - required_keys - optional_keys)
+        _require_exact_keys(
+            payload,
+            required_keys
+            | ({"mechanic_kind"} if "mechanic_kind" in payload else set())
+            | (set(payload) & optional_keys),
+            path,
+        )
+        allowed_keys = required_keys | optional_keys | (
+            {"mechanic_kind"} if "mechanic_kind" in payload else set()
+        )
+        unknown = sorted(set(payload) - allowed_keys)
         if unknown:
             _fail("UNKNOWN_FIELD", f"{path}/{unknown[0]}", "field is not allowed")
         requirement_id = _id(payload["requirement_id"], f"{path}/requirement_id")
 
-        trigger_payload = _mapping_value(payload["trigger"], f"{path}/trigger")
-        _require_exact_keys(trigger_payload, frozenset({"subject_kinds", "events", "source_kinds"}), f"{path}/trigger")
-        trigger = TriggerPredicate(
-            _tag_set(trigger_payload["subject_kinds"], _SUBJECT_KINDS, f"{path}/trigger/subject_kinds", nonempty=True),
-            _tag_set(trigger_payload["events"], _TRIGGER_EVENTS, f"{path}/trigger/events", nonempty=True),
-            _tag_set(trigger_payload["source_kinds"], _REF_KINDS, f"{path}/trigger/source_kinds"),
-        )
+        if mechanic_kind == "triggered":
+            trigger_payload = _mapping_value(payload["trigger"], f"{path}/trigger")
+            _require_exact_keys(trigger_payload, frozenset({"subject_kinds", "events", "source_kinds"}), f"{path}/trigger")
+            trigger = TriggerPredicate(
+                _tag_set(trigger_payload["subject_kinds"], _SUBJECT_KINDS, f"{path}/trigger/subject_kinds", nonempty=True),
+                _tag_set(trigger_payload["events"], _TRIGGER_EVENTS, f"{path}/trigger/events", nonempty=True),
+                _tag_set(trigger_payload["source_kinds"], _REF_KINDS, f"{path}/trigger/source_kinds"),
+            )
+        else:
+            trigger = None
 
         effect_payload = _mapping_value(payload["effect"], f"{path}/effect")
         _require_exact_keys(effect_payload, frozenset({"subject_kinds", "operations", "object_kinds"}), f"{path}/effect")
@@ -315,7 +335,9 @@ class MechanicRequirement:
             RESPONSE_EFFECT_FAMILIES,
             f"{path}/allowed_response_effect_families",
         )
-        return cls(requirement_id, trigger, effect, feedback, allowed_modes, allowed_families)
+        if mechanic_kind == "passive" and feedback.required:
+            _fail("IR_INVALID", f"{path}/feedback/required", "passive requirements cannot require feedback")
+        return cls(requirement_id, trigger, effect, feedback, mechanic_kind, allowed_modes, allowed_families)
 
 
 @dataclass(frozen=True)

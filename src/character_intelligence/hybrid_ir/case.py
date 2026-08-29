@@ -31,17 +31,23 @@ class HybridSemanticCase:
     generation_mode: str = "active"
     contract_profile: str = "aligned_v1"
     continuation_family: str = ""
+    mechanic_kind: str = "triggered"
+    requires_feedback: bool = True
 
     def __post_init__(self) -> None:
         if not self.case_id.strip() or not self.brief.strip():
             raise ValueError("HybridSemanticCase identity and brief must be non-empty")
         if not isinstance(self.plan, CharacterDesignPlan):
             raise TypeError("plan must be a CharacterDesignPlan")
-        if self.contract_profile == "generalization_v1":
+        if self.contract_profile in {"generalization_v1", "generalization_v2"}:
             if self.generation_mode not in {"active", "passive", "reaction"}:
                 raise ValueError("generalization generation mode must be canonical")
-            if self.continuation_family not in RESPONSE_EFFECT_FAMILIES:
+            if self.mechanic_kind not in {"triggered", "passive"}:
+                raise ValueError("generalization mechanic kind must be canonical")
+            if self.mechanic_kind == "triggered" and self.continuation_family and self.continuation_family not in RESPONSE_EFFECT_FAMILIES:
                 raise ValueError("generalization continuation family must be canonical")
+            if self.mechanic_kind == "passive" and (self.generation_mode != "passive" or self.requires_feedback):
+                raise ValueError("passive generalization cases must be passive and feedback-free")
 
     def generation_context(self) -> HybridGenerationContext:
         """Return only request/plan facts and public structural vocabulary."""
@@ -52,17 +58,17 @@ class HybridSemanticCase:
             case_id=self.case_id,
             contract_profile=self.contract_profile,
             allowed_actors=self.allowed_actors,
-            allowed_trigger_events=self.allowed_trigger_events,
-            allowed_feedback_events=self.evaluator_feedback_events,
-            allowed_feedback_relations=self.evaluator_feedback_operations,
-            allowed_modes=(self.generation_mode,) if self.contract_profile == "generalization_v1" else None,
+            allowed_trigger_events=self.allowed_trigger_events if self.mechanic_kind == "triggered" else None,
+            allowed_feedback_events=self.evaluator_feedback_events if self.requires_feedback else None,
+            allowed_feedback_relations=self.evaluator_feedback_operations if self.requires_feedback else None,
+            allowed_modes=(self.generation_mode,) if self.contract_profile in {"generalization_v1", "generalization_v2"} else None,
             allowed_response_effect_families=(self.continuation_family,)
-            if self.contract_profile == "generalization_v1"
+            if self.contract_profile in {"generalization_v1", "generalization_v2"} and self.continuation_family
             else None,
             allowed_roles=(self.plan.combat_role_profile.primary_role,)
-            if self.contract_profile == "generalization_v1"
+            if self.contract_profile in {"generalization_v1", "generalization_v2"}
             else None,
-            allowed_centralities=("core",) if self.contract_profile == "generalization_v1" else None,
+            allowed_centralities=("core",) if self.contract_profile in {"generalization_v1", "generalization_v2"} else None,
         )
 
     def evaluation_context(self) -> Mapping[str, object]:
@@ -76,12 +82,23 @@ class HybridSemanticCase:
                             MappingProxyType(
                                 {
                                     "requirement_id": self.evaluator_requirement_id,
-                                    "trigger": MappingProxyType(
+                                    **(
+                                        {"mechanic_kind": self.mechanic_kind}
+                                        if self.contract_profile == "generalization_v2"
+                                        else {}
+                                    ),
+                                    **(
                                         {
-                                            "subject_kinds": self.evaluator_trigger_subject_kinds,
-                                            "events": self.evaluator_trigger_events,
-                                            "source_kinds": (),
+                                            "trigger": MappingProxyType(
+                                                {
+                                                    "subject_kinds": self.evaluator_trigger_subject_kinds,
+                                                    "events": self.evaluator_trigger_events,
+                                                    "source_kinds": (),
+                                                }
+                                            )
                                         }
+                                        if self.mechanic_kind == "triggered"
+                                        else {}
                                     ),
                                     "effect": MappingProxyType(
                                         {
@@ -92,7 +109,7 @@ class HybridSemanticCase:
                                     ),
                                     "feedback": MappingProxyType(
                                         {
-                                            "required": True,
+                                            "required": self.requires_feedback,
                                             "events": self.evaluator_feedback_events,
                                             "operations": self.evaluator_feedback_operations,
                                         }
@@ -100,11 +117,13 @@ class HybridSemanticCase:
                                     **(
                                         {
                                             "allowed_modes": (self.generation_mode,),
-                                            "allowed_response_effect_families": (
-                                                self.continuation_family,
-                                            ),
+                                        "allowed_response_effect_families": (
+                                            (self.continuation_family,)
+                                            if self.continuation_family
+                                            else ()
+                                        ),
                                         }
-                                        if self.contract_profile == "generalization_v1"
+                                         if self.contract_profile in {"generalization_v1", "generalization_v2"}
                                         else {}
                                     ),
                                 }
@@ -149,7 +168,7 @@ def build_authoritative_support_case() -> HybridSemanticCase:
 
 
 def build_authoritative_generalization_cases() -> tuple[HybridSemanticCase, ...]:
-    """Return the four offline pilot cases from one authoritative registry."""
+    """Return the four original offline pilot cases unchanged."""
 
     return (
         HybridSemanticCase(
@@ -237,16 +256,91 @@ def build_authoritative_generalization_cases() -> tuple[HybridSemanticCase, ...]
     )
 
 
+def build_authoritative_final_coverage_cases() -> tuple[HybridSemanticCase, ...]:
+    """Return the v2 Sub-DPS, Defense, and Basic Passive coverage cases."""
+
+    return (
+        HybridSemanticCase(
+            case_id="generalization_sub_dps_v1",
+            brief=(
+                "Design a sub-DPS ability that reacts after an ally or team action completes, "
+                "deals follow-up damage to an enemy, and is not the caster's primary direct strike."
+            ),
+            plan=build_character_design_plan("Design a sub-DPS character ability."),
+            allowed_actors=("ally", "team", "enemy"),
+            allowed_trigger_events=("action_completed",),
+            evaluator_requirement_id="req_generalization_sub_dps",
+            evaluator_trigger_subject_kinds=("ally", "team"),
+            evaluator_trigger_events=("action_completed",),
+            evaluator_effect_subject_kinds=("enemy",),
+            evaluator_effect_operations=("follow_up_output",),
+            evaluator_feedback_events=(),
+            evaluator_feedback_operations=(),
+            generation_mode="active",
+            contract_profile="generalization_v2",
+            mechanic_kind="triggered",
+            requires_feedback=False,
+        ),
+        HybridSemanticCase(
+            case_id="generalization_defense_v1",
+            brief=(
+                "Design a defense ability that reacts when an ally receives damage and provides "
+                "threat protection for an ally or the team, without healing or ordinary ally enablement."
+            ),
+            plan=build_character_design_plan("Design a defense character reaction ability."),
+            allowed_actors=("ally", "team"),
+            allowed_trigger_events=("damage_received",),
+            evaluator_requirement_id="req_generalization_defense",
+            evaluator_trigger_subject_kinds=("ally",),
+            evaluator_trigger_events=("damage_received",),
+            evaluator_effect_subject_kinds=("ally", "team"),
+            evaluator_effect_operations=("threat_protection",),
+            evaluator_feedback_events=(),
+            evaluator_feedback_operations=(),
+            generation_mode="reaction",
+            contract_profile="generalization_v2",
+            mechanic_kind="triggered",
+            requires_feedback=False,
+        ),
+        HybridSemanticCase(
+            case_id="generalization_basic_passive_v1",
+            brief=(
+                "Design a basic passive support trait that is always on and enables the team. "
+                "It has no activation trigger, feedback, continuation, duration, stack, resource, state, or summon."
+            ),
+            plan=build_character_design_plan("Design a support character basic passive."),
+            allowed_actors=("team",),
+            allowed_trigger_events=(),
+            evaluator_requirement_id="req_generalization_basic_passive",
+            evaluator_trigger_subject_kinds=(),
+            evaluator_trigger_events=(),
+            evaluator_effect_subject_kinds=("team",),
+            evaluator_effect_operations=("ally_enablement",),
+            evaluator_feedback_events=(),
+            evaluator_feedback_operations=(),
+            generation_mode="passive",
+            contract_profile="generalization_v2",
+            mechanic_kind="passive",
+            requires_feedback=False,
+        ),
+    )
+
+
 def build_authoritative_case_registry() -> Mapping[str, HybridSemanticCase]:
     """Return stable semantic IDs for all generalization pilot cases."""
 
-    cases = (build_authoritative_support_case(), *build_authoritative_generalization_cases())
+    cases = (
+        build_authoritative_support_case(),
+        *build_authoritative_generalization_cases(),
+        *build_authoritative_final_coverage_cases(),
+    )
     return MappingProxyType({case.case_id: case for case in cases})
 
 
 __all__ = [
     "HybridSemanticCase",
     "build_authoritative_case_registry",
+    "build_authoritative_final_coverage_cases",
     "build_authoritative_generalization_cases",
     "build_authoritative_support_case",
 ]
