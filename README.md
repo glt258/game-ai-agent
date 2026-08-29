@@ -30,13 +30,19 @@ non-student status.
 | Reference Corpus | `reference-corpus-v0.5` | Current 16-record expanded corpus baseline |
 | Character Intelligence | `CI-B1.5` | Current canonical combat-role compatibility milestone |
 | Character Skill | `CS-S1.1` | Current frozen interface-design milestone |
+| Skill Design | `CS-S2` | Skill Design v1 feature-frozen semantic coverage milestone |
 | Hybrid Semantic IR | `hybrid-semantic-ir-e2e-v0.1` | Historical real-provider end-to-end evaluator PASS baseline |
 
 The full naming policy is documented in [Versioning and Namespace Policy](docs/versioning.md).
 
-Character Skill Hybrid Semantic IR has a frozen historical real-provider
-end-to-end evaluator PASS baseline; multi-case generalization is not yet
-proven.
+Skill Design v1 is feature frozen under the documented seven-family semantic
+coverage boundary. The freeze records both offline pipeline verification and
+bounded live observations; it does not claim universal first-pass model
+reliability.
+
+See [Skill Design v1 Feature Freeze](docs/character_generation/character_skill_design_v1_freeze_v1.0.md)
+for the frozen architecture, evidence summary, known limitations, and deferred
+v2 scope.
 
 Release notes for `v0.7.1` are documented in
 [docs/release_notes_v0.7.1.md](docs/release_notes_v0.7.1.md).
