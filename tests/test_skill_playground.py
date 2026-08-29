@@ -264,6 +264,16 @@ def test_provider_unavailable_is_safe_and_does_not_repair():
 
     assert result.initial.evidence.first_failure_layer == "PROVIDER"
     assert result.repair_status == "UNAVAILABLE"
+    output = io.StringIO()
+    playground.render_result(
+        result,
+        "support",
+        "passive",
+        show_safe_debug=True,
+        provider=None,
+        output=output,
+    )
+    assert "Provider classification: PROVIDER_TRANSPORT_FAILURE" in output.getvalue()
 
 
 def test_passive_context_uses_real_passive_capability_without_trigger():

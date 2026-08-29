@@ -335,6 +335,11 @@ def render_result(
         print("Safe debug:", file=output)
         print(f"  Provider: {evidence.identity.provider} / {evidence.identity.model}", file=output)
         print(f"  First failure layer: {evidence.first_failure_layer or 'none'}", file=output)
+        if evidence.first_failure_layer == "PROVIDER":
+            print(
+                f"  Provider classification: {evidence.failure_code or 'OTHER_PROVIDER_FAILURE'}",
+                file=output,
+            )
         if evidence.first_failure_layer == "IR_PARSE":
             print(
                 f"  Parse classification: {evidence.failure_code or 'OTHER_IR_PARSE'}",
