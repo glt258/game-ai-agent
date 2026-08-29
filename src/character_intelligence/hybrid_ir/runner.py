@@ -246,6 +246,7 @@ class HybridLiveResult:
     evidence_path: Path | None = None
     candidate: ProtocolSkillKitCandidate | None = field(default=None, repr=False)
     report: SkillValidationReport | None = field(default=None, repr=False)
+    validated_ir: ValidatedSkillSemanticIR | None = field(default=None, repr=False)
 
 def _canonical_identity_payload(identity: HybridExperimentIdentity, sample_index: int) -> dict[str, object]:
     if isinstance(sample_index, bool) or not isinstance(sample_index, int) or sample_index < 1:
@@ -358,6 +359,7 @@ class FakePipelineResult:
     evidence: HybridEvidence
     candidate: ProtocolSkillKitCandidate | None = field(default=None, repr=False)
     report: SkillValidationReport | None = field(default=None, repr=False)
+    validated_ir: ValidatedSkillSemanticIR | None = field(default=None, repr=False)
 
 
 class FakeProvider:
@@ -628,6 +630,7 @@ def _run_pipeline(
         ),
         parsed,
         report,
+        validated,
     )
 
 
@@ -1095,6 +1098,7 @@ class HybridSemanticIRRunner:
             evidence_path=evidence_path,
             candidate=pipeline.candidate,
             report=pipeline.report,
+            validated_ir=pipeline.validated_ir,
         )
 
 
