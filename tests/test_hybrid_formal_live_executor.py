@@ -273,15 +273,21 @@ def test_pre_provider_request_credential_and_cohort_gates_are_safe(tmp_path: Pat
     )
     assert drift.status == "BLOCKED_HYBRID_REQUEST_DRIFT"
     monkeypatch.delenv("NPC_LLM_API_KEY", raising=False)
+    # The credential gate applies only to the default production factory;
+    # explicitly injected hermetic providers remain usable in CI without keys.
     missing = HybridSemanticIRRunner(ROOT, _context()).run_live(
-        _evaluation_context(), provider_factory=factory, output_path=tmp_path / "missing.json", enforce_clean_tree=False
+        _evaluation_context(), output_path=tmp_path / "missing.json", enforce_clean_tree=False
     )
     assert missing.status == "BLOCKED_PROVIDER_CREDENTIAL_MISSING"
+    injected = HybridSemanticIRRunner(ROOT, _context()).run_live(
+        _evaluation_context(), provider_factory=factory, output_path=tmp_path / "injected.json", enforce_clean_tree=False
+    )
+    assert injected.status == "HYBRID_SEMANTIC_IR_END_TO_END_PASS"
     complete = HybridSemanticIRRunner(ROOT, _context(), existing_sample_indexes=(1,)).run_live(
         _evaluation_context(), provider_factory=factory, output_path=tmp_path / "complete.json", enforce_clean_tree=False
     )
     assert complete.status == "COHORT_ALREADY_COMPLETE"
-    assert factory_calls == 0
+    assert factory_calls == 1
 
 
 def test_dirty_tracked_source_blocks_before_factory(

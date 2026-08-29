@@ -1053,7 +1053,10 @@ class HybridSemanticIRRunner:
         destination = (Path(output_path) if output_path is not None else self.repo_root / HYBRID_DEFAULT_EVIDENCE_RELATIVE_PATH).resolve()
         if destination.exists():
             return _blocked_live_result("COHORT_SAMPLE_ALREADY_RECORDED")
-        if not os.environ.get("NPC_LLM_API_KEY", "").strip():
+        # Explicit provider injection is the hermetic test/diagnostic seam and
+        # must remain usable without production credentials.  Only the default
+        # live factory requires the credential preflight.
+        if provider_factory is None and not os.environ.get("NPC_LLM_API_KEY", "").strip():
             return _blocked_live_result("BLOCKED_PROVIDER_CREDENTIAL_MISSING")
         factory = provider_factory or _default_hybrid_provider_factory
         try:
