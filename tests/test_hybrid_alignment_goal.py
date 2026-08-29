@@ -25,6 +25,7 @@ def test_authoritative_case_reuses_plan_and_evaluator_context() -> None:
     case = build_authoritative_support_case()
     context = case.generation_context()
     request = build_model_facing_request(context)
+    trigger_domain = request.contract.projection.domain("trigger_event")
     validation = SkillValidationContext.from_mapping(case.evaluation_context())
     requirement = validation.intent.mechanic_requirements[0]
 
@@ -35,6 +36,7 @@ def test_authoritative_case_reuses_plan_and_evaluator_context() -> None:
     assert requirement.requirement_id == case.evaluator_requirement_id
     assert requirement.trigger.events == frozenset({"ability_invoked"})
     assert requirement.effect.operations == frozenset({"ally_enablement"})
+    assert trigger_domain.values == ("ability_invoked", "feedback_received")
     assert request.contract.version == "semantic-skill-plan-ir-contract/0.2.0"
     assert "Semantic guidance:" in request.text
     assert "protocol_id" not in request.text

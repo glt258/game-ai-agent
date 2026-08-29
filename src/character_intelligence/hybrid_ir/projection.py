@@ -29,7 +29,7 @@ PROJECTION_SOURCES = frozenset(
     }
 )
 CONTEXT_CONTRACT_PROFILES = frozenset({"frozen_h3", "aligned_v1"})
-CONTEXT_PROJECTION_VERSION = "hybrid-semantic-context-projection/0.1.0"
+CONTEXT_PROJECTION_VERSION = "hybrid-semantic-context-projection/0.2.0"
 SEMANTIC_ACTORS = tuple(sorted(SUBJECT_KINDS - {"summon"}))
 SEMANTIC_INTENTS = ("enable_ally",)
 GLOBAL_STRUCTURAL_TRIGGER_EVENTS = (
@@ -39,6 +39,7 @@ GLOBAL_STRUCTURAL_TRIGGER_EVENTS = (
     "feedback_received",
     "healing_received",
 )
+STRUCTURAL_FEEDBACK_TRIGGER_EVENT = "feedback_received"
 
 
 class ProjectionError(ValueError):
@@ -181,6 +182,12 @@ def project_semantic_enums(context: HybridGenerationContext) -> SemanticEnumProj
         primary = context.plan.combat_role_profile.primary_role
         role_values = (primary,)
         role_source = "PLAN_ALLOWED"
+    trigger_values = context.allowed_trigger_events
+    if trigger_values is not None:
+        # The response trigger is a required structural part of every
+        # SemanticFeedback object.  Keep its canonical event visible even
+        # when the case narrows the primary mechanic trigger events.
+        trigger_values = tuple((*trigger_values, STRUCTURAL_FEEDBACK_TRIGGER_EVENT))
     domains = (
         _domain(
             "actor",
@@ -190,7 +197,7 @@ def project_semantic_enums(context: HybridGenerationContext) -> SemanticEnumProj
         ),
         _domain(
             "trigger_event",
-            context.allowed_trigger_events,
+            trigger_values,
             TRIGGER_EVENTS,
             source_if_requested=requested_source,
             default_values=GLOBAL_STRUCTURAL_TRIGGER_EVENTS,
@@ -280,6 +287,7 @@ __all__ = [
     "SEMANTIC_ACTORS",
     "SEMANTIC_INTENTS",
     "GLOBAL_STRUCTURAL_TRIGGER_EVENTS",
+    "STRUCTURAL_FEEDBACK_TRIGGER_EVENT",
     "SemanticEnumProjection",
     "project_semantic_enums",
     "context_projection_payload",
