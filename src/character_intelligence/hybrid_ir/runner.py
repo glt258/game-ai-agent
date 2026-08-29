@@ -33,7 +33,11 @@ from ..semantic_ir import (
     parse_semantic_ir,
     validate_skill_semantic_ir,
 )
-from .contract import ModelFacingRequest, build_model_facing_request
+from .contract import (
+    MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED,
+    ModelFacingRequest,
+    build_model_facing_request,
+)
 from .diagnostics import SafeEvaluatorDiagnostics, adapt_skill_validation_report
 from .projection import (
     CONTEXT_PROJECTION_VERSION,
@@ -1001,7 +1005,7 @@ class HybridSemanticIRRunner:
         ):
             return _blocked_live_result("BLOCKED_HYBRID_REQUEST_DRIFT")
         if self.context.contract_profile == "aligned_v1" and (
-            request.contract.version != "semantic-skill-plan-ir-contract/0.2.0"
+            request.contract.version != MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED
             or self.context.context_projection_version != CONTEXT_PROJECTION_VERSION
             or not self.context.context_projection_digest
         ):

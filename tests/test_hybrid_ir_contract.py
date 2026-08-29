@@ -116,6 +116,18 @@ def test_contract_is_deterministic_compact_and_example_free() -> None:
     assert "qualifier" in first.contract.text
 
 
+def test_aligned_contract_states_feedback_actor_wiring_rule() -> None:
+    request = build_model_facing_request(
+        HybridGenerationContext(
+            "Design a support ability.",
+            contract_profile="aligned_v1",
+            allowed_trigger_events=("ability_invoked",),
+        )
+    )
+    assert request.contract.version == "semantic-skill-plan-ir-contract/0.3.0"
+    assert "response trigger actor must match the mechanic effect actor" in request.text
+
+
 def test_contract_digest_binds_projection_and_wording() -> None:
     first = build_model_facing_contract(_generation_context())
     changed = build_model_facing_contract(
