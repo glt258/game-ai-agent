@@ -30,12 +30,13 @@ non-student status.
 | Reference Corpus | `reference-corpus-v0.5` | Current 16-record expanded corpus baseline |
 | Character Intelligence | `CI-B1.5` | Current canonical combat-role compatibility milestone |
 | Character Skill | `CS-S1.1` | Current frozen interface-design milestone |
-| Hybrid Semantic IR | `hybrid-semantic-ir-e2e-v0.1` | One real provider end-to-end evaluator PASS baseline |
+| Hybrid Semantic IR | `hybrid-semantic-ir-e2e-v0.1` | Historical real-provider end-to-end evaluator PASS baseline |
 
 The full naming policy is documented in [Versioning and Namespace Policy](docs/versioning.md).
 
-Character Skill Hybrid Semantic IR has completed one real provider
-end-to-end evaluator PASS; multi-case generalization is not yet proven.
+Character Skill Hybrid Semantic IR has a frozen historical real-provider
+end-to-end evaluator PASS baseline; multi-case generalization is not yet
+proven.
 
 Release notes for `v0.7.1` are documented in
 [docs/release_notes_v0.7.1.md](docs/release_notes_v0.7.1.md).
@@ -193,22 +194,71 @@ check, and a validated Canon ID. They never expose API keys, provider response
 bodies, full prompts, unprocessed model output, or unprocessed recovery
 exception text.
 
-## Example Live Run
+## Validation and Evidence
 
-One verified live end-to-end run used provider `opencode_go` with model
-`deepseek-v4-flash`. The Canon-dependent brief required the generated
-character to belong to an existing organization. The agent performed real
+### Verified Live Provider Run
+
+One verified live Character Authoring E2E run used provider `opencode_go` with
+model `deepseek-v4-flash`. The Canon-dependent brief required the generated
+character to belong to an existing organization. The agent performed actual
 retrieval, selected `faction_005` (`临洲市公共安全联席体系`), and produced the
 draft character `方宁舒`, whose occupation was
 `临洲市公共安全联席体系大型活动安全组现场协作员`.
 
 The draft had a non-empty retrieved source set and grounded Canon Basis
 entries including `faction_005`, `lore_023`, `lore_024`, `lore_026`, and
-`char_launch_007`. This is a verified live E2E example, not a benchmark or a
-claim about universal model quality. Separate release probes found that
+`char_launch_007`. This is one verified live E2E example, not a benchmark and
+not a claim about universal model quality. Separate release probes found that
 DeepSeek Pro full finalization can still exceed the existing bounded provider
-attempts; that provider/model latency limitation is intentionally not hidden
-or changed by v0.7.1.
+attempts; that provider/model latency limitation remains intentionally visible.
+
+### Historical Provider Evidence
+
+The repository also preserves sanitized historical provider evidence from later
+Character Skill / S2 / Hybrid Semantic IR investigations. It records bounded
+structured-output and contract-compliance probes, shape diagnostics,
+timeout/retry and latency observations, and Hybrid Semantic IR outcomes for
+the investigated provider/model configurations. These observations came from
+earlier provider runs; the committed copies are metadata-only fixtures under
+[`tests/fixtures/historical_evidence/`](tests/fixtures/historical_evidence/)
+used for reproducible validation. They do not cause new provider calls in CI
+and are bounded experimental evidence, not a leaderboard or general model
+benchmark.
+
+### Hermetic End-to-End Validation
+
+The Hybrid Semantic IR execution path supports an explicit provider-injection
+seam, so tests can exercise the full provider → IR → validator → compiler →
+parser → evaluator path with a deterministic injected provider. The
+production/live default provider factory remains credential-gated:
+
+```text
+production/live path  → configured provider credentials required
+hermetic CI path      → explicit injected provider; no real provider call
+```
+
+This seam exercises the execution path without weakening production provider
+configuration or replacing live provider support.
+
+### Clean-Checkout CI
+
+The committed historical-evidence fixture store lets a clean public checkout
+run without developer-local ignored `evals/results` artifacts. Production
+evidence continues to use the normal `evals/results` path; test validators may
+read the committed sanitized fixtures when those historical results are absent.
+The fixture contract records that raw prompts, raw responses, IR payloads,
+credentials, and other secrets are not stored.
+
+Before this documentation update, the latest verified clean-checkout baseline
+was main HEAD
+`cafb72d29580b4d437f886926739703da8c9c545`, covered by [GitHub Actions run
+#17](https://github.com/glt258/game-ai-agent/actions/runs/33238359141):
+`quality`, Python 3.10/3.13/3.14 tests, `build`, `installed-smoke`, and
+`ci-success` all passed, with `1602 passed, 1 skipped`. That CI validation
+made 0 real provider calls: live smoke was disabled, credentials were absent,
+and the Hybrid Semantic IR E2E path used explicit provider injection. Live
+execution remains available separately when configured credentials are
+provided.
 
 ## Evaluation
 

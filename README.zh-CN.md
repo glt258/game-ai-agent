@@ -26,12 +26,12 @@ v0.3 创作契约还会保留未知的精确年龄、法定年龄和历史年龄
 | Reference Corpus | `reference-corpus-v0.5` | 当前包含 16 条记录的扩展语料库基线 |
 | Character Intelligence | `CI-B1.5` | 当前 Canon 化战斗角色兼容性里程碑 |
 | Character Skill | `CS-S1.1` | 当前冻结的接口设计里程碑 |
-| Hybrid Semantic IR | `hybrid-semantic-ir-e2e-v0.1` | 一次真实 provider 端到端 evaluator PASS 基线 |
+| Hybrid Semantic IR | `hybrid-semantic-ir-e2e-v0.1` | 历史真实 provider 端到端 evaluator PASS 基线 |
 
 完整的命名策略记录于 [Versioning and Namespace Policy](docs/versioning.md)。
 
-Character Skill Hybrid Semantic IR 已完成一次真实 provider 端到端 evaluator PASS；
-跨 case 泛化尚未证明。
+Character Skill Hybrid Semantic IR 已冻结一条历史真实 provider 端到端
+evaluator PASS 基线；跨 case 泛化尚未证明。
 `v0.7.1` 的发布说明记录于
 [docs/release_notes_v0.7.1.md](docs/release_notes_v0.7.1.md)。
 
@@ -157,17 +157,50 @@ No Character draft or Canon result was fabricated.
 诊断信息可能暴露异常类别、固定的安全原因、grounding 检查和经过校验的 Canon ID。
 它们绝不会暴露 API key、provider 响应正文、完整提示词、未经处理的模型输出或未经处理的恢复异常文本。
 
-## Live 运行示例
+## 验证与证据
 
-一次经过验证的 live 端到端运行使用了 provider `opencode_go` 和模型 `deepseek-v4-flash`。
-该依赖 Canon 的简述要求生成的角色属于一个既有组织。Agent 执行了真实检索，选择了 `faction_005`
-（`临洲市公共安全联席体系`），并生成了角色 `方宁舒`，其职业为
+### 经过验证的 Live Provider 运行
+
+一次经过验证的 live Character Authoring E2E 运行使用了 provider `opencode_go` 和模型
+`deepseek-v4-flash`。该依赖 Canon 的简述要求生成的角色属于一个既有组织。Agent 执行了实际检索，选择了
+`faction_005`（`临洲市公共安全联席体系`），并生成了角色 `方宁舒`，其职业为
 `临洲市公共安全联席体系大型活动安全组现场协作员`。
 
 该 draft 具有非空的检索来源集合，grounded Canon Basis 条目包括 `faction_005`、`lore_023`、`lore_024`、
-`lore_026` 和 `char_launch_007`。这是经过验证的 live E2E 示例，并不是基准测试，也不是关于模型普遍质量的声明。
+`lore_026` 和 `char_launch_007`。这是一个经过验证的 live E2E 示例，不是基准测试，也不是关于模型普遍质量的声明。
 独立的发布探针发现，DeepSeek Pro 的完整定稿仍可能超过现有的有界 provider 尝试次数；
-该 provider/模型延迟限制被 v0.7.1 有意保留，未被隐藏或改变。
+该 provider/模型延迟限制仍被有意保留并如实展示。
+
+### 历史 Provider 证据
+
+仓库还保留了后续 Character Skill / S2 / Hybrid Semantic IR 调查中的脱敏历史 provider 证据，记录了有界的结构化输出与契约合规探针、
+形状诊断、超时/重试与延迟观察，以及 Hybrid Semantic IR 的结果。这些观察来自较早的 provider 运行；提交到仓库的副本是位于
+[`tests/fixtures/historical_evidence/`](tests/fixtures/historical_evidence/) 下、仅包含元数据的 fixture，用于可复现验证。
+它们不会让 CI 发起新的 provider 调用，也不是排行榜或一般模型基准，而是有边界的实验性证据。
+
+### Hermetic 端到端验证
+
+Hybrid Semantic IR 执行路径支持显式的 provider 注入 seam，因此测试可以使用确定性的注入 provider，完整走过
+provider → IR → validator → compiler → parser → evaluator 路径。生产/live 的默认 provider factory 仍然受凭据门禁保护：
+
+```text
+生产/live 路径      → 必须配置 provider 凭据
+hermetic CI 路径    → 显式注入 provider；不发起真实 provider 调用
+```
+
+这个 seam 只是让测试可以无凭据执行完整路径，并未削弱生产 provider 配置，也没有取代 live provider 支持。
+
+### Clean-Checkout CI
+
+已提交的历史证据 fixture store 使干净的公开 checkout 不依赖开发者本地被忽略的 `evals/results` 产物。
+生产证据仍继续使用正常的 `evals/results` 路径；当这些历史结果不存在时，测试 validator 可以读取已提交的脱敏 fixture。
+Fixture 契约明确记录不会保存原始提示词、原始响应、IR payload、凭据或其他 secret。
+
+在本次文档更新之前，最近一次已验证的 clean-checkout 基线对应 main HEAD
+`cafb72d29580b4d437f886926739703da8c9c545`，见 [GitHub Actions run #17](https://github.com/glt258/game-ai-agent/actions/runs/33238359141)：
+`quality`、Python 3.10/3.13/3.14 测试、`build`、`installed-smoke` 和 `ci-success` 全部通过，结果为
+`1602 passed, 1 skipped`。该 CI 验证产生的真实 provider 调用数为 0：live smoke 已禁用、没有 provider 凭据，
+Hybrid Semantic IR E2E 使用的是显式注入 provider。配置凭据后仍可单独运行 live execution。
 
 ## 评估
 
