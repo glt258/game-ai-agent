@@ -7,8 +7,11 @@ import importlib.util
 import io
 import json
 import sys
+from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
+
+import pytest
 
 from character_intelligence.hybrid_ir import runner as hybrid_runner
 from character_intelligence.hybrid_ir.runner import FakeProvider, HybridProviderInvocationError
@@ -48,6 +51,36 @@ VALID_PASSIVE = {
         },
     },
 }
+
+
+def _valid_triggered() -> dict[str, object]:
+    return {
+        "ir_version": "semantic-skill-plan-ir/0.2.0",
+        "ability_name": "Guardian Intercept",
+        "summary": "An ally reaction protects the team.",
+        "mode": "reaction",
+        "role": "defense",
+        "centrality": "core",
+        "mechanic": {
+            "kind": "triggered",
+            "trigger": {"actor": "ally", "event": "damage_received", "qualifier": None},
+            "effect": {
+                "actor": "ally",
+                "intent": "protect_ally",
+                "description": "Protect the damaged ally.",
+            },
+            "feedback": None,
+        },
+        "role_path": {
+            "kind": "triggered",
+            "trigger": {"actor": "ally", "event": "damage_received", "qualifier": None},
+            "effect": {
+                "actor": "ally",
+                "intent": "protect_ally",
+                "description": "Provide defense role evidence.",
+            },
+        },
+    }
 
 
 def _run(provider, *, repair_decider=None, role="support", mode="passive"):
@@ -137,6 +170,81 @@ def test_structural_ir_parse_failure_never_offers_repair():
     assert result.repair is None
     assert result.repair_status == "UNAVAILABLE"
     assert provider.calls == 1
+
+
+@pytest.mark.parametrize(
+    ("variant", "role", "mode", "expected_code"),
+    (
+        ("unknown_field", "support", "passive", "IR_UNKNOWN_FIELD"),
+        ("missing_trigger", "defense", "reaction", "IR_MISSING_REQUIRED_FIELD"),
+        ("wrong_discriminator", "support", "passive", "IR_WRONG_TYPE"),
+        ("triggered_passive_field", "defense", "reaction", "IR_UNKNOWN_FIELD"),
+        ("passive_trigger", "support", "passive", "IR_UNKNOWN_FIELD"),
+        ("passive_feedback", "support", "passive", "IR_UNKNOWN_FIELD"),
+    ),
+)
+def test_v2_ir_parse_classifications_are_safe(variant, role, mode, expected_code):
+    payload = deepcopy(VALID_PASSIVE if mode == "passive" else _valid_triggered())
+    if variant == "unknown_field":
+        payload["raw_marker"] = "DO_NOT_PRINT"
+    elif variant == "missing_trigger":
+        del payload["mechanic"]["trigger"]
+    elif variant == "wrong_discriminator":
+        payload["mechanic"]["kind"] = "unknown_variant"
+    elif variant == "triggered_passive_field":
+        payload["mechanic"]["persistence"] = "always_on"
+    elif variant == "passive_trigger":
+        payload["mechanic"]["trigger"] = {
+            "actor": "self",
+            "event": "ability_invoked",
+            "qualifier": None,
+        }
+    elif variant == "passive_feedback":
+        payload["mechanic"]["feedback"] = None
+
+    result = _run(FakeProvider(payload), role=role, mode=mode)
+
+    assert result.initial.evidence.first_failure_layer == "IR_PARSE"
+    assert result.initial.evidence.failure_code == expected_code
+
+
+def test_invalid_passive_persistence_is_validation_not_parse():
+    payload = deepcopy(VALID_PASSIVE)
+    payload["mechanic"]["persistence"] = "sometimes"
+
+    result = _run(FakeProvider(payload))
+
+    assert result.initial.evidence.first_failure_layer == "IR_VALIDATION"
+    assert result.initial.evidence.failure_code == "IR_INVALID_SEMANTIC_VALUE"
+
+
+def test_safe_debug_shows_pipeline_and_parse_classification_without_raw_material():
+    payload = deepcopy(VALID_PASSIVE)
+    payload["raw_marker"] = "RAW_RESPONSE_SENTINEL"
+    provider = FakeProvider(payload)
+    execution = _run(provider)
+    output = io.StringIO()
+
+    playground.render_result(
+        execution,
+        "support",
+        "passive",
+        show_safe_debug=True,
+        provider=provider,
+        output=output,
+    )
+    text = output.getvalue()
+
+    assert "Pipeline:\n" in text
+    assert "  PROVIDER: PASS" in text
+    assert "  IR_PARSE: FAIL" in text
+    assert "  IR_VALIDATION: NOT_REACHED" in text
+    assert "  COMPILER: NOT_REACHED" in text
+    assert "  EVALUATOR: NOT_REACHED" in text
+    assert "Parse classification: IR_UNKNOWN_FIELD" in text
+    assert "RAW_RESPONSE_SENTINEL" not in text
+    assert "semantic-skill-plan-ir/0.2.0" not in text
+    assert "NPC_LLM_API_KEY" not in text
 
 
 def test_provider_unavailable_is_safe_and_does_not_repair():

@@ -37,6 +37,7 @@ from character_intelligence.hybrid_ir.repair import (  # noqa: E402
     SemanticRepairSession,
 )
 from character_intelligence.hybrid_ir.runner import (  # noqa: E402
+    FIRST_FAILURE_LAYERS,
     FakePipelineResult,
     HybridProvider,
     HybridProviderInvocationError,
@@ -286,6 +287,19 @@ def _evaluator_label(result: FakePipelineResult) -> str:
     return "NOT_REACHED"
 
 
+def _stage_status(result: FakePipelineResult, stage: str) -> str:
+    failure_layer = result.evidence.first_failure_layer
+    if failure_layer is None:
+        return "PASS"
+    stage_index = FIRST_FAILURE_LAYERS.index(stage)
+    failure_index = FIRST_FAILURE_LAYERS.index(failure_layer)
+    if stage_index < failure_index:
+        return "PASS"
+    if stage_index == failure_index:
+        return "FAIL"
+    return "NOT_REACHED"
+
+
 def render_result(
     execution: PlaygroundExecution,
     role: str,
@@ -311,7 +325,9 @@ def render_result(
     print(f"  {feedback}", file=output)
     print(f"Evaluator: {_evaluator_label(result)}", file=output)
     print(f"Repair: {execution.repair_status}", file=output)
-    print("Pipeline: PROVIDER -> IR -> COMPILER -> EVALUATOR", file=output)
+    print("Pipeline:", file=output)
+    for stage in FIRST_FAILURE_LAYERS:
+        print(f"  {stage}: {_stage_status(result, stage)}", file=output)
 
     if show_safe_debug:
         evidence = execution.initial.evidence
@@ -319,6 +335,11 @@ def render_result(
         print("Safe debug:", file=output)
         print(f"  Provider: {evidence.identity.provider} / {evidence.identity.model}", file=output)
         print(f"  First failure layer: {evidence.first_failure_layer or 'none'}", file=output)
+        if evidence.first_failure_layer == "IR_PARSE":
+            print(
+                f"  Parse classification: {evidence.failure_code or 'OTHER_IR_PARSE'}",
+                file=output,
+            )
         print(f"  Request characters: {evidence.request_metrics.get('total_chars', 0)}", file=output)
         print(f"  Provider calls: {provider.calls if provider is not None else 'not exposed'}", file=output)
         if diagnostics is not None:
