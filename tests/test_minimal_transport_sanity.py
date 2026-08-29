@@ -7,6 +7,7 @@ import pytest
 from agents.errors import ModelTimeoutError
 from agents.models import ModelInvocationAudit, ModelTurn
 from evals import character_skill_s2_shadow_evidence as evidence
+from tests.historical_fixtures import historical_fixture_path
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -139,6 +140,7 @@ def test_one_sample_completes_and_second_is_impossible(tmp_path: Path) -> None:
 
 
 def test_historical_evidence_is_unchanged(tmp_path: Path) -> None:
-    before = (ROOT / evidence.MODEL_SUITABILITY_RESULT_RELATIVE_PATH).read_bytes()
+    path = historical_fixture_path(evidence.MODEL_SUITABILITY_RESULT_RELATIVE_PATH)
+    before = path.read_bytes()
     evidence.MinimalTransportSanityRunner(ROOT).dry_run(output_path=tmp_path / "sanity.json")
-    assert (ROOT / evidence.MODEL_SUITABILITY_RESULT_RELATIVE_PATH).read_bytes() == before
+    assert path.read_bytes() == before

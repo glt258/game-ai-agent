@@ -18,9 +18,10 @@ from character_intelligence.hybrid_ir import (
     validate_hybrid_evidence,
 )
 from character_skill.models import SkillFinding, SkillValidationReport
+from tests.historical_fixtures import historical_fixture_path
 
 ROOT = Path(__file__).resolve().parents[1]
-HISTORICAL = ROOT / "evals/results/character_skill_s2_hybrid_ir_run_01_v0.2.0.json"
+HISTORICAL = historical_fixture_path("character_skill_s2_hybrid_ir_run_01_v0.2.0.json")
 
 
 def _report(*findings: SkillFinding, outcome: str = "FAIL") -> SkillValidationReport:

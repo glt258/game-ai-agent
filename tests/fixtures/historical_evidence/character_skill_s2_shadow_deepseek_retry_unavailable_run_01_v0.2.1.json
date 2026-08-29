@@ -1,0 +1,159 @@
+{
+  "schema_version": "character-skill-s2-shadow-retry-unavailable/0.1.0",
+  "run_id": "cs-s2-shadow-deepseek-retry-unavailable-v0.2.1-e3f70dcded41d609ad43cca15ae5abeb8cf4c0c8-910f0d1da5c6-cohort-01",
+  "protocol_version": "0.2.1",
+  "cohort_type": "retry_unavailable",
+  "source_run_id": "cs-s2-shadow-deepseek-v0.2.1-e3f70dcded41d609ad43cca15ae5abeb8cf4c0c8-910f0d1da5c6-run-01",
+  "source_bundle_sha256": "b84bba6063f2b9bb77c0b9d88ba36a3d0f92a5e23a2b022b87d67d55f117b7a3",
+  "source_manifest_digest": "910f0d1da5c657460f864d085d7223dc618d1f4fa283f0fb2e5f1b5274474ec7",
+  "input_manifest_digest": "910f0d1da5c657460f864d085d7223dc618d1f4fa283f0fb2e5f1b5274474ec7",
+  "inputs": [
+    {
+      "path": "evals/fixtures/hermes_character_skill_s0_blind_cases_v0.1.1.json",
+      "sha256": "055505916bf82fc60cb55d2deb84b9aaacd7028431ac5d38d2f84791dd77fe90",
+      "role": "provider"
+    },
+    {
+      "path": "evals/fixtures/character_skill_interface_prototype_cases_v0.1.1.public.json",
+      "sha256": "11e936df853927154ace426c3a22e073b739b9b1dce536817851f70cf855ec04",
+      "role": "evaluator"
+    }
+  ],
+  "provider": {
+    "name": "opencode_go",
+    "model_requested": "deepseek-v4-flash",
+    "model_reported": "deepseek-v4-flash",
+    "transport": "openai_chat_completions",
+    "structured_output_mode": "json_object",
+    "response_contract": "character_skill_kit",
+    "candidate_schema_version": "skill-kit-candidate/0.1.1",
+    "timeout_seconds": 30,
+    "max_transport_retries": 2
+  },
+  "lineage_policy": "one_retry_per_unavailable_source_observation",
+  "observations": [
+    {
+      "record_digest": "72f78df38b4b1d9099c53417a799603d754b4088d6ec9b250724533ed14bad87",
+      "observation": {
+        "observation_id": "cs-s2-shadow-deepseek-retry-unavailable-v0.2.1-e3f70dcded41d609ad43cca15ae5abeb8cf4c0c8-910f0d1da5c6-cohort-01:source-57bd1aead25aae6e",
+        "case_id": "case_01",
+        "repeat": 1,
+        "draft_id": "draft_s2_case_01",
+        "transport_outcome": "failure",
+        "failure_stage": "provider",
+        "failure_code": "PROVIDER_INVOCATION_FAILED",
+        "shape_compliant": false,
+        "parse_outcome": "not_attempted",
+        "outcome": "UNAVAILABLE",
+        "finding_codes": [],
+        "candidate_digest": null,
+        "context_digest": "484cf36660bea0ecc2c1436475c5cc6df16cb111beff1ad9915b5927997a0e30",
+        "report_digest": null,
+        "renderer_comparison": {
+          "performed": false,
+          "matches_legacy": null,
+          "summary_code": "not_authoritative"
+        },
+        "legacy_impact": false,
+        "supersedes": "cs-s2-shadow-deepseek-v0.2.1-e3f70dcded41d609ad43cca15ae5abeb8cf4c0c8-910f0d1da5c6-run-01:case_01:repeat-01"
+      },
+      "audit": {
+        "redacted_request_id": "redacted:5e35414dfb7e9a31",
+        "retry_count": 2,
+        "latency_ms": 93577.99999999952,
+        "token_usage": {
+          "input": null,
+          "output": null,
+          "total": null
+        }
+      },
+      "sanitization": {
+        "raw_prompt_stored": false,
+        "raw_response_stored": false,
+        "secrets_detected": false
+      }
+    },
+    {
+      "record_digest": "e981438e353a100ed073255aecb6ab4edc38b3fb300af2b72a3b1c0889e6d070",
+      "observation": {
+        "observation_id": "cs-s2-shadow-deepseek-retry-unavailable-v0.2.1-e3f70dcded41d609ad43cca15ae5abeb8cf4c0c8-910f0d1da5c6-cohort-01:source-7fe3047b2261abcb",
+        "case_id": "case_13",
+        "repeat": 1,
+        "draft_id": "draft_s2_case_13",
+        "transport_outcome": "success",
+        "failure_stage": "shape",
+        "failure_code": "CANDIDATE_SHAPE_REJECTED",
+        "shape_compliant": false,
+        "parse_outcome": "rejected",
+        "outcome": "UNAVAILABLE",
+        "finding_codes": [],
+        "candidate_digest": null,
+        "context_digest": "9824ca7fc2165bac545ea5ab427217eac476f2aa771ffa20bccd81478f16686f",
+        "report_digest": null,
+        "renderer_comparison": {
+          "performed": false,
+          "matches_legacy": null,
+          "summary_code": "not_authoritative"
+        },
+        "legacy_impact": false,
+        "supersedes": "cs-s2-shadow-deepseek-v0.2.1-e3f70dcded41d609ad43cca15ae5abeb8cf4c0c8-910f0d1da5c6-run-01:case_13:repeat-01"
+      },
+      "audit": {
+        "redacted_request_id": "redacted:b35c505b410096f9",
+        "retry_count": 1,
+        "latency_ms": 59406.00000000086,
+        "token_usage": {
+          "input": 177,
+          "output": 2636,
+          "total": 2813
+        }
+      },
+      "sanitization": {
+        "raw_prompt_stored": false,
+        "raw_response_stored": false,
+        "secrets_detected": false
+      }
+    },
+    {
+      "record_digest": "17f72e8311330b34a4e0f3733d2424667bdd9a635b182ff2ec7e6e2ddf251407",
+      "observation": {
+        "observation_id": "cs-s2-shadow-deepseek-retry-unavailable-v0.2.1-e3f70dcded41d609ad43cca15ae5abeb8cf4c0c8-910f0d1da5c6-cohort-01:source-6628d6eaa9d8f7ed",
+        "case_id": "case_19",
+        "repeat": 1,
+        "draft_id": "draft_s2_case_19",
+        "transport_outcome": "failure",
+        "failure_stage": "provider",
+        "failure_code": "PROVIDER_INVOCATION_FAILED",
+        "shape_compliant": false,
+        "parse_outcome": "not_attempted",
+        "outcome": "UNAVAILABLE",
+        "finding_codes": [],
+        "candidate_digest": null,
+        "context_digest": "9824ca7fc2165bac545ea5ab427217eac476f2aa771ffa20bccd81478f16686f",
+        "report_digest": null,
+        "renderer_comparison": {
+          "performed": false,
+          "matches_legacy": null,
+          "summary_code": "not_authoritative"
+        },
+        "legacy_impact": false,
+        "supersedes": "cs-s2-shadow-deepseek-v0.2.1-e3f70dcded41d609ad43cca15ae5abeb8cf4c0c8-910f0d1da5c6-run-01:case_19:repeat-01"
+      },
+      "audit": {
+        "redacted_request_id": "redacted:da329f57c3379c4b",
+        "retry_count": 2,
+        "latency_ms": 92375.0,
+        "token_usage": {
+          "input": null,
+          "output": null,
+          "total": null
+        }
+      },
+      "sanitization": {
+        "raw_prompt_stored": false,
+        "raw_response_stored": false,
+        "secrets_detected": false
+      }
+    }
+  ]
+}

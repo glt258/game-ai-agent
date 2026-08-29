@@ -1,0 +1,91 @@
+{
+  "schema_version": "character-skill-s2-shadow-full-input-tiny-output/0.1.0",
+  "protocol_version": "0.2.1",
+  "run_id": "cs-s2-full-input-tiny-output-v0.1.0-opencode_go-deepseek-v4-pro-case_13-t60-r0-n1-f0210b3bd0b7b7a53de8046ee86eb34b88ce2912-910f0d1da5c6-run-01",
+  "experiment_type": "full_input_tiny_output",
+  "source_commit": "f0210b3bd0b7b7a53de8046ee86eb34b88ce2912",
+  "manifest_digest": "910f0d1da5c657460f864d085d7223dc618d1f4fa283f0fb2e5f1b5274474ec7",
+  "input_manifest_digest": "910f0d1da5c657460f864d085d7223dc618d1f4fa283f0fb2e5f1b5274474ec7",
+  "inputs": [
+    {
+      "path": "evals/fixtures/hermes_character_skill_s0_blind_cases_v0.1.1.json",
+      "sha256": "055505916bf82fc60cb55d2deb84b9aaacd7028431ac5d38d2f84791dd77fe90",
+      "role": "provider"
+    },
+    {
+      "path": "evals/fixtures/character_skill_interface_prototype_cases_v0.1.1.public.json",
+      "sha256": "11e936df853927154ace426c3a22e073b739b9b1dce536817851f70cf855ec04",
+      "role": "evaluator"
+    }
+  ],
+  "provider": {
+    "name": "opencode_go",
+    "model_requested": "deepseek-v4-pro",
+    "model_reported": "deepseek-v4-pro",
+    "transport": "openai_chat_completions",
+    "structured_output_mode": "json_object",
+    "timeout_seconds": 60,
+    "max_transport_retries": 0
+  },
+  "case_id": "case_13",
+  "timeout_seconds": 60,
+  "max_transport_retries": 0,
+  "target_sample_count": 1,
+  "complete": true,
+  "input_contract_version": "character-skill-s2-shadow-evidence/0.2.1",
+  "tiny_output_contract_version": "minimal-status-object/0.1.0",
+  "historical_full_input": {
+    "message_count": 2,
+    "chars": 5157,
+    "bytes": 5281,
+    "by_role": {
+      "system": {
+        "chars": 4963,
+        "bytes": 4963,
+        "lines": 83
+      },
+      "user": {
+        "chars": 194,
+        "bytes": 318,
+        "lines": 1
+      }
+    }
+  },
+  "request_metrics": {
+    "message_count": 2,
+    "chars": 5617,
+    "bytes": 5741,
+    "by_role": {
+      "system": {
+        "chars": 5423,
+        "bytes": 5423,
+        "lines": 87
+      },
+      "user": {
+        "chars": 194,
+        "bytes": 318,
+        "lines": 1
+      }
+    }
+  },
+  "sample_index": 1,
+  "observation": {
+    "observation_id": "cs-s2-full-input-tiny-output-v0.1.0-opencode_go-deepseek-v4-pro-case_13-t60-r0-n1-f0210b3bd0b7b7a53de8046ee86eb34b88ce2912-910f0d1da5c6-run-01:sample-01",
+    "provider_outcome": "failure",
+    "transport_attempts": 1,
+    "latency_ms": 61188.0000000001,
+    "json_extraction_outcome": "not_attempted",
+    "tiny_contract_outcome": "FULL_INPUT_TINY_OUTPUT_UNAVAILABLE",
+    "parsed_top_level_type": null,
+    "expected_key_count": 1,
+    "actual_key_count": null,
+    "failure_stage": "provider",
+    "failure_code": "PROVIDER_INVOCATION_FAILED",
+    "sanitization": {
+      "raw_prompt_stored": false,
+      "raw_response_stored": false,
+      "secrets_detected": false
+    }
+  },
+  "bundle_digest": "a47969323d15d241d9e70ff0f3df9b36a323f626f192b3dfa94c2dbbde336485"
+}

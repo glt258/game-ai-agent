@@ -9,6 +9,7 @@ from agents.models import ModelInvocationAudit, ModelTurn
 from agents.response_contracts import character_skill_kit_prompt_contract
 from character_skill import SkillKitShapeError, parse_candidate
 from evals import character_skill_s2_shadow_evidence as evidence
+from tests.historical_fixtures import historical_fixture_path
 
 EMPTY_CANDIDATE = {
     "schema_version": "skill-kit-candidate/0.1.1",
@@ -157,7 +158,7 @@ class _DiagnosticModel:
 def test_diagnostic_runner_dry_run_is_provider_free_and_targets_retry_case13() -> None:
     runner = evidence.ShapeDiagnosticCohortRunner()
     result = runner.run(
-        source_path=evidence.ROOT / evidence.RETRY_RESULT_RELATIVE_PATH,
+        source_path=historical_fixture_path(evidence.RETRY_RESULT_RELATIVE_PATH),
         live=False,
     )
     assert result["status"] == "dry_run_shape_diagnostic"
@@ -171,7 +172,7 @@ def test_diagnostic_runner_emits_one_independent_lineage_record(tmp_path) -> Non
     model = _DiagnosticModel({"super_secret_api_key": "sk-FAKE_SECRET"})
     output = tmp_path / "diagnostic.json"
     bundle = runner.run(
-        source_path=evidence.ROOT / evidence.RETRY_RESULT_RELATIVE_PATH,
+        source_path=historical_fixture_path(evidence.RETRY_RESULT_RELATIVE_PATH),
         live=True,
         output_path=output,
         shadow_model=model,
@@ -193,7 +194,7 @@ def test_contract_compliance_runner_has_independent_baseline_lineage(tmp_path) -
     runner = evidence.ContractComplianceCohortRunner()
     model = _DiagnosticModel(EMPTY_CANDIDATE)
     bundle = runner.run(
-        source_path=evidence.ROOT / evidence.DIAGNOSTIC_RESULT_RELATIVE_PATH,
+        source_path=historical_fixture_path(evidence.DIAGNOSTIC_RESULT_RELATIVE_PATH),
         live=True,
         output_path=tmp_path / "compliance.json",
         shadow_model=model,

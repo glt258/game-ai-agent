@@ -9,9 +9,10 @@ import pytest
 
 from agents.models import ModelInvocationAudit, ModelTurn
 from evals import character_skill_s2_shadow_evidence as evidence
+from tests.historical_fixtures import historical_fixture_path
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / evidence.COMPLIANCE_RESULT_RELATIVE_PATH
+SOURCE = historical_fixture_path(evidence.COMPLIANCE_RESULT_RELATIVE_PATH)
 EMPTY_CANDIDATE = {
     "schema_version": "skill-kit-candidate/0.1.1",
     "entries": [],
@@ -200,9 +201,9 @@ def test_raw_content_is_not_serialized_and_old_validators_still_pass(tmp_path: P
         assert secret not in serialized
     evidence.validate_fixed_contract_compliance_bundle(bundle)
     evidence.validate_contract_compliance_bundle(json.loads(SOURCE.read_text(encoding="utf-8")))
-    evidence.validate_shape_diagnostic_bundle(json.loads((ROOT / evidence.DIAGNOSTIC_RESULT_RELATIVE_PATH).read_text(encoding="utf-8")))
-    evidence.validate_retry_evidence_bundle(json.loads((ROOT / evidence.RETRY_RESULT_RELATIVE_PATH).read_text(encoding="utf-8")))
-    evidence.validate_evidence_bundle(json.loads((ROOT / evidence.RESULT_RELATIVE_TEMPLATE.format(repeat=1)).read_text(encoding="utf-8")))
+    evidence.validate_shape_diagnostic_bundle(json.loads(historical_fixture_path(evidence.DIAGNOSTIC_RESULT_RELATIVE_PATH).read_text(encoding="utf-8")))
+    evidence.validate_retry_evidence_bundle(json.loads(historical_fixture_path(evidence.RETRY_RESULT_RELATIVE_PATH).read_text(encoding="utf-8")))
+    evidence.validate_evidence_bundle(json.loads(historical_fixture_path(evidence.RESULT_RELATIVE_TEMPLATE.format(repeat=1)).read_text(encoding="utf-8")))
 
 
 def test_deterministic_identity_and_serialization(tmp_path: Path) -> None:

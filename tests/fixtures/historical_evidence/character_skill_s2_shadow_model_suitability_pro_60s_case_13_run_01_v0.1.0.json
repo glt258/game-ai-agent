@@ -1,0 +1,83 @@
+{
+  "schema_version": "character-skill-s2-shadow-model-suitability/0.1.0",
+  "protocol_version": "0.2.1",
+  "run_id": "cs-s2-shadow-model-suitability-v0.1.0-opencode_go-deepseek-v4-pro-case_13-t60-r2-n1-39dad62d1adbbca303e51a570dd5c19f02dfece0-910f0d1da5c6-run-01",
+  "experiment_type": "model_suitability",
+  "source_commit": "39dad62d1adbbca303e51a570dd5c19f02dfece0",
+  "manifest_digest": "910f0d1da5c657460f864d085d7223dc618d1f4fa283f0fb2e5f1b5274474ec7",
+  "input_manifest_digest": "910f0d1da5c657460f864d085d7223dc618d1f4fa283f0fb2e5f1b5274474ec7",
+  "inputs": [
+    {
+      "path": "evals/fixtures/hermes_character_skill_s0_blind_cases_v0.1.1.json",
+      "sha256": "055505916bf82fc60cb55d2deb84b9aaacd7028431ac5d38d2f84791dd77fe90",
+      "role": "provider"
+    },
+    {
+      "path": "evals/fixtures/character_skill_interface_prototype_cases_v0.1.1.public.json",
+      "sha256": "11e936df853927154ace426c3a22e073b739b9b1dce536817851f70cf855ec04",
+      "role": "evaluator"
+    }
+  ],
+  "provider": {
+    "name": "opencode_go",
+    "model_requested": "deepseek-v4-pro",
+    "model_reported": "deepseek-v4-pro",
+    "transport": "openai_chat_completions",
+    "structured_output_mode": "json_object",
+    "response_contract": "character_skill_kit",
+    "candidate_schema_version": "skill-kit-candidate/0.1.1",
+    "timeout_seconds": 60,
+    "max_transport_retries": 2
+  },
+  "case_id": "case_13",
+  "target_sample_count": 1,
+  "sample_index": 1,
+  "complete": true,
+  "baseline": {
+    "experiment_type": "timeout_suitability",
+    "model": "deepseek-v4-flash",
+    "timeout_seconds": 60,
+    "bundle_sha256": "d15389fa338cfbf1773f4c76360c216ef9fd164ee879adf40f309eac6c07dd17"
+  },
+  "observation": {
+    "record_digest": "e729d113f58b77e167dd2cd3bdbafaf21d32cc4ea4cdc7c3915b3b3570c60bf0",
+    "observation": {
+      "observation_id": "cs-s2-shadow-model-suitability-v0.1.0-opencode_go-deepseek-v4-pro-case_13-t60-r2-n1-39dad62d1adbbca303e51a570dd5c19f02dfece0-910f0d1da5c6-run-01:case_13:sample-01",
+      "case_id": "case_13",
+      "repeat": 1,
+      "draft_id": "draft_s2_case_13",
+      "transport_outcome": "failure",
+      "failure_stage": "provider",
+      "failure_code": "PROVIDER_INVOCATION_FAILED",
+      "shape_compliant": false,
+      "parse_outcome": "not_attempted",
+      "outcome": "UNAVAILABLE",
+      "finding_codes": [],
+      "candidate_digest": null,
+      "context_digest": "9824ca7fc2165bac545ea5ab427217eac476f2aa771ffa20bccd81478f16686f",
+      "report_digest": null,
+      "renderer_comparison": {
+        "performed": false,
+        "matches_legacy": null,
+        "summary_code": "not_authoritative"
+      },
+      "legacy_impact": false
+    },
+    "audit": {
+      "redacted_request_id": "redacted:b35c505b410096f9",
+      "retry_count": 2,
+      "latency_ms": 184453.00000000134,
+      "token_usage": {
+        "input": null,
+        "output": null,
+        "total": null
+      }
+    },
+    "sanitization": {
+      "raw_prompt_stored": false,
+      "raw_response_stored": false,
+      "secrets_detected": false
+    }
+  },
+  "bundle_digest": "64eb6b8528f2f3a1c9d74b3b73118a4c3fc5dfa8d04ae32bf31a1a6f46a8119f"
+}

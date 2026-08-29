@@ -1,0 +1,78 @@
+{
+  "schema_version": "character-skill-s2-shadow-contract-compliance/0.1.0",
+  "protocol_version": "0.2.1",
+  "run_id": "cs-s2-shadow-deepseek-contract-compliance-v0.1.0-4a27a8f477e6e01f802301b5723ff512f787df37-910f0d1da5c6-run-01",
+  "cohort_type": "contract_compliance",
+  "lineage_policy": "diagnoses_shape_observation_without_replacement",
+  "baseline_observation_id": "cs-s2-shadow-deepseek-shape-diagnostic-v0.1.0-cbc3702612617e40ab30943e4674bb735c719eaa-910f0d1da5c6-run-01:case_13:diagnostic-01",
+  "source_run_id": "cs-s2-shadow-deepseek-shape-diagnostic-v0.1.0-cbc3702612617e40ab30943e4674bb735c719eaa-910f0d1da5c6-run-01",
+  "source_bundle_sha256": "89b44f5413ab92a418958d2659880b69635ca0bc7a135123afd5579af8898215",
+  "source_manifest_digest": "910f0d1da5c657460f864d085d7223dc618d1f4fa283f0fb2e5f1b5274474ec7",
+  "input_manifest_digest": "910f0d1da5c657460f864d085d7223dc618d1f4fa283f0fb2e5f1b5274474ec7",
+  "inputs": [
+    {
+      "path": "evals/fixtures/hermes_character_skill_s0_blind_cases_v0.1.1.json",
+      "sha256": "055505916bf82fc60cb55d2deb84b9aaacd7028431ac5d38d2f84791dd77fe90",
+      "role": "provider"
+    },
+    {
+      "path": "evals/fixtures/character_skill_interface_prototype_cases_v0.1.1.public.json",
+      "sha256": "11e936df853927154ace426c3a22e073b739b9b1dce536817851f70cf855ec04",
+      "role": "evaluator"
+    }
+  ],
+  "provider": {
+    "name": "opencode_go",
+    "model_requested": "deepseek-v4-flash",
+    "model_reported": "deepseek-v4-flash",
+    "transport": "openai_chat_completions",
+    "structured_output_mode": "json_object",
+    "response_contract": "character_skill_kit",
+    "candidate_schema_version": "skill-kit-candidate/0.1.1",
+    "timeout_seconds": 30,
+    "max_transport_retries": 2
+  },
+  "observations": [
+    {
+      "record_digest": "e2fb07ec14540441b4c6aa1cf9f4cae1cc044addcaecc3e81bb20e7de4d78a82",
+      "observation": {
+        "observation_id": "cs-s2-shadow-deepseek-contract-compliance-v0.1.0-4a27a8f477e6e01f802301b5723ff512f787df37-910f0d1da5c6-run-01:case_13:compliance-01",
+        "case_id": "case_13",
+        "repeat": 1,
+        "draft_id": "draft_s2_case_13",
+        "transport_outcome": "failure",
+        "failure_stage": "provider",
+        "failure_code": "PROVIDER_INVOCATION_FAILED",
+        "shape_compliant": false,
+        "parse_outcome": "not_attempted",
+        "outcome": "UNAVAILABLE",
+        "finding_codes": [],
+        "candidate_digest": null,
+        "context_digest": "9824ca7fc2165bac545ea5ab427217eac476f2aa771ffa20bccd81478f16686f",
+        "report_digest": null,
+        "renderer_comparison": {
+          "performed": false,
+          "matches_legacy": null,
+          "summary_code": "not_authoritative"
+        },
+        "legacy_impact": false,
+        "baseline_observation_id": "cs-s2-shadow-deepseek-shape-diagnostic-v0.1.0-cbc3702612617e40ab30943e4674bb735c719eaa-910f0d1da5c6-run-01:case_13:diagnostic-01"
+      },
+      "audit": {
+        "redacted_request_id": "redacted:b35c505b410096f9",
+        "retry_count": 2,
+        "latency_ms": 93953.00000000134,
+        "token_usage": {
+          "input": null,
+          "output": null,
+          "total": null
+        }
+      },
+      "sanitization": {
+        "raw_prompt_stored": false,
+        "raw_response_stored": false,
+        "secrets_detected": false
+      }
+    }
+  ]
+}

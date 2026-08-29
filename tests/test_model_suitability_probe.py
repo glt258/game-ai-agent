@@ -7,6 +7,7 @@ import pytest
 
 from agents.models import ModelInvocationAudit, ModelTurn
 from evals import character_skill_s2_shadow_evidence as evidence
+from tests.historical_fixtures import historical_fixture_path
 
 ROOT = Path(__file__).resolve().parents[1]
 EMPTY_CANDIDATE = {
@@ -142,12 +143,12 @@ def test_model_profile_resolves_to_pro() -> None:
 
 def test_model_suitability_preserves_historical_evidence(tmp_path: Path) -> None:
     paths = [
-        ROOT / evidence.RESULT_RELATIVE_TEMPLATE.format(repeat=1),
-        ROOT / evidence.RETRY_RESULT_RELATIVE_PATH,
-        ROOT / evidence.DIAGNOSTIC_RESULT_RELATIVE_PATH,
-        ROOT / evidence.COMPLIANCE_RESULT_RELATIVE_PATH,
-        ROOT / evidence.FIXED_COMPLIANCE_RESULT_RELATIVE_PATH,
-        ROOT / evidence.TIMEOUT_SUITABILITY_RESULT_RELATIVE_PATH,
+        historical_fixture_path(evidence.RESULT_RELATIVE_TEMPLATE.format(repeat=1)),
+        historical_fixture_path(evidence.RETRY_RESULT_RELATIVE_PATH),
+        historical_fixture_path(evidence.DIAGNOSTIC_RESULT_RELATIVE_PATH),
+        historical_fixture_path(evidence.COMPLIANCE_RESULT_RELATIVE_PATH),
+        historical_fixture_path(evidence.FIXED_COMPLIANCE_RESULT_RELATIVE_PATH),
+        historical_fixture_path(evidence.TIMEOUT_SUITABILITY_RESULT_RELATIVE_PATH),
     ]
     before = [path.read_bytes() for path in paths]
     evidence.ModelSuitabilityProbeRunner(ROOT).dry_run(output_path=tmp_path / "pro.json")

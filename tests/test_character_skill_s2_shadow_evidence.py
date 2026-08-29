@@ -23,6 +23,7 @@ from agents.models import (
 from agents.provider_profiles import resolve_provider_profile
 from agents.provider_protocol import ProviderCompletion
 from evals import character_skill_s2_shadow_evidence as evidence
+from tests.historical_fixtures import FIXTURE_ROOT, historical_fixture_path
 
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_CASES = json.loads(
@@ -100,7 +101,7 @@ def test_manifest_and_default_dry_run_are_reproducible_without_factory_or_result
     runner = evidence.ShadowEvidenceRunner(ROOT)
     before = {
         path.name
-        for path in (ROOT / "evals/results").glob("character_skill_s2_shadow_deepseek_run_*.json")
+        for path in FIXTURE_ROOT.glob("character_skill_s2_shadow_deepseek_run_*.json")
     }
     result = runner.run(live=False, case_id="case_13")
 
@@ -112,7 +113,7 @@ def test_manifest_and_default_dry_run_are_reproducible_without_factory_or_result
     assert result["result_path"] is None
     after = {
         path.name
-        for path in (ROOT / "evals/results").glob("character_skill_s2_shadow_deepseek_run_*.json")
+        for path in FIXTURE_ROOT.glob("character_skill_s2_shadow_deepseek_run_*.json")
     }
     assert after == before
 
@@ -321,7 +322,7 @@ def test_resume_skips_valid_observation_and_does_not_overwrite_without_resume(tm
 def _copy_run_01(tmp_path: Path) -> Path:
     source = tmp_path / "source-run-01.json"
     source.write_bytes(
-        (ROOT / "evals/results/character_skill_s2_shadow_deepseek_run_01_v0.2.1.json").read_bytes()
+        historical_fixture_path(evidence.RESULT_RELATIVE_TEMPLATE.format(repeat=1)).read_bytes()
     )
     return source
 

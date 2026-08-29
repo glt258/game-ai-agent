@@ -9,6 +9,7 @@ import pytest
 from agents.models import ModelInvocationAudit, ModelTurn
 from agents.response_contracts import CHARACTER_SKILL_KIT_JSON_SCHEMA
 from evals import character_skill_s2_shadow_evidence as evidence
+from tests.historical_fixtures import historical_fixture_path
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -149,7 +150,7 @@ def test_v2_complete_cohort_blocks_second_sample(tmp_path: Path) -> None:
 
 
 def test_historical_v2_identity_uses_bundle_source_not_current_head() -> None:
-    path = ROOT / evidence.COMPACT_V2_RESULT_RELATIVE_PATH
+    path = historical_fixture_path(evidence.COMPACT_V2_RESULT_RELATIVE_PATH)
     bundle = json.loads(path.read_text(encoding="utf-8"))
     evidence.validate_compact_v2_bundle(bundle)
     assert bundle["source_commit"] == "dd3bbdfbab644c36cdd7f7e8cb8661a6322abb4e"
@@ -159,7 +160,7 @@ def test_historical_v2_identity_uses_bundle_source_not_current_head() -> None:
 
 @pytest.mark.parametrize("field", ["source_commit", "run_id", "contract_digest", "manifest_digest"])
 def test_historical_v2_identity_tampering_fails_closed(field: str) -> None:
-    path = ROOT / evidence.COMPACT_V2_RESULT_RELATIVE_PATH
+    path = historical_fixture_path(evidence.COMPACT_V2_RESULT_RELATIVE_PATH)
     bundle = json.loads(path.read_text(encoding="utf-8"))
     tampered = copy.deepcopy(bundle)
     if field == "run_id":

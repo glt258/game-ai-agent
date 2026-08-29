@@ -1,0 +1,173 @@
+{
+  "schema_version": "character-skill-s2-shadow-contract-compliance-cohort/0.2.0",
+  "protocol_version": "0.2.1",
+  "run_id": "cs-s2-shadow-deepseek-contract-compliance-cohort-v0.2.0-f03a1ed87722b560dc136512e7ef298a83b54156-910f0d1da5c6-n3-run-01",
+  "cohort_type": "contract_compliance",
+  "lineage_policy": "baseline_plus_parallel_samples",
+  "case_id": "case_13",
+  "target_sample_count": 3,
+  "complete": true,
+  "baseline_observation_id": "cs-s2-shadow-deepseek-shape-diagnostic-v0.1.0-cbc3702612617e40ab30943e4674bb735c719eaa-910f0d1da5c6-run-01:case_13:diagnostic-01",
+  "source_run_id": "cs-s2-shadow-deepseek-contract-compliance-v0.1.0-4a27a8f477e6e01f802301b5723ff512f787df37-910f0d1da5c6-run-01",
+  "source_compliance_bundle_sha256": "5ef5fde8fe677d634eedd017948e84c50802f04603df1144dc6360a7f8176803",
+  "source_manifest_digest": "910f0d1da5c657460f864d085d7223dc618d1f4fa283f0fb2e5f1b5274474ec7",
+  "input_manifest_digest": "910f0d1da5c657460f864d085d7223dc618d1f4fa283f0fb2e5f1b5274474ec7",
+  "inputs": [
+    {
+      "path": "evals/fixtures/hermes_character_skill_s0_blind_cases_v0.1.1.json",
+      "sha256": "055505916bf82fc60cb55d2deb84b9aaacd7028431ac5d38d2f84791dd77fe90",
+      "role": "provider"
+    },
+    {
+      "path": "evals/fixtures/character_skill_interface_prototype_cases_v0.1.1.public.json",
+      "sha256": "11e936df853927154ace426c3a22e073b739b9b1dce536817851f70cf855ec04",
+      "role": "evaluator"
+    }
+  ],
+  "provider": {
+    "name": "opencode_go",
+    "model_requested": "deepseek-v4-flash",
+    "model_reported": "deepseek-v4-flash",
+    "transport": "openai_chat_completions",
+    "structured_output_mode": "json_object",
+    "response_contract": "character_skill_kit",
+    "candidate_schema_version": "skill-kit-candidate/0.1.1",
+    "timeout_seconds": 30,
+    "max_transport_retries": 2
+  },
+  "frozen_config": {
+    "timeout_seconds": 30,
+    "max_transport_retries": 2,
+    "retrieval_strategy": "deterministic",
+    "feature_mode": "record_only",
+    "repair_enabled": false
+  },
+  "source_observation_id": "cs-s2-shadow-deepseek-contract-compliance-v0.1.0-4a27a8f477e6e01f802301b5723ff512f787df37-910f0d1da5c6-run-01:case_13:compliance-01",
+  "observations": [
+    {
+      "sample_index": 1,
+      "record_digest": "e2fb07ec14540441b4c6aa1cf9f4cae1cc044addcaecc3e81bb20e7de4d78a82",
+      "observation": {
+        "observation_id": "cs-s2-shadow-deepseek-contract-compliance-v0.1.0-4a27a8f477e6e01f802301b5723ff512f787df37-910f0d1da5c6-run-01:case_13:compliance-01",
+        "case_id": "case_13",
+        "repeat": 1,
+        "draft_id": "draft_s2_case_13",
+        "transport_outcome": "failure",
+        "failure_stage": "provider",
+        "failure_code": "PROVIDER_INVOCATION_FAILED",
+        "shape_compliant": false,
+        "parse_outcome": "not_attempted",
+        "outcome": "UNAVAILABLE",
+        "finding_codes": [],
+        "candidate_digest": null,
+        "context_digest": "9824ca7fc2165bac545ea5ab427217eac476f2aa771ffa20bccd81478f16686f",
+        "report_digest": null,
+        "renderer_comparison": {
+          "performed": false,
+          "matches_legacy": null,
+          "summary_code": "not_authoritative"
+        },
+        "legacy_impact": false,
+        "baseline_observation_id": "cs-s2-shadow-deepseek-shape-diagnostic-v0.1.0-cbc3702612617e40ab30943e4674bb735c719eaa-910f0d1da5c6-run-01:case_13:diagnostic-01"
+      },
+      "audit": {
+        "redacted_request_id": "redacted:b35c505b410096f9",
+        "retry_count": 2,
+        "latency_ms": 93953.00000000134,
+        "token_usage": {
+          "input": null,
+          "output": null,
+          "total": null
+        }
+      },
+      "sanitization": {
+        "raw_prompt_stored": false,
+        "raw_response_stored": false,
+        "secrets_detected": false
+      }
+    },
+    {
+      "sample_index": 2,
+      "record_digest": "02cda0473712ca8dc9dd1fa0ecf8d3f2c31e3bba3462502f369dccf3feb2ff4d",
+      "observation": {
+        "observation_id": "cs-s2-shadow-deepseek-contract-compliance-cohort-v0.2.0-f03a1ed87722b560dc136512e7ef298a83b54156-910f0d1da5c6-n3-run-01:case_13:sample-02",
+        "case_id": "case_13",
+        "repeat": 1,
+        "draft_id": "draft_s2_case_13",
+        "transport_outcome": "failure",
+        "failure_stage": "provider",
+        "failure_code": "PROVIDER_INVOCATION_FAILED",
+        "shape_compliant": false,
+        "parse_outcome": "not_attempted",
+        "outcome": "UNAVAILABLE",
+        "finding_codes": [],
+        "candidate_digest": null,
+        "context_digest": "9824ca7fc2165bac545ea5ab427217eac476f2aa771ffa20bccd81478f16686f",
+        "report_digest": null,
+        "renderer_comparison": {
+          "performed": false,
+          "matches_legacy": null,
+          "summary_code": "not_authoritative"
+        },
+        "legacy_impact": false
+      },
+      "audit": {
+        "redacted_request_id": "redacted:b35c505b410096f9",
+        "retry_count": 2,
+        "latency_ms": 94405.9999999954,
+        "token_usage": {
+          "input": null,
+          "output": null,
+          "total": null
+        }
+      },
+      "sanitization": {
+        "raw_prompt_stored": false,
+        "raw_response_stored": false,
+        "secrets_detected": false
+      }
+    },
+    {
+      "sample_index": 3,
+      "record_digest": "ce9baeabebc7a89e7e294e37c9284c3af6f97baaf31227a110f7dd3b2fa5fc97",
+      "observation": {
+        "observation_id": "cs-s2-shadow-deepseek-contract-compliance-cohort-v0.2.0-f03a1ed87722b560dc136512e7ef298a83b54156-910f0d1da5c6-n3-run-01:case_13:sample-03",
+        "case_id": "case_13",
+        "repeat": 1,
+        "draft_id": "draft_s2_case_13",
+        "transport_outcome": "failure",
+        "failure_stage": "provider",
+        "failure_code": "PROVIDER_INVOCATION_FAILED",
+        "shape_compliant": false,
+        "parse_outcome": "not_attempted",
+        "outcome": "UNAVAILABLE",
+        "finding_codes": [],
+        "candidate_digest": null,
+        "context_digest": "9824ca7fc2165bac545ea5ab427217eac476f2aa771ffa20bccd81478f16686f",
+        "report_digest": null,
+        "renderer_comparison": {
+          "performed": false,
+          "matches_legacy": null,
+          "summary_code": "not_authoritative"
+        },
+        "legacy_impact": false
+      },
+      "audit": {
+        "redacted_request_id": "redacted:b35c505b410096f9",
+        "retry_count": 2,
+        "latency_ms": 94889.99999999942,
+        "token_usage": {
+          "input": null,
+          "output": null,
+          "total": null
+        }
+      },
+      "sanitization": {
+        "raw_prompt_stored": false,
+        "raw_response_stored": false,
+        "secrets_detected": false
+      }
+    }
+  ],
+  "bundle_digest": "f2fd308297f1433097a5d9fb83a73956575648d9327f196b49b77e67b1bd88e1"
+}

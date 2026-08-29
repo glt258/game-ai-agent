@@ -1,0 +1,101 @@
+{
+  "schema_version": "character-skill-s2-shadow-shape-diagnostic/0.1.0",
+  "protocol_version": "0.2.1",
+  "run_id": "cs-s2-shadow-deepseek-shape-diagnostic-v0.1.0-cbc3702612617e40ab30943e4674bb735c719eaa-910f0d1da5c6-run-01",
+  "cohort_type": "shape_diagnostic",
+  "lineage_policy": "diagnoses_retry_observation_without_replacement",
+  "diagnoses_observation_id": "cs-s2-shadow-deepseek-retry-unavailable-v0.2.1-e3f70dcded41d609ad43cca15ae5abeb8cf4c0c8-910f0d1da5c6-cohort-01:source-7fe3047b2261abcb",
+  "source_run_id": "cs-s2-shadow-deepseek-retry-unavailable-v0.2.1-e3f70dcded41d609ad43cca15ae5abeb8cf4c0c8-910f0d1da5c6-cohort-01",
+  "source_bundle_sha256": "7722165cae52cb858078ad9725a516d5ac04cdb8d41824e8d71826eea4989a31",
+  "source_manifest_digest": "910f0d1da5c657460f864d085d7223dc618d1f4fa283f0fb2e5f1b5274474ec7",
+  "input_manifest_digest": "910f0d1da5c657460f864d085d7223dc618d1f4fa283f0fb2e5f1b5274474ec7",
+  "inputs": [
+    {
+      "path": "evals/fixtures/hermes_character_skill_s0_blind_cases_v0.1.1.json",
+      "sha256": "055505916bf82fc60cb55d2deb84b9aaacd7028431ac5d38d2f84791dd77fe90",
+      "role": "provider"
+    },
+    {
+      "path": "evals/fixtures/character_skill_interface_prototype_cases_v0.1.1.public.json",
+      "sha256": "11e936df853927154ace426c3a22e073b739b9b1dce536817851f70cf855ec04",
+      "role": "evaluator"
+    }
+  ],
+  "provider": {
+    "name": "opencode_go",
+    "model_requested": "deepseek-v4-flash",
+    "model_reported": "deepseek-v4-flash",
+    "transport": "openai_chat_completions",
+    "structured_output_mode": "json_object",
+    "response_contract": "character_skill_kit",
+    "candidate_schema_version": "skill-kit-candidate/0.1.1",
+    "timeout_seconds": 30,
+    "max_transport_retries": 2
+  },
+  "observations": [
+    {
+      "record_digest": "f31eb07a46671babbe36802d4baa0e7c71f2d804903cc3d5f6f3a3948f340b1a",
+      "observation": {
+        "observation_id": "cs-s2-shadow-deepseek-shape-diagnostic-v0.1.0-cbc3702612617e40ab30943e4674bb735c719eaa-910f0d1da5c6-run-01:case_13:diagnostic-01",
+        "case_id": "case_13",
+        "repeat": 1,
+        "draft_id": "draft_s2_case_13",
+        "transport_outcome": "success",
+        "failure_stage": "shape",
+        "failure_code": "CANDIDATE_SHAPE_REJECTED",
+        "shape_compliant": false,
+        "parse_outcome": "rejected",
+        "outcome": "UNAVAILABLE",
+        "finding_codes": [],
+        "candidate_digest": null,
+        "context_digest": "9824ca7fc2165bac545ea5ab427217eac476f2aa771ffa20bccd81478f16686f",
+        "report_digest": null,
+        "renderer_comparison": {
+          "performed": false,
+          "matches_legacy": null,
+          "summary_code": "not_authoritative"
+        },
+        "legacy_impact": false,
+        "shape_diagnostic": {
+          "parsed_top_level_type": "object",
+          "key_count": 1,
+          "key_count_truncated": false,
+          "expected_top_level_type": "object",
+          "wrapper_detected": false,
+          "missing_required_count": 8,
+          "missing_required_fields": [
+            "display_summary",
+            "entries",
+            "feedback_relations",
+            "resources",
+            "role_evidence",
+            "schema_version",
+            "states",
+            "summons"
+          ],
+          "unknown_key_count": 1,
+          "parser_error_code": "UNKNOWN_FIELD",
+          "parser_error_path": null,
+          "json_extraction_stage": "candidate_parser",
+          "validation_error_count": 8
+        },
+        "diagnoses_observation_id": "cs-s2-shadow-deepseek-retry-unavailable-v0.2.1-e3f70dcded41d609ad43cca15ae5abeb8cf4c0c8-910f0d1da5c6-cohort-01:source-7fe3047b2261abcb"
+      },
+      "audit": {
+        "redacted_request_id": "redacted:b35c505b410096f9",
+        "retry_count": 0,
+        "latency_ms": 24514.999999999418,
+        "token_usage": {
+          "input": 177,
+          "output": 1788,
+          "total": 1965
+        }
+      },
+      "sanitization": {
+        "raw_prompt_stored": false,
+        "raw_response_stored": false,
+        "secrets_detected": false
+      }
+    }
+  ]
+}
