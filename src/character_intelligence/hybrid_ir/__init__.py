@@ -45,14 +45,17 @@ from .projection import (
 )
 from .repair import (
     MAX_REPAIR_ATTEMPTS,
+    SEMANTIC_IR_VERSION,
     SEMANTIC_REPAIR_CONTRACT_VERSION,
     SEMANTIC_REPAIR_EVIDENCE_VERSION,
     RepairOutcome,
+    SemanticRepairContract,
     SemanticRepairEvidence,
     SemanticRepairIdentity,
     SemanticRepairRequest,
     SemanticRepairResult,
     SemanticRepairSession,
+    build_semantic_repair_contract,
     validate_semantic_repair_evidence,
 )
 from .runner import (
@@ -134,11 +137,14 @@ __all__ = [
     "MAX_REPAIR_ATTEMPTS",
     "SEMANTIC_REPAIR_CONTRACT_VERSION",
     "SEMANTIC_REPAIR_EVIDENCE_VERSION",
+    "SEMANTIC_IR_VERSION",
+    "SemanticRepairContract",
     "SemanticRepairEvidence",
     "SemanticRepairIdentity",
     "SemanticRepairRequest",
     "SemanticRepairResult",
     "SemanticRepairSession",
+    "build_semantic_repair_contract",
     "validate_semantic_repair_evidence",
     "RAW_FINDING_CODE_MAPPING",
     "SAFE_EVALUATOR_DIAGNOSTIC_VERSION",

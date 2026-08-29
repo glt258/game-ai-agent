@@ -9,6 +9,7 @@ the existing Hybrid pipeline revalidates the returned semantic IR end to end.
 from __future__ import annotations
 
 import json
+import hashlib
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
@@ -39,8 +40,47 @@ from .runner import (
 )
 
 MAX_REPAIR_ATTEMPTS = 1
-SEMANTIC_REPAIR_CONTRACT_VERSION = "semantic-skill-plan-repair/0.1.0"
+SEMANTIC_REPAIR_CONTRACT_VERSION = "semantic-skill-ir-repair-contract/0.2.0"
 SEMANTIC_REPAIR_EVIDENCE_VERSION = "character-skill-s2-hybrid-ir-semantic-repair/0.1.0"
+SEMANTIC_IR_VERSION = "semantic-skill-plan-ir/0.1.0"
+
+
+@dataclass(frozen=True)
+class SemanticRepairContract:
+    """Compact, generic contract used only by the repair adapter."""
+
+    version: str
+    ir_version: str
+    text: str
+    digest: str
+
+    def __post_init__(self) -> None:
+        expected = hashlib.sha256(self.text.encode("utf-8")).hexdigest()
+        if self.version != SEMANTIC_REPAIR_CONTRACT_VERSION:
+            raise ValueError("SEMANTIC_REPAIR_CONTRACT_VERSION_INVALID")
+        if self.ir_version != SEMANTIC_IR_VERSION:
+            raise ValueError("SEMANTIC_REPAIR_IR_VERSION_INVALID")
+        if self.digest != expected:
+            raise ValueError("SEMANTIC_REPAIR_CONTRACT_DIGEST_INVALID")
+
+
+def build_semantic_repair_contract() -> SemanticRepairContract:
+    text = (
+        f"Semantic skill IR repair contract {SEMANTIC_REPAIR_CONTRACT_VERSION}. "
+        f"Return exactly one JSON object using IR version {SEMANTIC_IR_VERSION}. "
+        "Required root keys: ir_version, ability_name, summary, mode, role, centrality, "
+        "mechanic, role_path. Mechanic requires trigger, effect, feedback; feedback "
+        "requires event, relation, response_trigger, response_effect; role_path requires "
+        "trigger and effect. A trigger has actor, event, qualifier; an effect has actor, "
+        "intent, description. Return the full corrected plan, preserve valid semantics, "
+        "use only authoritative projected values, and add no wrapper or extra keys."
+    )
+    return SemanticRepairContract(
+        version=SEMANTIC_REPAIR_CONTRACT_VERSION,
+        ir_version=SEMANTIC_IR_VERSION,
+        text=text,
+        digest=hashlib.sha256(text.encode("utf-8")).hexdigest(),
+    )
 
 
 class RepairOutcome(str, Enum):
@@ -81,6 +121,7 @@ class SemanticRepairRequest:
     candidate: SkillSemanticIR
     diagnostics: SafeEvaluatorDiagnostics
     attempt_index: int = 1
+    repair_contract: SemanticRepairContract = field(default_factory=build_semantic_repair_contract)
 
     def __post_init__(self) -> None:
         if not isinstance(self.original_request, ModelFacingRequest):
@@ -89,6 +130,8 @@ class SemanticRepairRequest:
             raise TypeError("candidate must be a SkillSemanticIR")
         if not isinstance(self.diagnostics, SafeEvaluatorDiagnostics):
             raise TypeError("diagnostics must be SafeEvaluatorDiagnostics")
+        if not isinstance(self.repair_contract, SemanticRepairContract):
+            raise TypeError("repair_contract must be a SemanticRepairContract")
         if self.attempt_index != 1:
             raise ValueError("SEMANTIC_REPAIR_ATTEMPT_INVALID")
 
@@ -113,12 +156,11 @@ class SemanticRepairRequest:
             separators=(",", ":"),
         )
         return (
-            f"{self.original_request.text}\n\n"
-            "Repair the current semantic skill plan against the original task and "
-            "contract. Preserve valid semantics and correct the bounded observations "
-            "below. Do not discuss evaluator internals or diagnostics. Return exactly "
-            "one JSON object using the same semantic skill plan contract; do not add "
-            "a wrapper or commentary.\n"
+            f"{self.repair_contract.text}\n\n"
+            "Authoritative semantic requirement:\n"
+            f"{self.original_request.case_text}\n\n"
+            "Allowed projected semantic values:\n"
+            f"{self.original_request.contract.enum_text}\n\n"
             "Bounded semantic observations:\n"
             f"{guidance}\n"
             "Current in-memory semantic skill plan:\n"
@@ -505,10 +547,13 @@ __all__ = [
     "RepairOutcome",
     "SEMANTIC_REPAIR_CONTRACT_VERSION",
     "SEMANTIC_REPAIR_EVIDENCE_VERSION",
+    "SEMANTIC_IR_VERSION",
+    "SemanticRepairContract",
     "SemanticRepairEvidence",
     "SemanticRepairIdentity",
     "SemanticRepairRequest",
     "SemanticRepairResult",
     "SemanticRepairSession",
+    "build_semantic_repair_contract",
     "validate_semantic_repair_evidence",
 ]

@@ -16,6 +16,7 @@ from character_intelligence.hybrid_ir import (
     SemanticRepairRequest,
     SemanticRepairSession,
     build_authoritative_generalization_cases,
+    build_model_facing_request,
     run_fake_pipeline,
     validate_semantic_repair_evidence,
 )
@@ -65,6 +66,41 @@ def _wrong_reaction() -> dict[str, object]:
     payload = copy.deepcopy(_goldens()["generalization_reaction_heal_v1"])
     payload["mechanic"]["feedback"]["response_effect"]["intent"] = "enable_ally"
     return payload
+
+
+def _repair_request(case_id: str) -> SemanticRepairRequest:
+    case = _cases()[case_id]
+    initial = _initial(
+        case_id,
+        _wrong_dps() if case_id == "generalization_dps_v1" else _wrong_reaction(),
+    )
+    assert initial.validated_ir is not None
+    assert initial.evidence.evaluator_diagnostics is not None
+    return SemanticRepairRequest(
+        build_model_facing_request(case.generation_context()),
+        initial.validated_ir.value,
+        initial.evidence.evaluator_diagnostics,
+    )
+
+
+def test_repair_request_uses_one_deterministic_compact_generic_contract() -> None:
+    dps = _repair_request("generalization_dps_v1")
+    reaction = _repair_request("generalization_reaction_heal_v1")
+    prompt = dps.to_prompt()
+    assert dps.to_prompt() == prompt
+    assert dps.repair_contract == reaction.repair_contract
+    assert dps.repair_contract.version == "semantic-skill-ir-repair-contract/0.2.0"
+    assert dps.repair_contract.digest
+    assert len(prompt) < 3300
+    assert dps.original_request.contract.base_text not in prompt
+    assert dps.original_request.contract.suffix_text not in prompt
+    assert prompt.count(dps.original_request.contract.enum_text) == 1
+    assert prompt.count(dps.original_request.case_text) == 1
+    assert "Authoritative semantic requirement:" in prompt
+    assert "Current in-memory semantic skill plan:" in prompt
+    assert "semantic-skill-plan-ir/0.1.0" in prompt
+    for forbidden in ("golden", "canonical candidate", "expected", "actual", "field_path"):
+        assert forbidden not in prompt.lower()
 
 
 def test_dps_semantic_repair_uses_humanized_bounded_diagnostics_and_passes() -> None:
