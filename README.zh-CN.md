@@ -26,8 +26,12 @@ v0.3 创作契约还会保留未知的精确年龄、法定年龄和历史年龄
 | Reference Corpus | `reference-corpus-v0.5` | 当前包含 16 条记录的扩展语料库基线 |
 | Character Intelligence | `CI-B1.5` | 当前 Canon 化战斗角色兼容性里程碑 |
 | Character Skill | `CS-S1.1` | 当前冻结的接口设计里程碑 |
+| Hybrid Semantic IR | `hybrid-semantic-ir-e2e-v0.1` | 一次真实 provider 端到端 evaluator PASS 基线 |
 
 完整的命名策略记录于 [Versioning and Namespace Policy](docs/versioning.md)。
+
+Character Skill Hybrid Semantic IR 已完成一次真实 provider 端到端 evaluator PASS；
+跨 case 泛化尚未证明。
 
 `v0.7.1` 的发布说明记录于
 [docs/release_notes_v0.7.1.md](docs/release_notes_v0.7.1.md)。
