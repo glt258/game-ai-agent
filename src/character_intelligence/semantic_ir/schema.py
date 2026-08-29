@@ -12,7 +12,6 @@ import hashlib
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
 
 from character_skill.contract import (
     ABILITY_MODES,
@@ -22,8 +21,6 @@ from character_skill.contract import (
     SUBJECT_KINDS,
     TRIGGER_EVENTS,
 )
-from combat_semantics import CANONICAL_COMBAT_ROLES
-
 
 SEMANTIC_IR_VERSION = "semantic-skill-plan-ir/0.1.0"
 SEMANTIC_IR_V2_VERSION = "semantic-skill-plan-ir/0.2.0"
@@ -78,6 +75,14 @@ def _string(payload: Mapping[str, object], key: str, path: str) -> str:
     if not isinstance(value, str):
         raise SemanticIRShapeError("IR_INVALID", f"{path}/{key}", "must be a string")
     return value
+
+
+def _discriminator(payload: Mapping[str, object], path: str) -> str:
+    """Read a variant discriminator without exposing a raw mapping KeyError."""
+
+    if "kind" not in payload:
+        raise SemanticIRShapeError("MISSING_FIELD", f"{path}/kind", "field is required")
+    return _string(payload, "kind", path)
 
 
 def _nullable_string(payload: Mapping[str, object], key: str, path: str) -> str | None:
@@ -392,7 +397,7 @@ class SkillSemanticIRV2:
         )
         version = _string(payload, "ir_version", path)
         mechanic_payload = _require_mapping(payload["mechanic"], f"{path}/mechanic")
-        kind = _string(mechanic_payload, "kind", f"{path}/mechanic")
+        kind = _discriminator(mechanic_payload, f"{path}/mechanic")
         if kind == "triggered":
             _require_keys(mechanic_payload, {"kind", "trigger", "effect", "feedback"}, f"{path}/mechanic")
             feedback_value = mechanic_payload["feedback"]
@@ -418,7 +423,7 @@ class SkillSemanticIRV2:
             raise SemanticIRShapeError("IR_INVALID", f"{path}/mechanic/kind", "unsupported mechanic variant")
 
         role_payload = _require_mapping(payload["role_path"], f"{path}/role_path")
-        role_kind = _string(role_payload, "kind", f"{path}/role_path")
+        role_kind = _discriminator(role_payload, f"{path}/role_path")
         if role_kind == "triggered":
             _require_keys(role_payload, {"kind", "trigger", "effect"}, f"{path}/role_path")
             role_path: TriggeredRolePathV2 | PassiveRolePathV2 = TriggeredRolePathV2(

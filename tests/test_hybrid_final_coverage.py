@@ -7,19 +7,21 @@ from pathlib import Path
 
 import pytest
 
+from character_intelligence.compiler import COMPILER_VERSION_V2
 from character_intelligence.hybrid_ir import (
     CONTEXT_PROJECTION_VERSION_V2,
     HYBRID_MULTI_CASE_EXPERIMENT,
     MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2,
+    MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_LEGACY,
+    SEMANTIC_REPAIR_CONTRACT_VERSION_V2,
     FakeProvider,
+    HybridExperimentIdentity,
     HybridSemanticIRRunner,
     SemanticRepairSession,
-    SEMANTIC_REPAIR_CONTRACT_VERSION_V2,
     build_authoritative_final_coverage_cases,
     build_model_facing_request,
     run_fake_pipeline,
 )
-from character_intelligence.compiler import COMPILER_VERSION_V2
 from character_intelligence.semantic_ir import (
     SEMANTIC_IR_V2_VERSION,
     SEMANTIC_IR_VERSION,
@@ -67,6 +69,43 @@ def test_final_coverage_cases_are_distinct_and_use_v2_contracts() -> None:
     assert {request.contract.ir_version for request in requests} == {SEMANTIC_IR_V2_VERSION}
     assert all("mechanic.kind" in request.contract.enum_text for request in requests)
     assert all("mechanic.persistence" in request.contract.enum_text for request in requests)
+
+
+def test_v2_contract_explains_triggered_feedback_wire_shape_and_passive_exclusion() -> None:
+    request = build_model_facing_request(
+        _cases()["generalization_sub_dps_v1"].generation_context()
+    )
+    text = request.contract.text
+    assert request.contract.version == "semantic-skill-plan-ir-contract/0.7.1"
+    assert "all four keys are required" in text
+    assert '"feedback": null' in text
+    assert "never omit that field" in text
+    assert "event, relation, response_trigger, and response_effect" in text
+    assert "response_trigger has actor, event, qualifier" in text
+    assert "response_effect has actor, intent, description" in text
+    assert "passive mechanics have no trigger or feedback" in text
+    assert "response_effect_family" not in text
+
+
+def test_historical_v2_contract_version_remains_identity_compatible() -> None:
+    assert MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_LEGACY == (
+        "semantic-skill-plan-ir-contract/0.7.0"
+    )
+    assert MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2 != (
+        MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_LEGACY
+    )
+    identity = HybridExperimentIdentity(
+        experiment=HYBRID_MULTI_CASE_EXPERIMENT,
+        source_commit="3dc0c4204a57bf6284683cf3a3e5a4ba8c9d7f12",
+        ir_schema_version=SEMANTIC_IR_V2_VERSION,
+        model_facing_contract_version=MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_LEGACY,
+        model_facing_contract_digest="0" * 64,
+        compiler_version=COMPILER_VERSION_V2,
+        case_id="historical-v2",
+        context_projection_version=CONTEXT_PROJECTION_VERSION_V2,
+        context_projection_digest="1" * 64,
+    )
+    assert HybridExperimentIdentity.from_mapping(identity.to_mapping()) == identity
 
 
 def test_v2_goldens_pass_the_complete_offline_pipeline() -> None:
@@ -271,3 +310,50 @@ def test_v2_variant_absence_invariants_fail_closed() -> None:
     unknown["mechanic"]["kind"] = "custom"
     with pytest.raises(SemanticIRShapeError, match="unsupported mechanic variant"):
         parse_semantic_ir(unknown)
+
+
+@pytest.mark.parametrize(
+    ("section", "field"),
+    [
+        ("mechanic", "kind"),
+        ("mechanic", "trigger"),
+        ("mechanic", "effect"),
+        ("mechanic", "feedback"),
+        ("role_path", "kind"),
+        ("role_path", "trigger"),
+        ("role_path", "effect"),
+    ],
+)
+def test_v2_missing_required_fields_are_typed_and_safely_classified(
+    section: str, field: str
+) -> None:
+    case = _cases()["generalization_sub_dps_v1"]
+    payload = json.loads(json.dumps(_goldens()[case.case_id]))
+    del payload[section][field]
+
+    with pytest.raises(SemanticIRShapeError) as error:
+        parse_semantic_ir(payload)
+    assert error.value.code == "MISSING_FIELD"
+    assert error.value.path == f"/semantic_skill_plan/{section}/{field}"
+
+    result = run_fake_pipeline(
+        FakeProvider(payload),
+        case.generation_context(),
+        case.evaluation_context(),
+        repo_root=ROOT,
+    )
+    assert result.evidence.first_failure_layer == "IR_PARSE"
+    assert result.evidence.failure_code == "IR_MISSING_REQUIRED_FIELD"
+    assert result.evidence.evaluator_invoked is False
+
+
+def test_v2_feedback_null_is_valid_and_passive_wire_shape_remains_valid() -> None:
+    triggered = json.loads(json.dumps(_goldens()["generalization_sub_dps_v1"]))
+    triggered["mechanic"]["feedback"] = None
+    parsed = parse_semantic_ir(triggered)
+    assert parsed.mechanic.feedback is None
+
+    passive = json.loads(json.dumps(_goldens()["generalization_basic_passive_v1"]))
+    parsed_passive = parse_semantic_ir(passive)
+    assert parsed_passive.mechanic.kind == "passive"
+    assert parsed_passive.role_path.kind == "passive"

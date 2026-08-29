@@ -17,6 +17,7 @@ from character_intelligence.hybrid_ir import (
     SemanticRepairSession,
     build_authoritative_generalization_cases,
     build_model_facing_request,
+    build_semantic_repair_contract,
     run_fake_pipeline,
     validate_semantic_repair_evidence,
 )
@@ -101,6 +102,17 @@ def test_repair_request_uses_one_deterministic_compact_generic_contract() -> Non
     assert "semantic-skill-plan-ir/0.1.0" in prompt
     for forbidden in ("golden", "canonical candidate", "expected", "actual", "field_path"):
         assert forbidden not in prompt.lower()
+
+
+def test_v2_repair_contract_preserves_required_feedback_wire_shape() -> None:
+    # Build the v2 contract directly so this assertion is independent of any
+    # case-specific repair path.
+    contract = build_semantic_repair_contract("semantic-skill-plan-ir/0.2.0")
+    assert contract.version == "semantic-skill-ir-repair-contract/0.3.1"
+    assert '"feedback": null' in contract.text
+    assert "all four keys are required" in contract.text
+    assert "response_trigger has actor, event, qualifier" in contract.text
+    assert "response_effect has actor, intent, description" in contract.text
 
 
 def test_dps_semantic_repair_uses_humanized_bounded_diagnostics_and_passes() -> None:

@@ -8,17 +8,18 @@ import re
 from dataclasses import dataclass
 from types import MappingProxyType
 
+from ..semantic_ir import SEMANTIC_IR_V2_VERSION
 from .projection import (
     HybridGenerationContext,
     SemanticEnumProjection,
     project_semantic_enums,
 )
-from ..semantic_ir import SEMANTIC_IR_V2_VERSION
 
 MODEL_FACING_IR_CONTRACT_VERSION = "semantic-skill-plan-ir-contract/0.1.0"
 MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED = "semantic-skill-plan-ir-contract/0.4.0"
 MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION = "semantic-skill-plan-ir-contract/0.6.0"
-MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2 = "semantic-skill-plan-ir-contract/0.7.0"
+MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_LEGACY = "semantic-skill-plan-ir-contract/0.7.0"
+MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2 = "semantic-skill-plan-ir-contract/0.7.1"
 FORBIDDEN_MODEL_TOKENS = (
     "schema_version",
     "ability_id",
@@ -174,11 +175,15 @@ def _base_text_v2() -> str:
     return (
         "Output exactly one JSON object for the semantic skill plan. Required root keys: "
         "ir_version, ability_name, summary, mode, role, centrality, mechanic, role_path. "
-        "A triggered mechanic has kind, trigger, effect, and optional feedback; trigger and "
-        "effect are required. A passive mechanic has kind, persistence, and effect only; "
-        "persistence must be always_on and passive mechanics have no trigger or feedback. "
-        "Triggered role_path has kind, trigger, effect. Passive role_path has kind and effect. "
-        "A trigger has actor, event, qualifier; an effect has actor, intent, description."
+        "A triggered mechanic has exactly kind, trigger, effect, and feedback; all four keys "
+        "are required. Gameplay feedback is optional, so use the JSON field \"feedback\": null "
+        "when no feedback exists and never omit that field. If feedback is non-null, it has "
+        "event, relation, response_trigger, and response_effect; response_trigger has actor, "
+        "event, qualifier and response_effect has actor, intent, description. A passive "
+        "mechanic has exactly kind, persistence, and effect only; persistence must be always_on "
+        "and passive mechanics have no trigger or feedback. Triggered role_path has exactly "
+        "kind, trigger, effect. Passive role_path has exactly kind and effect. A trigger has "
+        "actor, event, qualifier; an effect has actor, intent, description."
     )
 
 
@@ -364,6 +369,7 @@ __all__ = [
     "MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED",
     "MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION",
     "MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2",
+    "MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_LEGACY",
     "ModelFacingContract",
     "ModelFacingRequest",
     "RequestSectionMetrics",

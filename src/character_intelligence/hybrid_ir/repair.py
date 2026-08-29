@@ -8,18 +8,18 @@ the existing Hybrid pipeline revalidates the returned semantic IR end to end.
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 
 from ..compiler import DEFAULT_MAPPING_REGISTRY, SemanticMappingRegistry
 from ..semantic_ir import (
-    SemanticIRShapeError,
-    SemanticIRValidationError,
     SEMANTIC_IR_V2_VERSION,
     SEMANTIC_IR_VERSION,
+    SemanticIRShapeError,
+    SemanticIRValidationError,
     SkillSemanticIR,
     SkillSemanticIRV2,
     ValidatedSkillSemanticIR,
@@ -44,7 +44,8 @@ from .runner import (
 
 MAX_REPAIR_ATTEMPTS = 1
 SEMANTIC_REPAIR_CONTRACT_VERSION = "semantic-skill-ir-repair-contract/0.2.0"
-SEMANTIC_REPAIR_CONTRACT_VERSION_V2 = "semantic-skill-ir-repair-contract/0.3.0"
+SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY = "semantic-skill-ir-repair-contract/0.3.0"
+SEMANTIC_REPAIR_CONTRACT_VERSION_V2 = "semantic-skill-ir-repair-contract/0.3.1"
 SEMANTIC_REPAIR_EVIDENCE_VERSION = "character-skill-s2-hybrid-ir-semantic-repair/0.1.0"
 
 
@@ -61,6 +62,7 @@ class SemanticRepairContract:
         expected = hashlib.sha256(self.text.encode("utf-8")).hexdigest()
         valid_pair = {
             (SEMANTIC_REPAIR_CONTRACT_VERSION, SEMANTIC_IR_VERSION),
+            (SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY, SEMANTIC_IR_V2_VERSION),
             (SEMANTIC_REPAIR_CONTRACT_VERSION_V2, SEMANTIC_IR_V2_VERSION),
         }
         if (self.version, self.ir_version) not in valid_pair:
@@ -89,11 +91,16 @@ def build_semantic_repair_contract(
         text = (
             f"Semantic skill IR repair contract {version}. Return exactly one JSON object using "
             f"IR version {ir_version}. Required root keys: ir_version, ability_name, summary, "
-            "mode, role, centrality, mechanic, role_path. A triggered mechanic has kind, "
-            "trigger, effect, and optional feedback; a passive mechanic has kind, persistence "
-            "always_on, and effect only, with no trigger or feedback. Match role_path to the "
-            "mechanic variant. A trigger has actor, event, qualifier; an effect has actor, "
-            "intent, description. Return the full corrected plan, preserve valid semantics, "
+            "mode, role, centrality, mechanic, role_path. A triggered mechanic has exactly "
+            "kind, trigger, effect, and feedback; all four keys are required. Gameplay feedback "
+            "is optional, so use the JSON field \"feedback\": null when absent and never omit it. "
+            "A non-null feedback object has event, relation, response_trigger, and response_effect; "
+            "response_trigger has actor, event, qualifier and response_effect has actor, intent, "
+            "description. A passive mechanic has exactly kind, persistence, and effect only, "
+            "with persistence that must be always_on and no trigger or feedback. Match role_path to the "
+            "mechanic variant: triggered has kind, trigger, effect; passive has kind and effect. "
+            "A trigger has actor, event, qualifier; an effect has actor, intent, description. "
+            "Return the full corrected plan, preserve valid semantics, "
             "use only authoritative projected values, and add no wrapper or extra keys."
         )
     else:
@@ -581,6 +588,7 @@ __all__ = [
     "RepairOutcome",
     "SEMANTIC_REPAIR_CONTRACT_VERSION",
     "SEMANTIC_REPAIR_CONTRACT_VERSION_V2",
+    "SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY",
     "SEMANTIC_REPAIR_EVIDENCE_VERSION",
     "SEMANTIC_IR_VERSION",
     "SemanticRepairContract",
