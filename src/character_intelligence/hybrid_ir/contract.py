@@ -13,7 +13,7 @@ from .projection import (
 )
 
 MODEL_FACING_IR_CONTRACT_VERSION = "semantic-skill-plan-ir-contract/0.1.0"
-MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED = "semantic-skill-plan-ir-contract/0.3.0"
+MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED = "semantic-skill-plan-ir-contract/0.4.0"
 FORBIDDEN_MODEL_TOKENS = (
     "schema_version",
     "ability_id",
@@ -108,9 +108,9 @@ def _base_text(*, aligned: bool = False) -> str:
             "describes its immediate gameplay consequence. Feedback describes downstream "
             "continuation enabled or modified by the preceding mechanic; its response trigger "
             "and response effect describe that continuation, and the response trigger actor "
-            "must match the mechanic effect actor. The role path provides gameplay "
-            "evidence for the selected role, while centrality distinguishes core from secondary "
-            "evidence."
+            "must use feedback_received and match the mechanic effect actor. The role path "
+            "must provide a matching trigger/effect proof for the selected canonical role, "
+            "while centrality distinguishes core from secondary evidence."
         )
     return text
 

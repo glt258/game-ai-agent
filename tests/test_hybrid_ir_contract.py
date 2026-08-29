@@ -124,8 +124,8 @@ def test_aligned_contract_states_feedback_actor_wiring_rule() -> None:
             allowed_trigger_events=("ability_invoked",),
         )
     )
-    assert request.contract.version == "semantic-skill-plan-ir-contract/0.3.0"
-    assert "response trigger actor must match the mechanic effect actor" in request.text
+    assert request.contract.version == "semantic-skill-plan-ir-contract/0.4.0"
+    assert "response trigger actor must use feedback_received and match the mechanic effect actor" in request.text
 
 
 def test_contract_digest_binds_projection_and_wording() -> None:
