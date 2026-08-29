@@ -69,6 +69,9 @@ _EFFECT_OPERATIONS = frozenset(
         "emit_event",
     }
 )
+# Generic semantic families used to constrain a continuation without pinning
+# the model to one exact response operation or wording.
+RESPONSE_EFFECT_FAMILIES = frozenset({"damage", "control", "support", "recovery"})
 _SEGMENT_RE = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
@@ -76,6 +79,23 @@ _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 def _plain(value: object) -> object:
     """Convert frozen values to the canonical JSON-compatible representation."""
 
+    # These fields were added after the original validator contract.  Omit
+    # their empty defaults so legacy contexts retain byte-identical digests;
+    # populated requirements serialize the new generic validity constraints.
+    if isinstance(value, MechanicRequirement):
+        payload = {
+            "requirement_id": value.requirement_id,
+            "trigger": _plain(value.trigger),
+            "effect": _plain(value.effect),
+            "feedback": _plain(value.feedback),
+        }
+        if value.allowed_modes:
+            payload["allowed_modes"] = sorted(value.allowed_modes)
+        if value.allowed_response_effect_families:
+            payload["allowed_response_effect_families"] = sorted(
+                value.allowed_response_effect_families
+            )
+        return payload
     if is_dataclass(value):
         return {
             field.name: _plain(getattr(value, field.name))
@@ -238,6 +258,8 @@ class MechanicRequirement:
     trigger: TriggerPredicate
     effect: EffectPredicate
     feedback: FeedbackPredicate
+    allowed_modes: frozenset[str] = frozenset()
+    allowed_response_effect_families: frozenset[str] = frozenset()
 
     @property
     def requires_feedback(self) -> bool:
@@ -249,7 +271,12 @@ class MechanicRequirement:
     @classmethod
     def from_mapping(cls, value: object, path: str) -> "MechanicRequirement":
         payload = _mapping_value(value, path)
-        _require_exact_keys(payload, frozenset({"requirement_id", "trigger", "effect", "feedback"}), path)
+        required_keys = frozenset({"requirement_id", "trigger", "effect", "feedback"})
+        optional_keys = frozenset({"allowed_modes", "allowed_response_effect_families"})
+        _require_exact_keys(payload, required_keys | (set(payload) & optional_keys), path)
+        unknown = sorted(set(payload) - required_keys - optional_keys)
+        if unknown:
+            _fail("UNKNOWN_FIELD", f"{path}/{unknown[0]}", "field is not allowed")
         requirement_id = _id(payload["requirement_id"], f"{path}/requirement_id")
 
         trigger_payload = _mapping_value(payload["trigger"], f"{path}/trigger")
@@ -278,7 +305,17 @@ class MechanicRequirement:
             _tag_set(feedback_payload["events"], _FEEDBACK_EVENTS, f"{path}/feedback/events", nonempty=required),
             _tag_set(feedback_payload["operations"], _FEEDBACK_OPERATIONS, f"{path}/feedback/operations", nonempty=required),
         )
-        return cls(requirement_id, trigger, effect, feedback)
+        allowed_modes = _tag_set(
+            payload.get("allowed_modes", ()),
+            frozenset({"active", "passive", "reaction"}),
+            f"{path}/allowed_modes",
+        )
+        allowed_families = _tag_set(
+            payload.get("allowed_response_effect_families", ()),
+            RESPONSE_EFFECT_FAMILIES,
+            f"{path}/allowed_response_effect_families",
+        )
+        return cls(requirement_id, trigger, effect, feedback, allowed_modes, allowed_families)
 
 
 @dataclass(frozen=True)
@@ -429,6 +466,7 @@ __all__ = [
     "MechanicRequirement",
     "ReferenceFingerprint",
     "ReferenceReviewContext",
+    "RESPONSE_EFFECT_FAMILIES",
     "SkillIntent",
     "SkillValidationContext",
     "TriggerPredicate",

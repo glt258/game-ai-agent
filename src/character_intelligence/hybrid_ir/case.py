@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Mapping
 
+from character_skill.context import RESPONSE_EFFECT_FAMILIES
+
 from ..planner import CharacterDesignPlan, build_character_design_plan
 from .projection import HybridGenerationContext
 
@@ -28,12 +30,18 @@ class HybridSemanticCase:
     evaluator_feedback_operations: tuple[str, ...]
     generation_mode: str = "active"
     contract_profile: str = "aligned_v1"
+    continuation_family: str = ""
 
     def __post_init__(self) -> None:
         if not self.case_id.strip() or not self.brief.strip():
             raise ValueError("HybridSemanticCase identity and brief must be non-empty")
         if not isinstance(self.plan, CharacterDesignPlan):
             raise TypeError("plan must be a CharacterDesignPlan")
+        if self.contract_profile == "generalization_v1":
+            if self.generation_mode not in {"active", "passive", "reaction"}:
+                raise ValueError("generalization generation mode must be canonical")
+            if self.continuation_family not in RESPONSE_EFFECT_FAMILIES:
+                raise ValueError("generalization continuation family must be canonical")
 
     def generation_context(self) -> HybridGenerationContext:
         """Return only request/plan facts and public structural vocabulary."""
@@ -48,6 +56,9 @@ class HybridSemanticCase:
             allowed_feedback_events=self.evaluator_feedback_events,
             allowed_feedback_relations=self.evaluator_feedback_operations,
             allowed_modes=(self.generation_mode,) if self.contract_profile == "generalization_v1" else None,
+            allowed_response_effect_families=(self.continuation_family,)
+            if self.contract_profile == "generalization_v1"
+            else None,
             allowed_roles=(self.plan.combat_role_profile.primary_role,)
             if self.contract_profile == "generalization_v1"
             else None,
@@ -85,6 +96,16 @@ class HybridSemanticCase:
                                             "events": self.evaluator_feedback_events,
                                             "operations": self.evaluator_feedback_operations,
                                         }
+                                    ),
+                                    **(
+                                        {
+                                            "allowed_modes": (self.generation_mode,),
+                                            "allowed_response_effect_families": (
+                                                self.continuation_family,
+                                            ),
+                                        }
+                                        if self.contract_profile == "generalization_v1"
+                                        else {}
                                     ),
                                 }
                             ),
@@ -151,6 +172,7 @@ def build_authoritative_generalization_cases() -> tuple[HybridSemanticCase, ...]
             evaluator_feedback_operations=("modifies",),
             generation_mode="active",
             contract_profile="generalization_v1",
+            continuation_family="support",
         ),
         HybridSemanticCase(
             case_id="generalization_dps_v1",
@@ -170,6 +192,7 @@ def build_authoritative_generalization_cases() -> tuple[HybridSemanticCase, ...]
             evaluator_feedback_operations=("enables",),
             generation_mode="active",
             contract_profile="generalization_v1",
+            continuation_family="damage",
         ),
         HybridSemanticCase(
             case_id="generalization_control_v1",
@@ -189,6 +212,7 @@ def build_authoritative_generalization_cases() -> tuple[HybridSemanticCase, ...]
             evaluator_feedback_operations=("modifies",),
             generation_mode="active",
             contract_profile="generalization_v1",
+            continuation_family="control",
         ),
         HybridSemanticCase(
             case_id="generalization_reaction_heal_v1",
@@ -208,6 +232,7 @@ def build_authoritative_generalization_cases() -> tuple[HybridSemanticCase, ...]
             evaluator_feedback_operations=("enables",),
             generation_mode="reaction",
             contract_profile="generalization_v1",
+            continuation_family="recovery",
         ),
     )
 

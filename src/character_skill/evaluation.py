@@ -14,8 +14,7 @@ from dataclasses import fields, is_dataclass
 from typing import Any
 
 from ._graph import DerivedGraph, build_graph, exists_in_other_namespace, resolve_ref
-from .context import SkillValidationContext
-from .context import MechanicRequirement
+from .context import MechanicRequirement, SkillValidationContext
 from .models import (
     AbilityEntry,
     BehaviorProtocol,
@@ -140,6 +139,17 @@ _ROLE_ROWS: dict[str, dict[str, object]] = {
             }
         ),
     },
+}
+
+# Continuation families deliberately group canonical operations at the
+# semantic level.  A requirement can therefore reject a family drift without
+# prescribing one exact operation, actor, wording, or golden candidate.
+_CONTINUATION_FAMILY_BY_OPERATION: dict[str, str] = {
+    "direct_output": "damage",
+    "follow_up_output": "damage",
+    "ally_enablement": "support",
+    "enemy_action_control": "control",
+    "recover_or_mitigate": "recovery",
 }
 
 
@@ -742,6 +752,26 @@ def _feedback_valid_for(
     return any(_feedback_downstream_valid(effect, relation, graph) for effect in target.causes)
 
 
+def _continuation_family_valid_for(
+    relation: FeedbackRelation,
+    source: object,
+    graph: DerivedGraph,
+    requirement: MechanicRequirement,
+) -> bool:
+    """Check family coherence while leaving the concrete realization open."""
+
+    if not _feedback_attached_to_skeleton(relation, source, graph, requirement):
+        return False
+    target = graph.protocols.get(relation.target_protocol.id)
+    if target is None:
+        return False
+    return any(
+        _CONTINUATION_FAMILY_BY_OPERATION.get(effect.operation or "")
+        in requirement.allowed_response_effect_families
+        for effect in target.causes
+    )
+
+
 def _feedback_authorized_paths(
     candidate: ProtocolSkillKitCandidate,
     rows: Sequence[tuple[BehaviorProtocol, object]],
@@ -797,6 +827,16 @@ def _mechanic_findings(
         if not rows:
             findings.append(_finding("MECHANIC_SKELETON_ABSENT", "/entries", repairable=False))
             continue
+        if requirement.allowed_modes and not any(
+            source.entry.mode in requirement.allowed_modes for _, source in rows
+        ):
+            findings.append(
+                _finding(
+                    "MECHANIC_MODE_MISMATCH",
+                    "/entries",
+                    repairable=False,
+                )
+            )
         if requirement.feedback.required:
             valid_feedback = any(
                 _feedback_valid_for(relation, source, graph, requirement)
@@ -817,6 +857,20 @@ def _mechanic_findings(
                         authorized_paths=_feedback_authorized_paths(
                             candidate, rows, requirement, graph
                         ),
+                    )
+                )
+        if requirement.allowed_response_effect_families:
+            continuation_ok = any(
+                _continuation_family_valid_for(relation, source, graph, requirement)
+                for relation in candidate.feedback_relations
+                for _, source in rows
+            )
+            if not continuation_ok:
+                findings.append(
+                    _finding(
+                        "CONTINUATION_FAMILY_MISMATCH",
+                        "/feedback_relations",
+                        repairable=False,
                     )
                 )
     return matched

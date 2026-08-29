@@ -15,6 +15,7 @@ from character_skill.contract import (
     SUBJECT_KINDS,
     TRIGGER_EVENTS,
 )
+from character_skill.context import RESPONSE_EFFECT_FAMILIES
 from combat_semantics import CANONICAL_COMBAT_ROLES
 
 from ..planner import CharacterDesignPlan
@@ -80,6 +81,7 @@ class HybridGenerationContext:
     allowed_feedback_events: tuple[str, ...] | None = None
     allowed_feedback_relations: tuple[str, ...] | None = None
     allowed_modes: tuple[str, ...] | None = None
+    allowed_response_effect_families: tuple[str, ...] | None = None
     allowed_roles: tuple[str, ...] | None = None
     allowed_centralities: tuple[str, ...] | None = None
 
@@ -100,6 +102,7 @@ class HybridGenerationContext:
             "allowed_feedback_events",
             "allowed_feedback_relations",
             "allowed_modes",
+            "allowed_response_effect_families",
             "allowed_roles",
             "allowed_centralities",
         ):
@@ -196,7 +199,7 @@ def project_semantic_enums(context: HybridGenerationContext) -> SemanticEnumProj
         # SemanticFeedback object.  Keep its canonical event visible even
         # when the case narrows the primary mechanic trigger events.
         trigger_values = tuple((*trigger_values, STRUCTURAL_FEEDBACK_TRIGGER_EVENT))
-    domains = (
+    domains = [
         _domain(
             "actor",
             context.allowed_actors,
@@ -248,8 +251,17 @@ def project_semantic_enums(context: HybridGenerationContext) -> SemanticEnumProj
             ),
             "VOCABULARY_REQUIRED",
         ),
-    )
-    return SemanticEnumProjection(domains)
+    ]
+    if context.allowed_response_effect_families is not None:
+        domains.append(
+            _domain(
+                "response_effect_family",
+                context.allowed_response_effect_families,
+                RESPONSE_EFFECT_FAMILIES,
+                source_if_requested=requested_source,
+            )
+        )
+    return SemanticEnumProjection(tuple(domains))
 
 
 def _context_plan_payload(plan: CharacterDesignPlan | None) -> dict[str, object] | None:
@@ -264,7 +276,7 @@ def _context_plan_payload(plan: CharacterDesignPlan | None) -> dict[str, object]
 def context_projection_payload(context: HybridGenerationContext) -> dict[str, object]:
     """Return the canonical, provider-facing context identity payload."""
 
-    return {
+    payload = {
         "version": CONTEXT_PROJECTION_VERSION,
         "case_id": context.case_id,
         "contract_profile": context.contract_profile,
@@ -279,6 +291,11 @@ def context_projection_payload(context: HybridGenerationContext) -> dict[str, ob
         "allowed_centralities": list(context.allowed_centralities or ()),
         "semantic_projection": project_semantic_enums(context).to_mapping(),
     }
+    if context.allowed_response_effect_families is not None:
+        payload["allowed_response_effect_families"] = list(
+            context.allowed_response_effect_families
+        )
+    return payload
 
 
 def context_projection_digest(context: HybridGenerationContext) -> str:

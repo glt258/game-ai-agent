@@ -56,6 +56,8 @@ def test_generalization_contract_is_generic_and_case_projection_is_fair() -> Non
     assert {request.contract.version for request in requests} == {
         "semantic-skill-plan-ir-contract/0.5.0"
     }
+    assert len({request.contract.base_text for request in requests}) == 1
+    assert len({request.contract.suffix_text for request in requests}) == 1
     # The generic guidance/version is shared, while the digest also binds the
     # fair per-case enum projection and therefore differs by case.
     assert len({request.contract.digest for request in requests}) == 4
@@ -64,6 +66,10 @@ def test_generalization_contract_is_generic_and_case_projection_is_fair() -> Non
         == {"control_enemy", "deal_damage", "enable_ally", "mitigate_ally"}
         for request in requests
     )
+    assert {
+        request.contract.projection.domain("response_effect_family").values
+        for request in requests
+    } == {("control",), ("damage",), ("recovery",), ("support",)}
     assert len({request.metrics.total_chars for request in requests}) >= 2
     for request in requests:
         assert all(token not in request.text for token in FORBIDDEN_MODEL_TOKENS)
@@ -168,3 +174,51 @@ def test_negative_semantic_variants_are_rejected_by_evaluator() -> None:
         assert result.evidence.evaluator_invoked is True
         assert result.evidence.evaluator_outcome == "FAIL"
         assert result.evidence.principal_verdict == "EVALUATOR_FAIL"
+
+
+def test_authoritative_mode_requirements_reject_wrong_modes() -> None:
+    cases = _cases_by_id()
+    goldens = _goldens()
+    wrong_modes = {
+        "generalization_control_v1": "passive",
+        "generalization_reaction_heal_v1": "active",
+    }
+    for case_id, wrong_mode in wrong_modes.items():
+        payload = copy.deepcopy(goldens[case_id])
+        payload["mode"] = wrong_mode
+        result = run_fake_pipeline(
+            FakeProvider(payload),
+            cases[case_id].generation_context(),
+            cases[case_id].evaluation_context(),
+            repo_root=ROOT,
+        )
+        assert result.evidence.evaluator_outcome == "FAIL"
+        assert any(
+            finding.code == "MECHANIC_MODE_MISMATCH"
+            for finding in result.report.findings
+        )
+
+
+def test_continuation_family_requirements_reject_semantic_drift() -> None:
+    cases = _cases_by_id()
+    goldens = _goldens()
+    wrong_intents = {
+        "generalization_support_alternate_v1": "deal_damage",
+        "generalization_dps_v1": "enable_ally",
+        "generalization_control_v1": "deal_damage",
+        "generalization_reaction_heal_v1": "enable_ally",
+    }
+    for case_id, wrong_intent in wrong_intents.items():
+        payload = copy.deepcopy(goldens[case_id])
+        payload["mechanic"]["feedback"]["response_effect"]["intent"] = wrong_intent
+        result = run_fake_pipeline(
+            FakeProvider(payload),
+            cases[case_id].generation_context(),
+            cases[case_id].evaluation_context(),
+            repo_root=ROOT,
+        )
+        assert result.evidence.evaluator_outcome == "FAIL"
+        assert any(
+            finding.code == "CONTINUATION_FAMILY_MISMATCH"
+            for finding in result.report.findings
+        )
