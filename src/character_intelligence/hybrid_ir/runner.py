@@ -827,7 +827,7 @@ def _blocked_live_result(status: str) -> HybridLiveResult:
     )
 
 
-def _default_hybrid_provider_factory() -> HybridProvider:
+def _default_hybrid_provider_factory(*, model: str = "deepseek-v4-pro") -> HybridProvider:
     from agents.model_factory import LiveLLMSettings
     from agents.openai_provider import OpenAIChatClient
 
@@ -835,7 +835,7 @@ def _default_hybrid_provider_factory() -> HybridProvider:
     environment = {
         "NPC_AGENT_MODEL": "live",
         "NPC_LLM_PROVIDER": "opencode_go",
-        "NPC_LLM_MODEL": "deepseek-v4-pro",
+        "NPC_LLM_MODEL": model,
         "NPC_LLM_TRANSPORT": "openai_chat_completions",
         "NPC_LLM_STRUCTURED_OUTPUT": "json_object",
         "NPC_LLM_TIMEOUT_SECONDS": "60",

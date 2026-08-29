@@ -4,10 +4,13 @@ from __future__ import annotations
 # ruff: noqa: I001
 
 import importlib.util
+import io
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
+from character_intelligence.hybrid_ir import runner as hybrid_runner
 from character_intelligence.hybrid_ir.runner import FakeProvider, HybridProviderInvocationError
 
 
@@ -93,6 +96,7 @@ def test_evaluator_fail_can_use_one_bounded_repair():
 
     class SequenceProvider:
         def __init__(self):
+            self.model = "deepseek-v4-flash"
             self.calls = 0
             self.transport_attempts = 0
             self.latency_ms = 0.0
@@ -105,7 +109,15 @@ def test_evaluator_fail_can_use_one_bounded_repair():
             return invalid_role if self.calls == 1 else json.dumps(VALID_PASSIVE)
 
     provider = SequenceProvider()
-    result = _run(provider, repair_decider=lambda: True)
+    result = playground.execute_playground(
+        provider,
+        "support",
+        "passive",
+        "Design a concise skill that helps the team survive.",
+        model="deepseek-v4-flash",
+        repair_decider=lambda: True,
+        repo_root=ROOT,
+    )
 
     assert result.initial.evidence.first_failure_layer == "EVALUATOR"
     assert result.initial.evidence.evaluator_outcome == "FAIL"
@@ -113,6 +125,8 @@ def test_evaluator_fail_can_use_one_bounded_repair():
     assert result.final.evidence.evaluator_outcome == "PASS"
     assert result.repair is not None and result.repair.repair_attempts == 1
     assert provider.calls == 2
+    assert result.initial.evidence.identity.model == "deepseek-v4-flash"
+    assert result.final.evidence.identity.model == "deepseek-v4-flash"
 
 
 def test_structural_ir_parse_failure_never_offers_repair():
@@ -166,6 +180,82 @@ def test_cli_missing_credential_reveals_only_status(monkeypatch, capsys):
     assert "NPC_LLM_API_KEY=MISSING" in captured
     assert "NPC_LLM_API_KEY=<" not in captured
     assert "sk-" not in captured.lower()
+
+
+def test_cli_default_model_is_passed_to_provider_factory(monkeypatch):
+    monkeypatch.setenv("NPC_LLM_API_KEY", "test-only")
+    captured: dict[str, str] = {}
+
+    def factory(model):
+        captured["model"] = model
+        return FakeProvider(VALID_PASSIVE)
+
+    monkeypatch.setattr(playground, "_default_hybrid_provider_factory", factory)
+    output = io.StringIO()
+    assert playground.main(
+        ["--role", "support", "--mode", "passive", "--prompt", "help the team"],
+        output=output,
+    ) == 0
+    assert captured["model"] == "deepseek-v4-pro"
+
+
+def test_cli_flash_model_is_passed_and_safe_debug_is_accurate(monkeypatch):
+    monkeypatch.setenv("NPC_LLM_API_KEY", "test-only")
+    captured: dict[str, str] = {}
+
+    def factory(model):
+        captured["model"] = model
+        return FakeProvider(VALID_PASSIVE)
+
+    monkeypatch.setattr(playground, "_default_hybrid_provider_factory", factory)
+    output = io.StringIO()
+    assert playground.main(
+        [
+            "--role",
+            "support",
+            "--mode",
+            "passive",
+            "--prompt",
+            "help the team",
+            "--model",
+            "deepseek-v4-flash",
+            "--show-safe-debug",
+        ],
+        output=output,
+    ) == 0
+    assert captured["model"] == "deepseek-v4-flash"
+    assert "Provider: opencode_go / deepseek-v4-flash" in output.getvalue()
+    assert "deepseek-v4-pro" not in output.getvalue()
+
+
+def test_default_factory_forwards_model_to_existing_provider_config(monkeypatch):
+    captured: dict[str, str] = {}
+
+    class StubSettings:
+        api_key = "test-only"
+        base_url = None
+        timeout_seconds = 60
+        model = "deepseek-v4-flash"
+        profile = SimpleNamespace(provider_options={})
+
+        @classmethod
+        def from_environment(cls, environment):
+            captured.update(environment)
+            return cls
+
+    class StubClient:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+    monkeypatch.setattr("agents.model_factory.LiveLLMSettings", StubSettings)
+    monkeypatch.setattr("agents.openai_provider.OpenAIChatClient", StubClient)
+    provider = hybrid_runner._default_hybrid_provider_factory(model="deepseek-v4-flash")
+
+    assert captured["NPC_LLM_PROVIDER"] == "opencode_go"
+    assert captured["NPC_LLM_MODEL"] == "deepseek-v4-flash"
+    assert provider._model == "deepseek-v4-flash"
+    assert provider.calls == 0
+    assert provider.transport_attempts == 0
 
 
 def test_manual_execution_does_not_write_formal_evidence():

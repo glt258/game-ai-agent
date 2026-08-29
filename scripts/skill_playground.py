@@ -52,6 +52,7 @@ from combat_semantics import CANONICAL_COMBAT_ROLES  # noqa: E402
 
 ROLE_CHOICES = tuple(CANONICAL_COMBAT_ROLES)
 MODE_CHOICES = tuple(sorted(ABILITY_MODES))
+DEFAULT_MODEL = "deepseek-v4-pro"
 
 
 @dataclass(frozen=True)
@@ -144,6 +145,7 @@ def run_manual_pipeline(
     context: HybridGenerationContext,
     evaluation_context: dict[str, object],
     *,
+    model: str = DEFAULT_MODEL,
     repo_root: Path = ROOT,
     invocation_id: str | None = None,
 ) -> FakePipelineResult:
@@ -152,17 +154,20 @@ def run_manual_pipeline(
     from character_intelligence.semantic_ir.schema import SEMANTIC_IR_V2_VERSION
 
     request = build_model_facing_request(context)
-    identity = _identity(
-        repo_root,
-        request.contract.digest,
-        context.case_id,
-        request.contract.version,
-        context.context_projection_version,
-        context.context_projection_digest,
-        target_sample_count=1,
-        experiment="manual-playground",
-        ir_schema_version=SEMANTIC_IR_V2_VERSION,
-        compiler_version=COMPILER_VERSION_V2,
+    identity = replace(
+        _identity(
+            repo_root,
+            request.contract.digest,
+            context.case_id,
+            request.contract.version,
+            context.context_projection_version,
+            context.context_projection_digest,
+            target_sample_count=1,
+            experiment="manual-playground",
+            ir_schema_version=SEMANTIC_IR_V2_VERSION,
+            compiler_version=COMPILER_VERSION_V2,
+        ),
+        model=model,
     )
     result = _run_pipeline(
         provider,
@@ -178,12 +183,16 @@ def run_manual_pipeline(
     return replace(result, evidence=replace(result.evidence, run_id=manual_id))
 
 
-def _manualize_result(result: FakePipelineResult) -> FakePipelineResult:
+def _manualize_result(result: FakePipelineResult, *, model: str) -> FakePipelineResult:
     """Keep any in-memory revalidation identity independent of formal runs."""
 
     return replace(
         result,
-        evidence=replace(result.evidence, run_id=f"manual-playground-{uuid.uuid4().hex}"),
+        evidence=replace(
+            result.evidence,
+            identity=replace(result.evidence.identity, model=model),
+            run_id=f"manual-playground-{uuid.uuid4().hex}",
+        ),
     )
 
 
@@ -193,6 +202,7 @@ def execute_playground(
     mode: str,
     requirement: str,
     *,
+    model: str = DEFAULT_MODEL,
     repair_decider: Callable[[], bool] | None = None,
     repo_root: Path = ROOT,
 ) -> PlaygroundExecution:
@@ -200,7 +210,13 @@ def execute_playground(
 
     context = build_playground_context(role, mode, requirement)
     evaluation_context = build_playground_evaluation_context(role, mode)
-    initial = run_manual_pipeline(provider, context, evaluation_context, repo_root=repo_root)
+    initial = run_manual_pipeline(
+        provider,
+        context,
+        evaluation_context,
+        model=model,
+        repo_root=repo_root,
+    )
     evidence = initial.evidence
     if evidence.evaluator_outcome == "PASS":
         return PlaygroundExecution(initial, initial, None, "NOT_NEEDED")
@@ -217,7 +233,7 @@ def execute_playground(
     )
     repair = session.run(lambda request: provider.complete(request.to_prompt()))
     if repair.revalidation is not None:
-        repair = replace(repair, revalidation=_manualize_result(repair.revalidation))
+        repair = replace(repair, revalidation=_manualize_result(repair.revalidation, model=model))
     final = repair.revalidation if repair.outcome is RepairOutcome.REPAIR_SUCCESS else initial
     if repair.outcome is RepairOutcome.REPAIR_SUCCESS:
         status = "SUCCESS"
@@ -354,7 +370,7 @@ def main(
     *,
     input_fn: Callable[[str], str] = input,
     output: TextIO | None = None,
-    provider_factory: Callable[[], HybridProvider] | None = None,
+    provider_factory: Callable[[str], HybridProvider] | None = None,
 ) -> int:
     if output is None:
         output = sys.stdout
@@ -362,6 +378,11 @@ def main(
     parser.add_argument("--role", choices=ROLE_CHOICES)
     parser.add_argument("--mode", choices=MODE_CHOICES)
     parser.add_argument("--prompt", help="single-line requirement; omit for multi-line input")
+    parser.add_argument(
+        "--model",
+        default=DEFAULT_MODEL,
+        help=f"Model used by the configured provider. Default: {DEFAULT_MODEL}",
+    )
     parser.add_argument("--show-safe-debug", action="store_true")
     args = parser.parse_args(argv)
 
@@ -374,7 +395,10 @@ def main(
             return 2
         if provider_factory is None and not _credential_status(output):
             return 2
-        provider = (provider_factory or _default_hybrid_provider_factory)()
+        factory = provider_factory or (
+            lambda selected_model: _default_hybrid_provider_factory(model=selected_model)
+        )
+        provider = factory(args.model)
 
         def decide() -> bool:
             answer = input_fn("Evaluator FAIL. Repair adds one model call. Continue? [Y/n] ").strip().lower()
@@ -385,6 +409,7 @@ def main(
             role,
             mode,
             requirement,
+            model=args.model,
             repair_decider=decide,
         )
         render_result(
