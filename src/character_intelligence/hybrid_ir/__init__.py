@@ -1,10 +1,16 @@
 """Offline model-facing Hybrid Semantic IR contract and fake runner."""
 
-from .case import HybridSemanticCase, build_authoritative_support_case
+from .case import (
+    HybridSemanticCase,
+    build_authoritative_case_registry,
+    build_authoritative_generalization_cases,
+    build_authoritative_support_case,
+)
 from .contract import (
     FORBIDDEN_MODEL_TOKENS,
     MODEL_FACING_IR_CONTRACT_VERSION,
     MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED,
+    MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION,
     ModelFacingContract,
     ModelFacingRequest,
     RequestSectionMetrics,
@@ -44,6 +50,7 @@ from .runner import (
     HYBRID_FROZEN_REQUEST_BYTES,
     HYBRID_FROZEN_REQUEST_CHARS,
     HYBRID_REPLICATION_COHORT_PURPOSE,
+    HYBRID_MULTI_CASE_EXPERIMENT,
     HYBRID_RUN_ID_PREFIX,
     FakePipelineResult,
     FakeProvider,
@@ -80,6 +87,7 @@ __all__ = [
     "HYBRID_FROZEN_REQUEST_CHARS",
     "HYBRID_RUN_ID_PREFIX",
     "HYBRID_REPLICATION_COHORT_PURPOSE",
+    "HYBRID_MULTI_CASE_EXPERIMENT",
     "HybridEvidence",
     "HybridExperimentIdentity",
     "HybridLiveResult",
@@ -88,9 +96,12 @@ __all__ = [
     "HybridGenerationContext",
     "HybridSemanticIRRunner",
     "HybridSemanticCase",
+    "build_authoritative_case_registry",
+    "build_authoritative_generalization_cases",
     "build_authoritative_support_case",
     "MODEL_FACING_IR_CONTRACT_VERSION",
     "MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED",
+    "MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION",
     "ModelFacingContract",
     "ModelFacingRequest",
     "PROJECTION_SOURCES",

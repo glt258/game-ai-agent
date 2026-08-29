@@ -1,0 +1,90 @@
+{
+  "generalization_support_alternate_v1": {
+    "ir_version": "semantic-skill-plan-ir/0.1.0",
+    "ability_name": "Alternate Rally",
+    "summary": "An ally action enables the team and modifies its continuation.",
+    "mode": "active",
+    "role": "support",
+    "centrality": "core",
+    "mechanic": {
+      "trigger": {"actor": "ally", "event": "action_completed", "qualifier": null},
+      "effect": {"actor": "team", "intent": "enable_ally", "description": "Enable the team after an ally acts."},
+      "feedback": {
+        "event": "effect_resolved",
+        "relation": "modifies",
+        "response_trigger": {"actor": "team", "event": "feedback_received", "qualifier": null},
+        "response_effect": {"actor": "team", "intent": "enable_ally", "description": "Modify the team's continuation."}
+      }
+    },
+    "role_path": {
+      "trigger": {"actor": "ally", "event": "action_completed", "qualifier": null},
+      "effect": {"actor": "team", "intent": "enable_ally", "description": "Provide team support evidence."}
+    }
+  },
+  "generalization_dps_v1": {
+    "ir_version": "semantic-skill-plan-ir/0.1.0",
+    "ability_name": "Focused Break",
+    "summary": "A direct strike creates a damage continuation.",
+    "mode": "active",
+    "role": "main_dps",
+    "centrality": "core",
+    "mechanic": {
+      "trigger": {"actor": "self", "event": "ability_invoked", "qualifier": null},
+      "effect": {"actor": "enemy", "intent": "deal_damage", "description": "Deal primary damage to an enemy."},
+      "feedback": {
+        "event": "effect_resolved",
+        "relation": "enables",
+        "response_trigger": {"actor": "enemy", "event": "feedback_received", "qualifier": null},
+        "response_effect": {"actor": "enemy", "intent": "deal_damage", "description": "Enable the follow-up damage."}
+      }
+    },
+    "role_path": {
+      "trigger": {"actor": "self", "event": "ability_invoked", "qualifier": null},
+      "effect": {"actor": "enemy", "intent": "deal_damage", "description": "Provide direct damage role evidence."}
+    }
+  },
+  "generalization_control_v1": {
+    "ir_version": "semantic-skill-plan-ir/0.1.0",
+    "ability_name": "Quiet Lock",
+    "summary": "Entering the scene applies enemy control and modifies its continuation.",
+    "mode": "active",
+    "role": "control",
+    "centrality": "core",
+    "mechanic": {
+      "trigger": {"actor": "scene", "event": "scene_entered", "qualifier": null},
+      "effect": {"actor": "enemy", "intent": "control_enemy", "description": "Control enemy action state without primary damage."},
+      "feedback": {
+        "event": "effect_resolved",
+        "relation": "modifies",
+        "response_trigger": {"actor": "enemy", "event": "feedback_received", "qualifier": null},
+        "response_effect": {"actor": "enemy", "intent": "control_enemy", "description": "Modify the control continuation."}
+      }
+    },
+    "role_path": {
+      "trigger": {"actor": "scene", "event": "scene_entered", "qualifier": null},
+      "effect": {"actor": "enemy", "intent": "control_enemy", "description": "Provide non-damage control role evidence."}
+    }
+  },
+  "generalization_reaction_heal_v1": {
+    "ir_version": "semantic-skill-plan-ir/0.1.0",
+    "ability_name": "Rescue Pulse",
+    "summary": "Damage to an ally triggers mitigation and a recovery continuation.",
+    "mode": "reaction",
+    "role": "healer",
+    "centrality": "core",
+    "mechanic": {
+      "trigger": {"actor": "ally", "event": "damage_received", "qualifier": null},
+      "effect": {"actor": "ally", "intent": "mitigate_ally", "description": "Mitigate damage received by the ally."},
+      "feedback": {
+        "event": "effect_resolved",
+        "relation": "enables",
+        "response_trigger": {"actor": "ally", "event": "feedback_received", "qualifier": null},
+        "response_effect": {"actor": "ally", "intent": "mitigate_ally", "description": "Enable the recovery continuation."}
+      }
+    },
+    "role_path": {
+      "trigger": {"actor": "ally", "event": "damage_received", "qualifier": null},
+      "effect": {"actor": "ally", "intent": "mitigate_ally", "description": "Provide reaction healing role evidence."}
+    }
+  }
+}

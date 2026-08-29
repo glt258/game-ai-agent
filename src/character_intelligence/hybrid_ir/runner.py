@@ -35,6 +35,7 @@ from ..semantic_ir import (
 )
 from .contract import (
     MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED,
+    MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION,
     ModelFacingRequest,
     build_model_facing_request,
 )
@@ -49,6 +50,7 @@ HYBRID_EVIDENCE_VERSION = "character-skill-s2-hybrid-ir-shadow/0.3.0"
 HYBRID_EXPERIMENT = "character_skill_s2_hybrid_semantic_ir"
 HYBRID_RUN_ID_PREFIX = "cs-s2-hybrid-semantic-ir-v1"
 HYBRID_REPLICATION_COHORT_PURPOSE = "same-config-replication"
+HYBRID_MULTI_CASE_EXPERIMENT = "multi-case-generalization-pilot"
 HYBRID_DEFAULT_EVIDENCE_RELATIVE_PATH = "evals/results/character_skill_s2_hybrid_ir_run_01_v0.3.0.json"
 HYBRID_DEFAULT_TEMP_RELATIVE_PATH = "evals/results/.character_skill_s2_hybrid_ir_run_01_v0.3.0.json.tmp"
 HYBRID_FROZEN_REQUEST_CHARS = 1032
@@ -413,12 +415,14 @@ def _identity(
     context_projection_digest: str = "",
     target_sample_count: int = 1,
     cohort_purpose: str = "",
+    *,
+    experiment: str = HYBRID_EXPERIMENT,
 ) -> HybridExperimentIdentity:
     source_commit = subprocess.check_output(
         ["git", "-C", str(repo_root), "rev-parse", "HEAD"], text=True
     ).strip()
     return HybridExperimentIdentity(
-        HYBRID_EXPERIMENT,
+        experiment,
         source_commit,
         model_facing_contract_version=contract_version,
         model_facing_contract_digest=contract_digest,
@@ -489,6 +493,7 @@ def _run_pipeline(
     sample_index: int = 1,
     target_sample_count: int = 1,
     cohort_purpose: str = "",
+    experiment: str = HYBRID_EXPERIMENT,
     identity: HybridExperimentIdentity | None = None,
 ) -> FakePipelineResult:
     """Run every Hybrid layer after a provider adapter has been selected."""
@@ -503,6 +508,7 @@ def _run_pipeline(
         context.context_projection_digest,
         target_sample_count,
         cohort_purpose,
+        experiment=experiment,
     )
     run_id = build_hybrid_run_id(resolved_identity, sample_index=sample_index)
     try:
@@ -635,6 +641,7 @@ def run_fake_pipeline(
     sample_index: int = 1,
     target_sample_count: int = 1,
     cohort_purpose: str = "",
+    experiment: str = HYBRID_EXPERIMENT,
 ) -> FakePipelineResult:
     """Run the formal pipeline with an in-memory provider adapter."""
 
@@ -647,6 +654,7 @@ def run_fake_pipeline(
         sample_index=sample_index,
         target_sample_count=target_sample_count,
         cohort_purpose=cohort_purpose,
+        experiment=experiment,
     )
 
 
@@ -901,6 +909,7 @@ class HybridSemanticIRRunner:
         existing_sample_indexes: tuple[int, ...] = (),
         existing_evidence_paths: tuple[Path | str, ...] = (),
         cohort_purpose: str = "",
+        experiment: str = HYBRID_EXPERIMENT,
     ) -> None:
         if isinstance(target_sample_count, bool) or not isinstance(target_sample_count, int) or target_sample_count < 1:
             raise ValueError("HYBRID_TARGET_SAMPLE_COUNT_INVALID")
@@ -910,6 +919,7 @@ class HybridSemanticIRRunner:
         self.context = context
         self.target_sample_count = target_sample_count
         self.cohort_purpose = cohort_purpose
+        self.experiment = experiment
         self.existing_evidence_paths = tuple(Path(path).resolve() for path in existing_evidence_paths)
 
         request = build_model_facing_request(self.context)
@@ -922,6 +932,7 @@ class HybridSemanticIRRunner:
             self.context.context_projection_digest,
             target_sample_count=self.target_sample_count,
             cohort_purpose=self.cohort_purpose,
+            experiment=self.experiment,
         )
         explicit_indexes = _normalize_cohort_indexes(
             existing_sample_indexes,
@@ -1004,8 +1015,13 @@ class HybridSemanticIRRunner:
             or request.contract.digest != HYBRID_FROZEN_CONTRACT_DIGEST
         ):
             return _blocked_live_result("BLOCKED_HYBRID_REQUEST_DRIFT")
-        if self.context.contract_profile == "aligned_v1" and (
-            request.contract.version != MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED
+        if self.context.contract_profile in {"aligned_v1", "generalization_v1"} and (
+            request.contract.version
+            != (
+                MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION
+                if self.context.contract_profile == "generalization_v1"
+                else MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED
+            )
             or self.context.context_projection_version != CONTEXT_PROJECTION_VERSION
             or not self.context.context_projection_digest
         ):
@@ -1027,6 +1043,7 @@ class HybridSemanticIRRunner:
             self.context.context_projection_digest,
             target_sample_count=self.target_sample_count,
             cohort_purpose=self.cohort_purpose,
+            experiment=self.experiment,
         )
         if current_identity != identity:
             return _blocked_live_result("BLOCKED_HYBRID_IDENTITY_DRIFT")
@@ -1088,6 +1105,7 @@ __all__ = [
     "HYBRID_EXPERIMENT",
     "HYBRID_RUN_ID_PREFIX",
     "HYBRID_REPLICATION_COHORT_PURPOSE",
+    "HYBRID_MULTI_CASE_EXPERIMENT",
     "HybridEvidence",
     "HybridExperimentIdentity",
     "HybridLiveResult",

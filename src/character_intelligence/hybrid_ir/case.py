@@ -26,6 +26,8 @@ class HybridSemanticCase:
     evaluator_effect_operations: tuple[str, ...]
     evaluator_feedback_events: tuple[str, ...]
     evaluator_feedback_operations: tuple[str, ...]
+    generation_mode: str = "active"
+    contract_profile: str = "aligned_v1"
 
     def __post_init__(self) -> None:
         if not self.case_id.strip() or not self.brief.strip():
@@ -40,11 +42,16 @@ class HybridSemanticCase:
             self.brief,
             plan=self.plan,
             case_id=self.case_id,
-            contract_profile="aligned_v1",
+            contract_profile=self.contract_profile,
             allowed_actors=self.allowed_actors,
             allowed_trigger_events=self.allowed_trigger_events,
             allowed_feedback_events=self.evaluator_feedback_events,
             allowed_feedback_relations=self.evaluator_feedback_operations,
+            allowed_modes=(self.generation_mode,) if self.contract_profile == "generalization_v1" else None,
+            allowed_roles=(self.plan.combat_role_profile.primary_role,)
+            if self.contract_profile == "generalization_v1"
+            else None,
+            allowed_centralities=("core",) if self.contract_profile == "generalization_v1" else None,
         )
 
     def evaluation_context(self) -> Mapping[str, object]:
@@ -120,4 +127,101 @@ def build_authoritative_support_case() -> HybridSemanticCase:
     )
 
 
-__all__ = ["HybridSemanticCase", "build_authoritative_support_case"]
+def build_authoritative_generalization_cases() -> tuple[HybridSemanticCase, ...]:
+    """Return the four offline pilot cases from one authoritative registry."""
+
+    return (
+        HybridSemanticCase(
+            case_id="generalization_support_alternate_v1",
+            brief=(
+                "Design an alternate support ability that reacts when an ally completes an action, "
+                "enables the team, and modifies the continuation after the effect resolves."
+            ),
+            plan=build_character_design_plan(
+                "Design an alternate support ability for a support character."
+            ),
+            allowed_actors=("ally", "team"),
+            allowed_trigger_events=("action_completed",),
+            evaluator_requirement_id="req_generalization_support_alternate",
+            evaluator_trigger_subject_kinds=("ally",),
+            evaluator_trigger_events=("action_completed",),
+            evaluator_effect_subject_kinds=("team",),
+            evaluator_effect_operations=("ally_enablement",),
+            evaluator_feedback_events=("effect_resolved",),
+            evaluator_feedback_operations=("modifies",),
+            generation_mode="active",
+            contract_profile="generalization_v1",
+        ),
+        HybridSemanticCase(
+            case_id="generalization_dps_v1",
+            brief=(
+                "Design a main DPS ability that starts when the caster acts, deals primary damage to an enemy, "
+                "and enables a follow-up damage continuation after resolution."
+            ),
+            plan=build_character_design_plan("Design a main DPS character ability."),
+            allowed_actors=("self", "enemy"),
+            allowed_trigger_events=("ability_invoked",),
+            evaluator_requirement_id="req_generalization_dps",
+            evaluator_trigger_subject_kinds=("self",),
+            evaluator_trigger_events=("ability_invoked",),
+            evaluator_effect_subject_kinds=("enemy",),
+            evaluator_effect_operations=("direct_output",),
+            evaluator_feedback_events=("effect_resolved",),
+            evaluator_feedback_operations=("enables",),
+            generation_mode="active",
+            contract_profile="generalization_v1",
+        ),
+        HybridSemanticCase(
+            case_id="generalization_control_v1",
+            brief=(
+                "Design a control ability that starts when the scene is entered, applies enemy action control "
+                "without making damage the primary effect, and modifies the control continuation."
+            ),
+            plan=build_character_design_plan("Design a control character ability."),
+            allowed_actors=("scene", "enemy"),
+            allowed_trigger_events=("scene_entered",),
+            evaluator_requirement_id="req_generalization_control",
+            evaluator_trigger_subject_kinds=("scene",),
+            evaluator_trigger_events=("scene_entered",),
+            evaluator_effect_subject_kinds=("enemy",),
+            evaluator_effect_operations=("enemy_action_control",),
+            evaluator_feedback_events=("effect_resolved",),
+            evaluator_feedback_operations=("modifies",),
+            generation_mode="active",
+            contract_profile="generalization_v1",
+        ),
+        HybridSemanticCase(
+            case_id="generalization_reaction_heal_v1",
+            brief=(
+                "Design a reaction healer ability that activates when an ally receives damage, mitigates the ally, "
+                "and enables a recovery continuation after the effect resolves."
+            ),
+            plan=build_character_design_plan("Design a healer character reaction ability."),
+            allowed_actors=("ally",),
+            allowed_trigger_events=("damage_received",),
+            evaluator_requirement_id="req_generalization_reaction_heal",
+            evaluator_trigger_subject_kinds=("ally",),
+            evaluator_trigger_events=("damage_received",),
+            evaluator_effect_subject_kinds=("ally",),
+            evaluator_effect_operations=("recover_or_mitigate",),
+            evaluator_feedback_events=("effect_resolved",),
+            evaluator_feedback_operations=("enables",),
+            generation_mode="reaction",
+            contract_profile="generalization_v1",
+        ),
+    )
+
+
+def build_authoritative_case_registry() -> Mapping[str, HybridSemanticCase]:
+    """Return stable semantic IDs for all generalization pilot cases."""
+
+    cases = (build_authoritative_support_case(), *build_authoritative_generalization_cases())
+    return MappingProxyType({case.case_id: case for case in cases})
+
+
+__all__ = [
+    "HybridSemanticCase",
+    "build_authoritative_case_registry",
+    "build_authoritative_generalization_cases",
+    "build_authoritative_support_case",
+]

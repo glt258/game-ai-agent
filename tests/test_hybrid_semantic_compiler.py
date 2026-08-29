@@ -184,7 +184,7 @@ def test_validator_rejects_bad_feedback_wiring_and_unsupported_mapping() -> None
         SemanticIRValidator.validate(bad_source)
     assert wiring.value.code == "IR_INVALID"
 
-    unsupported = replace(source.mechanic.effect, intent="deal_damage")
+    unsupported = replace(source.mechanic.effect, intent="unknown_intent")
     unsupported_source = replace(source, mechanic=replace(source.mechanic, effect=unsupported))
     with pytest.raises(SemanticIRValidationError) as mapping:
         SemanticIRValidator.validate(unsupported_source)

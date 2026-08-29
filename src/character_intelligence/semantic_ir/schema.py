@@ -29,7 +29,14 @@ SEMANTIC_IR_VERSION = "semantic-skill-plan-ir/0.1.0"
 
 # This is intentionally a semantic vocabulary, not a second copy of the
 # canonical effect-operation enum.  The compiler owns the explicit mapping.
-SEMANTIC_EFFECT_INTENTS = frozenset({"enable_ally"})
+SEMANTIC_EFFECT_INTENTS = frozenset(
+    {
+        "enable_ally",
+        "deal_damage",
+        "control_enemy",
+        "mitigate_ally",
+    }
+)
 
 
 class SemanticIRShapeError(ValueError):

@@ -30,7 +30,12 @@ from .provenance import COMPILER_VERSION, CompilerProvenance, CompilerProvenance
 
 
 SEMANTIC_EFFECT_OPERATION_MAP: Mapping[str, str] = MappingProxyType(
-    {"enable_ally": "ally_enablement"}
+    {
+        "enable_ally": "ally_enablement",
+        "deal_damage": "direct_output",
+        "control_enemy": "enemy_action_control",
+        "mitigate_ally": "recover_or_mitigate",
+    }
 )
 
 _SELECTOR_BY_ACTOR: Mapping[str, str] = MappingProxyType(

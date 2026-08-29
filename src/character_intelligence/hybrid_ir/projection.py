@@ -28,10 +28,18 @@ PROJECTION_SOURCES = frozenset(
         "VOCABULARY_REQUIRED",
     }
 )
-CONTEXT_CONTRACT_PROFILES = frozenset({"frozen_h3", "aligned_v1"})
+CONTEXT_CONTRACT_PROFILES = frozenset({"frozen_h3", "aligned_v1", "generalization_v1"})
 CONTEXT_PROJECTION_VERSION = "hybrid-semantic-context-projection/0.2.0"
 SEMANTIC_ACTORS = tuple(sorted(SUBJECT_KINDS - {"summon"}))
+# Keep the aligned v1 projection frozen. The generalization profile exposes
+# the small generic vocabulary needed by distinct role families.
 SEMANTIC_INTENTS = ("enable_ally",)
+GENERALIZATION_SEMANTIC_INTENTS = (
+    "control_enemy",
+    "deal_damage",
+    "enable_ally",
+    "mitigate_ally",
+)
 GLOBAL_STRUCTURAL_TRIGGER_EVENTS = (
     "ability_invoked",
     "action_completed",
@@ -231,7 +239,15 @@ def project_semantic_enums(context: HybridGenerationContext) -> SemanticEnumProj
             CENTRALITIES,
             source_if_requested=requested_source,
         ),
-        EnumDomainProjection("intent", SEMANTIC_INTENTS, "VOCABULARY_REQUIRED"),
+        EnumDomainProjection(
+            "intent",
+            (
+                GENERALIZATION_SEMANTIC_INTENTS
+                if context.contract_profile == "generalization_v1"
+                else SEMANTIC_INTENTS
+            ),
+            "VOCABULARY_REQUIRED",
+        ),
     )
     return SemanticEnumProjection(domains)
 
@@ -286,6 +302,7 @@ __all__ = [
     "ProjectionError",
     "SEMANTIC_ACTORS",
     "SEMANTIC_INTENTS",
+    "GENERALIZATION_SEMANTIC_INTENTS",
     "GLOBAL_STRUCTURAL_TRIGGER_EVENTS",
     "STRUCTURAL_FEEDBACK_TRIGGER_EVENT",
     "SemanticEnumProjection",

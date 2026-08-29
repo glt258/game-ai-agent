@@ -14,6 +14,7 @@ from .projection import (
 
 MODEL_FACING_IR_CONTRACT_VERSION = "semantic-skill-plan-ir-contract/0.1.0"
 MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED = "semantic-skill-plan-ir-contract/0.4.0"
+MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION = "semantic-skill-plan-ir-contract/0.5.0"
 FORBIDDEN_MODEL_TOKENS = (
     "schema_version",
     "ability_id",
@@ -149,8 +150,11 @@ def build_model_facing_contract(context: HybridGenerationContext) -> ModelFacing
     """Build an example-free contract from public request/plan context."""
 
     projection = project_semantic_enums(context)
-    aligned = context.contract_profile == "aligned_v1"
-    version = MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED if aligned else MODEL_FACING_IR_CONTRACT_VERSION
+    aligned = context.contract_profile in {"aligned_v1", "generalization_v1"}
+    if context.contract_profile == "generalization_v1":
+        version = MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION
+    else:
+        version = MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED if aligned else MODEL_FACING_IR_CONTRACT_VERSION
     base, enum, suffix = _base_text(aligned=aligned), _enum_text(projection), _suffix_text()
     contract = ModelFacingContract(
         version,
@@ -213,6 +217,7 @@ __all__ = [
     "FORBIDDEN_MODEL_TOKENS",
     "MODEL_FACING_IR_CONTRACT_VERSION",
     "MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED",
+    "MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION",
     "ModelFacingContract",
     "ModelFacingRequest",
     "RequestSectionMetrics",
