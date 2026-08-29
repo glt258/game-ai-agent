@@ -24,6 +24,21 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# Production evidence remains rooted at ``evals/results``.  When a historical
+# result is absent (for example, on a clean checkout where ignored evidence is
+# intentionally unavailable), validators may read the committed sanitized
+# metadata fixture with the same basename.  This fallback is read-only and
+# never changes result destinations or live-run defaults.
+HISTORICAL_FIXTURE_ROOT_RELATIVE = Path("tests/fixtures/historical_evidence")
+
+
+def _historical_evidence_path(root: Path, relative: str | Path) -> Path:
+    production_path = root / relative
+    if production_path.is_file():
+        return production_path
+    fixture_path = root / HISTORICAL_FIXTURE_ROOT_RELATIVE / Path(relative).name
+    return fixture_path if fixture_path.is_file() else production_path
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
@@ -3122,7 +3137,7 @@ class TimeoutSuitabilityProbeRunner:
             ("fixed", FIXED_COMPLIANCE_RESULT_RELATIVE_PATH, validate_fixed_contract_compliance_bundle),
         )
         for name, relative, validator in specs:
-            path = self.root / relative
+            path = _historical_evidence_path(self.root, relative)
             try:
                 raw = path.read_bytes()
             except OSError as error:
@@ -3348,7 +3363,7 @@ class ModelSuitabilityProbeRunner:
             "flash_timeout": MODEL_SUITABILITY_FLASH_TIMEOUT_SHA256,
         }
         for name, relative, validator in specs:
-            path = self.root / relative
+            path = _historical_evidence_path(self.root, relative)
             try:
                 raw = path.read_bytes()
             except OSError as error:
@@ -3663,7 +3678,7 @@ class MinimalTransportSanityRunner:
             (MODEL_SUITABILITY_RESULT_RELATIVE_PATH, validate_model_suitability_bundle, "b96e1a822af9af6f4f805e12c9d38750fecbb0eb76b488f183fe14005a7fdcbb"),
         )
         for relative, validator, expected_sha in specs:
-            path = self.root / relative
+            path = _historical_evidence_path(self.root, relative)
             try:
                 raw = path.read_bytes()
                 bundle, _ = _load_json(path)
@@ -4004,7 +4019,7 @@ class FullInputTinyOutputRunner:
             (MINIMAL_TRANSPORT_SANITY_RESULT_RELATIVE_PATH, validate_minimal_transport_sanity_bundle, "791c886de9ecbfe2e29893effb57f625d21d6f7670bdc7e1f0d0b038f03cbda0"),
         )
         for relative, validator, expected_sha in specs:
-            path = self.root / relative
+            path = _historical_evidence_path(self.root, relative)
             try:
                 raw = path.read_bytes()
                 bundle, _ = _load_json(path)
@@ -4316,7 +4331,7 @@ class EnumExpansionStepdownRunner:
 
     def _assert_historical_integrity(self) -> None:
         FullInputTinyOutputRunner(self.root, manifest_path=self.root / MANIFEST_RELATIVE_PATH)._assert_historical_integrity()
-        path = self.root / FULL_INPUT_TINY_OUTPUT_RESULT_RELATIVE_PATH
+        path = _historical_evidence_path(self.root, FULL_INPUT_TINY_OUTPUT_RESULT_RELATIVE_PATH)
         try:
             raw = path.read_bytes()
             bundle, _ = _load_json(path)
@@ -4670,7 +4685,7 @@ class NestedShapeStepdownRunner:
 
     def _assert_historical_integrity(self) -> None:
         EnumExpansionStepdownRunner(self.root, manifest_path=self.root / MANIFEST_RELATIVE_PATH)._assert_historical_integrity()
-        path = self.root / ENUM_STEPOWDOWN_RESULT_RELATIVE_PATH
+        path = _historical_evidence_path(self.root, ENUM_STEPOWDOWN_RESULT_RELATIVE_PATH)
         try:
             raw = path.read_bytes()
             bundle, _ = _load_json(path)
@@ -6285,7 +6300,7 @@ class O1SafeDiagnosticRunner:
         return (Path(output_path) if output_path is not None else self.root / self._result_relative_path()).resolve()
 
     def _prepare(self, output_path: Path | str | None = None) -> dict[str, object]:
-        historical_destination = self.root / O1_ROOT_ONLY_RESULT_RELATIVE_PATH
+        historical_destination = _historical_evidence_path(self.root, O1_ROOT_ONLY_RESULT_RELATIVE_PATH)
         if not historical_destination.exists():
             raise EvidenceRunnerError("BLOCKED_O1_HISTORICAL_EVIDENCE_MISSING")
         historical_payload, _ = _load_json(historical_destination)

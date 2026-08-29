@@ -1,0 +1,88 @@
+{
+  "schema_version": "character-skill-s2-shadow-compact-contract-v2-minimal-skillkit/0.1.0",
+  "protocol_version": "0.2.1",
+  "run_id": "cs-s2-shadow-compact-contract-v2-minimal-skillkit-v0.1.0-opencode_go-deepseek-v4-pro-case_13-t60-r0-n1-6c829291665200ae2d4ac3a8e2d49c8d64d1d603-910f0d1da5c6-003ada54354e-run-01",
+  "experiment_type": "compact_contract_v2_minimal_skillkit",
+  "contract_version": "compact-skillkit-contract-v2-a/0.1.0",
+  "contract_digest": "5dd592925cb4cdc0e20cbb564deedba4c64fe74e8fd79bb2925db66cde801bce",
+  "minimal_output_contract_version": "minimal-skillkit-output-contract/0.1.0",
+  "minimal_output_contract_digest": "003ada54354e4354609c9d57378d540766b792d9e0ee0f74ceb7c0bca3b7dc6f",
+  "parser_contract_version": "skill-kit-validator/0.1.1",
+  "evaluator_context_version": "skill-kit-evaluator-context/0.1.1",
+  "source_commit": "6c829291665200ae2d4ac3a8e2d49c8d64d1d603",
+  "manifest_digest": "910f0d1da5c657460f864d085d7223dc618d1f4fa283f0fb2e5f1b5274474ec7",
+  "input_manifest_digest": "910f0d1da5c657460f864d085d7223dc618d1f4fa283f0fb2e5f1b5274474ec7",
+  "inputs": [
+    {
+      "path": "evals/fixtures/hermes_character_skill_s0_blind_cases_v0.1.1.json",
+      "sha256": "055505916bf82fc60cb55d2deb84b9aaacd7028431ac5d38d2f84791dd77fe90",
+      "role": "provider"
+    },
+    {
+      "path": "evals/fixtures/character_skill_interface_prototype_cases_v0.1.1.public.json",
+      "sha256": "11e936df853927154ace426c3a22e073b739b9b1dce536817851f70cf855ec04",
+      "role": "evaluator"
+    }
+  ],
+  "provider": {
+    "name": "opencode_go",
+    "model_requested": "deepseek-v4-pro",
+    "model_reported": "deepseek-v4-pro",
+    "transport": "openai_chat_completions",
+    "structured_output_mode": "json_object",
+    "response_contract": "character_skill_kit",
+    "candidate_schema_version": "skill-kit-candidate/0.1.1",
+    "timeout_seconds": 60,
+    "max_transport_retries": 0
+  },
+  "case_id": "case_13",
+  "timeout_seconds": 60,
+  "max_transport_retries": 0,
+  "target_sample_count": 1,
+  "complete": true,
+  "request_metrics": {
+    "message_count": 2,
+    "chars": 1724,
+    "bytes": 1852,
+    "by_role": {
+      "system": {
+        "chars": 1530,
+        "bytes": 1534,
+        "lines": 5
+      },
+      "user": {
+        "chars": 194,
+        "bytes": 318,
+        "lines": 1
+      }
+    }
+  },
+  "sample_index": 1,
+  "observation": {
+    "observation_id": "cs-s2-shadow-compact-contract-v2-minimal-skillkit-v0.1.0-opencode_go-deepseek-v4-pro-case_13-t60-r0-n1-6c829291665200ae2d4ac3a8e2d49c8d64d1d603-910f0d1da5c6-003ada54354e-run-01:case_13:sample-01",
+    "provider_outcome": "failure",
+    "transport_attempts": 1,
+    "latency_ms": 61453.00000000134,
+    "json_extraction_outcome": "not_attempted",
+    "parsed_top_level_type": null,
+    "parser_invoked": false,
+    "parser_outcome": "NOT_REACHED",
+    "parser_failure_categories": [],
+    "parser_failure_counts": {},
+    "reference_validation_invoked": false,
+    "reference_validation_result": "NOT_REACHED",
+    "evaluator_invoked": false,
+    "evaluator_outcome": "NOT_RUN",
+    "evaluator_finding_codes": [],
+    "repair_calls": 0,
+    "principal_verdict": "V2_A_MINIMAL_SKILLKIT_UNAVAILABLE",
+    "failure_stage": "provider",
+    "failure_code": "PROVIDER_INVOCATION_FAILED",
+    "sanitization": {
+      "raw_prompt_stored": false,
+      "raw_response_stored": false,
+      "secrets_detected": false
+    }
+  },
+  "bundle_digest": "d90a4568683b87b9d508f11d680ac87e511695c74999f92cc5a5ce845a70e0c5"
+}

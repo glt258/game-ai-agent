@@ -1,0 +1,98 @@
+{
+  "schema_version": "character-skill-s2-shadow-o2-local-structure/0.1.0",
+  "protocol_version": "0.2.1",
+  "run_id": "cs-s2-shadow-compact-contract-v2-output-stepdown-o2-local-structure-v0.1.0-opencode_go-deepseek-v4-pro-case_13-t60-r0-n1-9fbcdad95e703ecea035b5647ba1c66980af0111-910f0d1da5c6-631efa9c86d3-run-01",
+  "experiment_type": "compact_contract_v2_output_stepdown_o2_local_structure",
+  "level": "O2_LOCAL_STRUCTURE",
+  "contract_version": "compact-skillkit-contract-v2-a/0.1.0",
+  "contract_digest": "5dd592925cb4cdc0e20cbb564deedba4c64fe74e8fd79bb2925db66cde801bce",
+  "output_contract_version": "v2-output-stepdown-o2-local-structure-compact/0.2.0",
+  "output_contract_digest": "631efa9c86d3c82d98b367d1c0a42ba09719ba201c3290143098863f8e050b40",
+  "parser_contract_version": "skill-kit-validator/0.1.1",
+  "source_commit": "9fbcdad95e703ecea035b5647ba1c66980af0111",
+  "manifest_digest": "910f0d1da5c657460f864d085d7223dc618d1f4fa283f0fb2e5f1b5274474ec7",
+  "input_manifest_digest": "910f0d1da5c657460f864d085d7223dc618d1f4fa283f0fb2e5f1b5274474ec7",
+  "inputs": [
+    {
+      "path": "evals/fixtures/hermes_character_skill_s0_blind_cases_v0.1.1.json",
+      "sha256": "055505916bf82fc60cb55d2deb84b9aaacd7028431ac5d38d2f84791dd77fe90",
+      "role": "provider"
+    },
+    {
+      "path": "evals/fixtures/character_skill_interface_prototype_cases_v0.1.1.public.json",
+      "sha256": "11e936df853927154ace426c3a22e073b739b9b1dce536817851f70cf855ec04",
+      "role": "evaluator"
+    }
+  ],
+  "provider": {
+    "name": "opencode_go",
+    "model_requested": "deepseek-v4-pro",
+    "model_reported": "deepseek-v4-pro",
+    "transport": "openai_chat_completions",
+    "structured_output_mode": "json_object",
+    "response_contract": "character_skill_kit",
+    "candidate_schema_version": "skill-kit-candidate/0.1.1",
+    "timeout_seconds": 60,
+    "max_transport_retries": 0
+  },
+  "model": "deepseek-v4-pro",
+  "case_id": "case_13",
+  "timeout_seconds": 60,
+  "max_transport_retries": 0,
+  "response_mode": "json_object",
+  "feature_flag": "OFF",
+  "record_only": true,
+  "target_sample_count": 1,
+  "complete": true,
+  "request_metrics": {
+    "message_count": 2,
+    "chars": 1533,
+    "bytes": 1661,
+    "by_role": {
+      "system": {
+        "chars": 1339,
+        "bytes": 1343,
+        "lines": 5
+      },
+      "user": {
+        "chars": 194,
+        "bytes": 318,
+        "lines": 1
+      }
+    }
+  },
+  "sample_index": 1,
+  "observation": {
+    "observation_id": "cs-s2-shadow-compact-contract-v2-output-stepdown-o2-local-structure-v0.1.0-opencode_go-deepseek-v4-pro-case_13-t60-r0-n1-9fbcdad95e703ecea035b5647ba1c66980af0111-910f0d1da5c6-631efa9c86d3-run-01:case_13:sample-01",
+    "provider_outcome": "failure",
+    "transport_attempts": 1,
+    "latency_ms": 61141.00000000326,
+    "json_extraction_outcome": "not_attempted",
+    "parsed_top_level_type": null,
+    "parser_invoked": false,
+    "parser_outcome": "NOT_REACHED",
+    "parser_failure_categories": [],
+    "parser_failure_counts": {},
+    "evaluator_invoked": false,
+    "evaluator_outcome": "NOT_RUN",
+    "principal_verdict": "O2_LOCAL_STRUCTURE_UNAVAILABLE",
+    "repair_calls": 0,
+    "failure_stage": "provider",
+    "failure_code": "PROVIDER_INVOCATION_FAILED",
+    "sanitization": {
+      "raw_prompt_stored": false,
+      "raw_response_stored": false,
+      "secrets_detected": false
+    },
+    "structural_diagnostics": {
+      "root_schema_version_exact_match": false,
+      "collection_shape_valid": false,
+      "entry_count": 0,
+      "protocol_count": 0,
+      "effect_count": 0,
+      "typed_ref_count": 0,
+      "local_structure_complete": false
+    }
+  },
+  "bundle_digest": "d10b0fc738d482749835f1a19b4d1cbf53508185a3fac9ec9dc853044dcc17e9"
+}
