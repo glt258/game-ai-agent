@@ -6,15 +6,19 @@ import copy
 import json
 from pathlib import Path
 
+import pytest
+
 from character_intelligence.hybrid_ir import (
     FORBIDDEN_MODEL_TOKENS,
     HYBRID_MULTI_CASE_EXPERIMENT,
+    MODEL_FACING_SCHEMA_PATHS,
     FakeProvider,
     HybridSemanticIRRunner,
     build_authoritative_case_registry,
     build_authoritative_generalization_cases,
     build_model_facing_request,
     run_fake_pipeline,
+    validate_model_facing_schema_surface,
 )
 from character_intelligence.semantic_ir import parse_semantic_ir
 
@@ -54,7 +58,7 @@ def test_registry_has_four_distinct_authoritative_semantic_families() -> None:
 def test_generalization_contract_is_generic_and_case_projection_is_fair() -> None:
     requests = [build_model_facing_request(case.generation_context()) for case in _cases_by_id().values()]
     assert {request.contract.version for request in requests} == {
-        "semantic-skill-plan-ir-contract/0.5.0"
+        "semantic-skill-plan-ir-contract/0.6.0"
     }
     assert len({request.contract.base_text for request in requests}) == 1
     assert len({request.contract.suffix_text for request in requests}) == 1
@@ -66,16 +70,37 @@ def test_generalization_contract_is_generic_and_case_projection_is_fair() -> Non
         == {"control_enemy", "deal_damage", "enable_ally", "mitigate_ally"}
         for request in requests
     )
-    assert {
-        request.contract.projection.domain("response_effect_family").values
+    assert all(
+        "response_effect_family" not in request.contract.projection.to_mapping()
         for request in requests
-    } == {("control",), ("damage",), ("recovery",), ("support",)}
+    )
+    assert all(
+        "Continuation constraint:" in request.case_text
+        for request in requests
+    )
+    assert all(
+        all(
+            path in request.contract.enum_text
+            for paths in MODEL_FACING_SCHEMA_PATHS.values()
+            for path in paths
+        )
+        for request in requests
+    )
     assert len({request.metrics.total_chars for request in requests}) >= 2
     for request in requests:
         assert all(token not in request.text for token in FORBIDDEN_MODEL_TOKENS)
         assert "golden" not in request.text.lower()
         assert "expected" not in request.text.lower()
         assert "req_generalization" not in request.text
+        assert "response_effect_family" not in request.text
+        assert "allowed_response_effect_families" not in request.text
+        validate_model_facing_schema_surface(request.contract.text)
+
+
+def test_schema_surface_guard_rejects_pseudo_fields_and_accepts_real_paths() -> None:
+    validate_model_facing_schema_surface("mechanic.trigger.event=[scene_entered]")
+    with pytest.raises(ValueError, match="MODEL_FACING_NON_SCHEMA_FIELD"):
+        validate_model_facing_schema_surface("response_effect_family=[damage]")
 
 
 def test_context_digests_and_requests_are_deterministic_and_case_bound() -> None:

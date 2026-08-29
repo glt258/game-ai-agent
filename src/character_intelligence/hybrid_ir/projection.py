@@ -108,7 +108,10 @@ class HybridGenerationContext:
         ):
             values = getattr(self, name)
             if values is not None:
-                object.__setattr__(self, name, _clean_values(values, name))
+                cleaned = _clean_values(values, name)
+                if name == "allowed_response_effect_families" and not set(cleaned) <= RESPONSE_EFFECT_FAMILIES:
+                    raise ValueError("unsupported response effect family")
+                object.__setattr__(self, name, cleaned)
 
     @property
     def context_projection_version(self) -> str:
@@ -252,15 +255,6 @@ def project_semantic_enums(context: HybridGenerationContext) -> SemanticEnumProj
             "VOCABULARY_REQUIRED",
         ),
     ]
-    if context.allowed_response_effect_families is not None:
-        domains.append(
-            _domain(
-                "response_effect_family",
-                context.allowed_response_effect_families,
-                RESPONSE_EFFECT_FAMILIES,
-                source_if_requested=requested_source,
-            )
-        )
     return SemanticEnumProjection(tuple(domains))
 
 
