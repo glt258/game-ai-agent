@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 from ..semantic_ir import SEMANTIC_IR_V2_VERSION
+from .language import human_language_directive, resolve_output_language
 from .projection import (
     HybridGenerationContext,
     SemanticEnumProjection,
@@ -18,8 +19,9 @@ from .projection import (
 MODEL_FACING_IR_CONTRACT_VERSION = "semantic-skill-plan-ir-contract/0.1.0"
 MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED = "semantic-skill-plan-ir-contract/0.4.0"
 MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION = "semantic-skill-plan-ir-contract/0.6.0"
-MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_LEGACY = "semantic-skill-plan-ir-contract/0.7.0"
-MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2 = "semantic-skill-plan-ir-contract/0.7.1"
+MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_HISTORICAL = "semantic-skill-plan-ir-contract/0.7.0"
+MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_LEGACY = "semantic-skill-plan-ir-contract/0.7.1"
+MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2 = "semantic-skill-plan-ir-contract/0.7.2"
 FORBIDDEN_MODEL_TOKENS = (
     "schema_version",
     "ability_id",
@@ -183,7 +185,10 @@ def _base_text_v2() -> str:
         "mechanic has exactly kind, persistence, and effect only; persistence must be always_on "
         "and passive mechanics have no trigger or feedback. Triggered role_path has exactly "
         "kind, trigger, effect. Passive role_path has exactly kind and effect. A trigger has "
-        "actor, event, qualifier; an effect has actor, intent, description."
+        "actor, event, qualifier; an effect has actor, intent, description. Structural field "
+        "names, discriminator values, enums, semantic intents, actor/event values, modes, roles, "
+        "and all other machine-readable protocol values must use the exact contract-defined values. "
+        "All human-readable free-text fields must use the requested output language."
     )
 
 
@@ -321,10 +326,18 @@ def build_model_facing_contract(context: HybridGenerationContext) -> ModelFacing
 def build_model_facing_request(
     context: HybridGenerationContext,
     contract: ModelFacingContract | None = None,
+    *,
+    language: str = "en",
 ) -> ModelFacingRequest:
     """Compose the contract and public request projection with exact accounting."""
 
     selected = contract or build_model_facing_contract(context)
+    language = resolve_output_language(language, context.brief)
+    language_line = (
+        human_language_directive(language)
+        if context.contract_profile == "generalization_v2"
+        else ""
+    )
     plan_line = ""
     if context.plan is not None:
         profile = context.plan.combat_role_profile
@@ -336,8 +349,9 @@ def build_model_facing_request(
         if context.contract_profile == "generalization_v1"
         else ""
     )
+    language_prefix = f"{language_line}\n" if language_line else ""
     case_text = (
-        f"Task brief: {context.brief}{plan_line} Generate one minimal semantic skill plan."
+        f"{language_prefix}Task brief: {context.brief}{plan_line} Generate one minimal semantic skill plan."
         f"{continuation}"
     )
     sections = (selected.base_text, selected.enum_text, case_text, selected.suffix_text)
@@ -368,6 +382,7 @@ __all__ = [
     "MODEL_FACING_IR_CONTRACT_VERSION",
     "MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED",
     "MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION",
+    "MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_HISTORICAL",
     "MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2",
     "MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_LEGACY",
     "ModelFacingContract",

@@ -33,6 +33,7 @@ from .diagnostics import (
     SafeEvaluatorDiagnostics,
     SemanticDimension,
 )
+from .language import ensure_output_language, human_language_directive, resolve_output_language
 from .projection import HybridGenerationContext
 from .runner import (
     FIRST_FAILURE_LAYERS,
@@ -44,8 +45,9 @@ from .runner import (
 
 MAX_REPAIR_ATTEMPTS = 1
 SEMANTIC_REPAIR_CONTRACT_VERSION = "semantic-skill-ir-repair-contract/0.2.0"
-SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY = "semantic-skill-ir-repair-contract/0.3.0"
-SEMANTIC_REPAIR_CONTRACT_VERSION_V2 = "semantic-skill-ir-repair-contract/0.3.1"
+SEMANTIC_REPAIR_CONTRACT_VERSION_V2_HISTORICAL = "semantic-skill-ir-repair-contract/0.3.0"
+SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY = "semantic-skill-ir-repair-contract/0.3.1"
+SEMANTIC_REPAIR_CONTRACT_VERSION_V2 = "semantic-skill-ir-repair-contract/0.3.2"
 SEMANTIC_REPAIR_EVIDENCE_VERSION = "character-skill-s2-hybrid-ir-semantic-repair/0.1.0"
 
 
@@ -62,6 +64,7 @@ class SemanticRepairContract:
         expected = hashlib.sha256(self.text.encode("utf-8")).hexdigest()
         valid_pair = {
             (SEMANTIC_REPAIR_CONTRACT_VERSION, SEMANTIC_IR_VERSION),
+            (SEMANTIC_REPAIR_CONTRACT_VERSION_V2_HISTORICAL, SEMANTIC_IR_V2_VERSION),
             (SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY, SEMANTIC_IR_V2_VERSION),
             (SEMANTIC_REPAIR_CONTRACT_VERSION_V2, SEMANTIC_IR_V2_VERSION),
         }
@@ -73,7 +76,10 @@ class SemanticRepairContract:
 
 def build_semantic_repair_contract(
     ir_version: str = SEMANTIC_IR_VERSION,
+    *,
+    language: str = "en",
 ) -> SemanticRepairContract:
+    ensure_output_language(language)
     if ir_version == SEMANTIC_IR_VERSION:
         version = SEMANTIC_REPAIR_CONTRACT_VERSION
         text = (
@@ -105,6 +111,8 @@ def build_semantic_repair_contract(
         )
     else:
         raise ValueError("SEMANTIC_REPAIR_IR_VERSION_INVALID")
+    if ir_version == SEMANTIC_IR_V2_VERSION:
+        text = f"{human_language_directive(language)} {text}"
     return SemanticRepairContract(
         version=version,
         ir_version=ir_version,
@@ -229,10 +237,12 @@ class SemanticRepairIdentity:
         cls,
         initial: FakePipelineResult | HybridLiveResult,
         context: HybridGenerationContext,
+        language: str = "en",
     ) -> "SemanticRepairIdentity":
         if initial.evidence is None:
             raise ValueError("SEMANTIC_REPAIR_INITIAL_EVIDENCE_REQUIRED")
-        request = build_model_facing_request(context)
+        language = resolve_output_language(language, context.brief)
+        request = build_model_facing_request(context, language=language)
         identity = initial.evidence.identity
         if (
             identity.case_id != context.case_id
@@ -360,6 +370,7 @@ class SemanticRepairSession:
         evaluation_context: Mapping[str, object],
         *,
         repo_root: str,
+        language: str = "en",
         compiler_registry: SemanticMappingRegistry = DEFAULT_MAPPING_REGISTRY,
     ) -> None:
         if not isinstance(initial, (FakePipelineResult, HybridLiveResult)):
@@ -375,7 +386,8 @@ class SemanticRepairSession:
         self.evaluation_context = evaluation_context
         self.repo_root = repo_root
         self.compiler_registry = compiler_registry
-        self.identity = SemanticRepairIdentity.from_initial(initial, context)
+        self.language = resolve_output_language(language, context.brief)
+        self.identity = SemanticRepairIdentity.from_initial(initial, context, self.language)
         self._attempts = 0
 
     def _result(
@@ -432,13 +444,14 @@ class SemanticRepairSession:
             return self._result(RepairOutcome.REPAIR_NOT_ELIGIBLE, attempted=False, provider_calls=0)
 
         request = SemanticRepairRequest(
-            original_request=build_model_facing_request(self.context),
+            original_request=build_model_facing_request(self.context, language=self.language),
             candidate=self.initial.validated_ir.value,
             diagnostics=_initial_diagnostics(self.initial),
             repair_contract=build_semantic_repair_contract(
                 SEMANTIC_IR_V2_VERSION
                 if self.context.contract_profile == "generalization_v2"
-                else SEMANTIC_IR_VERSION
+                else SEMANTIC_IR_VERSION,
+                language=self.language,
             ),
         )
         try:
@@ -588,6 +601,7 @@ __all__ = [
     "RepairOutcome",
     "SEMANTIC_REPAIR_CONTRACT_VERSION",
     "SEMANTIC_REPAIR_CONTRACT_VERSION_V2",
+    "SEMANTIC_REPAIR_CONTRACT_VERSION_V2_HISTORICAL",
     "SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY",
     "SEMANTIC_REPAIR_EVIDENCE_VERSION",
     "SEMANTIC_IR_VERSION",

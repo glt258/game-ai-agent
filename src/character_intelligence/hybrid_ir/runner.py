@@ -507,10 +507,11 @@ def _run_pipeline(
     cohort_purpose: str = "",
     experiment: str = HYBRID_EXPERIMENT,
     identity: HybridExperimentIdentity | None = None,
+    language: str = "en",
 ) -> FakePipelineResult:
     """Run every Hybrid layer after a provider adapter has been selected."""
 
-    request = build_model_facing_request(context)
+    request = build_model_facing_request(context, language=language)
     v2 = context.contract_profile == "generalization_v2"
     resolved_identity = identity or _identity(
         Path(repo_root),
@@ -658,6 +659,7 @@ def run_fake_pipeline(
     target_sample_count: int = 1,
     cohort_purpose: str = "",
     experiment: str = HYBRID_EXPERIMENT,
+    language: str = "en",
 ) -> FakePipelineResult:
     """Run the formal pipeline with an in-memory provider adapter."""
 
@@ -671,6 +673,7 @@ def run_fake_pipeline(
         target_sample_count=target_sample_count,
         cohort_purpose=cohort_purpose,
         experiment=experiment,
+        language=language,
     )
 
 

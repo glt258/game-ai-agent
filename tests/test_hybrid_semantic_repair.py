@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from pathlib import Path
 
@@ -11,8 +12,11 @@ import pytest
 from character_intelligence.hybrid_ir import (
     HYBRID_MULTI_CASE_EXPERIMENT,
     MAX_REPAIR_ATTEMPTS,
+    SEMANTIC_REPAIR_CONTRACT_VERSION_V2_HISTORICAL,
+    SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY,
     FakeProvider,
     RepairOutcome,
+    SemanticRepairContract,
     SemanticRepairRequest,
     SemanticRepairSession,
     build_authoritative_generalization_cases,
@@ -108,11 +112,26 @@ def test_v2_repair_contract_preserves_required_feedback_wire_shape() -> None:
     # Build the v2 contract directly so this assertion is independent of any
     # case-specific repair path.
     contract = build_semantic_repair_contract("semantic-skill-plan-ir/0.2.0")
-    assert contract.version == "semantic-skill-ir-repair-contract/0.3.1"
+    assert contract.version == "semantic-skill-ir-repair-contract/0.3.2"
     assert '"feedback": null' in contract.text
     assert "all four keys are required" in contract.text
     assert "response_trigger has actor, event, qualifier" in contract.text
     assert "response_effect has actor, intent, description" in contract.text
+
+
+def test_historical_v2_repair_contract_versions_remain_recognized() -> None:
+    for version in (
+        SEMANTIC_REPAIR_CONTRACT_VERSION_V2_HISTORICAL,
+        SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY,
+    ):
+        text = f"historical repair contract {version}"
+        contract = SemanticRepairContract(
+            version=version,
+            ir_version="semantic-skill-plan-ir/0.2.0",
+            text=text,
+            digest=hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        )
+        assert contract.version == version
 
 
 def test_dps_semantic_repair_uses_humanized_bounded_diagnostics_and_passes() -> None:
