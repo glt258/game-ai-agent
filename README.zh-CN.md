@@ -20,8 +20,8 @@ v0.3 创作契约还会保留未知的精确年龄、法定年龄和历史年龄
 
 | 命名空间 | 当前标识 | 含义 |
 |---|---|---|
-| Project | `0.7.1` | 当前版本 |
-| Public Release | `v0.7.1` | 当前线上创作安全与诊断版本 |
+| Project | `0.8.0` | 当前版本 |
+| Public Release | `v0.8` | Skill Design v1 与手工 Skill Playground 版本 |
 | Runtime Baseline | `runtime-v0.6.6` | 冻结的运行时基线 |
 | Reference Corpus | `reference-corpus-v0.5` | 当前包含 16 条记录的扩展语料库基线 |
 | Character Intelligence | `CI-B1.5` | 当前 Canon 化战斗角色兼容性里程碑 |
@@ -30,24 +30,21 @@ v0.3 创作契约还会保留未知的精确年龄、法定年龄和历史年龄
 
 完整的命名策略记录于 [Versioning and Namespace Policy](docs/versioning.md)。
 
-Character Skill Hybrid Semantic IR 已冻结一条历史真实 provider 端到端
-evaluator PASS 基线；跨 case 泛化尚未证明。
-`v0.7.1` 的发布说明记录于
-[docs/release_notes_v0.7.1.md](docs/release_notes_v0.7.1.md)。
+Skill Design v1 已在文档规定的七类语义覆盖边界内冻结。
+本版本记录离线流水线验证和有限的 live 观察，不宣称模型首次生成的普遍可靠性。
+`v0.8` 的发布说明记录于
+[docs/release_notes_v0.8.md](docs/release_notes_v0.8.md)。
 
-## v0.7.1 新增内容
+## v0.8 新增内容
 
-- 失败即关闭（fail-closed）的 Live 失败渲染，包含安全失败类型、有界原因、调用结果、
-  grounding 检查以及允许列表中的 Canon ID。
-- 严格的定稿终止：只有精确的 `FINALIZE` 信号才会结束检索/动作循环；耗尽或格式错误的循环
-  不会伪造 draft。
-- 从请求和已校验证据构建干净的定稿上下文，不会将检索工具历史重放到定稿请求中。
-- 针对受支持的中文否定表达，加入具备否定感知能力的确定性 Canon 禁止模式匹配；
-  同时仍会拒绝正面的 RULE-008 违规。
-- 对 `CharacterDraft` 契约恢复进行脱敏审计，绝不复制原始 provider 响应、提示词、模型输出或秘密。
+- 覆盖 Support、Main DPS、Sub-DPS、Control、Reaction / Healer、Defense 和 Basic Passive 七类
+  Skill Design v1 family。
+- 提供 Semantic IR → 确定性 compiler → canonical SkillKit → evaluator 的流水线与引用完整性检查。
+- Manual Skill Playground CLI 支持自然语言需求、role/mode、model、language、安全诊断和一次有界修复。
+- 支持简体中文与英文的人类可读输出，同时保持机器协议字段使用权威英文值。
+- 完成 triggered-v2 契约对齐，以及 generation/repair 的通用 actor/effect-subject 语义约束。
 
-该版本保持 grounding、CharacterDraft 校验、Canon Checker、有界 Repair、provider 重试行为
-以及失败即关闭边界不变。
+该版本不包含 deferred v2 机制，不改变 provider transport 行为，也不宣称模型可靠性达到普遍保证。
 
 ## 这个项目是什么
 

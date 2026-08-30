@@ -24,8 +24,8 @@ non-student status.
 
 | Namespace | Current Identifier | Meaning |
 |---|---|---|
-| Project | `0.7.1` | Current release |
-| Public Release | `v0.7.1` | Live authoring safety and diagnostics release |
+| Project | `0.8.0` | Current release |
+| Public Release | `v0.8` | Skill Design v1 and Manual Skill Playground release |
 | Runtime Baseline | `runtime-v0.6.6` | Frozen runtime baseline |
 | Reference Corpus | `reference-corpus-v0.5` | Current 16-record expanded corpus baseline |
 | Character Intelligence | `CI-B1.5` | Current canonical combat-role compatibility milestone |
@@ -36,7 +36,7 @@ non-student status.
 The full naming policy is documented in [Versioning and Namespace Policy](docs/versioning.md).
 
 Skill Design v1 is feature frozen under the documented seven-family semantic
-coverage boundary. The freeze records both offline pipeline verification and
+coverage boundary. The release records offline pipeline verification and
 bounded live observations; it does not claim universal first-pass model
 reliability.
 
@@ -44,25 +44,25 @@ See [Skill Design v1 Feature Freeze](docs/character_generation/character_skill_d
 for the frozen architecture, evidence summary, known limitations, and deferred
 v2 scope.
 
-Release notes for `v0.7.1` are documented in
-[docs/release_notes_v0.7.1.md](docs/release_notes_v0.7.1.md).
+Release notes for `v0.8` are documented in
+[docs/release_notes_v0.8.md](docs/release_notes_v0.8.md).
 
-## What v0.7.1 Adds
+## What v0.8 Adds
 
-- Fail-closed Live failure rendering with safe failure types, bounded reasons,
-  invocation outcomes, grounding checks, and allowlisted Canon IDs.
-- Strict finalization termination: only the exact `FINALIZE` signal ends the
-  retrieval/action loop; exhausted or malformed loops do not fabricate a draft.
-- Clean finalization context built from the request and validated evidence,
-  without replaying retrieval tool history into the finalization request.
-- Negation-aware deterministic Canon forbidden-pattern matching for supported
-  Chinese negative expressions, while positive RULE-008 violations remain
-  rejected.
-- Sanitized `CharacterDraft` contract-recovery audit messages that never copy
-  raw provider responses, prompts, model output, or secrets.
+- Skill Design v1 coverage for Support, Main DPS, Sub-DPS, Control,
+  Reaction / Healer, Defense, and Basic Passive families.
+- Semantic IR to deterministic compiler to canonical SkillKit and evaluator
+  pipeline with reference-integrity checks.
+- Manual Skill Playground CLI with natural-language requirements, role/mode,
+  model selection, language selection, safe diagnostics, and one bounded
+  repair opportunity.
+- Simplified-Chinese and English human-readable playground output while
+  machine-readable protocol fields remain authoritative English values.
+- Generic triggered-v2 contract alignment and actor/effect-subject semantic
+  constraints for generation and repair.
 
-The release keeps grounding, CharacterDraft validation, Canon Checker, bounded
-Repair, provider retry behavior, and fail-closed boundaries unchanged.
+The release keeps deferred v2 mechanics, provider transport behavior, and
+universal model reliability claims outside its scope.
 
 ## What This Project Is
 

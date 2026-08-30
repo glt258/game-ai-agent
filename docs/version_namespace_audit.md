@@ -1,6 +1,6 @@
 # Version Namespace Audit
 
-Date: 2026-08-23
+Date: 2026-08-30
 
 This audit covers version-like identifiers found in the repository, including
 documentation, tests, evaluation fixtures, source comments, configuration, and
@@ -9,7 +9,9 @@ validator, schema, or corpus semantics.
 
 | Existing Name | File / Location | Actual Meaning | Proposed Namespace | Rename Required | Notes |
 |---|---|---|---|---|---|
-| `0.7.1` | `pyproject.toml`, `README.md` | Current release candidate for the whole project | Project Release | No | Release metadata prepared for manual `v0.7.1` publication. |
+| `0.8.0` | `pyproject.toml`, `README.md`, `README.zh-CN.md` | Current release for the whole project | Project Release | No | Project version for the `v0.8` public release. |
+| `v0.8` | README files, Git tag | Current public project release | Project Release | No | Annotated release tag; immutable after publication. |
+| `0.7.1` | `pyproject.toml`, `README.md` history | Previous public release | Project Release | No | Historical public release identifier; prior tag retained. |
 | `v0.7.0` | `README.md`, Git tag | Previous public project release | Project Release | No | Historical public release identifier; tag retained. |
 | `v0.6.6` | `docs/runtime_freeze_v0.6.6.md`, `README.md`, Git tag | Frozen Character Authoring runtime baseline | Runtime Baseline | No | File name and Git tag are historical identifiers; canonical body identifier becomes `runtime-v0.6.6`. |
 | `v0.1` | `docs/reference_corpus/production_baseline_v0.1.md` and earlier corpus freeze docs | Historical pilot/production corpus checkpoints | Reference Corpus Baseline | No | Historical freeze identifiers are retained and labeled as legacy. |
