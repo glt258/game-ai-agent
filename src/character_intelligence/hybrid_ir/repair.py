@@ -44,11 +44,13 @@ from .runner import (
 )
 
 MAX_REPAIR_ATTEMPTS = 1
-SEMANTIC_REPAIR_CONTRACT_VERSION = "semantic-skill-ir-repair-contract/0.2.0"
+SEMANTIC_REPAIR_CONTRACT_VERSION_HISTORICAL = "semantic-skill-ir-repair-contract/0.2.0"
+SEMANTIC_REPAIR_CONTRACT_VERSION = "semantic-skill-ir-repair-contract/0.2.1"
 SEMANTIC_REPAIR_CONTRACT_VERSION_V2_HISTORICAL = "semantic-skill-ir-repair-contract/0.3.0"
 SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY = "semantic-skill-ir-repair-contract/0.3.1"
 SEMANTIC_REPAIR_CONTRACT_VERSION_V2_PRIOR = "semantic-skill-ir-repair-contract/0.3.2"
-SEMANTIC_REPAIR_CONTRACT_VERSION_V2 = "semantic-skill-ir-repair-contract/0.3.3"
+SEMANTIC_REPAIR_CONTRACT_VERSION_V2_PREVIOUS = "semantic-skill-ir-repair-contract/0.3.3"
+SEMANTIC_REPAIR_CONTRACT_VERSION_V2 = "semantic-skill-ir-repair-contract/0.3.4"
 SEMANTIC_REPAIR_EVIDENCE_VERSION = "character-skill-s2-hybrid-ir-semantic-repair/0.1.0"
 
 
@@ -64,10 +66,12 @@ class SemanticRepairContract:
     def __post_init__(self) -> None:
         expected = hashlib.sha256(self.text.encode("utf-8")).hexdigest()
         valid_pair = {
+            (SEMANTIC_REPAIR_CONTRACT_VERSION_HISTORICAL, SEMANTIC_IR_VERSION),
             (SEMANTIC_REPAIR_CONTRACT_VERSION, SEMANTIC_IR_VERSION),
             (SEMANTIC_REPAIR_CONTRACT_VERSION_V2_HISTORICAL, SEMANTIC_IR_V2_VERSION),
             (SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY, SEMANTIC_IR_V2_VERSION),
             (SEMANTIC_REPAIR_CONTRACT_VERSION_V2_PRIOR, SEMANTIC_IR_V2_VERSION),
+            (SEMANTIC_REPAIR_CONTRACT_VERSION_V2_PREVIOUS, SEMANTIC_IR_V2_VERSION),
             (SEMANTIC_REPAIR_CONTRACT_VERSION_V2, SEMANTIC_IR_V2_VERSION),
         }
         if (self.version, self.ir_version) not in valid_pair:
@@ -91,7 +95,11 @@ def build_semantic_repair_contract(
             "mechanic, role_path. Mechanic requires trigger, effect, feedback; feedback "
             "requires event, relation, response_trigger, response_effect; role_path requires "
             "trigger and effect. A trigger has actor, event, qualifier; an effect has actor, "
-            "intent, description. Return the full corrected plan, preserve valid semantics, "
+            "intent, description. trigger.actor is the participant that experiences or performs the trigger event. "
+            "effect.actor is the semantic subject affected by the effect, not automatically the skill owner or provider. "
+            "The same meanings apply to role_path and feedback response actors; passive ownership does not imply "
+            "effect.actor=self. The prose may describe a provider/source, but these fields do not add separate source, "
+            "caster, beneficiary, target, or owner fields. Return the full corrected plan, preserve valid semantics, "
             "use only authoritative projected values, and add no wrapper or extra keys."
         )
     elif ir_version == SEMANTIC_IR_V2_VERSION:
@@ -108,6 +116,11 @@ def build_semantic_repair_contract(
             "with persistence that must be always_on and no trigger or feedback. Match role_path to the "
             "mechanic variant: triggered has kind, trigger, effect; passive has kind and effect. "
             "A trigger has actor, event, qualifier; an effect has actor, intent, description. "
+            "Actor semantics: trigger.actor is the participant that experiences or performs the trigger event; "
+            "effect.actor is the semantic subject affected by the effect, not automatically the skill owner/provider. "
+            "The same applies to role_path and feedback actors; passive "
+            "ownership does not imply effect.actor=self. Prose may name a provider/source; IR actor fields do not add "
+            "separate source or beneficiary fields. "
             "Use exact contract-defined machine-readable field names, discriminators, enums, "
             "and intents; human-readable prose must follow the selected output language. "
             "Return the full corrected plan, preserve valid semantics, "
@@ -602,10 +615,12 @@ __all__ = [
     "MAX_REPAIR_ATTEMPTS",
     "RepairOutcome",
     "SEMANTIC_REPAIR_CONTRACT_VERSION",
+    "SEMANTIC_REPAIR_CONTRACT_VERSION_HISTORICAL",
     "SEMANTIC_REPAIR_CONTRACT_VERSION_V2",
     "SEMANTIC_REPAIR_CONTRACT_VERSION_V2_HISTORICAL",
     "SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY",
     "SEMANTIC_REPAIR_CONTRACT_VERSION_V2_PRIOR",
+    "SEMANTIC_REPAIR_CONTRACT_VERSION_V2_PREVIOUS",
     "SEMANTIC_REPAIR_EVIDENCE_VERSION",
     "SEMANTIC_IR_VERSION",
     "SemanticRepairContract",

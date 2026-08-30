@@ -191,7 +191,9 @@ def build_playground_context(role: str, mode: str, requirement: str) -> HybridGe
     plan = build_character_design_plan(brief)
     row = _role_row(role)
     triggers = row["triggers"]
+    subjects = row["subjects"]
     assert isinstance(triggers, frozenset)
+    assert isinstance(subjects, frozenset)
     allowed_events = tuple(sorted(event for _actor, event in triggers))
     return HybridGenerationContext(
         brief,
@@ -199,6 +201,12 @@ def build_playground_context(role: str, mode: str, requirement: str) -> HybridGe
         case_id="manual-playground",
         contract_profile="generalization_v2",
         allowed_actors=SEMANTIC_ACTORS,
+        allowed_trigger_subjects=(
+            tuple(sorted({actor for actor, _event in triggers}))
+            if mode != "passive"
+            else None
+        ),
+        allowed_effect_subjects=tuple(sorted(subjects)),
         allowed_trigger_events=None if mode == "passive" else allowed_events,
         allowed_modes=(mode,),
         allowed_roles=(role,),

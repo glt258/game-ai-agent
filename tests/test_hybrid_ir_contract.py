@@ -124,8 +124,29 @@ def test_aligned_contract_states_feedback_actor_wiring_rule() -> None:
             allowed_trigger_events=("ability_invoked",),
         )
     )
-    assert request.contract.version == "semantic-skill-plan-ir-contract/0.4.0"
+    assert request.contract.version == "semantic-skill-plan-ir-contract/0.4.1"
     assert "response trigger actor must use feedback_received and match the mechanic effect actor" in request.text
+
+
+def test_v2_actor_semantics_and_request_subject_constraints_are_explicit() -> None:
+    context = HybridGenerationContext(
+        "Design a support passive.",
+        contract_profile="generalization_v2",
+        allowed_actors=("self", "ally", "team"),
+        allowed_effect_subjects=("team",),
+        allowed_modes=("passive",),
+        allowed_roles=("support",),
+        allowed_centralities=("core",),
+    )
+    request = build_model_facing_request(context)
+
+    assert "trigger.actor is the participant that experiences or performs the trigger event" in request.contract.text
+    assert "effect.actor is the semantic subject affected by the effect" in request.contract.text
+    assert "not automatically the skill owner" in request.contract.text
+    assert "effect.actor=self" in request.contract.text
+    assert "valid semantic subjects for the main effect and its role-path proof in this request are: team" in request.case_text
+    for forbidden in ("effect_subject_kinds", "MECHANIC_SKELETON", "ROLE_EVIDENCE", "evaluator requirement"):
+        assert forbidden not in request.text
 
 
 def test_contract_digest_binds_projection_and_wording() -> None:

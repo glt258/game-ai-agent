@@ -61,7 +61,7 @@ def test_registry_has_four_distinct_authoritative_semantic_families() -> None:
 def test_generalization_contract_is_generic_and_case_projection_is_fair() -> None:
     requests = [build_model_facing_request(case.generation_context()) for case in _cases_by_id().values()]
     assert {request.contract.version for request in requests} == {
-        "semantic-skill-plan-ir-contract/0.6.0"
+        "semantic-skill-plan-ir-contract/0.6.1"
     }
     assert len({request.contract.base_text for request in requests}) == 1
     assert len({request.contract.suffix_text for request in requests}) == 1

@@ -30,10 +30,12 @@ PROJECTION_SOURCES = frozenset(
     }
 )
 CONTEXT_CONTRACT_PROFILES = frozenset({"frozen_h3", "aligned_v1", "generalization_v1", "generalization_v2"})
-CONTEXT_PROJECTION_VERSION = "hybrid-semantic-context-projection/0.2.0"
-CONTEXT_PROJECTION_VERSION_V2 = "hybrid-semantic-context-projection/0.3.0"
+CONTEXT_PROJECTION_VERSION_HISTORICAL = "hybrid-semantic-context-projection/0.2.0"
+CONTEXT_PROJECTION_VERSION = "hybrid-semantic-context-projection/0.2.1"
+CONTEXT_PROJECTION_VERSION_V2_HISTORICAL = "hybrid-semantic-context-projection/0.3.0"
+CONTEXT_PROJECTION_VERSION_V2 = "hybrid-semantic-context-projection/0.3.1"
 SEMANTIC_ACTORS = tuple(sorted(SUBJECT_KINDS - {"summon"}))
-# Keep the aligned v1 projection frozen. The generalization profile exposes
+# Keep the structural enum vocabulary compact. Generalization profiles expose
 # the small generic vocabulary needed by distinct role families.
 SEMANTIC_INTENTS = ("enable_ally",)
 GENERALIZATION_SEMANTIC_INTENTS = (
@@ -86,6 +88,8 @@ class HybridGenerationContext:
     case_id: str = "case_13"
     contract_profile: str = "frozen_h3"
     allowed_actors: tuple[str, ...] | None = None
+    allowed_trigger_subjects: tuple[str, ...] | None = None
+    allowed_effect_subjects: tuple[str, ...] | None = None
     allowed_trigger_events: tuple[str, ...] | None = None
     allowed_feedback_events: tuple[str, ...] | None = None
     allowed_feedback_relations: tuple[str, ...] | None = None
@@ -107,6 +111,8 @@ class HybridGenerationContext:
             raise TypeError("plan must be CharacterDesignPlan or None")
         for name in (
             "allowed_actors",
+            "allowed_trigger_subjects",
+            "allowed_effect_subjects",
             "allowed_trigger_events",
             "allowed_feedback_events",
             "allowed_feedback_relations",
@@ -120,6 +126,8 @@ class HybridGenerationContext:
                 cleaned = _clean_values(values, name)
                 if name == "allowed_response_effect_families" and not set(cleaned) <= RESPONSE_EFFECT_FAMILIES:
                     raise ValueError("unsupported response effect family")
+                if name in {"allowed_trigger_subjects", "allowed_effect_subjects"} and not set(cleaned) <= set(SEMANTIC_ACTORS):
+                    raise ValueError("unsupported semantic subject")
                 object.__setattr__(self, name, cleaned)
 
     @property
@@ -301,6 +309,8 @@ def context_projection_payload(context: HybridGenerationContext) -> dict[str, ob
         "brief": context.brief,
         "plan": _context_plan_payload(context.plan),
         "allowed_actors": list(context.allowed_actors or ()),
+        "allowed_trigger_subjects": list(context.allowed_trigger_subjects or ()),
+        "allowed_effect_subjects": list(context.allowed_effect_subjects or ()),
         "allowed_trigger_events": list(context.allowed_trigger_events or ()),
         "allowed_feedback_events": list(context.allowed_feedback_events or ()),
         "allowed_feedback_relations": list(context.allowed_feedback_relations or ()),
@@ -334,7 +344,9 @@ __all__ = [
     "EnumDomainProjection",
     "CONTEXT_CONTRACT_PROFILES",
     "CONTEXT_PROJECTION_VERSION",
+    "CONTEXT_PROJECTION_VERSION_HISTORICAL",
     "CONTEXT_PROJECTION_VERSION_V2",
+    "CONTEXT_PROJECTION_VERSION_V2_HISTORICAL",
     "HybridGenerationContext",
     "PROJECTION_SOURCES",
     "ProjectionError",

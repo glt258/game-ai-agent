@@ -17,11 +17,14 @@ from .projection import (
 )
 
 MODEL_FACING_IR_CONTRACT_VERSION = "semantic-skill-plan-ir-contract/0.1.0"
-MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED = "semantic-skill-plan-ir-contract/0.4.0"
-MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION = "semantic-skill-plan-ir-contract/0.6.0"
+MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED_HISTORICAL = "semantic-skill-plan-ir-contract/0.4.0"
+MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED = "semantic-skill-plan-ir-contract/0.4.1"
+MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_HISTORICAL = "semantic-skill-plan-ir-contract/0.6.0"
+MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION = "semantic-skill-plan-ir-contract/0.6.1"
 MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_HISTORICAL = "semantic-skill-plan-ir-contract/0.7.0"
 MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_LEGACY = "semantic-skill-plan-ir-contract/0.7.1"
-MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2 = "semantic-skill-plan-ir-contract/0.7.2"
+MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_PRIOR = "semantic-skill-plan-ir-contract/0.7.2"
+MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2 = "semantic-skill-plan-ir-contract/0.7.3"
 FORBIDDEN_MODEL_TOKENS = (
     "schema_version",
     "ability_id",
@@ -83,6 +86,14 @@ _CONTINUATION_GUIDANCE = MappingProxyType(
         "control": "control-oriented",
         "recovery": "recovery/mitigation-oriented",
     }
+)
+_ACTOR_SEMANTIC_GUIDANCE = (
+    " Trigger actor semantics: trigger.actor is the participant that experiences or performs the trigger event. "
+    "Effect actor semantics: effect.actor is the semantic subject affected by the effect; it is not automatically "
+    "the skill owner or the character providing the skill. The same meanings apply to role_path trigger/effect "
+    "actors and feedback response actors. A passive ability being owned by the current character does not imply "
+    "effect.actor=self. The human-readable description may name a provider or source, but these IR actor fields "
+    "do not add separate source, caster, beneficiary, target, or owner fields."
 )
 
 
@@ -170,6 +181,7 @@ def _base_text(*, aligned: bool = False) -> str:
             "must provide a matching trigger/effect proof for the selected canonical role, "
             "while centrality distinguishes core from secondary evidence."
         )
+        text += _ACTOR_SEMANTIC_GUIDANCE
     return text
 
 
@@ -188,7 +200,7 @@ def _base_text_v2() -> str:
         "actor, event, qualifier; an effect has actor, intent, description. Structural field "
         "names, discriminator values, enums, semantic intents, actor/event values, modes, roles, "
         "and all other machine-readable protocol values must use the exact contract-defined values. "
-        "All human-readable free-text fields must use the requested output language."
+        f"{_ACTOR_SEMANTIC_GUIDANCE} All human-readable free-text fields must use the requested output language."
     )
 
 
@@ -260,6 +272,23 @@ def _continuation_requirement(context: HybridGenerationContext) -> str:
     else:
         wording = " or ".join(guidance)
     return f" Continuation constraint: the downstream response effect must remain {wording}."
+
+
+def _subject_constraint_text(context: HybridGenerationContext) -> str:
+    lines: list[str] = []
+    if context.allowed_trigger_subjects:
+        values = ", ".join(context.allowed_trigger_subjects)
+        lines.append(
+            "Generation-safe constraint: valid semantic participants for the main trigger and its role-path proof "
+            f"in this request are: {values}."
+        )
+    if context.allowed_effect_subjects:
+        values = ", ".join(context.allowed_effect_subjects)
+        lines.append(
+            "Generation-safe constraint: valid semantic subjects for the main effect and its role-path proof "
+            f"in this request are: {values}."
+        )
+    return " ".join(lines)
 
 
 def _contract_digest(version: str, ir_version: str, base: str, enum: str, suffix: str, projection: SemanticEnumProjection) -> str:
@@ -349,10 +378,13 @@ def build_model_facing_request(
         if context.contract_profile == "generalization_v1"
         else ""
     )
+    subject_constraints = _subject_constraint_text(context)
+    if subject_constraints:
+        subject_constraints = f" {subject_constraints}"
     language_prefix = f"{language_line}\n" if language_line else ""
     case_text = (
         f"{language_prefix}Task brief: {context.brief}{plan_line} Generate one minimal semantic skill plan."
-        f"{continuation}"
+        f"{continuation}{subject_constraints}"
     )
     sections = (selected.base_text, selected.enum_text, case_text, selected.suffix_text)
     text = "\n\n".join(sections)
@@ -381,10 +413,13 @@ __all__ = [
     "MODEL_FACING_SCHEMA_PATHS_V2",
     "MODEL_FACING_IR_CONTRACT_VERSION",
     "MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED",
+    "MODEL_FACING_IR_CONTRACT_VERSION_ALIGNED_HISTORICAL",
     "MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION",
+    "MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_HISTORICAL",
     "MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_HISTORICAL",
     "MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2",
     "MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_LEGACY",
+    "MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_PRIOR",
     "ModelFacingContract",
     "ModelFacingRequest",
     "RequestSectionMetrics",

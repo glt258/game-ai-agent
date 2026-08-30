@@ -12,9 +12,11 @@ import pytest
 from character_intelligence.hybrid_ir import (
     HYBRID_MULTI_CASE_EXPERIMENT,
     MAX_REPAIR_ATTEMPTS,
+    SEMANTIC_REPAIR_CONTRACT_VERSION_HISTORICAL,
     SEMANTIC_REPAIR_CONTRACT_VERSION_V2_HISTORICAL,
     SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY,
     SEMANTIC_REPAIR_CONTRACT_VERSION_V2_PRIOR,
+    SEMANTIC_REPAIR_CONTRACT_VERSION_V2_PREVIOUS,
     FakeProvider,
     RepairOutcome,
     SemanticRepairContract,
@@ -95,9 +97,9 @@ def test_repair_request_uses_one_deterministic_compact_generic_contract() -> Non
     prompt = dps.to_prompt()
     assert dps.to_prompt() == prompt
     assert dps.repair_contract == reaction.repair_contract
-    assert dps.repair_contract.version == "semantic-skill-ir-repair-contract/0.2.0"
+    assert dps.repair_contract.version == "semantic-skill-ir-repair-contract/0.2.1"
     assert dps.repair_contract.digest
-    assert len(prompt) < 3300
+    assert len(prompt) < 3700
     assert dps.original_request.contract.base_text not in prompt
     assert dps.original_request.contract.suffix_text not in prompt
     assert prompt.count(dps.original_request.contract.enum_text) == 1
@@ -113,11 +115,14 @@ def test_v2_repair_contract_preserves_required_feedback_wire_shape() -> None:
     # Build the v2 contract directly so this assertion is independent of any
     # case-specific repair path.
     contract = build_semantic_repair_contract("semantic-skill-plan-ir/0.2.0")
-    assert contract.version == "semantic-skill-ir-repair-contract/0.3.3"
+    assert contract.version == "semantic-skill-ir-repair-contract/0.3.4"
     assert '"feedback": null' in contract.text
     assert "all four keys are required" in contract.text
     assert "response_trigger has actor, event, qualifier" in contract.text
     assert "response_effect has actor, intent, description" in contract.text
+    assert "Actor semantics: trigger.actor is the participant that experiences or performs the trigger event" in contract.text
+    assert "effect.actor is the semantic subject affected by the effect" in contract.text
+    assert "not automatically the skill owner" in contract.text
     assert "human-readable prose must follow the selected output language" in contract.text
 
 
@@ -126,6 +131,7 @@ def test_historical_v2_repair_contract_versions_remain_recognized() -> None:
         SEMANTIC_REPAIR_CONTRACT_VERSION_V2_HISTORICAL,
         SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY,
         SEMANTIC_REPAIR_CONTRACT_VERSION_V2_PRIOR,
+        SEMANTIC_REPAIR_CONTRACT_VERSION_V2_PREVIOUS,
     ):
         text = f"historical repair contract {version}"
         contract = SemanticRepairContract(
@@ -135,6 +141,17 @@ def test_historical_v2_repair_contract_versions_remain_recognized() -> None:
             digest=hashlib.sha256(text.encode("utf-8")).hexdigest(),
         )
         assert contract.version == version
+
+
+def test_historical_v1_repair_contract_version_remains_recognized() -> None:
+    text = f"historical repair contract {SEMANTIC_REPAIR_CONTRACT_VERSION_HISTORICAL}"
+    contract = SemanticRepairContract(
+        version=SEMANTIC_REPAIR_CONTRACT_VERSION_HISTORICAL,
+        ir_version="semantic-skill-plan-ir/0.1.0",
+        text=text,
+        digest=hashlib.sha256(text.encode("utf-8")).hexdigest(),
+    )
+    assert contract.version == SEMANTIC_REPAIR_CONTRACT_VERSION_HISTORICAL
 
 
 def test_dps_semantic_repair_uses_humanized_bounded_diagnostics_and_passes() -> None:

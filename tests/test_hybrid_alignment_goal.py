@@ -37,7 +37,7 @@ def test_authoritative_case_reuses_plan_and_evaluator_context() -> None:
     assert requirement.trigger.events == frozenset({"ability_invoked"})
     assert requirement.effect.operations == frozenset({"ally_enablement"})
     assert trigger_domain.values == ("ability_invoked", "feedback_received")
-    assert request.contract.version == "semantic-skill-plan-ir-contract/0.4.0"
+    assert request.contract.version == "semantic-skill-plan-ir-contract/0.4.1"
     assert "response trigger actor must use feedback_received and match the mechanic effect actor" in request.text
     assert "Semantic guidance:" in request.text
     assert "protocol_id" not in request.text
@@ -51,7 +51,7 @@ def test_aligned_dry_run_binds_case_identity_without_provider() -> None:
     result = HybridSemanticIRRunner(ROOT, case.generation_context()).dry_run()
 
     assert result["identity"]["case_id"] == "case_13_support_alignment_v1"
-    assert result["identity"]["model_facing_contract_version"] == "semantic-skill-plan-ir-contract/0.4.0"
+    assert result["identity"]["model_facing_contract_version"] == "semantic-skill-plan-ir-contract/0.4.1"
     assert result["identity"]["context_projection_version"] == CONTEXT_PROJECTION_VERSION
     assert result["identity"]["context_projection_digest"] == case.generation_context().context_projection_digest
     assert result["provider_factory_constructed"] is False

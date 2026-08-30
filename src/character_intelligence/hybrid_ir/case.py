@@ -58,6 +58,12 @@ class HybridSemanticCase:
             case_id=self.case_id,
             contract_profile=self.contract_profile,
             allowed_actors=self.allowed_actors,
+            allowed_trigger_subjects=(
+                self.evaluator_trigger_subject_kinds
+                if self.mechanic_kind == "triggered"
+                else None
+            ),
+            allowed_effect_subjects=self.evaluator_effect_subject_kinds,
             allowed_trigger_events=self.allowed_trigger_events if self.mechanic_kind == "triggered" else None,
             allowed_feedback_events=self.evaluator_feedback_events if self.requires_feedback else None,
             allowed_feedback_relations=self.evaluator_feedback_operations if self.requires_feedback else None,

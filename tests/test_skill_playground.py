@@ -156,7 +156,10 @@ def test_generation_request_has_prose_language_directive_without_ir_language_fie
     assert "output_language=" not in chinese_request.text
     assert '"language"' not in chinese_request.text
     assert "设计一个常驻辅助技能" in chinese_request.text
-    assert chinese_request.contract.version == "semantic-skill-plan-ir-contract/0.7.2"
+    assert chinese_request.contract.version == "semantic-skill-plan-ir-contract/0.7.3"
+    assert "valid semantic subjects for the main effect and its role-path proof in this request are: ally, team." in chinese_request.case_text
+    assert "effect_subject_kinds" not in chinese_request.text
+    assert "MECHANIC_SKELETON" not in chinese_request.text
 
 
 def test_evaluator_fail_can_use_one_bounded_repair():
@@ -248,6 +251,7 @@ def test_chinese_fake_e2e_localizes_presentation_but_keeps_protocol_values():
     assert result.final.evidence.evaluator_outcome == "PASS"
     assert len(provider.requests) == 1
     assert "Human-readable prose: Simplified Chinese (zh-CN)." in provider.requests[0]
+    assert "valid semantic subjects for the main effect and its role-path proof in this request are: ally, team." in provider.requests[0]
     assert '"role": "support"' not in provider.requests[0]
     assert "=== 技能设计结果 ===" in rendered
     assert "角色定位： 辅助" in rendered

@@ -14,11 +14,13 @@ from character_intelligence.hybrid_ir import (
     MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2,
     MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_HISTORICAL,
     MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_LEGACY,
+    MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_PRIOR,
     SEMANTIC_REPAIR_CONTRACT_VERSION_V2,
     FakeProvider,
     HybridExperimentIdentity,
     HybridSemanticIRRunner,
     SemanticRepairSession,
+    build_authoritative_generalization_cases,
     build_authoritative_final_coverage_cases,
     build_model_facing_request,
     run_fake_pipeline,
@@ -77,7 +79,7 @@ def test_v2_contract_explains_triggered_feedback_wire_shape_and_passive_exclusio
         _cases()["generalization_sub_dps_v1"].generation_context()
     )
     text = request.contract.text
-    assert request.contract.version == "semantic-skill-plan-ir-contract/0.7.2"
+    assert request.contract.version == "semantic-skill-plan-ir-contract/0.7.3"
     assert "all four keys are required" in text
     assert '"feedback": null' in text
     assert "never omit that field" in text
@@ -95,9 +97,13 @@ def test_historical_v2_contract_version_remains_identity_compatible() -> None:
     assert MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_LEGACY == (
         "semantic-skill-plan-ir-contract/0.7.1"
     )
+    assert MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_PRIOR == (
+        "semantic-skill-plan-ir-contract/0.7.2"
+    )
     assert MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2 not in {
         MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_HISTORICAL,
         MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_LEGACY,
+        MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_PRIOR,
     }
     for version in (
         MODEL_FACING_IR_CONTRACT_VERSION_GENERALIZATION_V2_HISTORICAL,
@@ -134,6 +140,52 @@ def test_v2_goldens_pass_the_complete_offline_pipeline() -> None:
         assert result.evidence.identity.ir_schema_version == SEMANTIC_IR_V2_VERSION
         assert result.evidence.identity.compiler_version == COMPILER_VERSION_V2
         assert result.candidate is not None
+
+
+def test_authoritative_case_subject_constraints_are_visible_without_fixture_leakage() -> None:
+    cases = {
+        case.case_id: case
+        for case in (*build_authoritative_generalization_cases(), *build_authoritative_final_coverage_cases())
+    }
+    expected = {
+        "generalization_support_alternate_v1": (("ally",), ("team",)),
+        "generalization_dps_v1": (("self",), ("enemy",)),
+        "generalization_sub_dps_v1": (("ally", "team"), ("enemy",)),
+        "generalization_defense_v1": (("ally",), ("ally", "team")),
+        "generalization_basic_passive_v1": (None, ("team",)),
+    }
+    for case_id, (triggers, effects) in expected.items():
+        context = cases[case_id].generation_context()
+        request = build_model_facing_request(context)
+        assert context.allowed_trigger_subjects == triggers
+        assert context.allowed_effect_subjects == effects
+        assert f"valid semantic subjects for the main effect and its role-path proof in this request are: {', '.join(effects)}." in request.case_text
+        assert "expected" not in request.text.lower()
+        assert "golden" not in request.text.lower()
+        assert "MECHANIC_SKELETON" not in request.text
+        assert "effect_subject_kinds" not in request.text
+
+
+def test_basic_passive_actor_matrix_requires_exact_case_subject_and_preserves_evaluator_boundary() -> None:
+    case = _cases()["generalization_basic_passive_v1"]
+    golden = _goldens()[case.case_id]
+
+    def run(mechanic_actor: str, role_actor: str):
+        payload = json.loads(json.dumps(golden))
+        payload["mechanic"]["effect"]["actor"] = mechanic_actor
+        payload["role_path"]["effect"]["actor"] = role_actor
+        return run_fake_pipeline(
+            FakeProvider(payload),
+            case.generation_context(),
+            case.evaluation_context(),
+            repo_root=ROOT,
+        )
+
+    assert run("team", "team").evidence.evaluator_outcome == "PASS"
+    assert run("self", "self").evidence.first_failure_layer == "EVALUATOR"
+    assert run("self", "team").evidence.first_failure_layer == "IR_VALIDATION"
+    assert run("team", "self").evidence.first_failure_layer == "IR_VALIDATION"
+    assert run("ally", "ally").evidence.evaluator_outcome == "FAIL"
 
 
 def test_v2_runner_dry_run_has_future_identity_and_never_calls_provider() -> None:
