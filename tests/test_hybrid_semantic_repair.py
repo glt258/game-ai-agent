@@ -14,6 +14,7 @@ from character_intelligence.hybrid_ir import (
     MAX_REPAIR_ATTEMPTS,
     SEMANTIC_REPAIR_CONTRACT_VERSION_V2_HISTORICAL,
     SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY,
+    SEMANTIC_REPAIR_CONTRACT_VERSION_V2_PRIOR,
     FakeProvider,
     RepairOutcome,
     SemanticRepairContract,
@@ -112,17 +113,19 @@ def test_v2_repair_contract_preserves_required_feedback_wire_shape() -> None:
     # Build the v2 contract directly so this assertion is independent of any
     # case-specific repair path.
     contract = build_semantic_repair_contract("semantic-skill-plan-ir/0.2.0")
-    assert contract.version == "semantic-skill-ir-repair-contract/0.3.2"
+    assert contract.version == "semantic-skill-ir-repair-contract/0.3.3"
     assert '"feedback": null' in contract.text
     assert "all four keys are required" in contract.text
     assert "response_trigger has actor, event, qualifier" in contract.text
     assert "response_effect has actor, intent, description" in contract.text
+    assert "human-readable prose must follow the selected output language" in contract.text
 
 
 def test_historical_v2_repair_contract_versions_remain_recognized() -> None:
     for version in (
         SEMANTIC_REPAIR_CONTRACT_VERSION_V2_HISTORICAL,
         SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY,
+        SEMANTIC_REPAIR_CONTRACT_VERSION_V2_PRIOR,
     ):
         text = f"historical repair contract {version}"
         contract = SemanticRepairContract(

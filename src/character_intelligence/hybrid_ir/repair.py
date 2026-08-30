@@ -33,7 +33,7 @@ from .diagnostics import (
     SafeEvaluatorDiagnostics,
     SemanticDimension,
 )
-from .language import ensure_output_language, human_language_directive, resolve_output_language
+from .language import ensure_output_language, resolve_output_language
 from .projection import HybridGenerationContext
 from .runner import (
     FIRST_FAILURE_LAYERS,
@@ -47,7 +47,8 @@ MAX_REPAIR_ATTEMPTS = 1
 SEMANTIC_REPAIR_CONTRACT_VERSION = "semantic-skill-ir-repair-contract/0.2.0"
 SEMANTIC_REPAIR_CONTRACT_VERSION_V2_HISTORICAL = "semantic-skill-ir-repair-contract/0.3.0"
 SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY = "semantic-skill-ir-repair-contract/0.3.1"
-SEMANTIC_REPAIR_CONTRACT_VERSION_V2 = "semantic-skill-ir-repair-contract/0.3.2"
+SEMANTIC_REPAIR_CONTRACT_VERSION_V2_PRIOR = "semantic-skill-ir-repair-contract/0.3.2"
+SEMANTIC_REPAIR_CONTRACT_VERSION_V2 = "semantic-skill-ir-repair-contract/0.3.3"
 SEMANTIC_REPAIR_EVIDENCE_VERSION = "character-skill-s2-hybrid-ir-semantic-repair/0.1.0"
 
 
@@ -66,6 +67,7 @@ class SemanticRepairContract:
             (SEMANTIC_REPAIR_CONTRACT_VERSION, SEMANTIC_IR_VERSION),
             (SEMANTIC_REPAIR_CONTRACT_VERSION_V2_HISTORICAL, SEMANTIC_IR_V2_VERSION),
             (SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY, SEMANTIC_IR_V2_VERSION),
+            (SEMANTIC_REPAIR_CONTRACT_VERSION_V2_PRIOR, SEMANTIC_IR_V2_VERSION),
             (SEMANTIC_REPAIR_CONTRACT_VERSION_V2, SEMANTIC_IR_V2_VERSION),
         }
         if (self.version, self.ir_version) not in valid_pair:
@@ -106,13 +108,13 @@ def build_semantic_repair_contract(
             "with persistence that must be always_on and no trigger or feedback. Match role_path to the "
             "mechanic variant: triggered has kind, trigger, effect; passive has kind and effect. "
             "A trigger has actor, event, qualifier; an effect has actor, intent, description. "
+            "Use exact contract-defined machine-readable field names, discriminators, enums, "
+            "and intents; human-readable prose must follow the selected output language. "
             "Return the full corrected plan, preserve valid semantics, "
             "use only authoritative projected values, and add no wrapper or extra keys."
         )
     else:
         raise ValueError("SEMANTIC_REPAIR_IR_VERSION_INVALID")
-    if ir_version == SEMANTIC_IR_V2_VERSION:
-        text = f"{human_language_directive(language)} {text}"
     return SemanticRepairContract(
         version=version,
         ir_version=ir_version,
@@ -603,6 +605,7 @@ __all__ = [
     "SEMANTIC_REPAIR_CONTRACT_VERSION_V2",
     "SEMANTIC_REPAIR_CONTRACT_VERSION_V2_HISTORICAL",
     "SEMANTIC_REPAIR_CONTRACT_VERSION_V2_LEGACY",
+    "SEMANTIC_REPAIR_CONTRACT_VERSION_V2_PRIOR",
     "SEMANTIC_REPAIR_EVIDENCE_VERSION",
     "SEMANTIC_IR_VERSION",
     "SemanticRepairContract",

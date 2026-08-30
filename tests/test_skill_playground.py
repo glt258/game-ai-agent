@@ -149,9 +149,10 @@ def test_generation_request_has_prose_language_directive_without_ir_language_fie
     chinese_request = build_model_facing_request(chinese, language="zh-CN")
     english_request = build_model_facing_request(english, language="en")
 
-    assert "Human-readable output language: Simplified Chinese (zh-CN)." in chinese_request.text
-    assert "Write ability names, summaries, descriptions" in chinese_request.text
-    assert "Human-readable output language: English (en)." in english_request.text
+    assert "Human-readable prose: Simplified Chinese (zh-CN)." in chinese_request.text
+    assert chinese_request.text.count("Human-readable prose:") == 1
+    assert "Human-readable prose: English (en)." in english_request.text
+    assert english_request.text.count("Human-readable prose:") == 1
     assert "output_language=" not in chinese_request.text
     assert '"language"' not in chinese_request.text
     assert "设计一个常驻辅助技能" in chinese_request.text
@@ -246,11 +247,11 @@ def test_chinese_fake_e2e_localizes_presentation_but_keeps_protocol_values():
     rendered = output.getvalue()
     assert result.final.evidence.evaluator_outcome == "PASS"
     assert len(provider.requests) == 1
-    assert "Human-readable output language: Simplified Chinese (zh-CN)." in provider.requests[0]
+    assert "Human-readable prose: Simplified Chinese (zh-CN)." in provider.requests[0]
     assert '"role": "support"' not in provider.requests[0]
     assert "=== 技能设计结果 ===" in rendered
     assert "角色定位： 辅助" in rendered
-    assert "技能模式： 常驻" in rendered
+    assert "技能模式： 被动" in rendered
     assert "技能名称： 不屈支援" in rendered
     assert "队伍 / 队友支援：" in rendered
     assert "评估结果： 通过" in rendered
@@ -317,7 +318,9 @@ def test_repair_inherits_chinese_language_without_translation_call():
     assert result.repair_status == "SUCCESS"
     assert result.final.evidence.evaluator_outcome == "PASS"
     assert provider.calls == 2
-    assert all("Human-readable output language: Simplified Chinese (zh-CN)." in request for request in provider.requests)
+    directive = "Human-readable prose: Simplified Chinese (zh-CN)."
+    assert all(request.count(directive) == 1 for request in provider.requests)
+    assert all("Write ability names, summaries, descriptions" not in request for request in provider.requests)
     assert "不屈支援" == result.final.candidate.entries[0].name
 
 

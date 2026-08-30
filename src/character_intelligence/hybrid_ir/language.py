@@ -40,15 +40,8 @@ def human_language_directive(language: str) -> str:
 
     ensure_output_language(language)
     if language == "zh-CN":
-        return (
-            "Human-readable output language: Simplified Chinese (zh-CN). "
-            "Write ability names, summaries, descriptions, qualifiers, and other human-readable "
-            "prose in Simplified Chinese."
-        )
-    return (
-        "Human-readable output language: English (en). "
-        "Write ability names, summaries, descriptions, qualifiers, and other human-readable prose in English."
-    )
+        return "Human-readable prose: Simplified Chinese (zh-CN)."
+    return "Human-readable prose: English (en)."
 
 
 __all__ = [

@@ -67,7 +67,7 @@ _ZH_ROLES = {
     "control": "控制",
     "defense": "防御",
 }
-_ZH_MODES = {"active": "主动", "passive": "常驻", "reaction": "反应"}
+_ZH_MODES = {"active": "主动", "passive": "被动", "reaction": "反应"}
 _ZH_ACTORS = {
     "self": "自身",
     "ally": "队友",
