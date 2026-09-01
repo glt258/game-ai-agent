@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "engineering-knowledge-graph/0.1",
+  "type": "object",
+  "required": ["schema_version", "snapshot", "nodes", "edges", "constraints", "known_limitations", "architecture_decisions"],
+  "properties": {
+    "schema_version": {"const": "engineering-knowledge-graph/0.1"},
+    "snapshot": {
+      "type": "object",
+      "required": ["project", "project_root", "branch", "base_head", "working_tree", "snapshot_kind", "release_equivalent"],
+      "properties": {
+        "project": {"type": "string", "minLength": 1},
+        "project_root": {"type": "string", "minLength": 1},
+        "branch": {"type": "string", "minLength": 1},
+        "base_head": {"type": "string", "minLength": 1},
+        "release_tag": {"type": ["string", "null"]},
+        "working_tree": {"enum": ["clean", "dirty", "unknown"]},
+        "snapshot_kind": {"enum": ["release", "clean_head", "reviewed_working_tree"]},
+        "release_equivalent": {"type": "boolean"},
+        "engineering_knowledge_version": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "nodes": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/node"}
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "relation", "to"],
+        "properties": {
+          "from": {"type": "string", "minLength": 1},
+          "relation": {"type": "string", "minLength": 1},
+          "to": {"type": "string", "minLength": 1},
+          "evidence": {"$ref": "#/$defs/evidence"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "constraints": {"type": "array", "items": {"$ref": "#/$defs/constraint"}},
+    "known_limitations": {"type": "array", "items": {"$ref": "#/$defs/limitation"}},
+    "architecture_decisions": {"type": "array", "items": {"$ref": "#/$defs/decision"}}
+  },
+  "$defs": {
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "locator"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "locator": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": true
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "type", "name", "status", "responsibility", "evidence"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "type": {"enum": ["subsystem", "component", "contract", "concept", "dataset_boundary", "test_suite", "limitation", "architecture_decision"]},
+        "name": {"type": "string", "minLength": 1},
+        "status": {"enum": ["frozen", "stable", "active", "experimental", "legacy", "deprecated", "candidate"]},
+        "responsibility": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "minLength": 1},
+        "canonical_source": {"type": "string", "minLength": 1},
+        "tests": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "evidence": {"$ref": "#/$defs/evidence"}
+      },
+      "additionalProperties": true
+    },
+    "constraint": {
+      "type": "object",
+      "required": ["id", "statement", "severity", "scope", "evidence"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "statement": {"type": "string", "minLength": 1},
+        "severity": {"enum": ["critical", "high", "medium", "low"]},
+        "scope": {"type": "array", "items": {"type": "string"}},
+        "evidence": {"$ref": "#/$defs/evidence"}
+      },
+      "additionalProperties": true
+    },
+    "limitation": {
+      "type": "object",
+      "required": ["id", "status", "statement", "scope", "evidence"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "status": {"enum": ["active", "deprecated"]},
+        "statement": {"type": "string", "minLength": 1},
+        "scope": {"type": "array", "items": {"type": "string"}},
+        "evidence": {"$ref": "#/$defs/evidence"}
+      },
+      "additionalProperties": true
+    },
+    "decision": {
+      "type": "object",
+      "required": ["id", "title", "status", "decision", "rationale", "evidence"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "status": {"enum": ["frozen", "stable", "active", "experimental", "legacy", "deprecated", "candidate"]},
+        "decision": {"type": "string", "minLength": 1},
+        "rationale": {"type": "string", "minLength": 1},
+        "consequences": {"type": "array", "items": {"type": "string"}},
+        "evidence": {"$ref": "#/$defs/evidence"}
+      },
+      "additionalProperties": true
+    }
+  }
+}

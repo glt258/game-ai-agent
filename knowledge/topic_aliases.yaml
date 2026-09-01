@@ -1,0 +1,69 @@
+schema_version: "engineering-knowledge-topic-aliases/0.1"
+aliases:
+  combat_role:
+    - "combat role"
+    - "combat-role"
+    - "combat_role"
+    - "role profile"
+    - "combat role profile"
+    - "CombatRoleProfile"
+  character_generation:
+    - "character generation"
+    - "character generator"
+    - "generation agent"
+    - "character draft"
+    - "CharacterGenerationAgent"
+  canon_checker:
+    - "canon checker"
+    - "canon validation"
+    - "canon checking"
+    - "CanonChecker"
+  character_repair:
+    - "character repair"
+    - "repair workflow"
+    - "repair loop"
+    - "CharacterRepairWorkflow"
+  skill_ir:
+    - "skill semantic ir"
+    - "semantic skill ir"
+    - "semantic ir"
+    - "skill semantics"
+  skill_compiler:
+    - "skillkit compiler"
+    - "skill kit compiler"
+    - "skill compiler"
+    - "deterministic compiler"
+  canonical_skillkit:
+    - "canonical skillkit"
+    - "canonical skill kit"
+    - "skillkit contract"
+  skill_evaluator:
+    - "skill evaluator"
+    - "canonical skill evaluator"
+    - "skill evaluation"
+  knowledge_resolver:
+    - "knowledge resolver"
+    - "knowledge access"
+    - "knowledge boundary"
+  story_canon:
+    - "story canon"
+    - "story repository"
+    - "story state"
+  reference_corpus:
+    - "reference corpus"
+    - "reference characters"
+    - "reference selector"
+  provider:
+    - "provider protocol"
+    - "live llm"
+    - "llm provider"
+    - "provider abstraction"
+  web_adapter:
+    - "web adapter"
+    - "web api"
+    - "frontend backend"
+  character_kit:
+    - "character kit"
+    - "characterkit"
+    - "w4"
+    - "skill association"

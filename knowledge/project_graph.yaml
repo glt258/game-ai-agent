@@ -1,0 +1,646 @@
+schema_version: "engineering-knowledge-graph/0.1"
+
+snapshot:
+  project: "game-ai-agent"
+  project_root: "D:/game-ai-agent"
+  branch: "main"
+  base_head: "d1e511ebe82684867c3beff9ccc6bd1c36bbbbf6"
+  release_tag: "v0.8"
+  working_tree: "dirty"
+  snapshot_kind: "reviewed_working_tree"
+  release_equivalent: false
+  engineering_knowledge_version: "engineering-knowledge-layer/0.1.1"
+
+nodes:
+  - id: "component.character_generation_agent"
+    type: "component"
+    name: "CharacterGenerationAgent"
+    status: "frozen"
+    responsibility: "Generate strict, reviewable CharacterDraft proposals through bounded read-only retrieval."
+    path: "src/agents/character_generation.py"
+    canonical_source: "src/agents/character_generation.py"
+    tests:
+      - "tests/test_character_generation.py"
+      - "tests/test_character_finalization_context.py"
+    evidence:
+      - path: "docs/runtime_freeze_v0.6.6.md"
+        locator: "frozen components and authoring pipeline"
+      - path: "README.md"
+        locator: "character authoring flow"
+
+  - id: "contract.character_draft"
+    type: "contract"
+    name: "CharacterDraft"
+    status: "frozen"
+    responsibility: "Strict approval-independent candidate; it is not Canon and does not publish itself."
+    path: "src/agents/character_generation.py"
+    canonical_source: "src/agents/character_generation.py"
+    tests:
+      - "tests/test_character_generation.py"
+      - "tests/test_character_draft_recovery.py"
+      - "tests/test_combat_role_compatibility_freeze_b15.py"
+    evidence:
+      - path: "docs/runtime_freeze_v0.6.6.md"
+        locator: "Draft != Canon and human approval invariant"
+
+  - id: "component.authoring_toolbox"
+    type: "component"
+    name: "CharacterAuthoringToolbox"
+    status: "frozen"
+    responsibility: "Expose bounded, read-only lore, faction, character, world-rule and story retrieval tools."
+    path: "src/agents/character_generation.py"
+    canonical_source: "src/agents/character_generation.py"
+    tests:
+      - "tests/test_character_generation.py"
+      - "tests/test_knowledge_resolver.py"
+    evidence:
+      - path: "README.md"
+        locator: "fixed authoring toolbox"
+
+  - id: "component.canon_checker"
+    type: "component"
+    name: "CanonChecker"
+    status: "frozen"
+    responsibility: "Run deterministic, read-only Canon, authority, knowledge-scope, story and hard-constraint checks."
+    path: "src/agents/canon_checker.py"
+    canonical_source: "src/agents/canon_checker.py"
+    tests:
+      - "tests/test_canon_checker.py"
+      - "tests/test_canon_checker_redteam.py"
+    evidence:
+      - path: "src/agents/canon_checker.py"
+        locator: "class CanonChecker and check pipeline"
+      - path: "docs/runtime_freeze_v0.6.6.md"
+        locator: "deterministic read-only checker invariant"
+
+  - id: "component.character_repair_workflow"
+    type: "component"
+    name: "CharacterRepairWorkflow"
+    status: "frozen"
+    responsibility: "Perform at most one bounded repair, preserve unaffected fields and re-run the full check."
+    path: "src/agents/character_repair.py"
+    canonical_source: "src/agents/character_repair.py"
+    tests:
+      - "tests/test_character_repair.py"
+      - "tests/test_character_repair_redteam.py"
+    evidence:
+      - path: "docs/character_repair_loop_v0.1.1.md"
+        locator: "repair scope and maximum-attempt contract"
+
+  - id: "component.character_evaluation"
+    type: "component"
+    name: "CharacterEvaluation"
+    status: "stable"
+    responsibility: "Evaluate request alignment, identity coherence and representation completeness without invoking generation."
+    path: "src/agents/evaluation/runner.py"
+    canonical_source: "src/agents/evaluation/runner.py"
+    tests:
+      - "tests/test_evaluation_layer.py"
+      - "tests/test_request_alignment.py"
+    evidence:
+      - path: "src/agents/evaluation/context.py"
+        locator: "EvaluationSubject and EvaluationContext"
+
+  - id: "component.knowledge_resolver"
+    type: "component"
+    name: "KnowledgeResolver"
+    status: "frozen"
+    responsibility: "Determine whether a character may access knowledge in context; it does not model belief or memory."
+    path: "src/knowledge/loader.py"
+    canonical_source: "src/knowledge/loader.py"
+    tests:
+      - "tests/test_knowledge_resolver.py"
+    evidence:
+      - path: "docs/knowledge_resolver_v0.2.md"
+        locator: "access eligibility boundary and default deny"
+
+  - id: "dataset_boundary.runtime_canon_data"
+    type: "dataset_boundary"
+    name: "Runtime Canon and Story Boundary"
+    status: "frozen"
+    responsibility: "Package Canon, knowledge rules, factions and Story Canon consumed by runtime repositories and validators."
+    path: "src/along_street_resources/data"
+    canonical_source: "src/along_street_resources/data"
+    tests:
+      - "tests/test_runtime_resources.py"
+      - "tests/test_story_state.py"
+    evidence:
+      - path: "src/knowledge/loader.py"
+        locator: "load_canon"
+      - path: "src/story/loader.py"
+        locator: "StoryRepository loading and validation"
+
+  - id: "component.combat_role_profile"
+    type: "component"
+    name: "CombatRoleProfile"
+    status: "frozen"
+    responsibility: "Own the structured six-role combat profile and the bounded legacy deserialization seam."
+    path: "src/combat_semantics/roles.py"
+    canonical_source: "src/combat_semantics/roles.py"
+    tests:
+      - "tests/test_combat_roles.py"
+      - "tests/test_combat_role_alignment_b12.py"
+      - "tests/test_combat_role_compatibility_freeze_b15.py"
+    evidence:
+      - path: "src/combat_semantics/roles.py"
+        locator: "CANONICAL_COMBAT_ROLES and CombatRoleProfile"
+      - path: "docs/character_skill_design_readiness_report_2026-08-22.md"
+        locator: "canonical taxonomy boundary"
+
+  - id: "concept.canonical_combat_roles"
+    type: "concept"
+    name: "Canonical Combat Roles"
+    status: "frozen"
+    responsibility: "The canonical role domain is main_dps, sub_dps, support, healer, control and defense."
+    evidence:
+      - path: "src/combat_semantics/roles.py"
+        locator: "CANONICAL_COMBAT_ROLES"
+      - path: "src/along_street_resources/data/reference_corpus/combat_vocabulary.yaml"
+        locator: "combat_role domain"
+
+  - id: "component.legacy_combat_taxonomy"
+    type: "component"
+    name: "Legacy NormalizedRole Taxonomy"
+    status: "legacy"
+    responsibility: "Maintain bounded compatibility and historical reference-corpus role analysis; never become a second canonical owner."
+    path: "src/reference_corpus/combat_taxonomy.py"
+    tests:
+      - "tests/reference_corpus/test_combat_analysis.py"
+      - "tests/reference_corpus/test_combat_vocabulary.py"
+    evidence:
+      - path: "src/reference_corpus/combat_taxonomy.py"
+        locator: "legacy crosswalk and canonical profile boundary"
+
+  - id: "component.semantic_skill_ir"
+    type: "component"
+    name: "Semantic Skill IR"
+    status: "frozen"
+    responsibility: "Represent high-level LLM-generated skill semantics without canonical IDs or graph wiring."
+    path: "src/character_intelligence/semantic_ir/schema.py"
+    canonical_source: "src/character_intelligence/semantic_ir/schema.py"
+    tests:
+      - "tests/test_hybrid_semantic_compiler.py"
+      - "tests/test_hybrid_semantic_enum_alignment.py"
+    evidence:
+      - path: "docs/character_generation/character_skill_design_v1_freeze_v1.0.md"
+        locator: "LLM semantic generation and IR contract"
+
+  - id: "component.semantic_ir_validator"
+    type: "component"
+    name: "Semantic IR Validator"
+    status: "frozen"
+    responsibility: "Validate the semantic IR and produce proof-carrying validated input for deterministic compilation."
+    path: "src/character_intelligence/semantic_ir/validator.py"
+    canonical_source: "src/character_intelligence/semantic_ir/validator.py"
+    tests:
+      - "tests/test_hybrid_semantic_compiler.py"
+      - "tests/test_hybrid_semantic_repair.py"
+
+  - id: "component.skillkit_compiler"
+    type: "component"
+    name: "SkillKit Compiler"
+    status: "frozen"
+    responsibility: "Deterministically compile validated semantic IR into canonical SkillKit representation."
+    path: "src/character_intelligence/compiler/skillkit_compiler.py"
+    canonical_source: "src/character_intelligence/compiler/skillkit_compiler.py"
+    tests:
+      - "tests/test_hybrid_semantic_compiler.py"
+      - "tests/test_hybrid_semantic_repair.py"
+    evidence:
+      - path: "docs/character_generation/character_skill_design_v1_freeze_v1.0.md"
+        locator: "LLM semantics versus deterministic representation mechanics"
+
+  - id: "component.canonical_skillkit"
+    type: "contract"
+    name: "Canonical SkillKit"
+    status: "frozen"
+    responsibility: "Canonical parsed Skill artifact whose identity and references are validated independently of the provider."
+    path: "src/character_skill/models.py"
+    canonical_source: "src/character_skill/models.py"
+    tests:
+      - "tests/test_character_skill_contract.py"
+      - "tests/test_v2_minimal_skillkit.py"
+
+  - id: "component.canonical_skill_evaluator"
+    type: "component"
+    name: "Canonical Skill Evaluator"
+    status: "frozen"
+    responsibility: "Deterministically evaluate canonical SkillKit structure, mechanics, lifecycle, feedback and references."
+    path: "src/character_skill/evaluation.py"
+    canonical_source: "src/character_skill/evaluation.py"
+    tests:
+      - "tests/test_character_skill_evaluation.py"
+      - "tests/test_hybrid_final_coverage.py"
+
+  - id: "component.reference_corpus"
+    type: "dataset_boundary"
+    name: "ReferenceCorpus"
+    status: "frozen"
+    responsibility: "Provide external precedent and provenance for design grounding; it is not project Canon."
+    path: "src/reference_corpus/repository.py"
+    canonical_source: "src/reference_corpus/repository.py"
+    tests:
+      - "tests/reference_corpus/test_repository.py"
+      - "tests/reference_corpus/test_provenance.py"
+    evidence:
+      - path: "docs/reference_corpus_expanded_baseline_v0.5.md"
+        locator: "16-record frozen baseline"
+
+  - id: "dataset_boundary.reference_corpus_manifest"
+    type: "dataset_boundary"
+    name: "ReferenceCorpusManifest"
+    status: "frozen"
+    responsibility: "Define the versioned and bounded manifest for the 16-record reference corpus."
+    path: "src/along_street_resources/data/reference_corpus/characters/_catalog/corpus_manifest.yaml"
+    canonical_source: "src/along_street_resources/data/reference_corpus/characters/_catalog/corpus_manifest.yaml"
+    tests:
+      - "tests/reference_corpus/test_repository.py"
+      - "tests/reference_corpus/test_manifest.py"
+
+  - id: "component.reference_selector"
+    type: "component"
+    name: "ReferenceSelector"
+    status: "stable"
+    responsibility: "Select shallow reference grounding for design granularity without authorizing project Canon claims."
+    path: "src/agents/official_character_authoring.py"
+    canonical_source: "src/agents/official_character_authoring.py"
+    evidence:
+      - path: "src/agents/official_character_authoring.py"
+        locator: "load_reference_grounding"
+
+  - id: "contract.provider_protocol"
+    type: "contract"
+    name: "ProviderProtocol"
+    status: "stable"
+    responsibility: "Provider-neutral completion, tool-call, response-contract and sanitized error boundary."
+    path: "src/agents/provider_protocol.py"
+    canonical_source: "src/agents/provider_protocol.py"
+    tests:
+      - "tests/test_provider_contracts.py"
+      - "tests/test_live_llm_errors.py"
+
+  - id: "component.live_llm_settings"
+    type: "component"
+    name: "LiveLLMSettings"
+    status: "stable"
+    responsibility: "Resolve provider, model, transport, structured-output, timeout and bounded retry configuration."
+    path: "src/agents/model_factory.py"
+    canonical_source: "src/agents/model_factory.py"
+    tests:
+      - "tests/test_model_factory.py"
+      - "tests/test_live_llm_adapter.py"
+
+  - id: "component.provider_profiles"
+    type: "component"
+    name: "ProviderProfiles"
+    status: "stable"
+    responsibility: "Describe supported provider transports and capability mappings without making individual models graph nodes."
+    path: "src/agents/provider_profiles.py"
+    canonical_source: "src/agents/provider_profiles.py"
+    tests:
+      - "tests/test_provider_contracts.py"
+      - "tests/test_deepseek_provider.py"
+
+  - id: "component.openai_compatible_adapter"
+    type: "component"
+    name: "OpenAI-compatible Live Adapter"
+    status: "stable"
+    responsibility: "Adapt compatible live provider transport and map failures to sanitized ProviderClientError values."
+    path: "src/agents/openai_provider.py"
+    canonical_source: "src/agents/openai_provider.py"
+    tests:
+      - "tests/test_openai_provider.py"
+      - "tests/test_live_llm_errors.py"
+
+  - id: "component.web_adapter"
+    type: "component"
+    name: "Web Adapter"
+    status: "experimental"
+    responsibility: "Expose current runtime capabilities through Web DTOs and asynchronous live jobs without persistence or Canon publishing."
+    path: "src/web"
+    tests:
+      - "tests/test_web_api.py"
+      - "tests/test_live_web_execution.py"
+    evidence:
+      - path: "docs/web/web_v0.1_api_contract.md"
+        locator: "DTO boundary and explicit non-goals"
+      - path: "docs/web/web_v0.1_architecture.md"
+        locator: "historical architecture candidate; current existence is snapshot-drift sensitive"
+
+  - id: "component.character_kit_session"
+    type: "component"
+    name: "CharacterKit Session Layer"
+    status: "experimental"
+    responsibility: "Hold session-only skill associations and current role-coverage evaluation; no durable kit or full synergy model."
+    path: "src/character_intelligence/character_kit.py"
+    tests:
+      - "tests/test_character_kit.py"
+      - "tests/test_character_kit_evaluation.py"
+    evidence:
+      - path: "docs/character_kit_contract_v0.1.md"
+        locator: "session-only aggregate boundary"
+      - path: "docs/character_kit_role_coverage_evaluation_contract_v0.1.md"
+        locator: "role coverage only"
+
+edges:
+  - from: "component.character_generation_agent"
+    relation: "produces"
+    to: "contract.character_draft"
+    evidence:
+      - path: "src/agents/character_generation.py"
+        locator: "CharacterGenerationAgent and CharacterDraft"
+  - from: "component.character_generation_agent"
+    relation: "retrieves_from"
+    to: "component.authoring_toolbox"
+    evidence:
+      - path: "README.md"
+        locator: "fixed authoring toolbox"
+  - from: "component.authoring_toolbox"
+    relation: "depends_on"
+    to: "component.knowledge_resolver"
+    evidence:
+      - path: "docs/knowledge_resolver_v0.2.md"
+        locator: "resolver and retrieval boundary"
+  - from: "component.authoring_toolbox"
+    relation: "retrieves_from"
+    to: "dataset_boundary.runtime_canon_data"
+    evidence:
+      - path: "src/agents/character_generation.py"
+        locator: "read-only tool implementation"
+  - from: "component.canon_checker"
+    relation: "validates"
+    to: "contract.character_draft"
+    evidence:
+      - path: "src/agents/canon_checker.py"
+        locator: "check pipeline"
+  - from: "component.canon_checker"
+    relation: "depends_on"
+    to: "component.knowledge_resolver"
+    evidence:
+      - path: "src/agents/canon_checker.py"
+        locator: "KnowledgeResolver initialization"
+  - from: "component.canon_checker"
+    relation: "depends_on"
+    to: "dataset_boundary.runtime_canon_data"
+    evidence:
+      - path: "src/agents/canon_checker.py"
+        locator: "Canon and world-rule checks"
+  - from: "component.character_repair_workflow"
+    relation: "repairs"
+    to: "contract.character_draft"
+    evidence:
+      - path: "docs/character_repair_loop_v0.1.1.md"
+        locator: "bounded repair"
+  - from: "component.character_repair_workflow"
+    relation: "depends_on"
+    to: "component.canon_checker"
+    evidence:
+      - path: "src/agents/character_repair.py"
+        locator: "full recheck after repair"
+  - from: "component.character_evaluation"
+    relation: "evaluates"
+    to: "contract.character_draft"
+    evidence:
+      - path: "src/agents/evaluation/context.py"
+        locator: "EvaluationContext draft handling"
+  - from: "component.combat_role_profile"
+    relation: "canonical_for"
+    to: "concept.canonical_combat_roles"
+    evidence:
+      - path: "src/combat_semantics/roles.py"
+        locator: "canonical role tuple and profile"
+  - from: "component.legacy_combat_taxonomy"
+    relation: "deprecated_by"
+    to: "component.combat_role_profile"
+    evidence:
+      - path: "src/reference_corpus/combat_taxonomy.py"
+        locator: "legacy crosswalk"
+  - from: "component.semantic_ir_validator"
+    relation: "validates"
+    to: "component.semantic_skill_ir"
+    evidence:
+      - path: "src/character_intelligence/semantic_ir/validator.py"
+        locator: "validate_skill_semantic_ir"
+  - from: "component.skillkit_compiler"
+    relation: "depends_on"
+    to: "component.semantic_ir_validator"
+    evidence:
+      - path: "src/character_intelligence/compiler/skillkit_compiler.py"
+        locator: "validated semantic IR input"
+  - from: "component.skillkit_compiler"
+    relation: "produces"
+    to: "component.canonical_skillkit"
+    evidence:
+      - path: "src/character_intelligence/compiler/skillkit_compiler.py"
+        locator: "compile_skill_semantic_ir"
+  - from: "component.canonical_skill_evaluator"
+    relation: "evaluates"
+    to: "component.canonical_skillkit"
+    evidence:
+      - path: "src/character_skill/evaluation.py"
+        locator: "canonical SkillKit evaluation"
+  - from: "component.reference_corpus"
+    relation: "consumes"
+    to: "dataset_boundary.reference_corpus_manifest"
+    evidence:
+      - path: "src/reference_corpus/repository.py"
+        locator: "manifest required by repository"
+  - from: "component.reference_selector"
+    relation: "retrieves_from"
+    to: "component.reference_corpus"
+    evidence:
+      - path: "src/agents/official_character_authoring.py"
+        locator: "load_reference_grounding"
+  - from: "component.openai_compatible_adapter"
+    relation: "implements"
+    to: "contract.provider_protocol"
+    evidence:
+      - path: "src/agents/openai_provider.py"
+        locator: "ProviderChatClient adapter"
+  - from: "component.openai_compatible_adapter"
+    relation: "configured_by"
+    to: "component.provider_profiles"
+    evidence:
+      - path: "src/agents/provider_profiles.py"
+        locator: "OpenAI-compatible provider profiles"
+  - from: "component.openai_compatible_adapter"
+    relation: "configured_by"
+    to: "component.live_llm_settings"
+    evidence:
+      - path: "src/agents/model_factory.py"
+        locator: "LiveLLMSettings"
+  - from: "component.web_adapter"
+    relation: "adapts"
+    to: "component.character_generation_agent"
+    evidence:
+      - path: "docs/web/web_v0.1_api_contract.md"
+        locator: "backend maps existing domain modules"
+  - from: "component.character_kit_session"
+    relation: "consumes"
+    to: "component.canonical_skillkit"
+    evidence:
+      - path: "docs/character_kit_contract_v0.1.md"
+        locator: "session aggregate input boundary"
+
+constraints:
+  - id: "constraint.combat_role_canonical_ownership"
+    statement: "src/combat_semantics/roles.py is the sole canonical combat-role definition source; legacy taxonomy and compatibility adapters must not become parallel canonical owners."
+    severity: "high"
+    scope:
+      - "component.combat_role_profile"
+      - "concept.canonical_combat_roles"
+    evidence:
+      - path: "tests/test_combat_role_compatibility_freeze_b15.py"
+        locator: "canonical role and compatibility boundary"
+
+  - id: "constraint.reference_corpus_not_canon"
+    statement: "Reference Corpus is not Project Canon and cannot authorize Canon claims."
+    severity: "high"
+    scope:
+      - "component.reference_corpus"
+      - "dataset_boundary.reference_corpus_manifest"
+    evidence:
+      - path: "src/agents/official_character_authoring.py"
+        locator: "project Canon comes from authoring tools and CanonChecker"
+
+  - id: "constraint.character_generation_reviewable"
+    statement: "Character generation creates reviewable drafts and does not directly mutate Canon."
+    severity: "high"
+    scope:
+      - "component.character_generation_agent"
+      - "contract.character_draft"
+    evidence:
+      - path: "docs/runtime_freeze_v0.6.6.md"
+        locator: "Draft != Canon and no automatic writes"
+
+  - id: "constraint.canon_checker_deterministic"
+    statement: "CanonChecker remains deterministic, read-only and does not call an LLM."
+    severity: "high"
+    scope:
+      - "component.canon_checker"
+    evidence:
+      - path: "src/agents/canon_checker.py"
+        locator: "module contract and check method"
+
+  - id: "constraint.skill_semantics_before_compilation"
+    statement: "Skill semantics are produced before deterministic representation compilation; LLM output must not directly become canonical SkillKit representation."
+    severity: "high"
+    scope:
+      - "component.semantic_skill_ir"
+      - "component.skillkit_compiler"
+      - "component.canonical_skillkit"
+    evidence:
+      - path: "docs/character_generation/character_skill_design_v1_freeze_v1.0.md"
+        locator: "LLM owns gameplay semantics; compiler owns representation mechanics"
+
+  - id: "constraint.graph_references_boundaries"
+    statement: "The Engineering Knowledge Graph references game Canon boundaries but does not duplicate game Canon records."
+    severity: "high"
+    scope:
+      - "dataset_boundary.runtime_canon_data"
+      - "component.reference_corpus"
+    evidence:
+      - path: "docs/knowledge_resolver_v0.2.md"
+        locator: "Canon data source boundary"
+
+  - id: "constraint.experimental_not_release"
+    statement: "Experimental working-tree components must not be represented as released v0.8 architecture."
+    severity: "high"
+    scope:
+      - "component.web_adapter"
+      - "component.character_kit_session"
+    evidence:
+      - path: "docs/web/web_v0.1_architecture.md"
+        locator: "older architecture snapshot"
+
+known_limitations:
+  - id: "KL-001"
+    status: "active"
+    statement: "Extractive support-key semantics remain incomplete."
+    scope:
+      - "component.character_generation_agent"
+    evidence:
+      - path: "docs/runtime_freeze_v0.6.6.md"
+        locator: "KL-001"
+
+  - id: "KL-002"
+    status: "active"
+    statement: "Entity-resolution recall is limited."
+    scope:
+      - "component.authoring_toolbox"
+    evidence:
+      - path: "docs/runtime_freeze_v0.6.6.md"
+        locator: "KL-002"
+
+  - id: "KL-003"
+    status: "active"
+    statement: "Embedded proposal phrases can be misclassified."
+    scope:
+      - "component.character_generation_agent"
+    evidence:
+      - path: "docs/runtime_freeze_v0.6.6.md"
+        locator: "KL-003"
+
+  - id: "KL-004"
+    status: "active"
+    statement: "Retrieval may require 20-30 or more calls and dozens of sources."
+    scope:
+      - "component.authoring_toolbox"
+      - "component.character_generation_agent"
+    evidence:
+      - path: "docs/runtime_freeze_v0.6.6.md"
+        locator: "KL-004"
+
+  - id: "KL-005"
+    status: "active"
+    statement: "Live providers can time out, return empty responses or exhaust tool loops; failures remain fail-closed."
+    scope:
+      - "contract.provider_protocol"
+      - "component.openai_compatible_adapter"
+    evidence:
+      - path: "docs/runtime_freeze_v0.6.6.md"
+        locator: "KL-005"
+
+  - id: "KL-SKILL-001"
+    status: "active"
+    statement: "Main DPS live semantic reliability remains weaker than the better-performing skill families."
+    scope:
+      - "component.semantic_skill_ir"
+      - "component.canonical_skill_evaluator"
+    evidence:
+      - path: "docs/character_generation/character_skill_design_v1_freeze_v1.0.md"
+        locator: "KL-SKILL-001"
+
+  - id: "KL-SKILL-004"
+    status: "active"
+    statement: "Provider latency and one-repair availability constrain live Skill Design evidence."
+    scope:
+      - "contract.provider_protocol"
+      - "component.semantic_skill_ir"
+    evidence:
+      - path: "docs/character_generation/character_skill_design_v1_freeze_v1.0.md"
+        locator: "KL-SKILL-004"
+
+  - id: "KL-ENG-001"
+    status: "active"
+    statement: "The current working tree contains experimental W4/Web changes that are not equivalent to the v0.8 release snapshot."
+    scope:
+      - "component.web_adapter"
+      - "component.character_kit_session"
+    evidence:
+      - path: "docs/web/web_v0.1_architecture.md"
+        locator: "historical absence statement"
+
+architecture_decisions:
+  - id: "ADR-001"
+    title: "Engineering Knowledge Snapshot Boundary"
+    status: "frozen"
+    decision: "Engineering Knowledge Graph v0.1 represents an explicitly identified snapshot. A dirty working tree must never be silently represented as the tagged release."
+    rationale: "HEAD is tagged v0.8 while the current working tree contains reviewed but uncommitted W4, Web, benchmark and documentation changes."
+    consequences:
+      - "Graph metadata records branch, HEAD, release tag when applicable, working-tree state and snapshot kind."
+      - "Query emits a warning when the graph snapshot differs from the current Git state."
+      - "Experimental working-tree components remain distinct from released architecture."
+    evidence:
+      - path: "docs/decisions/ADR-001-engineering-knowledge-snapshot-boundary.md"
+        locator: "decision and consequences"
