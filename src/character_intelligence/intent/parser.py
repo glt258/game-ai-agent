@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from functools import lru_cache
+from typing import Any, Mapping
 
 from along_street_resources import data_resource
 from combat_semantics import CombatRoleProfile
+from knowledge.resolver import KnowledgeResolver
 from reference_corpus.loader import load_combat_vocabulary
 
 from .schema import CharacterDesignIntent
@@ -103,12 +106,50 @@ _PERSONALITY_PATTERNS = (
 class DeterministicCharacterDesignIntentParser:
     """Parse common design phrases without an LLM or network request."""
 
-    def __init__(self, vocabulary=None):
+    def __init__(self, vocabulary=None, factions: Mapping[str, Mapping[str, Any]] | None = None):
         self.vocabulary = vocabulary or self._default_vocabulary()
+        self.factions = factions if factions is not None else self._default_factions()
 
     @staticmethod
     def _default_vocabulary():
         return load_combat_vocabulary(data_resource("reference_corpus", "combat_vocabulary.yaml"))
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def _default_factions():
+        return KnowledgeResolver().factions
+
+    @staticmethod
+    def _affiliation_context_has_marker(text: str, start: int, end: int) -> bool:
+        context = text[max(0, start - 64):min(len(text), end + 64)]
+        return bool(re.search(
+            r"属于|隶属于|归属于|所属|成员|加入|belongs\s+to|member\s+of|"
+            r"affiliated\s+with|part\s+of|works\s+for",
+            context,
+            flags=re.IGNORECASE,
+        ))
+
+    def _parse_requested_affiliation(self, text: str) -> str | None:
+        candidates: list[tuple[int, int, str]] = []
+        for faction_id, record in self.factions.items():
+            aliases = [record.get("name"), record.get("short_name"), faction_id]
+            record_aliases = record.get("aliases", ())
+            if isinstance(record_aliases, (list, tuple)):
+                aliases.extend(record_aliases)
+            for alias in aliases:
+                if not isinstance(alias, str) or not alias.strip():
+                    continue
+                alias = alias.strip()
+                pattern = re.escape(alias)
+                if re.fullmatch(r"[A-Za-z0-9_.:-]+", alias):
+                    pattern = rf"(?<![A-Za-z0-9_.:-]){pattern}(?![A-Za-z0-9_.:-])"
+                for match in re.finditer(pattern, text, flags=re.IGNORECASE):
+                    if self._affiliation_context_has_marker(text, match.start(), match.end()):
+                        candidates.append((match.start(), -(match.end() - match.start()), faction_id))
+        if not candidates:
+            return None
+        candidates.sort()
+        return candidates[0][2]
 
     def _combat_role_mentions(self, text: str) -> list[tuple[int, int, str, bool]]:
         matches: list[tuple[int, int, str, bool]] = []
@@ -186,6 +227,7 @@ class DeterministicCharacterDesignIntentParser:
             profile = CombatRoleProfile()
         role_type = _first_match(text, _ROLE_TYPE_PATTERNS) or "character"
         target_audience = _first_match(text, _TARGET_PATTERNS) or "general"
+        requested_affiliation_id = self._parse_requested_affiliation(text)
 
         personality: list[str] = []
         for pattern, keyword in _PERSONALITY_PATTERNS:
@@ -215,6 +257,7 @@ class DeterministicCharacterDesignIntentParser:
             element=element,
             raw_request=text,
             combat_role_profile=profile,
+            requested_affiliation_id=requested_affiliation_id,
         )
 
     @staticmethod
@@ -243,10 +286,10 @@ class DeterministicCharacterDesignIntentParser:
         return tuple(values)
 
 
-def parse_character_design_intent(request: str) -> CharacterDesignIntent:
+def parse_character_design_intent(request: str, factions: Mapping[str, Mapping[str, Any]] | None = None) -> CharacterDesignIntent:
     """Convenience function for the default deterministic parser."""
 
-    return DeterministicCharacterDesignIntentParser().parse(request)
+    return DeterministicCharacterDesignIntentParser(factions=factions).parse(request)
 
 
 # Short aliases keep the first public API easy to discover while retaining a

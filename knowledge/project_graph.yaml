@@ -318,9 +318,7 @@ nodes:
     status: "experimental"
     responsibility: "Expose current runtime capabilities through Web DTOs and asynchronous live jobs without persistence or Canon publishing."
     path: "src/web"
-    tests:
-      - "tests/test_web_api.py"
-      - "tests/test_live_web_execution.py"
+    tests: []
     evidence:
       - path: "docs/web/web_v0.1_api_contract.md"
         locator: "DTO boundary and explicit non-goals"
@@ -333,9 +331,7 @@ nodes:
     status: "experimental"
     responsibility: "Derive session/current CharacterKit projections and role-coverage evaluation; durable snapshots and assignments are owned by the persistence boundary."
     path: "src/character_intelligence/character_kit.py"
-    tests:
-      - "tests/test_character_kit.py"
-      - "tests/test_character_kit_evaluation.py"
+    tests: []
     evidence:
       - path: "docs/character_kit_contract_v0.1.md"
         locator: "session-only aggregate boundary"
@@ -423,7 +419,6 @@ nodes:
     canonical_source: "src/character_intelligence/character_skill_projection.py"
     tests:
       - "tests/test_character_skill_association.py"
-      - "tests/test_character_skill_design_api.py"
       - "tests/test_character_skill_persistence.py"
     evidence:
       - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
@@ -437,7 +432,6 @@ nodes:
     path: "src/character_intelligence/character_skill_alignment.py"
     canonical_source: "src/character_intelligence/character_skill_alignment.py"
     tests:
-      - "tests/test_character_skill_alignment.py"
       - "tests/test_character_skill_persistence.py"
     evidence:
       - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
@@ -492,8 +486,6 @@ nodes:
     path: "src/character_intelligence/character_kit.py"
     canonical_source: "src/character_intelligence/character_kit.py"
     tests:
-      - "tests/test_character_kit.py"
-      - "tests/test_character_kit_evaluation.py"
       - "tests/test_character_skill_persistence.py"
     evidence:
       - path: "docs/character_kit_contract_v0.1.md"
@@ -530,8 +522,7 @@ nodes:
     responsibility: "Process-local, session-oriented, TTL-bounded live execution state; it is ephemeral and is not persisted by the W4-S4 persistence boundary."
     path: "src/web/services/live_jobs.py"
     canonical_source: "src/web/services/live_jobs.py"
-    tests:
-      - "tests/test_live_web_execution.py"
+    tests: []
     evidence:
       - path: "docs/live_web_execution_contract_v0.1.md"
         locator: "ephemeral live job and non-persistence contract"
@@ -935,6 +926,18 @@ constraints:
     evidence:
       - path: "docs/live_web_execution_contract_v0.1.md"
         locator: "live job lifecycle and non-persistence boundary"
+
+  - id: "constraint.committed_content_verification"
+    statement: "A local green test result from a dirty working tree is insufficient evidence for a checkpoint, release, or main push; verification must execute from committed content in a temporary clean checkout."
+    severity: "high"
+    scope:
+      - "component.persistence_foundation"
+      - "component.character_persistence"
+      - "component.character_skill_persistence"
+      - "component.character_kit_persistence"
+    evidence:
+      - path: "docs/ci_clean_checkout_verification.md"
+        locator: "clean-checkout verification procedure"
 
 known_limitations:
   - id: "KL-001"

@@ -23,6 +23,7 @@ from ..compiler import (
     COMPILER_VERSION,
     COMPILER_VERSION_V2,
     DEFAULT_MAPPING_REGISTRY,
+    CompilerProvenance,
     SemanticMappingRegistry,
     SkillKitCompilerError,
     compile_skill_semantic_ir,
@@ -366,6 +367,7 @@ class FakePipelineResult:
     candidate: ProtocolSkillKitCandidate | None = field(default=None, repr=False)
     report: SkillValidationReport | None = field(default=None, repr=False)
     validated_ir: ValidatedSkillSemanticIR | None = field(default=None, repr=False)
+    compiler_provenance: CompilerProvenance | None = field(default=None, repr=False)
 
 
 class FakeProvider:
@@ -645,6 +647,7 @@ def _run_pipeline(
         parsed,
         report,
         validated,
+        compiled.provenance,
     )
 
 

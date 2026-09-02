@@ -48,6 +48,7 @@ class CharacterDesignIntent:
     element: str | None = None
     raw_request: str = ""
     combat_role_profile: CombatRoleProfile | None = None
+    requested_affiliation_id: str | None = None
 
     def __post_init__(self) -> None:
         for field_name in ("role_type", "target_audience"):
@@ -66,6 +67,12 @@ class CharacterDesignIntent:
         if not isinstance(self.raw_request, str):
             raise TypeError("raw_request must be a string")
         object.__setattr__(self, "raw_request", self.raw_request.strip())
+        if self.requested_affiliation_id is not None:
+            if not isinstance(self.requested_affiliation_id, str) or not self.requested_affiliation_id.strip():
+                raise ValueError("requested_affiliation_id must be a non-empty string or None")
+            if not self.requested_affiliation_id.startswith("faction_"):
+                raise ValueError("requested_affiliation_id must be a Canon faction ID")
+            object.__setattr__(self, "requested_affiliation_id", self.requested_affiliation_id.strip())
         profile = self.combat_role_profile
         if profile is None:
             profile = CombatRoleProfile()
@@ -96,6 +103,7 @@ class CharacterDesignIntent:
             "element": self.element,
             "raw_request": self.raw_request,
             "combat_role_profile": self.combat_role_profile.to_dict(),
+            "requested_affiliation_id": self.requested_affiliation_id,
         }
 
     @classmethod
@@ -126,4 +134,5 @@ class CharacterDesignIntent:
             element=payload.get("element"),
             raw_request=payload.get("raw_request", ""),
             combat_role_profile=profile,
+            requested_affiliation_id=payload.get("requested_affiliation_id"),
         )

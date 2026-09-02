@@ -126,7 +126,7 @@ def test_historical_v2_contract_version_remains_identity_compatible() -> None:
 def test_v2_goldens_pass_the_complete_offline_pipeline() -> None:
     cases = _cases()
     goldens = _goldens()
-    assert set(goldens) == set(cases)
+    assert set(cases) <= set(goldens)
     for case_id, case in cases.items():
         result = run_fake_pipeline(
             FakeProvider(goldens[case_id]),

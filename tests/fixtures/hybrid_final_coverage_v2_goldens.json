@@ -93,5 +93,110 @@
         "description": "Provide passive support role evidence."
       }
     }
+  },
+  "character_alignment_support_v1": {
+    "ir_version": "semantic-skill-plan-ir/0.2.0",
+    "ability_name": "Measured Rally",
+    "summary": "An ally action enables team coordination.",
+    "mode": "active",
+    "role": "support",
+    "centrality": "core",
+    "mechanic": {
+      "kind": "triggered",
+      "trigger": {
+        "actor": "ally",
+        "event": "action_completed",
+        "qualifier": null
+      },
+      "effect": {
+        "actor": "team",
+        "intent": "enable_ally",
+        "description": "Enable team coordination after an ally acts."
+      },
+      "feedback": null
+    },
+    "role_path": {
+      "kind": "triggered",
+      "trigger": {
+        "actor": "ally",
+        "event": "action_completed",
+        "qualifier": null
+      },
+      "effect": {
+        "actor": "team",
+        "intent": "enable_ally",
+        "description": "Provide structured support role evidence."
+      }
+    }
+  },
+  "character_alignment_main_dps_v1": {
+    "ir_version": "semantic-skill-plan-ir/0.2.0",
+    "ability_name": "Focused Break",
+    "summary": "An invoked ability deals direct damage.",
+    "mode": "active",
+    "role": "main_dps",
+    "centrality": "core",
+    "mechanic": {
+      "kind": "triggered",
+      "trigger": {
+        "actor": "self",
+        "event": "ability_invoked",
+        "qualifier": null
+      },
+      "effect": {
+        "actor": "enemy",
+        "intent": "deal_damage",
+        "description": "Deal direct damage to an enemy."
+      },
+      "feedback": null
+    },
+    "role_path": {
+      "kind": "triggered",
+      "trigger": {
+        "actor": "self",
+        "event": "ability_invoked",
+        "qualifier": null
+      },
+      "effect": {
+        "actor": "enemy",
+        "intent": "deal_damage",
+        "description": "Provide structured main DPS role evidence."
+      }
+    }
+  },
+  "character_alignment_control_v1": {
+    "ir_version": "semantic-skill-plan-ir/0.2.0",
+    "ability_name": "Quiet Lock",
+    "summary": "Entering the scene controls an enemy action state.",
+    "mode": "active",
+    "role": "control",
+    "centrality": "core",
+    "mechanic": {
+      "kind": "triggered",
+      "trigger": {
+        "actor": "scene",
+        "event": "scene_entered",
+        "qualifier": null
+      },
+      "effect": {
+        "actor": "enemy",
+        "intent": "control_enemy",
+        "description": "Control an enemy action state."
+      },
+      "feedback": null
+    },
+    "role_path": {
+      "kind": "triggered",
+      "trigger": {
+        "actor": "scene",
+        "event": "scene_entered",
+        "qualifier": null
+      },
+      "effect": {
+        "actor": "enemy",
+        "intent": "control_enemy",
+        "description": "Provide structured control role evidence."
+      }
+    }
   }
 }

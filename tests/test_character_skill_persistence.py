@@ -5,7 +5,7 @@ import sqlite3
 from dataclasses import replace
 
 import pytest
-from test_character_skill_association import _context, _controlled_artifact
+from character_skill_fixtures import _context, _controlled_artifact
 
 from agents.character_generation import CharacterDraft
 from agents.response_contracts import character_draft_root_example
