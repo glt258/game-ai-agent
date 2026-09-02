@@ -2,7 +2,7 @@ schema_version: "engineering-knowledge-graph/0.1"
 
 snapshot:
   project: "game-ai-agent"
-  project_root: "D:/game-ai-agent"
+  project_root: "."
   branch: "main"
   base_head: "d1e511ebe82684867c3beff9ccc6bd1c36bbbbf6"
   release_tag: "v0.8"
@@ -331,7 +331,7 @@ nodes:
     type: "component"
     name: "CharacterKit Session Layer"
     status: "experimental"
-    responsibility: "Hold session-only skill associations and current role-coverage evaluation; no durable kit or full synergy model."
+    responsibility: "Derive session/current CharacterKit projections and role-coverage evaluation; durable snapshots and assignments are owned by the persistence boundary."
     path: "src/character_intelligence/character_kit.py"
     tests:
       - "tests/test_character_kit.py"
@@ -341,6 +341,200 @@ nodes:
         locator: "session-only aggregate boundary"
       - path: "docs/character_kit_role_coverage_evaluation_contract_v0.1.md"
         locator: "role coverage only"
+
+  - id: "component.persistence_foundation"
+    type: "subsystem"
+    name: "Persistence Foundation"
+    status: "stable"
+    responsibility: "Provide the single SQLite physical store, schema migration seam, unit of work, foreign-key enforcement and bounded busy timeout; content-addressed semantics do not imply filesystem CAS."
+    path: "src/persistence/sqlite_store.py"
+    canonical_source: "src/persistence/sqlite_store.py"
+    tests:
+      - "tests/test_persistence_foundation.py"
+      - "tests/test_character_persistence.py"
+      - "tests/test_character_skill_persistence.py"
+    evidence:
+      - path: "docs/persistence_foundation_v0.1.md"
+        locator: "SQLite single-store boundary and schema v3"
+
+  - id: "contract.skill_design_artifact"
+    type: "contract"
+    name: "SkillDesignArtifact"
+    status: "frozen"
+    responsibility: "Immutable canonical Skill artifact; artifact_digest is canonical content identity and is distinct from an authoring-record storage identity."
+    path: "src/character_intelligence/skill_artifact.py"
+    canonical_source: "src/character_intelligence/skill_artifact.py"
+    tests:
+      - "tests/test_skill_design_artifact.py"
+      - "tests/test_character_skill_persistence.py"
+    evidence:
+      - path: "docs/skill_design_artifact_contract_v0.1.md"
+        locator: "artifact identity and immutable artifact contract"
+      - path: "docs/persistence_foundation_v0.1.md"
+        locator: "content deduplication and provenance preservation"
+
+  - id: "component.skill_artifact_persistence"
+    type: "component"
+    name: "Skill Artifact Persistence"
+    status: "stable"
+    responsibility: "Persist SkillDesignArtifact content and exact authoring records, deduplicating canonical content while preserving distinct provenance records."
+    path: "src/persistence/skill_artifacts.py"
+    canonical_source: "src/persistence/skill_artifacts.py"
+    tests:
+      - "tests/test_persistence_foundation.py"
+      - "tests/test_skill_design_artifact.py"
+    evidence:
+      - path: "docs/persistence_foundation_v0.1.md"
+        locator: "Skill artifact repository and artifact record identity"
+
+  - id: "contract.character_revision"
+    type: "contract"
+    name: "Character Identity and Revision"
+    status: "frozen"
+    responsibility: "Character persistence identity is a durable character_id with immutable GENERATED/EDITED revisions, parent lineage and a current revision pointer; CharacterDraft remains authored domain data."
+    path: "src/persistence/characters.py"
+    canonical_source: "src/persistence/characters.py"
+    tests:
+      - "tests/test_character_persistence.py"
+      - "tests/test_character_skill_persistence.py"
+    evidence:
+      - path: "docs/character_persistence_contract_v0.1.md"
+        locator: "Character identity, immutable revisions and optimistic concurrency"
+
+  - id: "component.character_persistence"
+    type: "component"
+    name: "Character Persistence"
+    status: "stable"
+    responsibility: "Persist durable Character identity and immutable revision history without turning CharacterDraft into a database entity or changing its domain contract."
+    path: "src/persistence/character_persistence.py"
+    canonical_source: "src/persistence/character_persistence.py"
+    tests:
+      - "tests/test_character_persistence.py"
+    evidence:
+      - path: "docs/character_persistence_contract_v0.1.md"
+        locator: "persistence application service and revision guard"
+
+  - id: "contract.character_skill_design_context"
+    type: "contract"
+    name: "CharacterSkillDesignContext"
+    status: "frozen"
+    responsibility: "Pure projection of current Character authoring state used to derive source_context_fingerprint and binding freshness; it is not persistence authority."
+    path: "src/character_intelligence/character_skill_projection.py"
+    canonical_source: "src/character_intelligence/character_skill_projection.py"
+    tests:
+      - "tests/test_character_skill_association.py"
+      - "tests/test_character_skill_design_api.py"
+      - "tests/test_character_skill_persistence.py"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "freshness derivation from current context fingerprint"
+
+  - id: "contract.character_skill_alignment"
+    type: "contract"
+    name: "Character-Skill Alignment"
+    status: "frozen"
+    responsibility: "Character-specific alignment result that is captured inside an immutable Binding snapshot; historical alignment is not promoted to a generalized report repository here."
+    path: "src/character_intelligence/character_skill_alignment.py"
+    canonical_source: "src/character_intelligence/character_skill_alignment.py"
+    tests:
+      - "tests/test_character_skill_alignment.py"
+      - "tests/test_character_skill_persistence.py"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "Binding snapshot and historical Alignment boundary"
+
+  - id: "contract.character_skill_artifact_binding"
+    type: "contract"
+    name: "CharacterSkillArtifactBinding"
+    status: "frozen"
+    responsibility: "Immutable, Character-context-specific historical binding snapshot containing the full Alignment result, source fingerprint, contract/version metadata and exact Artifact record reference."
+    path: "src/character_intelligence/skill_artifact.py"
+    canonical_source: "src/character_intelligence/skill_artifact.py"
+    tests:
+      - "tests/test_skill_design_artifact.py"
+      - "tests/test_character_skill_persistence.py"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "Binding identity, immutability and artifact record integrity"
+
+  - id: "contract.character_skill_association"
+    type: "contract"
+    name: "CharacterSkillAssociation"
+    status: "frozen"
+    responsibility: "Character-owned association of a Binding and Artifact with authoring placement, deterministic ordering and a durable identity independent of the session association key."
+    path: "src/character_intelligence/character_skill_association.py"
+    canonical_source: "src/character_intelligence/character_skill_association.py"
+    tests:
+      - "tests/test_character_skill_association.py"
+      - "tests/test_character_skill_persistence.py"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "Association ownership, identity, placement and revision history"
+
+  - id: "component.character_skill_persistence"
+    type: "component"
+    name: "Character Skill Persistence"
+    status: "stable"
+    responsibility: "Persist Character-specific Bindings and Associations, immutable association revisions and current skill projection with atomic attach, detach, replace and placement operations."
+    path: "src/persistence/character_skill_persistence.py"
+    canonical_source: "src/persistence/character_skill_persistence.py"
+    tests:
+      - "tests/test_character_skill_persistence.py"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "Character Skill persistence service and transaction boundaries"
+
+  - id: "contract.character_kit"
+    type: "contract"
+    name: "CharacterKit"
+    status: "frozen"
+    responsibility: "Immutable aggregate snapshot of ordered CharacterSkillAssociations; kit_digest is content identity, and freshness, compatibility and structural status remain runtime-derived."
+    path: "src/character_intelligence/character_kit.py"
+    canonical_source: "src/character_intelligence/character_kit.py"
+    tests:
+      - "tests/test_character_kit.py"
+      - "tests/test_character_kit_evaluation.py"
+      - "tests/test_character_skill_persistence.py"
+    evidence:
+      - path: "docs/character_kit_contract_v0.1.md"
+        locator: "CharacterKit contract and canonical digest"
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "immutable Kit snapshot and derived-state boundary"
+
+  - id: "component.character_kit_persistence"
+    type: "component"
+    name: "CharacterKit Persistence"
+    status: "stable"
+    responsibility: "Persist immutable CharacterKit content snapshots and Character-to-current-Kit assignments, deduplicate equal Kit content across Characters and verify snapshots against relational assignment members."
+    path: "src/persistence/character_skill_persistence.py"
+    canonical_source: "src/persistence/character_skill_persistence.py"
+    tests:
+      - "tests/test_character_skill_persistence.py"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "Kit content identity, assignment identity and dual verification"
+
+  - id: "concept.character_kit_assignment"
+    type: "concept"
+    name: "CharacterKitAssignment"
+    status: "stable"
+    responsibility: "Persistence relationship that connects a Character and Character revision context to a Kit content snapshot without placing Kit data inside CharacterDraft."
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "Character-to-current-Kit assignment and revision separation"
+
+  - id: "component.live_execution_job"
+    type: "component"
+    name: "Live Execution Job"
+    status: "experimental"
+    responsibility: "Process-local, session-oriented, TTL-bounded live execution state; it is ephemeral and is not persisted by the W4-S4 persistence boundary."
+    path: "src/web/services/live_jobs.py"
+    canonical_source: "src/web/services/live_jobs.py"
+    tests:
+      - "tests/test_live_web_execution.py"
+    evidence:
+      - path: "docs/live_web_execution_contract_v0.1.md"
+        locator: "ephemeral live job and non-persistence contract"
 
 edges:
   - from: "component.character_generation_agent"
@@ -482,6 +676,151 @@ edges:
       - path: "docs/character_kit_contract_v0.1.md"
         locator: "session aggregate input boundary"
 
+  - from: "component.skill_artifact_persistence"
+    relation: "depends_on"
+    to: "component.persistence_foundation"
+    evidence:
+      - path: "src/persistence/skill_artifacts.py"
+        locator: "SkillArtifactRepository uses the SQLite persistence connection"
+  - from: "component.skill_artifact_persistence"
+    relation: "owns"
+    to: "contract.skill_design_artifact"
+    evidence:
+      - path: "docs/persistence_foundation_v0.1.md"
+        locator: "SkillDesignArtifact persistence boundary"
+  - from: "component.character_persistence"
+    relation: "depends_on"
+    to: "component.persistence_foundation"
+    evidence:
+      - path: "src/persistence/character_persistence.py"
+        locator: "CharacterPersistenceService and CharacterRepository"
+  - from: "component.character_persistence"
+    relation: "owns"
+    to: "contract.character_revision"
+    evidence:
+      - path: "docs/character_persistence_contract_v0.1.md"
+        locator: "durable Character identity and revision persistence"
+  - from: "component.character_persistence"
+    relation: "consumes"
+    to: "contract.character_draft"
+    evidence:
+      - path: "docs/character_persistence_contract_v0.1.md"
+        locator: "CharacterDraft remains unchanged authored data"
+  - from: "component.character_skill_persistence"
+    relation: "depends_on"
+    to: "component.persistence_foundation"
+    evidence:
+      - path: "src/persistence/character_skill_persistence.py"
+        locator: "CharacterSkillRepository SQLite adapter"
+  - from: "component.character_skill_persistence"
+    relation: "depends_on"
+    to: "component.character_persistence"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "Character revision guard for Skill operations"
+  - from: "component.character_skill_persistence"
+    relation: "depends_on"
+    to: "component.skill_artifact_persistence"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "exact Artifact authoring record reference"
+  - from: "component.character_skill_persistence"
+    relation: "owns"
+    to: "contract.character_skill_artifact_binding"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "immutable Binding snapshot persistence"
+  - from: "component.character_skill_persistence"
+    relation: "owns"
+    to: "contract.character_skill_association"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "Association identity, revisions and current projection"
+  - from: "component.character_skill_persistence"
+    relation: "depends_on"
+    to: "contract.character_skill_design_context"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "runtime freshness derivation"
+  - from: "component.character_skill_persistence"
+    relation: "depends_on"
+    to: "contract.character_skill_alignment"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "Binding carries the formal Alignment snapshot"
+  - from: "contract.character_skill_artifact_binding"
+    relation: "depends_on"
+    to: "contract.skill_design_artifact"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "Binding references exact Artifact record and verifies digest"
+  - from: "contract.character_skill_artifact_binding"
+    relation: "depends_on"
+    to: "contract.character_skill_alignment"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "full Alignment result is part of Binding snapshot"
+  - from: "contract.character_skill_artifact_binding"
+    relation: "depends_on"
+    to: "contract.character_skill_design_context"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "source context fingerprint and freshness input"
+  - from: "contract.character_skill_association"
+    relation: "depends_on"
+    to: "contract.character_skill_artifact_binding"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "Association references Binding and Artifact"
+  - from: "component.character_kit_persistence"
+    relation: "depends_on"
+    to: "component.character_skill_persistence"
+    evidence:
+      - path: "src/persistence/character_skill_persistence.py"
+        locator: "Kit snapshot and assignment persistence service"
+  - from: "component.character_kit_persistence"
+    relation: "owns"
+    to: "contract.character_kit"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "immutable CharacterKit content snapshot persistence"
+  - from: "component.character_kit_persistence"
+    relation: "owns"
+    to: "concept.character_kit_assignment"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "Character-to-current-Kit assignment"
+  - from: "contract.character_kit"
+    relation: "consumes"
+    to: "contract.character_skill_association"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "Kit ordered association snapshot"
+  - from: "concept.character_kit_assignment"
+    relation: "depends_on"
+    to: "contract.character_revision"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "assignment preserves Character revision context"
+  - from: "concept.character_kit_assignment"
+    relation: "depends_on"
+    to: "contract.character_kit"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "assignment points to Kit content identity"
+  - from: "component.live_execution_job"
+    relation: "depends_on"
+    to: "contract.provider_protocol"
+    evidence:
+      - path: "src/web/services/live_jobs.py"
+        locator: "provider-neutral live execution boundary"
+  - from: "component.web_adapter"
+    relation: "adapts"
+    to: "component.live_execution_job"
+    evidence:
+      - path: "docs/live_web_execution_contract_v0.1.md"
+        locator: "Web live job API boundary"
+
 constraints:
   - id: "constraint.combat_role_canonical_ownership"
     statement: "src/combat_semantics/roles.py is the sole canonical combat-role definition source; legacy taxonomy and compatibility adapters must not become parallel canonical owners."
@@ -552,6 +891,50 @@ constraints:
     evidence:
       - path: "docs/web/web_v0.1_architecture.md"
         locator: "older architecture snapshot"
+
+  - id: "constraint.persistence_single_physical_store"
+    statement: "SQLite is the only physical persistence store for the W4-S4 foundation; content-addressed artifact and Kit identity must not be interpreted as a filesystem CAS requirement."
+    severity: "high"
+    scope:
+      - "component.persistence_foundation"
+      - "component.skill_artifact_persistence"
+      - "component.character_skill_persistence"
+    evidence:
+      - path: "docs/persistence_foundation_v0.1.md"
+        locator: "single SQLite store and no filesystem CAS"
+
+  - id: "constraint.persistence_derived_runtime_state"
+    statement: "Freshness, Artifact compatibility and CharacterKit structural validation are runtime-derived and must not be treated as persisted authority."
+    severity: "high"
+    scope:
+      - "component.character_skill_persistence"
+      - "component.character_kit_persistence"
+      - "contract.character_skill_design_context"
+      - "contract.character_kit"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "derived freshness, compatibility and structural validation boundary"
+
+  - id: "constraint.historical_skill_reports_not_persisted"
+    statement: "W4-S4 persistence stores Binding Alignment snapshots but does not implement generalized historical Evaluation, Alignment or Role Coverage report repositories; those belong to W4-S4D."
+    severity: "high"
+    scope:
+      - "component.character_skill_persistence"
+      - "component.character_kit_persistence"
+      - "contract.character_skill_alignment"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "historical report repositories are out of scope"
+
+  - id: "constraint.live_jobs_ephemeral"
+    statement: "LiveExecutionJob is process-local, session-oriented and TTL-bounded; live jobs are not persisted, and only formal domain artifacts may enter the persistence boundary."
+    severity: "high"
+    scope:
+      - "component.live_execution_job"
+      - "component.web_adapter"
+    evidence:
+      - path: "docs/live_web_execution_contract_v0.1.md"
+        locator: "live job lifecycle and non-persistence boundary"
 
 known_limitations:
   - id: "KL-001"
@@ -630,6 +1013,16 @@ known_limitations:
     evidence:
       - path: "docs/web/web_v0.1_architecture.md"
         locator: "historical absence statement"
+
+  - id: "KL-PERSISTENCE-001"
+    status: "active"
+    statement: "Historical Skill Evaluation, Alignment and CharacterKit Role Coverage report repositories are not implemented; W4-S4D is the next persistence slice."
+    scope:
+      - "component.character_skill_persistence"
+      - "component.character_kit_persistence"
+    evidence:
+      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
+        locator: "explicit non-goals and next slice"
 
 architecture_decisions:
   - id: "ADR-001"
