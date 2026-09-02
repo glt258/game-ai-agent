@@ -132,18 +132,19 @@ Freshness is derived by comparing the current Character Skill projection
 fingerprint with each stored binding fingerprint. Compatibility is derived by
 `inspect_skill_artifact_compatibility` against current runtime versions.
 Structural status is recomputed by `CharacterKitStructuralValidator`.
-Role Coverage, Alignment history, and Skill Evaluation history are not
-automatically persisted or recomputed by this slice.
+The separate W4-S4D HistoricalReportRepository can explicitly record typed
+Skill Evaluation, Alignment, and Role Coverage observations; this S4C
+repository does not auto-record them and does not treat them as current truth.
 
 ## Migration and boundaries
 
 Schema v2 migrates transactionally to v3 by adding binding, association,
 association revision, Kit content, assignment, current-pointer, and assignment
-member tables. The v1 → v2 → v3 chain and direct v2 → v3 path preserve all
-existing artifact and Character revision data. Unknown future schema versions
-fail closed.
+member tables. W4-S4D then adds the v4 historical report tables. The
+v1 → v2 → v3 → v4 chain and direct v2 → v3 → v4 path preserve all existing
+artifact and Character revision data. Unknown future schema versions fail
+closed.
 
 W4-S4C does not add Web Save/Open, React changes, autosave, approval/publish,
-historical Evaluation/Alignment/Role Coverage repositories, live-job
-persistence, deletion/archive, export/import, Redis, PostgreSQL, SQLAlchemy,
+live-job persistence, deletion/archive, export/import, Redis, PostgreSQL, SQLAlchemy,
 Alembic, Repair, RAG, LoRA, or fine-tuning.

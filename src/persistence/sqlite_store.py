@@ -10,9 +10,10 @@ from .errors import PersistenceIntegrityError, PersistenceSchemaUnsupportedError
 
 if TYPE_CHECKING:
     from .character_skill_persistence import CharacterSkillRepository
+    from .historical_reports import HistoricalReportRepository
     from .skill_artifacts import SkillArtifactRepository
 
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 LEGACY_SCHEMA_VERSION = 1
 DEFAULT_BUSY_TIMEOUT_MS = 5_000
 _CHARACTER_TABLE_COLUMNS = {
@@ -96,6 +97,49 @@ _CHARACTER_TABLE_COLUMNS = {
     },
 }
 
+_HISTORICAL_REPORT_TABLE_COLUMNS = {
+    "skill_evaluation_reports": {
+        "report_sequence",
+        "report_id",
+        "artifact_record_id",
+        "artifact_digest",
+        "artifact_contract_version",
+        "evaluator_version",
+        "report_digest",
+        "report_payload_json",
+        "created_at",
+    },
+    "character_skill_alignment_reports": {
+        "report_sequence",
+        "report_id",
+        "character_id",
+        "character_revision_id",
+        "artifact_record_id",
+        "artifact_digest",
+        "artifact_contract_version",
+        "source_context_fingerprint",
+        "alignment_version",
+        "character_context_projection_version",
+        "report_digest",
+        "report_payload_json",
+        "created_at",
+    },
+    "character_kit_role_coverage_reports": {
+        "report_sequence",
+        "report_id",
+        "character_id",
+        "character_revision_id",
+        "kit_record_id",
+        "kit_digest",
+        "kit_contract_version",
+        "evaluation_context_fingerprint",
+        "evaluator_version",
+        "report_digest",
+        "report_payload_json",
+        "created_at",
+    },
+}
+
 
 class PersistenceUnitOfWork:
     """Own one configured SQLite connection and its transaction boundary."""
@@ -122,6 +166,10 @@ class PersistenceUnitOfWork:
             self.begin()
             from .character_skill_persistence import CharacterSkillRepository
             from .characters import CharacterRepository
+            from .historical_reports import (
+                HistoricalReportPersistenceService,
+                HistoricalReportRepository,
+            )
             from .skill_artifacts import SkillArtifactRepository
 
             self.skill_artifacts: SkillArtifactRepository = SkillArtifactRepository(self.connection)
@@ -130,6 +178,12 @@ class PersistenceUnitOfWork:
                 self.connection,
                 self.characters,
                 self.skill_artifacts,
+            )
+            self.historical_reports: HistoricalReportRepository = HistoricalReportRepository(
+                self.connection, self.characters, self.skill_artifacts
+            )
+            self.historical_report_persistence = HistoricalReportPersistenceService(
+                self.historical_reports
             )
         except Exception:
             self.connection.close()
@@ -218,6 +272,9 @@ class PersistenceUnitOfWork:
                     version = 2
                 if version == 2:
                     self._migrate_v2_to_v3()
+                    version = 3
+                if version == 3:
+                    self._migrate_v3_to_v4()
                 elif version != CURRENT_SCHEMA_VERSION:
                     raise PersistenceSchemaUnsupportedError(
                         f"schema version {version} is not supported"
@@ -241,7 +298,7 @@ class PersistenceUnitOfWork:
             """,
             """
             INSERT INTO persistence_meta (key, value)
-            VALUES ('schema_version', '3')
+            VALUES ('schema_version', '4')
             """,
             """
             CREATE TABLE skill_artifact_contents (
@@ -278,6 +335,112 @@ class PersistenceUnitOfWork:
 
         self._create_character_schema()
         self._create_character_skill_schema()
+        self._create_historical_report_schema()
+
+    def _create_historical_report_schema(self) -> None:
+        statements = (
+            """
+            CREATE TABLE IF NOT EXISTS skill_evaluation_reports (
+                report_sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                report_id TEXT NOT NULL UNIQUE,
+                artifact_record_id INTEGER NOT NULL,
+                artifact_digest TEXT NOT NULL,
+                artifact_contract_version TEXT NOT NULL,
+                evaluator_version TEXT NOT NULL,
+                report_digest TEXT NOT NULL,
+                report_payload_json TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (artifact_record_id) REFERENCES skill_artifact_records (record_id),
+                UNIQUE (artifact_record_id, evaluator_version)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS character_skill_alignment_reports (
+                report_sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                report_id TEXT NOT NULL UNIQUE,
+                character_id TEXT NOT NULL,
+                character_revision_id TEXT NOT NULL,
+                artifact_record_id INTEGER NOT NULL,
+                artifact_digest TEXT NOT NULL,
+                artifact_contract_version TEXT NOT NULL,
+                source_context_fingerprint TEXT NOT NULL,
+                alignment_version TEXT NOT NULL,
+                character_context_projection_version TEXT NOT NULL,
+                report_digest TEXT NOT NULL,
+                report_payload_json TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (character_id) REFERENCES characters (character_id),
+                FOREIGN KEY (character_revision_id) REFERENCES character_revisions (revision_id),
+                FOREIGN KEY (artifact_record_id) REFERENCES skill_artifact_records (record_id),
+                UNIQUE (
+                    character_id, character_revision_id, artifact_record_id,
+                    source_context_fingerprint, alignment_version,
+                    character_context_projection_version
+                )
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS character_kit_role_coverage_reports (
+                report_sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                report_id TEXT NOT NULL UNIQUE,
+                character_id TEXT NOT NULL,
+                character_revision_id TEXT NOT NULL,
+                kit_record_id INTEGER NOT NULL,
+                kit_digest TEXT NOT NULL,
+                kit_contract_version TEXT NOT NULL,
+                evaluation_context_fingerprint TEXT NOT NULL,
+                evaluator_version TEXT NOT NULL,
+                report_digest TEXT NOT NULL,
+                report_payload_json TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (character_id) REFERENCES characters (character_id),
+                FOREIGN KEY (character_revision_id) REFERENCES character_revisions (revision_id),
+                FOREIGN KEY (kit_record_id) REFERENCES character_kit_contents (kit_record_id),
+                UNIQUE (
+                    character_id, character_revision_id, kit_record_id,
+                    evaluation_context_fingerprint, evaluator_version
+                )
+            )
+            """,
+            """
+            CREATE INDEX IF NOT EXISTS skill_evaluation_reports_by_target
+                ON skill_evaluation_reports (artifact_record_id, created_at, report_sequence)
+            """,
+            """
+            CREATE INDEX IF NOT EXISTS character_skill_alignment_reports_by_target
+                ON character_skill_alignment_reports (
+                    artifact_record_id, source_context_fingerprint, created_at, report_sequence
+                )
+            """,
+            """
+            CREATE INDEX IF NOT EXISTS character_kit_role_coverage_reports_by_target
+                ON character_kit_role_coverage_reports (
+                    kit_record_id, character_revision_id,
+                    evaluation_context_fingerprint, created_at, report_sequence
+                )
+            """,
+        )
+        for statement in statements:
+            self.connection.execute(statement)
+        for table_name in _HISTORICAL_REPORT_TABLE_COLUMNS:
+            self.connection.execute(
+                f"""
+                CREATE TRIGGER IF NOT EXISTS {table_name}_immutable_update
+                BEFORE UPDATE ON {table_name}
+                BEGIN
+                    SELECT RAISE(ABORT, 'historical reports are append-only');
+                END
+                """
+            )
+            self.connection.execute(
+                f"""
+                CREATE TRIGGER IF NOT EXISTS {table_name}_immutable_delete
+                BEFORE DELETE ON {table_name}
+                BEGIN
+                    SELECT RAISE(ABORT, 'historical reports are append-only');
+                END
+                """
+            )
 
     def _migrate_v1_to_v2(self) -> None:
         self._create_character_schema()
@@ -298,6 +461,18 @@ class PersistenceUnitOfWork:
             UPDATE persistence_meta
             SET value = '3'
             WHERE key = 'schema_version' AND value = '2'
+            """
+        )
+        if updated.rowcount != 1:
+            raise PersistenceSchemaUnsupportedError("schema version migration precondition failed")
+
+    def _migrate_v3_to_v4(self) -> None:
+        self._create_historical_report_schema()
+        updated = self.connection.execute(
+            """
+            UPDATE persistence_meta
+            SET value = '4'
+            WHERE key = 'schema_version' AND value = '3'
             """
         )
         if updated.rowcount != 1:
@@ -482,7 +657,13 @@ class PersistenceUnitOfWork:
                 row[1] for row in self.connection.execute(f"PRAGMA table_info({table_name})")
             }
             if not required_columns <= columns:
-                raise PersistenceIntegrityError(f"schema v2 table {table_name} is incomplete")
+                raise PersistenceIntegrityError(f"schema table {table_name} is incomplete")
+        for table_name, required_columns in _HISTORICAL_REPORT_TABLE_COLUMNS.items():
+            columns = {
+                row[1] for row in self.connection.execute(f"PRAGMA table_info({table_name})")
+            }
+            if not required_columns <= columns:
+                raise PersistenceIntegrityError(f"schema v4 table {table_name} is incomplete")
 
 
 __all__ = [

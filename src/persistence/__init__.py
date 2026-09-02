@@ -29,6 +29,13 @@ from .errors import (
     PersistenceSchemaUnsupportedError,
     PersistenceWriteConflictError,
 )
+from .historical_reports import (
+    HistoricalReportPersistenceService,
+    HistoricalReportRepository,
+    StoredCharacterKitRoleCoverageReport,
+    StoredCharacterSkillAlignmentReport,
+    StoredSkillEvaluationReport,
+)
 from .skill_artifacts import (
     SkillArtifactRepository,
     StoredSkillArtifact,
@@ -57,6 +64,11 @@ __all__ = [
     "PersistenceSchemaUnsupportedError",
     "PersistenceUnitOfWork",
     "PersistenceWriteConflictError",
+    "HistoricalReportPersistenceService",
+    "HistoricalReportRepository",
+    "StoredCharacterKitRoleCoverageReport",
+    "StoredCharacterSkillAlignmentReport",
+    "StoredSkillEvaluationReport",
     "PersistedCharacter",
     "PersistedAssociation",
     "PersistedBinding",

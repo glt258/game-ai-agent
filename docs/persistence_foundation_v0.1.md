@@ -14,7 +14,7 @@ and
 The physical store is SQLite through the Python standard-library `sqlite3`
 module. W4-S4's historical audit recommended
 `HYBRID_CONTENT_ADDRESSED_SQLITE`; W4-S4A refines that decision for the first
-implementation slice:
+implementation slice and W4-S4D keeps historical reports in the same store:
 
 > v0.1 uses SQLite as the single physical store while preserving
 > content-addressed artifact semantics.
@@ -30,10 +30,11 @@ It is not a database row identity. SQLite uses opaque integer `content_id` and
 `record_id` values for storage relationships; neither is exposed as domain
 identity.
 
-Schema version `3` is recorded explicitly in `persistence_meta`. Version 1 was
-the W4-S4A schema and version 2 added Character identity/revisions. Opening an
-older database performs the transactional additive chain `1 → 2 → 3`; opening
-version 2 performs `2 → 3`. The version 3 schema contains:
+Schema version `4` is recorded explicitly in `persistence_meta`. Version 1 was
+the W4-S4A schema, version 2 added Character identity/revisions, and version 3
+added Character Skill/Kit persistence. Opening an older database performs the
+transactional additive chains `1 → 2 → 3 → 4`, `2 → 3 → 4`, or `3 → 4`. The
+version 4 schema retains every earlier table and adds:
 
 - `skill_artifact_contents`: one canonical JSON payload per unique
   `artifact_digest`.
@@ -51,10 +52,18 @@ version 2 performs `2 → 3`. The version 3 schema contains:
 - `character_kit_assignments`, `character_kit_current`, and
   `character_kit_assignment_members`: historical Character assignments,
   current assignment pointer, and persisted relation membership.
+- `skill_evaluation_reports`: append-only reports bound to an exact Artifact
+  authoring record and evaluator version.
+- `character_skill_alignment_reports`: append-only reports bound to an exact
+  Artifact record, Character revision, projection version, and source context.
+- `character_kit_role_coverage_reports`: append-only reports bound to exact Kit
+  content, Character revision, role context fingerprint, and evaluator version.
 
-The W4-S4B and W4-S4C migrations do not rewrite or copy Skill artifact or
-Character revision rows. Unknown schema versions fail closed; no destructive or
-automatic domain-data migration is attempted.
+The W4-S4B, W4-S4C, and W4-S4D migrations do not rewrite or copy Skill
+artifact, Character revision, Binding, Association, Kit, or assignment rows.
+Existing embedded Alignment and Artifact evaluation snapshots are not invented
+as new historical report events during migration. Unknown schema versions fail
+closed; no destructive or automatic domain-data migration is attempted.
 
 The canonical JSON payload is the existing
 `ProtocolSkillKitCandidate.canonical_json()` representation. The full envelope
@@ -82,8 +91,25 @@ remains unchanged; only its authored `to_dict()` fields are persisted.
 W4-S4C adds `CharacterSkillRepository` and
 `CharacterSkillPersistenceService` for explicit Attach, Detach, Replace,
 placement changes, current Skill-state reconstruction, and runtime-derived
-freshness, compatibility, and structural validation. Skill Evaluation,
-Alignment, and Role Coverage history repositories remain out of scope.
+freshness, compatibility, and structural validation. W4-S4D adds the focused
+`HistoricalReportRepository` and explicit
+`HistoricalReportPersistenceService`. They accept typed reports already
+produced by the provider-free domain evaluators; they never evaluate, repair,
+or call a provider.
+
+Historical report rows contain typed indexed input identity/version columns and
+canonical UTF-8 JSON payloads. `report_id` is an opaque UUID4 storage identity,
+separate from all Artifact, Kit, context, and report digests. Exact duplicate
+saves return the existing row. A different deterministic payload for the same
+immutable target and evaluator version fails closed. Rows are protected by
+append-only SQLite triggers and are ordered by a durable insertion sequence.
+
+Historical reports record observations under a specific input set and contract;
+they never define current truth. Freshness, Artifact compatibility, and Kit
+structural validation remain runtime-derived. The existing immutable
+`SkillDesignArtifact.original_evaluation`, Binding Alignment snapshot, and
+CharacterKit contract are unchanged; re-evaluation, re-alignment, and role
+coverage re-runs append independent history rather than mutating them.
 
 Saving is idempotent for the exact same envelope. Same canonical content with
 different provenance creates separate authoring records while sharing one
@@ -116,7 +142,7 @@ digest-based references so it can be added without changing domain identity.
 
 This slice does not implement:
 
-- generalized historical report repositories;
 - Web routes, React changes, autosave, or durable live jobs;
+- report history pagination, compaction, or garbage collection;
 - filesystem CAS, PostgreSQL, an ORM, Alembic, Redis, repair, RAG, or
   fine-tuning.

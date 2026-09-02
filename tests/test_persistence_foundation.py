@@ -61,7 +61,7 @@ def test_new_database_bootstraps_versioned_schema_and_foreign_keys(tmp_path) -> 
     database_path = tmp_path / "测试" / "studio.db"
 
     with PersistenceUnitOfWork(database_path) as unit_of_work:
-        assert unit_of_work.schema_version == 3
+        assert unit_of_work.schema_version == 4
         assert unit_of_work.connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
         tables = {
             row[0]
@@ -83,21 +83,16 @@ def test_new_database_bootstraps_versioned_schema_and_foreign_keys(tmp_path) -> 
         "character_kit_assignments",
         "character_kit_current",
         "character_kit_assignment_members",
+        "skill_evaluation_reports",
+        "character_skill_alignment_reports",
+        "character_kit_role_coverage_reports",
     } <= tables
-    assert (
-        not {
-            "role_coverage_reports",
-            "alignment_reports",
-            "evaluation_reports",
-        }
-        & tables
-    )
     assert database_path.is_file()
 
     with sqlite3.connect(database_path) as connection:
         assert connection.execute(
             "SELECT value FROM persistence_meta WHERE key = 'schema_version'"
-        ).fetchone() == ("3",)
+        ).fetchone() == ("4",)
 
 
 def test_artifact_round_trip_survives_connection_restart(tmp_path) -> None:

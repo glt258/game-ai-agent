@@ -351,7 +351,20 @@ nodes:
       - "tests/test_character_skill_persistence.py"
     evidence:
       - path: "docs/persistence_foundation_v0.1.md"
-        locator: "SQLite single-store boundary and schema v3"
+        locator: "SQLite single-store boundary and schema v4"
+
+  - id: "component.historical_report_persistence"
+    type: "component"
+    name: "Historical Report Persistence"
+    status: "experimental"
+    responsibility: "Persist typed append-only Skill Evaluation, Character-Skill Alignment, and CharacterKit Role Coverage observations without defining current truth or mutating domain snapshots."
+    path: "src/persistence/historical_reports.py"
+    canonical_source: "src/persistence/historical_reports.py"
+    tests:
+      - "tests/test_historical_report_persistence.py"
+    evidence:
+      - path: "docs/historical_report_persistence_contract_v0.1.md"
+        locator: "three report families, identity, append-only and migration contract"
 
   - id: "contract.skill_design_artifact"
     type: "contract"
@@ -428,7 +441,7 @@ nodes:
     type: "contract"
     name: "Character-Skill Alignment"
     status: "frozen"
-    responsibility: "Character-specific alignment result that is captured inside an immutable Binding snapshot; historical alignment is not promoted to a generalized report repository here."
+    responsibility: "Character-specific alignment result captured inside immutable Binding snapshots and independently retained as typed historical observations by the persistence boundary."
     path: "src/character_intelligence/character_skill_alignment.py"
     canonical_source: "src/character_intelligence/character_skill_alignment.py"
     tests:
@@ -679,6 +692,42 @@ edges:
     evidence:
       - path: "docs/persistence_foundation_v0.1.md"
         locator: "SkillDesignArtifact persistence boundary"
+  - from: "component.historical_report_persistence"
+    relation: "depends_on"
+    to: "component.persistence_foundation"
+    evidence:
+      - path: "src/persistence/historical_reports.py"
+        locator: "SQLite report tables and transaction seam"
+  - from: "component.historical_report_persistence"
+    relation: "depends_on"
+    to: "component.skill_artifact_persistence"
+    evidence:
+      - path: "docs/historical_report_persistence_contract_v0.1.md"
+        locator: "exact Artifact authoring record verification"
+  - from: "component.historical_report_persistence"
+    relation: "depends_on"
+    to: "component.character_persistence"
+    evidence:
+      - path: "docs/historical_report_persistence_contract_v0.1.md"
+        locator: "immutable Character revision verification"
+  - from: "component.historical_report_persistence"
+    relation: "produces"
+    to: "contract.skill_design_artifact"
+    evidence:
+      - path: "docs/historical_report_persistence_contract_v0.1.md"
+        locator: "Skill Evaluation history binding"
+  - from: "component.historical_report_persistence"
+    relation: "produces"
+    to: "contract.character_skill_alignment"
+    evidence:
+      - path: "docs/historical_report_persistence_contract_v0.1.md"
+        locator: "Alignment history binding"
+  - from: "component.historical_report_persistence"
+    relation: "produces"
+    to: "contract.character_kit"
+    evidence:
+      - path: "docs/historical_report_persistence_contract_v0.1.md"
+        locator: "Role Coverage history binding"
   - from: "component.character_persistence"
     relation: "depends_on"
     to: "component.persistence_foundation"
@@ -902,20 +951,22 @@ constraints:
       - "component.character_kit_persistence"
       - "contract.character_skill_design_context"
       - "contract.character_kit"
+      - "component.historical_report_persistence"
     evidence:
       - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
         locator: "derived freshness, compatibility and structural validation boundary"
 
-  - id: "constraint.historical_skill_reports_not_persisted"
-    statement: "W4-S4 persistence stores Binding Alignment snapshots but does not implement generalized historical Evaluation, Alignment or Role Coverage report repositories; those belong to W4-S4D."
+  - id: "constraint.historical_skill_reports_append_only"
+    statement: "W4-S4D persists typed append-only historical Skill Evaluation, Character-Skill Alignment and CharacterKit Role Coverage observations; they never replace embedded snapshots or define current truth."
     severity: "high"
     scope:
       - "component.character_skill_persistence"
       - "component.character_kit_persistence"
       - "contract.character_skill_alignment"
+      - "component.historical_report_persistence"
     evidence:
-      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
-        locator: "historical report repositories are out of scope"
+      - path: "docs/historical_report_persistence_contract_v0.1.md"
+        locator: "historical versus current truth and append-only boundary"
 
   - id: "constraint.live_jobs_ephemeral"
     statement: "LiveExecutionJob is process-local, session-oriented and TTL-bounded; live jobs are not persisted, and only formal domain artifacts may enter the persistence boundary."
@@ -1019,13 +1070,12 @@ known_limitations:
 
   - id: "KL-PERSISTENCE-001"
     status: "active"
-    statement: "Historical Skill Evaluation, Alignment and CharacterKit Role Coverage report repositories are not implemented; W4-S4D is the next persistence slice."
+    statement: "Historical report pagination, compaction and garbage collection remain deferred after W4-S4D."
     scope:
-      - "component.character_skill_persistence"
-      - "component.character_kit_persistence"
+      - "component.historical_report_persistence"
     evidence:
-      - path: "docs/character_skill_kit_persistence_contract_v0.1.md"
-        locator: "explicit non-goals and next slice"
+      - path: "docs/historical_report_persistence_contract_v0.1.md"
+        locator: "boundaries and limitations"
 
 architecture_decisions:
   - id: "ADR-001"

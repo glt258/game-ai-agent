@@ -83,7 +83,7 @@ def _save_association_artifact(unit_of_work: PersistenceUnitOfWork, association)
     return unit_of_work.skill_artifacts.save(association.artifact).record_id
 
 
-def test_schema_v3_migrates_v2_and_preserves_character_and_artifact(tmp_path) -> None:
+def test_schema_v4_migrates_v2_and_preserves_character_and_artifact(tmp_path) -> None:
     database_path = tmp_path / "studio.db"
     context = _context("林澈")
     association = _association("character_alignment_support_v1", context, SkillSlot.PRIMARY)
@@ -96,7 +96,7 @@ def test_schema_v3_migrates_v2_and_preserves_character_and_artifact(tmp_path) ->
         connection.execute("UPDATE persistence_meta SET value = '2' WHERE key = 'schema_version'")
 
     with PersistenceUnitOfWork(database_path) as unit_of_work:
-        assert unit_of_work.schema_version == 3
+        assert unit_of_work.schema_version == 4
         assert (
             unit_of_work.characters.get_character(character.character_id).current_revision_id
             == character.current_revision_id

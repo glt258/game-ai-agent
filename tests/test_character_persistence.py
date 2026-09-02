@@ -294,7 +294,7 @@ def test_schema_v1_migrates_to_v2_without_changing_skill_artifact(tmp_path) -> N
     record_id = _bootstrap_v1_database(database_path, artifact)
 
     with PersistenceUnitOfWork(database_path) as unit_of_work:
-        assert unit_of_work.schema_version == 3
+        assert unit_of_work.schema_version == 4
         restored = unit_of_work.skill_artifacts.get(record_id)
         assert restored.artifact == artifact
         assert unit_of_work.characters.exists("missing-character") is False
