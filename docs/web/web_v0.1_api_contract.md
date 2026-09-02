@@ -1,6 +1,6 @@
 # Game AI Agent Studio — Web v0.1 API Contract
 
-状态：Architecture Freeze；W1-S1/W1-S2 contract 已冻结；W3-S1/W3-S2 与 W4-S1 Skill Playground contract 已实现
+状态：Architecture Freeze；W1-S1/W1-S2 contract 已冻结；W3-S1/W3-S2、W4-S1 Skill Playground 与 W4-S4E Saved Character workspace contract 已实现
 原则：HTTP layer 是 adapter；domain logic 仍由现有 Python modules 承担。
 
 ```text
@@ -14,7 +14,7 @@ CHARACTER_VALIDATE_CONTRACT_V0_1 = FROZEN
 - JSON UTF-8；request/response 只使用 Web DTO。
 - 生成失败也返回结构化安全错误，不把 Python exception 直接序列化。
 - 每个响应可带 `schema_version`，便于前端拒绝未知 contract。
-- 没有数据库时，生成结果只在本次 HTTP response 和浏览器 session 中存在；不要把 `draft_id` 解释为可长期 `GET` 的 resource ID。
+- 未显式保存时，生成结果只在本次 HTTP response 和浏览器 session 中存在；`draft_id` 仍不是持久化资源身份。保存后使用独立的 `character_id` 和当前 revision ID。
 
 通用错误：
 
@@ -258,6 +258,24 @@ Status：200 表示 process 和必需 read-only data 可用；503 表示必需 r
 
 Required：W1。
 
-## 12. API 不提供的 route
+## 12. Saved Character workspace（W4-S4E）
 
-v0.1 不提供 approval/publish、draft history、auth/user、arbitrary file/YAML、Canon write、stream events、WebSocket、GraphQL。添加 route 前必须先出现对应真实 domain/persistence capability，并补齐 DTO、security 和 targeted tests。
+### 12.1 `GET /api/saved-characters`
+
+返回有限的当前 Saved Character summaries，包含 durable `character_id`、current revision、revision kind、更新时间、Skill 数量和是否有 Kit。结果按最近更新排序；列表不返回整份 draft 或 raw provider data。
+
+### 12.2 `GET /api/saved-characters/{character_id}`
+
+打开一个保存的 workspace，返回当前 CharacterDraft、current revision、原始 request/plan metadata、完整的 exact Artifact authoring records、Binding/Association IDs、placement/order、当前 Kit assignment、Kit digest、运行时重新推导的 freshness/compatibility/structural 状态，以及只读历史报告摘要。历史报告不会被提升为 current truth；打开操作不自动写报告。
+
+### 12.3 `POST /api/saved-characters` and `PUT /api/saved-characters/{character_id}`
+
+两者都只执行显式 Save。第一次保存创建 durable `character_id` 和 `GENERATED` revision；后续实际变化追加 `EDITED` revision，完全相同 payload 不产生空 revision。Service 在一个 SQLite unit of work 中协调 Character revision、Skill artifact record、Binding/Association delta 和 Kit assignment；任一冲突或完整性错误都会整体回滚。`expected_current_revision_id` 与 `expected_current_kit_assignment_id` 用于 optimistic concurrency，冲突返回 409，不做自动 merge。
+
+Request 只接受冻结的 CharacterDraft、保存所需 request/plan metadata、受限的 typed association transport 和 expected IDs；不接受 provider credential、live job、历史报告或前端计算的 freshness/compatibility/structural authority。数据库路径由 app factory/server configuration 注入，不能写死 repository-local `./studio.db`。
+
+Saved Character 页面是只读列表；Studio 页面负责继续编辑和显式保存。浏览器 session/UI state 与 live jobs 不进入 CharacterDraft 或 SQLite。
+
+## 13. API 不提供的 route
+
+v0.1 不提供 approval/publish、auth/user、arbitrary file/YAML、Canon write、stream events、WebSocket、GraphQL。完整历史报告查询、分页/压缩、portable export/import 仍 deferred；添加 route 前必须先出现对应真实 domain/persistence capability，并补齐 DTO、security 和 targeted tests。

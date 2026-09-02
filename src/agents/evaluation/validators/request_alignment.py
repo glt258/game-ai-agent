@@ -7,7 +7,6 @@ from collections.abc import Iterable, Mapping
 from ..context import EvaluationContext
 from ..models import EvaluationFinding
 
-
 _ROLE_ROWS = {
     "main_dps": {
         "operation": "direct_output",
@@ -84,6 +83,19 @@ class RequestAlignmentValidator:
         requested = context.intent_role_profile
         generated = context.draft_role_profile
         assert requested is not None and generated is not None
+
+        if context.expected_affiliation_id is not None and draft.faction_id != context.expected_affiliation_id:
+            findings.append(
+                EvaluationFinding(
+                    validator_id=self.validator_id,
+                    code="AFFILIATION_CONSTRAINT_UNSATISFIED",
+                    severity="ERROR",
+                    blocking=True,
+                    stage="request_alignment",
+                    field_path="faction_id",
+                    message="Generated draft does not satisfy the requested affiliation.",
+                )
+            )
 
         if requested.primary_role is not None and generated.primary_role != requested.primary_role:
             findings.append(

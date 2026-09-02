@@ -15,7 +15,7 @@ from types import MappingProxyType
 from typing import Any, Mapping, Sequence
 
 from along_street_resources import data_resource
-from character_intelligence.planner import CharacterDesignPlan
+from character_intelligence.planner import CharacterAffiliationContext, CharacterDesignPlan
 from character_skill import (
     ProtocolSkillKitCandidate,
     SkillKitShapeError,
@@ -1064,7 +1064,7 @@ class CharacterAuthoringToolbox:
 
     def _search_factions(self, query: str, limit: int, context: CharacterAuthoringKnowledgeContext) -> tuple[Mapping[str, Any], Mapping[str, str]]:
         records = list(self.resolver.factions.values())
-        ranked = self._rank(query, records, lambda item: f"{item.get('name', '')} {item.get('short_name', '')} {item.get('type', '')} {item.get('core_function', {}).get('description', '')} {' '.join(item.get('tags', []))}")[:limit]
+        ranked = self._rank(query, records, lambda item: f"{item.get('name', '')} {item.get('short_name', '')} {item.get('aliases', '')} {item.get('type', '')} {item.get('core_function', {}).get('description', '')} {' '.join(item.get('tags', []))}")[:limit]
         return {"status": "ok", "results": [self._faction_summary(item) for item in ranked]}, {item["id"]: "faction" for item in ranked}
 
     def _search_characters(self, query: str, limit: int, context: CharacterAuthoringKnowledgeContext) -> tuple[Mapping[str, Any], Mapping[str, str]]:
@@ -1098,10 +1098,13 @@ class CharacterAuthoringToolbox:
     @staticmethod
     def _rank(query: str, records: Sequence[Mapping[str, Any]], text_fn: Any) -> list[dict[str, Any]]:
         query_norm = CharacterAuthoringToolbox._normalize(query)
+        query_units = CharacterAuthoringToolbox._units(query.casefold())
         scored = []
         for record in records:
-            text = CharacterAuthoringToolbox._normalize(str(text_fn(record)))
-            score = (20 if query_norm and query_norm in text else 0) + sum(1 for unit in CharacterAuthoringToolbox._units(query_norm) & CharacterAuthoringToolbox._units(text))
+            raw_text = str(text_fn(record))
+            text = CharacterAuthoringToolbox._normalize(raw_text)
+            text_units = CharacterAuthoringToolbox._units(raw_text.casefold())
+            score = (20 if query_norm and query_norm in text else 0) + sum(1 for unit in query_units & text_units)
             if score > 0:
                 scored.append((score, str(record.get("id", "")), dict(record)))
         scored.sort(key=lambda item: (-item[0], item[1]))
@@ -1130,7 +1133,22 @@ class CharacterAuthoringToolbox:
     @classmethod
     def _faction_summary(cls, record: Mapping[str, Any]) -> dict[str, Any]:
         function = record.get("core_function", {})
-        return {"id": record.get("id"), "source_id": record.get("id"), "source_type": "faction", "name": record.get("name", ""), "type": record.get("type", ""), "summary": function.get("description", "") if isinstance(function, Mapping) else "", "tags": record.get("tags", [])}
+        return {
+            "id": record.get("id"),
+            "source_id": record.get("id"),
+            "source_type": "faction",
+            "name": record.get("name", ""),
+            "type": record.get("type", ""),
+            "summary": function.get("description", "") if isinstance(function, Mapping) else "",
+            "tags": record.get("tags", []),
+            "public_identity": record.get("public_identity", {}),
+            "public_reputation": record.get("public_reputation", {}),
+            "core_function": record.get("core_function", {}),
+            "member_profile": record.get("member_profile", {}),
+            "internal_structure": record.get("internal_structure", {}),
+            "character_archetypes": record.get("character_archetypes", []),
+            "story_functions": record.get("story_functions", []),
+        }
 
     @classmethod
     def _faction_view(cls, record: Mapping[str, Any]) -> dict[str, Any]:
@@ -1252,6 +1270,7 @@ class CharacterGenerationRuntimeView:
     # separate from Canon evidence and defaults empty for all existing callers.
     reference_context: tuple[Mapping[str, Any], ...] = ()
     combat_role_profile: CombatRoleProfile | None = None
+    affiliation_context: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -1405,9 +1424,13 @@ _FINALIZATION_SAFE_PAYLOAD_KEYS = {
         "tags",
         "status",
         "public_identity",
+        "public_reputation",
         "core_function",
+        "member_profile",
         "canon_constraints",
         "internal_structure",
+        "character_archetypes",
+        "story_functions",
     ),
     "character": (
         "name",
@@ -2002,7 +2025,10 @@ class CharacterGenerationAgent:
             raise TypeError("request must be CharacterDesignRequest or string")
         design_plan = None
         if use_intent_layer:
-            design_plan = CharacterDesignPlan.from_text(request.brief)
+            design_plan = CharacterDesignPlan.from_text(
+                request.brief,
+                factions=self.resolver.factions,
+            )
             request = self._request_with_design_plan(request, design_plan)
         authoring = CharacterAuthoringView("character_authoring", "create a reviewable CharacterDraft", tuple(sorted(self.authoring_context.allowed_scopes)))
         runtime = CharacterGenerationRuntimeView(
@@ -2014,6 +2040,11 @@ class CharacterGenerationAgent:
             request.desired_connections,
             self.reference_context,
             request.combat_role_profile,
+            (
+                design_plan.affiliation_context.to_dict()
+                if design_plan is not None and design_plan.affiliation_context is not None
+                else None
+            ),
         )
         messages: list[ConversationMessage] = [ConversationMessage("user", json.dumps(request.to_dict(), ensure_ascii=False, separators=(",", ":")))]
         source_ids: set[str] = set()
@@ -2640,7 +2671,13 @@ class CharacterGenerationAgent:
             forbidden_elements=forbidden,
             desired_connections=request.desired_connections,
             request_id=request.request_id,
-            combat_role_profile=plan.combat_role_profile,
+            # An explicit API profile is authoritative. The intent layer may infer a
+            # narrower profile from prose, but must not erase a typed request contract.
+            combat_role_profile=(
+                request.combat_role_profile
+                if request.combat_role_profile is not None
+                else plan.combat_role_profile
+            ),
         )
 
     def _recover_character_draft_payload(
@@ -2831,7 +2868,13 @@ class CharacterGenerationAgent:
                     bucket.add(value.strip())
 
         for source_id, record in self.resolver.factions.items():
-            add(source_id, record.get("name"), record.get("short_name"))
+            record_aliases = record.get("aliases", ())
+            add(
+                source_id,
+                record.get("name"),
+                record.get("short_name"),
+                *(record_aliases if isinstance(record_aliases, (list, tuple)) else ()),
+            )
         for source_id, record in self.resolver.characters.items():
             name = record.get("name", {})
             add(source_id, name.get("display_name") if isinstance(name, Mapping) else None)
@@ -2944,14 +2987,20 @@ class CharacterGenerationAgent:
     @staticmethod
     def _age_bounds(request: CharacterDesignRequest) -> tuple[int, int] | None:
         text = " ".join((*request.hard_constraints, request.brief))
-        match = re.search(r"(\d+)\s*[～至到\-]\s*(\d+)\s*岁?", text)
-        if match:
-            return int(match.group(1)), int(match.group(2))
-        match = re.search(r"(\d+)\s*岁左右", text)
-        if match:
-            value = int(match.group(1))
-            return value - 2, value + 2
-        return None
+        return _age_bounds_from_text(text)
+
+
+def _age_bounds_from_text(text: str) -> tuple[int, int] | None:
+    """Extract an explicit numeric age range from the authoring request."""
+
+    match = re.search(r"(\d+)\s*[～至到\-]\s*(\d+)\s*岁?", text)
+    if match:
+        return int(match.group(1)), int(match.group(2))
+    match = re.search(r"(\d+)\s*岁左右", text)
+    if match:
+        value = int(match.group(1))
+        return value - 2, value + 2
+    return None
 
 
 class DeterministicCharacterGenerationModel:
@@ -2962,6 +3011,45 @@ class DeterministicCharacterGenerationModel:
             raise ValueError("scenario must be 'valid' or 'canon_conflict'")
         self.scenario = scenario
         self.prompts: list[AgentPrompt] = []
+
+    @staticmethod
+    def _grounded_identity_fields(
+        context: Mapping[str, Any] | None,
+        profile: CombatRoleProfile,
+    ) -> dict[str, str] | None:
+        if not isinstance(context, Mapping):
+            return None
+        roles = tuple(
+            item.strip()
+            for item in context.get("typical_roles", ())
+            if isinstance(item, str) and item.strip()
+        )
+        terms = tuple(
+            item.strip()
+            for item in context.get("semantic_terms", ())
+            if isinstance(item, str) and item.strip()
+        )
+        if not roles or not terms:
+            return None
+        name = str(context.get("name", "相关协作体系"))
+        anchor = terms[0]
+        divisions = tuple(
+            item.strip()
+            for item in context.get("division_names", ())
+            if isinstance(item, str) and item.strip()
+        )
+        division = divisions[0] if divisions else anchor
+        summary = str(context.get("summary", "相关公共事务"))
+        combat_role = profile.primary_role or "support"
+        return {
+            "occupation": roles[0],
+            "social_role": f"参与{name}的{division}相关现场协调与信息联络",
+            "design_pitch": f"把{anchor}相关职责转化为{combat_role}型行动表达。",
+            "background": f"她在{summary}相关工作中逐渐形成了谨慎处理复杂关系的习惯。",
+            "story_hook": f"在{anchor}相关事件中，她需要在专业分工与现场协作之间作出选择。",
+            "knowledge_scope": "仅接触与所属组织职责直接相关的公开流程和被明确交付的现场事项。",
+            "open_question": f"是否让她参与{division}后续的联合演练或复盘？",
+        }
 
     def generate(self, prompt: AgentPrompt) -> ModelTurn:
         self.prompts.append(prompt)
@@ -2996,6 +3084,7 @@ class DeterministicCharacterGenerationModel:
         selected_story = None
         lore_sources: list[str] = []
         faction_candidates: list[tuple[str, str]] = []
+        faction_contexts: dict[str, Mapping[str, Any]] = {}
         if isinstance(prompt.authoring_payload, Mapping):
             bundle = prompt.authoring_payload.get("evidence_bundle", ())
             if isinstance(bundle, Sequence) and not isinstance(bundle, (str, bytes)):
@@ -3010,6 +3099,10 @@ class DeterministicCharacterGenerationModel:
                     if not isinstance(payload, Mapping):
                         payload = {}
                     if source_type == "faction":
+                        faction_contexts[source_id] = CharacterAffiliationContext.from_record(
+                            source_id,
+                            payload,
+                        ).to_dict()
                         faction_candidates.append(
                             (
                                 source_id,
@@ -3028,6 +3121,11 @@ class DeterministicCharacterGenerationModel:
                 item = message.content.get(key)
                 if isinstance(item, Mapping):
                     if item.get("source_type") == "faction" and item.get("id"):
+                        source_id = str(item["id"])
+                        faction_contexts[source_id] = CharacterAffiliationContext.from_record(
+                            source_id,
+                            item,
+                        ).to_dict()
                         faction_candidates.append((str(item.get("id")), str(item.get("name", "")) + str(item.get("summary", ""))))
                     if item.get("source_type") in {"story", "case", "incident"} and selected_story is None:
                         selected_story = item.get("id")
@@ -3036,22 +3134,39 @@ class DeterministicCharacterGenerationModel:
             for item in message.content.get("results", []):
                 if isinstance(item, Mapping):
                     if item.get("source_type") == "faction" and item.get("id"):
+                        source_id = str(item["id"])
+                        faction_contexts[source_id] = CharacterAffiliationContext.from_record(
+                            source_id,
+                            item,
+                        ).to_dict()
                         faction_candidates.append((str(item.get("id")), str(item.get("name", "")) + str(item.get("summary", ""))))
                     if item.get("source_type") in {"story", "case", "incident"} and selected_story is None:
                         selected_story = item.get("id")
                     if item.get("source_type") == "lore" and item.get("id"):
                         lore_sources.append(item["id"])
-        for marker, preferred in (("大学", "faction_002"), ("南栈", "faction_006"), ("公共安全", "faction_005")):
-            if marker in brief and any(candidate[0] == preferred for candidate in faction_candidates):
-                selected_faction = preferred
-                break
+        requested_faction = (
+            prompt.runtime.affiliation_context.get("faction_id")
+            if isinstance(prompt.runtime.affiliation_context, Mapping)
+            else None
+        )
+        if isinstance(requested_faction, str) and any(
+            candidate[0] == requested_faction for candidate in faction_candidates
+        ):
+            selected_faction = requested_faction
         if selected_faction is None and faction_candidates:
             selected_faction = faction_candidates[0][0]
         requested_profile = prompt.runtime.combat_role_profile
         profile = requested_profile if requested_profile is not None else CombatRoleProfile(primary_role="support")
+        grounded_identity = self._grounded_identity_fields(
+            faction_contexts.get(selected_faction or "", prompt.runtime.affiliation_context),
+            profile,
+        )
         age = 23 if "23" in brief else 22
-        if "20" in brief and "25" in brief:
-            age = 23
+        age_range = "20-25"
+        age_bounds = _age_bounds_from_text(brief)
+        if age_bounds is not None:
+            age = (age_bounds[0] + age_bounds[1]) // 2
+            age_range = f"{age_bounds[0]}-{age_bounds[1]}"
         basis = [{"source_id": "world_rules", "supports": ["world_rules"]}]
         if selected_faction:
             basis.append({"source_id": selected_faction, "supports": ["faction_id", "occupation", "social_role"]})
@@ -3065,19 +3180,19 @@ class DeterministicCharacterGenerationModel:
             "name": "顾澄",
             "canonical_character_id": None,
             "age": age,
-            "age_range": "20-25",
+            "age_range": age_range,
             "gender": "女性",
             "faction_id": selected_faction,
-            "occupation": "临洲大学学生助理",
-            "social_role": "校园活动与社区安全志愿协调者",
+            "occupation": grounded_identity["occupation"] if grounded_identity else "临洲大学学生助理",
+            "social_role": grounded_identity["social_role"] if grounded_identity else "校园活动与社区安全志愿协调者",
             "combat_role_profile": profile.to_dict(),
-            "design_pitch": "一名把现场秩序与他人安全放在首位的年轻辅助型角色。",
+            "design_pitch": grounded_identity["design_pitch"] if grounded_identity else "一名把现场秩序与他人安全放在首位的年轻辅助型角色。",
             "personality": ["冷静", "克制", "先观察后行动"],
-            "background": "她在校园与社区活动中逐渐形成了谨慎处理复杂关系的习惯。",
-            "story_hook": "在既有事件的后续协调中提供非核心的现场协助，并面对个人选择与公共责任的拉扯。",
+            "background": grounded_identity["background"] if grounded_identity else "她在校园与社区活动中逐渐形成了谨慎处理复杂关系的习惯。",
+            "story_hook": grounded_identity["story_hook"] if grounded_identity else "在既有事件的后续协调中提供非核心的现场协助，并面对个人选择与公共责任的拉扯。",
             "relationships": [],
             "ability_concept": "能够在自己明确标记过的安全范围内短暂稳定注意与行动节奏；作用有限，不能替代训练或专业处置。",
-            "knowledge_scope": "仅凭学生与志愿协作者身份接触公开信息和被明确交付的现场事项。",
+            "knowledge_scope": grounded_identity["knowledge_scope"] if grounded_identity else "仅凭学生与志愿协作者身份接触公开信息和被明确交付的现场事项。",
             "canon_basis": basis,
             "new_design_elements": [
                 "new_design:occupation: 具体职业表达为新设计。",
@@ -3090,7 +3205,7 @@ class DeterministicCharacterGenerationModel:
                 "new_design:knowledge_scope: 具体知识边界表达为新设计。",
                 "姓名、性格、个人习惯与高层能力表现均为新角色设计。",
             ],
-            "open_questions": ["是否将她与后续校园活动支线建立更长期的个人关系？"],
+            "open_questions": [grounded_identity["open_question"] if grounded_identity else "是否将她与后续校园活动支线建立更长期的个人关系？"],
             "constraint_notes": ["与既有事件保持间接联系，不承担事件核心负责人身份。"],
             "story_link": {"target_id": selected_story, "relation": "indirect_connection", "status": "canon_backed"} if selected_story else None,
             "proposed_new_content": [],

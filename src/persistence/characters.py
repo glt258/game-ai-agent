@@ -61,6 +61,18 @@ class PersistedCharacter:
     current_revision: CharacterRevision
 
 
+@dataclass(frozen=True)
+class SavedCharacterSummary:
+    character_id: str
+    display_name: str
+    current_revision_id: str
+    revision_kind: RevisionKind
+    created_at: str
+    updated_at: str
+    has_kit: bool
+    skill_count: int
+
+
 class CharacterRepository:
     """Deep adapter for Character identity, immutable revisions, and lineage."""
 
@@ -237,6 +249,39 @@ class CharacterRepository:
     def exists(self, character_id: str) -> bool:
         return self._character_row(character_id, required=False) is not None
 
+    def list_summaries(self) -> tuple[SavedCharacterSummary, ...]:
+        rows = self._connection.execute(
+            """
+            SELECT c.character_id, c.current_revision_id, c.created_at, c.updated_at,
+                   r.revision_kind, json_extract(r.character_payload_json, '$.name') AS display_name,
+                   (cc.current_assignment_id IS NOT NULL) AS has_kit,
+                   COUNT(a.association_id) AS skill_count
+            FROM characters AS c
+            JOIN character_revisions AS r ON r.revision_id = c.current_revision_id
+            LEFT JOIN character_kit_current AS cc ON cc.character_id = c.character_id
+            LEFT JOIN associations AS a
+              ON a.character_id = c.character_id
+             AND a.current_revision_id IS NOT NULL
+             AND a.closed_at IS NULL
+            GROUP BY c.character_id, c.current_revision_id, c.created_at, c.updated_at,
+                     r.revision_kind, r.character_payload_json, cc.current_assignment_id
+            ORDER BY c.updated_at DESC, c.character_id
+            """
+        ).fetchall()
+        return tuple(
+            SavedCharacterSummary(
+                character_id=row["character_id"],
+                display_name=row["display_name"],
+                current_revision_id=row["current_revision_id"],
+                revision_kind=row["revision_kind"],
+                created_at=row["created_at"],
+                updated_at=row["updated_at"],
+                has_kit=bool(row["has_kit"]),
+                skill_count=int(row["skill_count"]),
+            )
+            for row in rows
+        )
+
     def _character_row(self, character_id: str, *, required: bool = True) -> sqlite3.Row | None:
         row = self._connection.execute(
             """
@@ -372,4 +417,5 @@ __all__ = [
     "CharacterRevision",
     "CharacterRevisionSummary",
     "PersistedCharacter",
+    "SavedCharacterSummary",
 ]

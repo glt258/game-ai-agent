@@ -16,6 +16,7 @@ from .characters import (
     CharacterRevision,
     CharacterRevisionSummary,
     PersistedCharacter,
+    SavedCharacterSummary,
 )
 from .errors import (
     CharacterNotFoundError,
@@ -42,6 +43,7 @@ from .skill_artifacts import (
     StoredSkillArtifactContent,
 )
 from .sqlite_store import CURRENT_SCHEMA_VERSION, PersistenceUnitOfWork
+from .workspace import CharacterWorkspaceContext, CharacterWorkspaceRepository
 
 __all__ = [
     "CURRENT_SCHEMA_VERSION",
@@ -70,6 +72,7 @@ __all__ = [
     "StoredCharacterSkillAlignmentReport",
     "StoredSkillEvaluationReport",
     "PersistedCharacter",
+    "SavedCharacterSummary",
     "PersistedAssociation",
     "PersistedBinding",
     "AssociationRevisionSummary",
@@ -77,4 +80,6 @@ __all__ = [
     "SkillArtifactRepository",
     "StoredSkillArtifact",
     "StoredSkillArtifactContent",
+    "CharacterWorkspaceContext",
+    "CharacterWorkspaceRepository",
 ]

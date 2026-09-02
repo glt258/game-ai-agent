@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from .character_skill_persistence import CharacterSkillRepository
     from .historical_reports import HistoricalReportRepository
     from .skill_artifacts import SkillArtifactRepository
+    from .workspace import CharacterWorkspaceRepository
 
 CURRENT_SCHEMA_VERSION = 4
 LEGACY_SCHEMA_VERSION = 1
@@ -140,6 +141,15 @@ _HISTORICAL_REPORT_TABLE_COLUMNS = {
     },
 }
 
+_WORKSPACE_TABLE_COLUMNS = {
+    "character_workspace_context": {
+        "character_id",
+        "request_payload_json",
+        "plan_payload_json",
+        "updated_at",
+    },
+}
+
 
 class PersistenceUnitOfWork:
     """Own one configured SQLite connection and its transaction boundary."""
@@ -171,6 +181,7 @@ class PersistenceUnitOfWork:
                 HistoricalReportRepository,
             )
             from .skill_artifacts import SkillArtifactRepository
+            from .workspace import CharacterWorkspaceRepository
 
             self.skill_artifacts: SkillArtifactRepository = SkillArtifactRepository(self.connection)
             self.characters: CharacterRepository = CharacterRepository(self.connection)
@@ -184,6 +195,9 @@ class PersistenceUnitOfWork:
             )
             self.historical_report_persistence = HistoricalReportPersistenceService(
                 self.historical_reports
+            )
+            self.workspace: CharacterWorkspaceRepository = CharacterWorkspaceRepository(
+                self.connection
             )
         except Exception:
             self.connection.close()
@@ -279,6 +293,7 @@ class PersistenceUnitOfWork:
                     raise PersistenceSchemaUnsupportedError(
                         f"schema version {version} is not supported"
                     )
+                self._create_workspace_schema()
             self._validate_schema()
             self.connection.commit()
         except (PersistenceSchemaUnsupportedError, PersistenceIntegrityError):
@@ -336,6 +351,20 @@ class PersistenceUnitOfWork:
         self._create_character_schema()
         self._create_character_skill_schema()
         self._create_historical_report_schema()
+        self._create_workspace_schema()
+
+    def _create_workspace_schema(self) -> None:
+        self.connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS character_workspace_context (
+                character_id TEXT PRIMARY KEY,
+                request_payload_json TEXT NOT NULL,
+                plan_payload_json TEXT,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (character_id) REFERENCES characters (character_id)
+            )
+            """
+        )
 
     def _create_historical_report_schema(self) -> None:
         statements = (
@@ -664,6 +693,12 @@ class PersistenceUnitOfWork:
             }
             if not required_columns <= columns:
                 raise PersistenceIntegrityError(f"schema v4 table {table_name} is incomplete")
+        for table_name, required_columns in _WORKSPACE_TABLE_COLUMNS.items():
+            columns = {
+                row[1] for row in self.connection.execute(f"PRAGMA table_info({table_name})")
+            }
+            if not required_columns <= columns:
+                raise PersistenceIntegrityError(f"workspace table {table_name} is incomplete")
 
 
 __all__ = [

@@ -95,7 +95,11 @@ freshness, compatibility, and structural validation. W4-S4D adds the focused
 `HistoricalReportRepository` and explicit
 `HistoricalReportPersistenceService`. They accept typed reports already
 produced by the provider-free domain evaluators; they never evaluate, repair,
-or call a provider.
+or call a provider. W4-S4E adds `StudioSaveService` as the application-level
+save/open seam: it coordinates Character revision, workspace request/plan
+metadata, exact Skill authoring records, association deltas and current Kit
+assignment inside one `PersistenceUnitOfWork`. The Web route does not issue
+SQL, and the workspace metadata table is deliberately outside `CharacterDraft`.
 
 Historical report rows contain typed indexed input identity/version columns and
 canonical UTF-8 JSON payloads. `report_id` is an opaque UUID4 storage identity,
@@ -142,7 +146,7 @@ digest-based references so it can be added without changing domain identity.
 
 This slice does not implement:
 
-- Web routes, React changes, autosave, or durable live jobs;
+- autosave, approval/publish, or durable live jobs;
 - report history pagination, compaction, or garbage collection;
 - filesystem CAS, PostgreSQL, an ORM, Alembic, Redis, repair, RAG, or
   fine-tuning.

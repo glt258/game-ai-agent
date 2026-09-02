@@ -19,6 +19,19 @@ def test_parser_extracts_a_regular_character_brief():
     assert intent.target_audience == "general"
 
 
+@pytest.mark.parametrize(
+    "brief",
+    [
+        "Design a new female character who belongs to the Linzhou Public Security Joint Coordination System.",
+        "设计一个属于临洲市公共安全联席体系的女性角色。",
+    ],
+)
+def test_parser_resolves_explicit_affiliation_through_canon_aliases(brief):
+    intent = CharacterDesignIntentParser().parse(brief)
+
+    assert intent.requested_affiliation_id == "faction_005"
+
+
 def test_parser_extracts_five_star_fire_main_dps_girl():
     intent = CharacterDesignIntentParser().parse(
         "设计一个五星火属性爆发型少女角色，定位为主C，性格外向但有隐藏压力"
@@ -179,3 +192,31 @@ def test_optional_intent_generation_keeps_legacy_entry_point_unchanged():
     assert "rarity=5" not in first_runtime.hard_constraints
     assert "element=fire" not in first_runtime.hard_constraints
     assert "combat_role=dps" not in first_runtime.hard_constraints
+
+
+@pytest.mark.parametrize(
+    "brief",
+    [
+        "设计一名临洲市公共安全联席体系所属的新辅助角色。",
+        "Design a new support character who belongs to the Linzhou Public Security Joint Coordination System.",
+    ],
+)
+def test_offline_generation_grounds_identity_fields_from_affiliation_context(brief):
+    result = CharacterGenerationAgent(
+        DeterministicCharacterGenerationModel()
+    ).generate_with_intent(brief)
+
+    plan = result.design_plan
+    assert plan is not None
+    context = plan.affiliation_context
+    assert context is not None
+    assert result.draft.occupation in context.typical_roles
+    identity_text = " ".join(
+        (
+            result.draft.occupation,
+            result.draft.social_role,
+            result.draft.background,
+            result.draft.design_pitch,
+        )
+    )
+    assert any(term in identity_text for term in context.semantic_terms)

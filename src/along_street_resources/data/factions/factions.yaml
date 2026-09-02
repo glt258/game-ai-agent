@@ -538,6 +538,8 @@
 - id: faction_005
   name: 临洲市公共安全联席体系
   short_name: 公共安全联席
+  aliases:
+  - Linzhou Public Security Joint Coordination System
   type: public_service
   status: active
   headquarters:

@@ -8,11 +8,12 @@ version = "0.8.0"
 description = "Default-deny NPC knowledge boundary resolver for Along the Street"
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.10"
-dependencies = ["PyYAML>=6.0", "openai>=1.0,<3"]
+dependencies = ["PyYAML>=6.0", "openai>=1.0,<3", "fastapi>=0.115,<1"]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.3,<9",
+    "httpx>=0.27,<1",
     "pytest-cov>=6,<8",
     "coverage[toml]>=7.6,<8",
     "ruff>=0.16.1,<0.17",
@@ -47,10 +48,14 @@ include = [
     "src/along_street_resources/**/*.py",
     "src/agents/official_character_authoring.py",
     "src/knowledge/loader.py",
+    "src/persistence/**/*.py",
     "src/reference_corpus/loader.py",
+    "src/web/**/*.py",
     "scripts/ci/**/*.py",
     "tests/test_ci_quality.py",
     "tests/test_cli_startup.py",
+    "tests/test_persistence_foundation.py",
+    "tests/test_web_api.py",
 ]
 
 [tool.ruff.lint]

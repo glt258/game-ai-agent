@@ -34,7 +34,7 @@ from .intent import (
     CharacterDesignIntentParser,
     DeterministicCharacterDesignIntentParser,
 )
-from .planner import CharacterDesignPlan
+from .planner import CharacterAffiliationContext, CharacterDesignPlan
 from .semantic_ir import (
     SemanticEffect,
     SemanticFeedback,
@@ -50,6 +50,7 @@ from .semantic_ir import (
 
 __all__ = [
     "CharacterDesignIntent",
+    "CharacterAffiliationContext",
     "CharacterDesignIntentParser",
     "CharacterDesignPlan",
     "DeterministicCharacterDesignIntentParser",

@@ -1,6 +1,6 @@
 # Game AI Agent Studio — Web v0.1 前后端架构
 
-状态：Architecture Freeze 候选稿
+状态：Architecture Freeze 候选稿；W4-S4E Saved Character workspace 已实现
 审计仓库：`D:\game-ai-agent`
 审计日期：2026-08-31
 
@@ -22,7 +22,7 @@
 - provider 通过 `AgentModel`、`ProviderChatClient`、`LiveLLMAdapter` 和 `model_factory` 管理；当前支持 offline fixture 与 live provider 配置，API key 从服务端环境读取。
 - filesystem/package data loader 已提供 schema/registry 校验；reference corpus 使用 Pydantic models、manifest 和 file-backed repository。
 
-本轮定向核验（不是全量回归）通过：Character CLI/generation/repair/Canon/Skill Playground 相关测试共 166 passed；offline Character CLI 与 Skill Playground `--help` 可启动。仓库 README 记录的最近 clean-checkout CI 基线是 `1602 passed, 1 skipped`，本轮不机械重跑全量 pytest。
+本轮定向核验（不是全量回归）通过：Character CLI/generation/repair/Canon/Skill Playground 相关测试共 166 passed；offline Character CLI 与 Skill Playground `--help` 可启动。W4-S4E 另增加 Saved Character persistence/API 与浏览器工作区验证。仓库 README 记录的最近 clean-checkout CI 基线是 `1602 passed, 1 skipped`，本轮不机械重跑全量 pytest。
 
 ## 2. Repository Capability Map
 
@@ -108,7 +108,7 @@ web/
   package.json
 ```
 
-没有现成 `src/web` 或 `web`，所以这是新增 adapter 层，不应移动或重命名现有 domain package。
+没有现成 `src/web` 或 `web`，所以这是新增 adapter 层，不应移动或重命名现有 domain package。W4-S4E 增加 Saved Character list/open route、typed client 和 `/saved-characters` workspace；该层仍是 experimental，不代表 v0.8 release architecture。
 
 ## 5. Frontend architecture
 
@@ -137,12 +137,14 @@ web/
 ## 7. Persistence decision
 
 ```text
-Web v0.1 persistence: No DB
+Web v0.1 persistence: Configured SQLite for explicit Saved Character workspaces
 ```
 
-理由：Canon、world、story、reference corpus 当前是 YAML/package filesystem read-only；generated draft 是 runtime result，没有稳定 resource ID、history、approval store 或 review repository。v0.1 将 draft/result 保存在浏览器当前 session，人工修改后通过 validate endpoint 重新送入现有 parser/checker；Export 是下载安全 JSON，不是写回 Canon。
+理由：Canon、world、story、reference corpus 当前是 YAML/package filesystem read-only；未保存 generated draft 仍是浏览器 session result。W4-S4E 只为显式 Saved Character workspace 引入 caller-configured SQLite：保存 Character identity/revisions、exact Skill authoring records、associations、Kit assignment 和 workspace request/plan metadata；打开时重新推导运行时状态。SQLite 不存 live jobs、UI state、provider secrets、Canon 或 approval/publish state。
 
-SQLite 只有在需要跨刷新保存 draft/review/history 时才作为下一阶段最小选择；PostgreSQL、多租户和云同步均推迟。
+PostgreSQL、多租户、云同步、autosave、approval/publish、报告分页/压缩和 export/import 均推迟。
+
+`StudioSaveService` 是 Web 与 persistence 之间的 application seam。Route 不执行 SQL；service 在同一 `PersistenceUnitOfWork` 中先校验 expected revision/Kit、保存 Character revision，再协调 association delta 和 current Kit assignment，失败时整体 rollback。Saved workspace metadata 位于独立表，不污染 `CharacterDraft` contract。
 
 ## 8. Security boundary
 

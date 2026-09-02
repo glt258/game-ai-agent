@@ -9,12 +9,14 @@ from .models import (
 )
 from .runner import EvaluationRunner, EvaluationValidator
 from .validators import (
+    IdentityCoherenceValidator,
     RepresentationCompletenessValidator,
     RequestAlignmentValidator,
 )
 
 __all__ = [
     "EVALUATION_SCHEMA_VERSION",
+    "IdentityCoherenceValidator",
     "EvaluationFinding",
     "EvaluationContext",
     "EvaluationOutcome",

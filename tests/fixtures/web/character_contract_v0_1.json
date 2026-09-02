@@ -1,0 +1,61 @@
+{
+  "generate_success": {
+    "schema_version": "web-character-generation/0.1",
+    "status": "completed",
+    "required_top_level_fields": [
+      "schema_version",
+      "status",
+      "request",
+      "draft",
+      "plan",
+      "combat",
+      "canon_basis",
+      "validators",
+      "repair",
+      "model_invocations",
+      "pipeline",
+      "audit",
+      "raw_data"
+    ],
+    "validator_ids": [
+      "generation_runtime",
+      "evaluation_runner",
+      "canon_checker"
+    ],
+    "pipeline_ids": [
+      "intent",
+      "retrieval",
+      "generation",
+      "evaluation",
+      "canon",
+      "repair",
+      "final"
+    ]
+  },
+  "generate_failure": {
+    "http_status": 502,
+    "error_fields": ["code", "message", "stage", "retryable"]
+  },
+  "repair_success": {
+    "repair_performed": true,
+    "repair_succeeded": true,
+    "status": "REPAIRED_PASS"
+  },
+  "validate": {
+    "schema_version": "web-character-validation/0.1",
+    "status_values": ["passed", "failed"],
+    "required_top_level_fields": [
+      "schema_version",
+      "status",
+      "request_id",
+      "draft_id",
+      "validators",
+      "canon",
+      "combat",
+      "pipeline",
+      "summary"
+    ],
+    "pipeline_ids": ["input", "evaluation", "canon", "final"],
+    "generation_only_fields": ["model_invocations", "repair", "raw_data"]
+  }
+}

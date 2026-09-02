@@ -200,14 +200,28 @@ class HybridProviderInvocationError(RuntimeError):
 class OpenCodeGoHybridProvider:
     """Shared OpenAI-compatible transport adapter for the Hybrid seam."""
 
-    def __init__(self, client: object, *, model: str, timeout_seconds: int) -> None:
+    def __init__(
+        self,
+        client: object,
+        *,
+        model: str,
+        timeout_seconds: int,
+        provider: str = "opencode_go",
+        max_transport_retries: int = 0,
+    ) -> None:
         self._client = client
         self._model = model
         self._timeout_seconds = timeout_seconds
+        self.provider = provider
+        self.model = model
+        self.max_transport_retries = max_transport_retries
         self.calls = 0
         self.transport_attempts = 0
         self.latency_ms: float | None = None
         self.outcome = "NOT_CALLED"
+        self.usage = None
+        self.provider_request_id: str | None = None
+        self.provider_error_kind: str | None = None
 
     def complete(self, request_text: str) -> object:
         from agents.provider_protocol import (
@@ -217,22 +231,29 @@ class OpenCodeGoHybridProvider:
         )
 
         self.calls += 1
-        self.transport_attempts += 1
         started = time.monotonic()
-        try:
-            response = self._client.complete(
-                model=self._model,
-                messages=({"role": "user", "content": request_text},),
-                tools=(),
-                timeout_seconds=self._timeout_seconds,
-                response_contract=NegotiatedResponseContract("hybrid_semantic_ir", ResponseMode.JSON_OBJECT),
-            )
-        except ProviderClientError as error:
-            self.latency_ms = (time.monotonic() - started) * 1000
-            self.outcome = "TIMEOUT" if error.kind == "timeout" else "TRANSPORT_FAILURE"
-            raise HybridProviderInvocationError(self.outcome) from None
+        for attempt in range(self.max_transport_retries + 1):
+            self.transport_attempts += 1
+            try:
+                response = self._client.complete(
+                    model=self._model,
+                    messages=({"role": "user", "content": request_text},),
+                    tools=(),
+                    timeout_seconds=self._timeout_seconds,
+                    response_contract=NegotiatedResponseContract("hybrid_semantic_ir", ResponseMode.JSON_OBJECT),
+                )
+            except ProviderClientError as error:
+                self.provider_error_kind = error.kind
+                if error.retryable and attempt < self.max_transport_retries:
+                    continue
+                self.latency_ms = (time.monotonic() - started) * 1000
+                self.outcome = "TIMEOUT" if error.kind == "timeout" else "TRANSPORT_FAILURE"
+                raise HybridProviderInvocationError(self.outcome) from None
+            break
         self.latency_ms = (time.monotonic() - started) * 1000
         self.outcome = "SUCCESS"
+        self.usage = response.usage
+        self.provider_request_id = response.request_id
         return response.text
 
 
@@ -862,6 +883,51 @@ def _default_hybrid_provider_factory(*, model: str = "deepseek-v4-pro") -> Hybri
     )
 
 
+def live_hybrid_provider_from_environment(
+    *,
+    provider: str | None = None,
+    model: str | None = None,
+    environment: Mapping[str, str] | None = None,
+) -> HybridProvider:
+    """Build the existing live adapter for one explicit benchmark/Web run.
+
+    This is a small configuration seam over ``LiveLLMSettings`` and
+    ``OpenAIChatClient``.  It intentionally does not perform a request; the
+    caller must opt into a live pipeline execution separately.
+    """
+
+    from agents.model_factory import LiveLLMSettings, _ensure_transport_implemented
+    from agents.openai_provider import OpenAIChatClient
+
+    values = dict(os.environ if environment is None else environment)
+    values.setdefault("NPC_AGENT_MODEL", "live")
+    # Web and the W4-S3F benchmark share the same explicit raw-provider
+    # baseline when callers do not provide an override.  The outer Web
+    # transport is asynchronous, so it does not impose a shorter hidden
+    # request timeout than the provider itself.
+    values.setdefault("NPC_LLM_TIMEOUT_SECONDS", "60")
+    values.setdefault("NPC_LLM_MAX_RETRIES", "0")
+    if provider is not None:
+        values["NPC_LLM_PROVIDER"] = provider
+    if model is not None:
+        values["NPC_LLM_MODEL"] = model
+    settings = LiveLLMSettings.from_environment(values)
+    _ensure_transport_implemented(settings.profile)
+    client = OpenAIChatClient(
+        api_key=settings.api_key,
+        base_url=settings.base_url,
+        timeout_seconds=settings.timeout_seconds,
+        request_options=settings.profile.provider_options,
+    )
+    return OpenCodeGoHybridProvider(
+        client,
+        model=settings.model,
+        timeout_seconds=int(settings.timeout_seconds),
+        provider=settings.provider,
+        max_transport_retries=settings.max_retries,
+    )
+
+
 def _normalize_cohort_indexes(
     indexes: tuple[int, ...] | list[int] | tuple[object, ...],
     *,
@@ -1161,6 +1227,7 @@ __all__ = [
     "HybridProviderInvocationError",
     "HybridSemanticIRRunner",
     "OpenCodeGoHybridProvider",
+    "live_hybrid_provider_from_environment",
     "SafeIRDiagnostics",
     "build_hybrid_run_id",
     "run_fake_pipeline",

@@ -354,6 +354,38 @@ class CharacterSkillRepository:
             _current_versions(current_versions),
         )
 
+    def rebind_current_kit(
+        self,
+        character_id: str,
+        *,
+        expected_character_revision_id: str,
+        expected_current_kit_assignment_id: str | None,
+        current_context: object,
+        current_versions: SkillArtifactVersionMetadata | None = None,
+    ) -> CharacterSkillState:
+        """Move an unchanged Kit assignment to a newly-current Character revision."""
+
+        def operation() -> CharacterSkillState:
+            character = self._guard_character(character_id, expected_character_revision_id)
+            self._guard_kit_assignment(character_id, expected_current_kit_assignment_id)
+            versions = _current_versions(current_versions)
+            context = _context_fingerprint(current_context)
+            state = self._load_current_state(character_id, context, versions)
+            if state.current_kit is not None:
+                self._persist_kit_assignment(
+                    character,
+                    list(state.active_associations),
+                    state.current_kit,
+                    expected_current_kit_assignment_id,
+                )
+            return self._load_current_state(character_id, context, versions)
+
+        return self._run_write("rebind_character_kit", operation)
+
+    def current_kit_record_id(self, character_id: str) -> int | None:
+        row = self._current_assignment(character_id)
+        return int(row["kit_record_id"]) if row is not None else None
+
     def get_binding(self, character_id: str, binding_id: str) -> PersistedBinding:
         row = self._connection.execute(
             """
@@ -1149,6 +1181,23 @@ class CharacterSkillPersistenceService:
     ) -> CharacterSkillState:
         return self._repository.load_current_state(
             character_id,
+            current_context=current_context,
+            current_versions=current_versions,
+        )
+
+    def rebind_current_kit(
+        self,
+        character_id: str,
+        *,
+        expected_character_revision_id: str,
+        expected_current_kit_assignment_id: str | None,
+        current_context: object,
+        current_versions: SkillArtifactVersionMetadata | None = None,
+    ) -> CharacterSkillState:
+        return self._repository.rebind_current_kit(
+            character_id,
+            expected_character_revision_id=expected_character_revision_id,
+            expected_current_kit_assignment_id=expected_current_kit_assignment_id,
             current_context=current_context,
             current_versions=current_versions,
         )

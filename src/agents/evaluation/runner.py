@@ -12,6 +12,7 @@ from .models import (
     EvaluationResult,
 )
 from .validators import (
+    IdentityCoherenceValidator,
     RepresentationCompletenessValidator,
     RequestAlignmentValidator,
 )
@@ -33,6 +34,7 @@ class EvaluationRunner:
         configured = (
             (
                 RequestAlignmentValidator(),
+                IdentityCoherenceValidator(),
                 RepresentationCompletenessValidator(),
             )
             if validators is None

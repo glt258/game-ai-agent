@@ -316,7 +316,7 @@ nodes:
     type: "component"
     name: "Web Adapter"
     status: "experimental"
-    responsibility: "Expose current runtime capabilities through Web DTOs and asynchronous live jobs without persistence or Canon publishing."
+    responsibility: "Expose current runtime capabilities through Web DTOs, saved Character workspace APIs and asynchronous live jobs without direct persistence access or Canon publishing."
     path: "src/web"
     tests: []
     evidence:
@@ -324,6 +324,23 @@ nodes:
         locator: "DTO boundary and explicit non-goals"
       - path: "docs/web/web_v0.1_architecture.md"
         locator: "historical architecture candidate; current existence is snapshot-drift sensitive"
+
+  - id: "component.saved_character_workspace"
+    type: "component"
+    name: "Saved Character Workspace"
+    status: "experimental"
+    responsibility: "Coordinate explicit Character save/open operations across Character revisions, exact Skill artifact records, associations and current Kit assignment in one SQLite unit of work."
+    path: "src/web/services/saved_characters.py"
+    canonical_source: "src/web/services/saved_characters.py"
+    tests:
+      - "tests/test_saved_characters_api.py"
+      - "tests/test_character_persistence.py"
+      - "tests/test_character_skill_persistence.py"
+    evidence:
+      - path: "docs/web/web_v0.1_api_contract.md"
+        locator: "Saved Character workspace contract"
+      - path: "docs/persistence_foundation_v0.1.md"
+        locator: "StudioSaveService transaction boundary"
 
   - id: "component.character_kit_session"
     type: "component"
@@ -342,7 +359,7 @@ nodes:
     type: "subsystem"
     name: "Persistence Foundation"
     status: "stable"
-    responsibility: "Provide the single SQLite physical store, schema migration seam, unit of work, foreign-key enforcement and bounded busy timeout; content-addressed semantics do not imply filesystem CAS."
+    responsibility: "Provide the single caller-configured SQLite physical store, additive schema migration seam, unit of work, foreign-key enforcement and bounded busy timeout; content-addressed semantics do not imply filesystem CAS."
     path: "src/persistence/sqlite_store.py"
     canonical_source: "src/persistence/sqlite_store.py"
     tests:
@@ -400,7 +417,7 @@ nodes:
     type: "contract"
     name: "Character Identity and Revision"
     status: "frozen"
-    responsibility: "Character persistence identity is a durable character_id with immutable GENERATED/EDITED revisions, parent lineage and a current revision pointer; CharacterDraft remains authored domain data."
+    responsibility: "Character persistence identity is a durable character_id with immutable GENERATED/EDITED revisions, parent lineage and a current revision pointer; CharacterDraft remains authored domain data and saved workspace metadata stays outside it."
     path: "src/persistence/characters.py"
     canonical_source: "src/persistence/characters.py"
     tests:
@@ -482,7 +499,7 @@ nodes:
     type: "component"
     name: "Character Skill Persistence"
     status: "stable"
-    responsibility: "Persist Character-specific Bindings and Associations, immutable association revisions and current skill projection with atomic attach, detach, replace and placement operations."
+    responsibility: "Persist Character-specific Bindings and Associations, immutable association revisions and current skill projection with atomic attach, detach, replace, placement and Kit rebind operations."
     path: "src/persistence/character_skill_persistence.py"
     canonical_source: "src/persistence/character_skill_persistence.py"
     tests:
@@ -510,7 +527,7 @@ nodes:
     type: "component"
     name: "CharacterKit Persistence"
     status: "stable"
-    responsibility: "Persist immutable CharacterKit content snapshots and Character-to-current-Kit assignments, deduplicate equal Kit content across Characters and verify snapshots against relational assignment members."
+    responsibility: "Persist immutable CharacterKit content snapshots and Character-to-current-Kit assignments, deduplicate equal Kit content across Characters and verify snapshots against relational assignment members; derived freshness and compatibility remain runtime state."
     path: "src/persistence/character_skill_persistence.py"
     canonical_source: "src/persistence/character_skill_persistence.py"
     tests:
@@ -673,6 +690,30 @@ edges:
     evidence:
       - path: "docs/web/web_v0.1_api_contract.md"
         locator: "backend maps existing domain modules"
+  - from: "component.web_adapter"
+    relation: "adapts"
+    to: "component.saved_character_workspace"
+    evidence:
+      - path: "docs/web/web_v0.1_api_contract.md"
+        locator: "Saved Character workspace HTTP boundary"
+  - from: "component.saved_character_workspace"
+    relation: "depends_on"
+    to: "component.character_persistence"
+    evidence:
+      - path: "docs/persistence_foundation_v0.1.md"
+        locator: "StudioSaveService Character revision orchestration"
+  - from: "component.saved_character_workspace"
+    relation: "depends_on"
+    to: "component.character_skill_persistence"
+    evidence:
+      - path: "docs/persistence_foundation_v0.1.md"
+        locator: "StudioSaveService Skill association and Kit orchestration"
+  - from: "component.saved_character_workspace"
+    relation: "depends_on"
+    to: "component.persistence_foundation"
+    evidence:
+      - path: "docs/persistence_foundation_v0.1.md"
+        locator: "single SQLite unit of work"
   - from: "component.character_kit_session"
     relation: "consumes"
     to: "component.canonical_skillkit"

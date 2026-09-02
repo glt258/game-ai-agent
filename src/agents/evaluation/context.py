@@ -75,6 +75,7 @@ class EvaluationContext:
     skill_validation_context: SkillValidationContext | None = None
     skill_candidate: ProtocolSkillKitCandidate | None = None
     skill_validation_report: SkillValidationReport | None = None
+    expected_affiliation_id: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.subject, EvaluationSubject):
@@ -118,6 +119,13 @@ class EvaluationContext:
             self.draft.combat_role_profile, CombatRoleProfile
         ):
             raise TypeError("draft.combat_role_profile must be canonical")
+        plan = self.subject.generation_result.design_plan if self.subject.generation_result is not None else None
+        plan_expected = getattr(plan, "expected_affiliation_id", None)
+        intent_expected = self.intent.requested_affiliation_id if self.intent is not None else None
+        resolved_expected = plan_expected if plan_expected is not None else intent_expected
+        if self.expected_affiliation_id is not None and self.expected_affiliation_id != resolved_expected:
+            raise ValueError("expected_affiliation_id must match the design plan")
+        object.__setattr__(self, "expected_affiliation_id", resolved_expected)
 
     @classmethod
     def from_subject(cls, subject: EvaluationSubject) -> "EvaluationContext":
@@ -136,6 +144,11 @@ class EvaluationContext:
             intent=intent,
             draft=draft,
             skill_validation_context=subject.skill_validation_context,
+            expected_affiliation_id=(
+                generation_result.design_plan.expected_affiliation_id
+                if generation_result is not None and generation_result.design_plan is not None
+                else None
+            ),
         )
 
     @property

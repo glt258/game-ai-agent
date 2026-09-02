@@ -65,9 +65,13 @@ def test_pyproject_has_explicit_p2_quality_boundaries() -> None:
         "src/agents/official_character_authoring.py",
         "src/knowledge/loader.py",
         "src/reference_corpus/loader.py",
+        "src/persistence/**/*.py",
         "scripts/ci/**/*.py",
         "tests/test_ci_quality.py",
         "tests/test_cli_startup.py",
+        "tests/test_web_api.py",
+        "tests/test_persistence_foundation.py",
+        "src/web/**/*.py",
     }
     assert {"E4", "E7", "E9", "F", "I"} <= set(ruff["lint"]["select"])
 
@@ -126,7 +130,9 @@ def test_workflow_has_gated_quality_matrix_build_and_installed_smoke() -> None:
     assert set(build["needs"]) == {"quality", "test"}
     assert any("python -m build" in step.get("run", "") for step in _steps(build))
     assert any("twine check dist/*" in step.get("run", "") for step in _steps(build))
-    upload = next(step for step in _steps(build) if step.get("uses") == "actions/upload-artifact@v7")
+    upload = next(
+        step for step in _steps(build) if step.get("uses") == "actions/upload-artifact@v7"
+    )
 
     smoke = jobs["installed-smoke"]
     assert smoke["needs"] == "build"
@@ -137,7 +143,7 @@ def test_workflow_has_gated_quality_matrix_build_and_installed_smoke() -> None:
     smoke_text = "\n".join(step.get("run", "") for step in _steps(smoke))
     assert "dist/*.whl" in smoke_text
     assert "--no-deps" not in smoke_text
-    assert "cd \"$smoke_cwd\"" in smoke_text
+    assert 'cd "$smoke_cwd"' in smoke_text
     assert "$GITHUB_WORKSPACE/scripts/ci/installed_smoke.py" in smoke_text
 
     success = jobs["ci-success"]
@@ -177,8 +183,7 @@ def test_traversable_import_has_python_310_compatibility_fallback() -> None:
         fallback_imports = [
             node
             for handler in compatibility_block.handlers
-            if isinstance(handler.type, ast.Name)
-            and handler.type.id == "ModuleNotFoundError"
+            if isinstance(handler.type, ast.Name) and handler.type.id == "ModuleNotFoundError"
             for node in ast.walk(handler)
             if isinstance(node, ast.ImportFrom) and node.module == "importlib.abc"
         ]
@@ -201,7 +206,9 @@ def test_test_job_checkout_fetches_full_history_for_provenance() -> None:
 def test_pre_commit_is_scoped_and_runs_offline_local_guards() -> None:
     config = _yaml(".pre-commit-config.yaml")
     repos = config["repos"]
-    hooks_repo = next(repo for repo in repos if repo["repo"] == "https://github.com/pre-commit/pre-commit-hooks")
+    hooks_repo = next(
+        repo for repo in repos if repo["repo"] == "https://github.com/pre-commit/pre-commit-hooks"
+    )
     assert hooks_repo["rev"] == "v6.0.0"
     assert {hook["id"] for hook in hooks_repo["hooks"]} >= {
         "check-ast",
@@ -238,7 +245,7 @@ def test_ci_scripts_lock_runtime_and_wheel_smoke_contracts() -> None:
         "load_story_repository",
         "load_reference_grounding",
         "load_corpus_manifest",
-        "EXPECTED_MANIFEST_BASELINE = \"reference-corpus-v0.5\"",
+        'EXPECTED_MANIFEST_BASELINE = "reference-corpus-v0.5"',
         "EXPECTED_RECORD_COUNT = 16",
         "data_root()",
     ):
