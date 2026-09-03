@@ -256,7 +256,6 @@ jobs:
       NPC_RUN_LIVE_SMOKE: "0"
       NPC_LLM_API_KEY: ""
       OPENAI_API_KEY: ""
-      GAME_AI_AGENT_DB_PATH: ${{ runner.temp }}/s5c-browser.db
       BACKEND_API_URL: http://127.0.0.1:8000
     steps:
       - name: Check out repository
@@ -286,6 +285,8 @@ jobs:
       - name: Run offline browser flow
         working-directory: web
         shell: bash
+        env:
+          GAME_AI_AGENT_DB_PATH: ${{ runner.temp }}/s5c-browser.db
         run: |
           set -euo pipefail
           backend_log="$RUNNER_TEMP/s5c-backend.log"

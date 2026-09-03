@@ -225,6 +225,9 @@ def test_workflow_has_gated_cross_platform_matrix_and_installed_smoke() -> None:
     assert "playwright install --with-deps chromium" in browser_text
     assert "npm run e2e" in browser_text
     assert browser["env"]["NPC_RUN_LIVE_SMOKE"] == "0"
+    assert "GAME_AI_AGENT_DB_PATH" not in browser["env"]
+    browser_flow = _step_with_name(browser, "Run offline browser flow")
+    assert browser_flow["env"]["GAME_AI_AGENT_DB_PATH"] == "${{ runner.temp }}/s5c-browser.db"
 
     success = jobs["ci-success"]
     assert "always()" in success["if"]
