@@ -452,7 +452,10 @@ def _identity(
     experiment: str = HYBRID_EXPERIMENT,
 ) -> HybridExperimentIdentity:
     source_commit = subprocess.check_output(
-        ["git", "-C", str(repo_root), "rev-parse", "HEAD"], text=True
+        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+        text=True,
+        encoding="utf-8",
+        errors="strict",
     ).strip()
     return HybridExperimentIdentity(
         experiment,
@@ -1130,6 +1133,8 @@ class HybridSemanticIRRunner:
             dirty = subprocess.check_output(
                 ["git", "-C", str(self.repo_root), "status", "--porcelain", "--untracked-files=no"],
                 text=True,
+                encoding="utf-8",
+                errors="strict",
             ).strip()
             if dirty:
                 return _blocked_live_result("BLOCKED_SOURCE_BASELINE_DRIFT")

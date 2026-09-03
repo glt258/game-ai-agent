@@ -325,6 +325,19 @@ nodes:
       - path: "docs/web/web_v0.1_architecture.md"
         locator: "historical architecture candidate; current existence is snapshot-drift sensitive"
 
+  - id: "component.runtime_path_resolution"
+    type: "component"
+    name: "Runtime Path Resolution"
+    status: "stable"
+    responsibility: "Resolve repository-independent app-data and SQLite paths with explicit platform and environment precedence; keep runtime resources package-based and text boundaries UTF-8."
+    path: "src/runtime_paths"
+    canonical_source: "src/runtime_paths"
+    tests:
+      - "tests/test_runtime_paths.py"
+    evidence:
+      - path: "docs/cross_platform_runtime_contract_v0.1.md"
+        locator: "path categories, app-data precedence and UTF-8 boundary"
+
   - id: "component.saved_character_workspace"
     type: "component"
     name: "Saved Character Workspace"
@@ -696,6 +709,12 @@ edges:
     evidence:
       - path: "docs/web/web_v0.1_api_contract.md"
         locator: "Saved Character workspace HTTP boundary"
+  - from: "component.web_adapter"
+    relation: "depends_on"
+    to: "component.runtime_path_resolution"
+    evidence:
+      - path: "docs/cross_platform_runtime_contract_v0.1.md"
+        locator: "Web runtime uses the shared database path resolver"
   - from: "component.saved_character_workspace"
     relation: "depends_on"
     to: "component.character_persistence"
@@ -714,6 +733,12 @@ edges:
     evidence:
       - path: "docs/persistence_foundation_v0.1.md"
         locator: "single SQLite unit of work"
+  - from: "component.persistence_foundation"
+    relation: "depends_on"
+    to: "component.runtime_path_resolution"
+    evidence:
+      - path: "docs/cross_platform_runtime_contract_v0.1.md"
+        locator: "SQLite bootstrap uses the shared database path contract"
   - from: "component.character_kit_session"
     relation: "consumes"
     to: "component.canonical_skillkit"

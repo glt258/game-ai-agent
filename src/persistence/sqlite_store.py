@@ -6,7 +6,11 @@ import sqlite3
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .errors import PersistenceIntegrityError, PersistenceSchemaUnsupportedError
+from .errors import (
+    PersistenceConfigurationError,
+    PersistenceIntegrityError,
+    PersistenceSchemaUnsupportedError,
+)
 
 if TYPE_CHECKING:
     from .character_skill_persistence import CharacterSkillRepository
@@ -166,8 +170,13 @@ class PersistenceUnitOfWork:
             raise ValueError("busy_timeout_ms must be non-negative")
 
         self.database_path = Path(database_path)
-        self.database_path.parent.mkdir(parents=True, exist_ok=True)
-        self.connection = sqlite3.connect(str(self.database_path), isolation_level=None)
+        try:
+            self.database_path.parent.mkdir(parents=True, exist_ok=True)
+            self.connection = sqlite3.connect(str(self.database_path), isolation_level=None)
+        except (OSError, sqlite3.OperationalError) as error:
+            raise PersistenceConfigurationError(
+                f"Unable to prepare SQLite database path: {self.database_path}"
+            ) from error
         self.connection.row_factory = sqlite3.Row
         self._in_transaction = False
         try:

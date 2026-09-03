@@ -21,6 +21,7 @@ try:  # Direct execution puts scripts/ on sys.path; tests import scripts as a na
         build_query_result,
         git_state,
         load_yaml,
+        repository_root_from_graph_path,
         snapshot_warnings,
         validate_graph,
     )
@@ -30,6 +31,7 @@ except ImportError:  # pragma: no cover - exercised by the direct CLI invocation
         build_query_result,
         git_state,
         load_yaml,
+        repository_root_from_graph_path,
         snapshot_warnings,
         validate_graph,
     )
@@ -139,7 +141,7 @@ def build_preflight(
     warnings = snapshot_warnings(
         graph["snapshot"],
         current_git,
-        root=Path(graph["snapshot"]["project_root"]).resolve(),
+        root=repository_root_from_graph_path(graph_path),
     )
     if not resolved:
         verdict = "INSUFFICIENT_CONTEXT"
@@ -291,7 +293,8 @@ def main() -> int:
         graph = load_yaml(graph_path)
         validate_graph(graph, graph_path)
         aliases = load_aliases(aliases_path)
-        current_git = git_state(Path(graph["snapshot"]["project_root"]).resolve())
+        root = repository_root_from_graph_path(graph_path)
+        current_git = git_state(root)
         verdict, output = build_preflight(
             graph,
             graph_path=graph_path,
@@ -301,7 +304,6 @@ def main() -> int:
             current_git=current_git,
         )
         if args.capture_baseline:
-            root = Path(graph["snapshot"]["project_root"]).resolve()
             baseline_path, baseline = capture_baseline(root)
             output = output.rstrip() + "\n\n## Task Baseline\n\n"
             output += f"- status: `TASK_BASELINE_CAPTURED`\n- path: `{baseline_path}`\n"

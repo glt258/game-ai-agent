@@ -7,17 +7,24 @@ import json
 import re
 import subprocess
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any, Callable
 
 import yaml
 
 try:
-    from .project_graph_lib import is_architecture_path, is_knowledge_tooling_only
-except ImportError:  # pragma: no cover - exercised by direct CLI invocation.
-    from project_graph_lib import (  # type: ignore[no-redef]
+    from .project_graph_lib import (
+        RepositoryRootError,
         is_architecture_path,
         is_knowledge_tooling_only,
+        repository_root_from_graph_path,
+    )
+except ImportError:  # pragma: no cover - exercised by direct CLI invocation.
+    from project_graph_lib import (  # type: ignore[no-redef]
+        RepositoryRootError,
+        is_architecture_path,
+        is_knowledge_tooling_only,
+        repository_root_from_graph_path,
     )
 
 ALLOWED_RELATIONS = {
@@ -107,6 +114,14 @@ def _require_string(value: Any, label: str) -> str:
     return value
 
 
+def _is_absolute_repository_root(value: str) -> bool:
+    return (
+        Path(value).is_absolute()
+        or PurePosixPath(value).is_absolute()
+        or PureWindowsPath(value).is_absolute()
+    )
+
+
 def _validate_evidence(value: Any, root: Path, label: str, check_paths: bool) -> None:
     if not isinstance(value, list):
         raise GraphValidationError(f"{label} must be a list")
@@ -139,15 +154,11 @@ def validate_graph(
     if not isinstance(snapshot.get("release_equivalent"), bool):
         raise GraphValidationError("snapshot.release_equivalent must be boolean")
 
-    root = Path(snapshot["project_root"])
-    if not root.is_absolute():
-        if graph_path is None:
-            raise GraphValidationError(
-                "snapshot.project_root must be absolute when graph_path is absent"
-            )
-        root = (graph_path.parent.parent / root).resolve()
-    else:
-        root = root.resolve()
+    if _is_absolute_repository_root(snapshot["project_root"]):
+        raise GraphValidationError(
+            "snapshot.project_root must be repository-relative; machine-local absolute roots are not portable"
+        )
+    root = repository_root_from_graph_path(graph_path or Path.cwd())
 
     nodes = graph.get("nodes")
     if not isinstance(nodes, list):
@@ -254,7 +265,13 @@ def git_state(root: Path, runner: Callable[..., str] = subprocess.check_output) 
     """Return the small Git state needed for snapshot comparison."""
 
     def run(*args: str) -> str:
-        return runner(["git", "-C", str(root), *args], text=True, stderr=subprocess.DEVNULL).strip()
+        return runner(
+            ["git", "-C", str(root), *args],
+            text=True,
+            encoding="utf-8",
+            errors="strict",
+            stderr=subprocess.DEVNULL,
+        ).strip()
 
     branch = run("branch", "--show-current") or "detached"
     head = run("rev-parse", "HEAD")
@@ -350,6 +367,8 @@ def _git_paths_since(root: Path, base_head: str) -> list[str]:
         output = subprocess.check_output(
             ["git", "-C", str(root), "diff", "--name-only", f"{base_head}..HEAD"],
             text=True,
+            encoding="utf-8",
+            errors="strict",
             stderr=subprocess.DEVNULL,
         )
     except (OSError, subprocess.CalledProcessError):
@@ -469,10 +488,15 @@ def main() -> int:
     try:
         graph = load_yaml(graph_path)
         validate_graph(graph, graph_path, check_paths=not args.no_path_check)
-        root = Path(graph["snapshot"]["project_root"]).resolve()
+        root = repository_root_from_graph_path(graph_path)
         current_git = git_state(root)
         result = build_query_result(graph, args.topic)
-    except (OSError, GraphValidationError, subprocess.CalledProcessError) as exc:
+    except (
+        OSError,
+        GraphValidationError,
+        RepositoryRootError,
+        subprocess.CalledProcessError,
+    ) as exc:
         print(f"project graph validation failed: {exc}", file=sys.stderr)
         return 2
     if args.format == "json":

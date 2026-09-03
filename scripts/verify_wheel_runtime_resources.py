@@ -14,7 +14,6 @@ import tempfile
 import zipfile
 from pathlib import Path, PurePosixPath
 
-
 RESOURCE_SUFFIXES = {".yaml", ".yml", ".md"}
 PACKAGE_DATA_PREFIX = "along_street_resources/data/"
 
@@ -48,12 +47,13 @@ def _run_installed_smoke(
             [python, "-m", "pip", "install", "--no-deps", "--target", str(target), str(wheel)],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="strict",
             check=False,
         )
         if install.returncode:
             raise RuntimeError(
-                "wheel installation failed:\n"
-                f"stdout={install.stdout}\nstderr={install.stderr}"
+                f"wheel installation failed:\nstdout={install.stdout}\nstderr={install.stderr}"
             )
 
         smoke_cwd = target / "outside-repository-cwd"
@@ -140,12 +140,13 @@ print(json.dumps({{
             cwd=smoke_cwd,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="strict",
             check=False,
         )
         if smoke.returncode:
             raise RuntimeError(
-                "installed wheel smoke failed:\n"
-                f"stdout={smoke.stdout}\nstderr={smoke.stderr}"
+                f"installed wheel smoke failed:\nstdout={smoke.stdout}\nstderr={smoke.stderr}"
             )
         return json.loads(smoke.stdout)
 

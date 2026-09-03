@@ -2,6 +2,15 @@
 
 from __future__ import annotations
 
+import subprocess
+from pathlib import Path
+from typing import Any, Callable
+
+
+class RepositoryRootError(ValueError):
+    """Raised when a graph cannot be associated with a repository checkout."""
+
+
 ARCHITECTURE_PREFIXES = (
     "src/agents/",
     "src/combat_semantics/",
@@ -50,3 +59,34 @@ def is_knowledge_path(path: str) -> bool:
 
 def is_knowledge_tooling_only(paths: list[str]) -> bool:
     return bool(paths) and all(is_knowledge_path(path) for path in paths)
+
+
+def repository_root_from_graph_path(
+    graph_path: Path,
+    runner: Callable[..., Any] = subprocess.run,
+) -> Path:
+    """Derive the checkout root from the graph location or Git, never graph metadata."""
+
+    graph_file = graph_path.resolve()
+    start = graph_file.parent if graph_file.suffix else graph_file
+    result = runner(
+        ["git", "-C", str(start), "rev-parse", "--show-toplevel"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        encoding="utf-8",
+        errors="strict",
+        check=False,
+    )
+    output = getattr(result, "stdout", result)
+    if getattr(result, "returncode", 0) == 0 and output:
+        candidate = Path(output.strip()).resolve()
+        if candidate.exists():
+            return candidate
+
+    for candidate in (start, *start.parents):
+        if (candidate / ".git").exists():
+            return candidate
+        if (candidate / "pyproject.toml").is_file() and (candidate / "knowledge").is_dir():
+            return candidate
+    raise RepositoryRootError(f"Unable to derive repository root from graph path: {graph_path}")

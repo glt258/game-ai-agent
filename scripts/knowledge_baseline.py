@@ -37,7 +37,7 @@ class BaselineFile:
 
 
 def _decode(value: bytes | str) -> str:
-    return value.decode("utf-8", errors="replace") if isinstance(value, bytes) else value
+    return value.decode("utf-8", errors="strict") if isinstance(value, bytes) else value
 
 
 def _run_git(root: Path, args: list[str], runner: Callable[..., Any]) -> str:
@@ -45,6 +45,9 @@ def _run_git(root: Path, args: list[str], runner: Callable[..., Any]) -> str:
         ["git", "-C", str(root), *args],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
+        text=True,
+        encoding="utf-8",
+        errors="strict",
         check=True,
     )
     output = result.stdout if hasattr(result, "stdout") else result

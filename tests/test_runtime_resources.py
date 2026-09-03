@@ -12,9 +12,8 @@ from agents.official_character_authoring import load_reference_grounding
 from along_street_resources import data_resource, data_root
 from character_intelligence.intent.parser import DeterministicCharacterDesignIntentParser
 from knowledge.loader import load_canon
-from story import load_story_repository
 from reference_corpus.loader import load_corpus_manifest, load_game_catalog
-
+from story import load_story_repository
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 SOURCE_DATA_ROOT = REPOSITORY_ROOT / "src" / "along_street_resources" / "data"
@@ -93,6 +92,8 @@ print("runtime defaults ok")
         cwd=REPOSITORY_ROOT.parent,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="strict",
         check=False,
     )
 

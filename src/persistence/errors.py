@@ -13,6 +13,10 @@ class PersistenceError(Exception):
         super().__init__(f"{self.code}: {detail}")
 
 
+class PersistenceConfigurationError(PersistenceError):
+    code = "PERSISTENCE_CONFIGURATION_ERROR"
+
+
 class PersistenceSchemaUnsupportedError(PersistenceError):
     code = "PERSISTENCE_SCHEMA_UNSUPPORTED"
 
@@ -65,6 +69,7 @@ class CharacterSkillPersistenceConflictError(PersistenceWriteConflictError):
 
 __all__ = [
     "PersistenceContractUnsupportedError",
+    "PersistenceConfigurationError",
     "PersistenceError",
     "PersistenceIntegrityError",
     "PersistenceRecordNotFoundError",

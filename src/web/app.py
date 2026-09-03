@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -8,6 +7,8 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
+
+from runtime_paths import resolve_database_path
 
 from .errors import WebApplicationError
 from .mappers.character_generation import to_error_response
@@ -31,17 +32,7 @@ from .services.skill_playground import SkillPlaygroundApplication
 
 
 def _database_path(value: str | Path | None) -> Path:
-    if value is not None:
-        return Path(value)
-    configured = os.environ.get("GAME_AI_AGENT_DB_PATH")
-    if configured:
-        return Path(configured)
-    root = os.environ.get("LOCALAPPDATA") or os.environ.get("XDG_STATE_HOME")
-    return (
-        Path(root) / "game-ai-agent" / "studio.db"
-        if root
-        else Path.home() / ".game-ai-agent" / "studio.db"
-    )
+    return resolve_database_path(value)
 
 
 def _validation_error_response(error: RequestValidationError) -> JSONResponse:

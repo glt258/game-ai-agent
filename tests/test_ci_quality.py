@@ -66,11 +66,13 @@ def test_pyproject_has_explicit_p2_quality_boundaries() -> None:
         "src/knowledge/loader.py",
         "src/reference_corpus/loader.py",
         "src/persistence/**/*.py",
+        "src/runtime_paths/**/*.py",
         "scripts/ci/**/*.py",
         "tests/test_ci_quality.py",
         "tests/test_cli_startup.py",
         "tests/test_web_api.py",
         "tests/test_persistence_foundation.py",
+        "tests/test_runtime_paths.py",
         "src/web/**/*.py",
     }
     assert {"E4", "E7", "E9", "F", "I"} <= set(ruff["lint"]["select"])

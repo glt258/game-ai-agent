@@ -40,16 +40,20 @@ except ImportError:  # pragma: no cover - exercised by direct CLI invocation.
 try:  # Direct execution puts scripts/ on sys.path; tests import scripts as a namespace package.
     from .query_project_graph import (
         GraphValidationError,
+        RepositoryRootError,
         git_state,
         load_yaml,
+        repository_root_from_graph_path,
         snapshot_warnings,
         validate_graph,
     )
 except ImportError:  # pragma: no cover - exercised by the direct CLI invocation.
     from query_project_graph import (  # type: ignore[no-redef]
         GraphValidationError,
+        RepositoryRootError,
         git_state,
         load_yaml,
+        repository_root_from_graph_path,
         snapshot_warnings,
         validate_graph,
     )
@@ -93,7 +97,7 @@ class PostflightError(ValueError):
 
 
 def _decode_output(value: bytes | str) -> str:
-    return value.decode("utf-8", errors="replace") if isinstance(value, bytes) else value
+    return value.decode("utf-8", errors="strict") if isinstance(value, bytes) else value
 
 
 def _run_git(root: Path, args: list[str], runner: Callable[..., Any]) -> str:
@@ -101,6 +105,9 @@ def _run_git(root: Path, args: list[str], runner: Callable[..., Any]) -> str:
         ["git", "-C", str(root), *args],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
+        text=True,
+        encoding="utf-8",
+        errors="strict",
     )
     return _decode_output(result.stdout if hasattr(result, "stdout") else result).strip("\0\r\n")
 
@@ -802,8 +809,9 @@ def main() -> int:
     root = graph_path.parent.parent.resolve()
     if args.clear_baseline:
         try:
+            root = repository_root_from_graph_path(graph_path)
             path = clear_baseline(root)
-        except (OSError, BaselineError, subprocess.CalledProcessError) as exc:
+        except (OSError, BaselineError, RepositoryRootError, subprocess.CalledProcessError) as exc:
             print(f"TASK_BASELINE_CLEAR_FAILED: {exc}", file=sys.stderr)
             return 2
         if args.format == "json":
@@ -817,6 +825,7 @@ def main() -> int:
             )
         return 0
     try:
+        root = repository_root_from_graph_path(graph_path)
         graph = load_yaml(graph_path)
         validate_graph(graph, graph_path)
         current_git = git_state(root)
@@ -879,7 +888,13 @@ def main() -> int:
         else:
             print(f"# Engineering Knowledge Postflight\n\n## Knowledge Sync Verdict\n\n{exc}\n")
         return 2
-    except (OSError, GraphValidationError, PostflightError, subprocess.CalledProcessError) as exc:
+    except (
+        OSError,
+        GraphValidationError,
+        PostflightError,
+        RepositoryRootError,
+        subprocess.CalledProcessError,
+    ) as exc:
         try:
             graph = load_yaml(graph_path)
         except Exception:

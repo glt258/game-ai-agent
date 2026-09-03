@@ -9,6 +9,7 @@ from scripts.query_project_graph import (
     build_query_result,
     git_state,
     render_markdown,
+    repository_root_from_graph_path,
     snapshot_warnings,
     validate_graph,
 )
@@ -26,6 +27,60 @@ def load_graph() -> dict:
 
 def test_project_graph_schema_and_repository_paths_are_valid() -> None:
     validate_graph(load_graph(), GRAPH_PATH)
+
+
+def test_repository_root_is_derived_from_graph_checkout_not_metadata(tmp_path: Path) -> None:
+    graph_path = tmp_path / "knowledge" / "project_graph.yaml"
+    graph_path.parent.mkdir()
+    (tmp_path / ".git").mkdir()
+    graph_path.write_text("{}", encoding="utf-8")
+
+    assert repository_root_from_graph_path(graph_path) == tmp_path.resolve()
+
+
+def test_windows_style_project_root_is_rejected_as_nonportable() -> None:
+    graph = load_graph()
+    graph["snapshot"]["project_root"] = "D:/game-ai-agent"
+    with pytest.raises(GraphValidationError, match="repository-relative"):
+        validate_graph(graph, GRAPH_PATH, check_paths=False)
+
+
+def test_relative_evidence_resolves_under_actual_temporary_repository_root(
+    tmp_path: Path,
+) -> None:
+    graph_path = tmp_path / "knowledge" / "project_graph.yaml"
+    graph_path.parent.mkdir()
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "foo.md").write_text("evidence\n", encoding="utf-8")
+    graph = {
+        "schema_version": "engineering-knowledge-graph/0.1",
+        "snapshot": {
+            "project": "fixture",
+            "project_root": ".",
+            "branch": "main",
+            "base_head": "fixture-head",
+            "working_tree": "clean",
+            "snapshot_kind": "clean_head",
+            "release_equivalent": True,
+        },
+        "nodes": [
+            {
+                "id": "component.fixture",
+                "type": "component",
+                "name": "Fixture",
+                "status": "stable",
+                "responsibility": "Fixture evidence.",
+                "evidence": [{"path": "docs/foo.md", "locator": "evidence"}],
+            }
+        ],
+        "edges": [],
+        "constraints": [],
+        "known_limitations": [],
+        "architecture_decisions": [],
+    }
+
+    validate_graph(graph, graph_path)
 
 
 def test_node_ids_are_unique() -> None:
@@ -139,7 +194,12 @@ def test_reviewed_snapshot_architecture_advance_gets_review_base_warning() -> No
 def test_git_state_isolated_from_dirty_fixture(tmp_path: Path) -> None:
     calls: list[list[str]] = []
 
-    def fake_runner(command: list[str], *, text: bool, stderr: object) -> str:
+    def fake_runner(
+        command: list[str], *, text: bool, encoding: str, errors: str, stderr: object
+    ) -> str:
+        assert text is True
+        assert encoding == "utf-8"
+        assert errors == "strict"
         calls.append(command)
         if command[-2:] == ["branch", "--show-current"]:
             return "fixture-branch\n"

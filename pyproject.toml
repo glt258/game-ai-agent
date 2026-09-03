@@ -49,12 +49,14 @@ include = [
     "src/agents/official_character_authoring.py",
     "src/knowledge/loader.py",
     "src/persistence/**/*.py",
+    "src/runtime_paths/**/*.py",
     "src/reference_corpus/loader.py",
     "src/web/**/*.py",
     "scripts/ci/**/*.py",
     "tests/test_ci_quality.py",
     "tests/test_cli_startup.py",
     "tests/test_persistence_foundation.py",
+    "tests/test_runtime_paths.py",
     "tests/test_web_api.py",
 ]
 
