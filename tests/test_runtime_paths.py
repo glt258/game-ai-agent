@@ -29,7 +29,7 @@ def test_explicit_database_override_wins_and_preserves_native_path_semantics(
             "win32",
             {"LOCALAPPDATA": r"C:\Users\测试\AppData\Local"},
             Path(r"C:\Users\Test"),
-            Path(r"C:\Users\测试\AppData\Local\game-ai-agent"),
+            Path(r"C:\Users\测试\AppData\Local") / "game-ai-agent",
         ),
         (
             "linux",
