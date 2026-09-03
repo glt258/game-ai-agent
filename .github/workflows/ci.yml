@@ -34,6 +34,41 @@ jobs:
       - name: Validate packaged runtime data
         run: python scripts/ci/validate_runtime.py
 
+  ekl-portability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NPC_RUN_LIVE_SMOKE: "0"
+      NPC_LLM_API_KEY: ""
+      OPENAI_API_KEY: ""
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install development environment
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[dev]"
+      - name: Run targeted Engineering Knowledge portability tests
+        run: >-
+          python -m pytest
+          tests/test_project_graph.py
+          tests/test_project_preflight.py
+          tests/test_project_postflight.py
+          tests/test_ci_quality.py
+      - name: Run preflight and postflight portability audit
+        run: |
+          python scripts/project_preflight.py --task "W4-S5C CI portability gate" --capture-baseline
+          python scripts/project_postflight.py --from-baseline
+          python scripts/project_postflight.py --clear-baseline
+
   test:
     needs: quality
     runs-on: ubuntu-latest
@@ -81,6 +116,85 @@ jobs:
       - name: Run full test suite
         run: python -m pytest
 
+  platform-smoke:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    env:
+      NPC_RUN_LIVE_SMOKE: "0"
+      NPC_LLM_API_KEY: ""
+      OPENAI_API_KEY: ""
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install development environment
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[dev]"
+      - name: Report runner architecture
+        run: python -c "import platform; print(platform.system(), platform.machine())"
+      - name: Run platform smoke
+        run: python scripts/ci/platform_smoke.py
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Run frontend tests
+        run: npm test
+      - name: Typecheck frontend
+        run: npm run typecheck
+      - name: Lint frontend
+        run: npm run lint
+      - name: Build frontend
+        run: npm run build
+
+  frontend-platform-smoke:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Build frontend
+        run: npm run build
+
   build:
     needs: [quality, test]
     runs-on: ubuntu-latest
@@ -111,8 +225,12 @@ jobs:
 
   installed-smoke:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -127,26 +245,67 @@ jobs:
         with:
           name: python-dist
           path: dist
-      - name: Create isolated smoke environment
-        run: python -m venv "$RUNNER_TEMP/along-street-smoke-venv"
-      - name: Install wheel into isolated environment
-        run: |
-          "$RUNNER_TEMP/along-street-smoke-venv/bin/python" -m pip install --upgrade pip
-          "$RUNNER_TEMP/along-street-smoke-venv/bin/python" -m pip install dist/*.whl
       - name: Run installed smoke outside repository
+        run: python scripts/ci/run_installed_smoke.py
+
+  browser-e2e:
+    needs: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NPC_RUN_LIVE_SMOKE: "0"
+      NPC_LLM_API_KEY: ""
+      OPENAI_API_KEY: ""
+      GAME_AI_AGENT_DB_PATH: ${{ runner.temp }}/s5c-browser.db
+      BACKEND_API_URL: http://127.0.0.1:8000
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install backend environment
         run: |
-          smoke_cwd="$(mktemp -d "$RUNNER_TEMP/along-street-smoke-cwd.XXXXXX")"
-          cd "$smoke_cwd"
-          "$RUNNER_TEMP/along-street-smoke-venv/bin/python" "$GITHUB_WORKSPACE/scripts/ci/installed_smoke.py"
+          python -m pip install --upgrade pip
+          python -m pip install ".[dev]"
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: web
+        run: npm ci
+      - name: Install Chromium
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+      - name: Run offline browser flow
+        working-directory: web
+        shell: bash
+        run: |
+          set -euo pipefail
+          backend_log="$RUNNER_TEMP/s5c-backend.log"
+          frontend_log="$RUNNER_TEMP/s5c-frontend.log"
+          python -m uvicorn web.app:create_app --factory --host 127.0.0.1 --port 8000 >"$backend_log" 2>&1 &
+          backend_pid=$!
+          npm run dev -- --hostname 127.0.0.1 --port 3000 >"$frontend_log" 2>&1 &
+          frontend_pid=$!
+          trap 'kill "$backend_pid" "$frontend_pid" 2>/dev/null || true' EXIT
+          python "$GITHUB_WORKSPACE/scripts/ci/wait_for_urls.py" http://127.0.0.1:8000/api/system/health http://127.0.0.1:3000/studio
+          npm run e2e
 
   ci-success:
     if: ${{ always() }}
-    needs: [quality, test, build, installed-smoke]
+    needs: [quality, ekl-portability, test, platform-smoke, frontend, frontend-platform-smoke, build, installed-smoke, browser-e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Require every CI job to pass
-        if: ${{ needs.quality.result != 'success' || needs.test.result != 'success' || needs.build.result != 'success' || needs.installed-smoke.result != 'success' }}
+        if: ${{ needs.quality.result != 'success' || needs.ekl-portability.result != 'success' || needs.test.result != 'success' || needs.platform-smoke.result != 'success' || needs.frontend.result != 'success' || needs.frontend-platform-smoke.result != 'success' || needs.build.result != 'success' || needs.installed-smoke.result != 'success' || needs.browser-e2e.result != 'success' }}
         run: exit 1
       - name: Report successful CI chain
-        run: echo "quality, test, build, and installed-smoke all passed"
+        run: echo "all required cross-platform, frontend, browser, package, and Engineering Knowledge jobs passed"

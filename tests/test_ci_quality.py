@@ -56,6 +56,7 @@ def test_pyproject_has_explicit_p2_quality_boundaries() -> None:
         "build",
         "twine",
         "tomli",
+        "uvicorn",
     ):
         assert any(item.startswith(f"{package}") for item in dev_dependencies)
 
@@ -97,7 +98,7 @@ def test_pyproject_has_explicit_p2_quality_boundaries() -> None:
     }
 
 
-def test_workflow_has_gated_quality_matrix_build_and_installed_smoke() -> None:
+def test_workflow_has_gated_cross_platform_matrix_and_installed_smoke() -> None:
     workflow = _yaml(".github/workflows/ci.yml")
     triggers = workflow.get("on") or workflow.get(True)
     assert triggers["push"]["branches"] == ["main"]
@@ -106,6 +107,19 @@ def test_workflow_has_gated_quality_matrix_build_and_installed_smoke() -> None:
     assert workflow["concurrency"]["cancel-in-progress"] in {True, "true"}
 
     jobs = workflow["jobs"]
+    assert set(jobs) == {
+        "quality",
+        "ekl-portability",
+        "test",
+        "platform-smoke",
+        "frontend",
+        "frontend-platform-smoke",
+        "build",
+        "installed-smoke",
+        "browser-e2e",
+        "ci-success",
+    }
+
     quality = jobs["quality"]
     quality_uses = [step.get("uses", "") for step in _steps(quality)]
     assert "actions/checkout@v6" in quality_uses
@@ -113,6 +127,21 @@ def test_workflow_has_gated_quality_matrix_build_and_installed_smoke() -> None:
     assert quality["timeout-minutes"] == "15"
     assert any("cache" in step.get("with", {}) for step in _steps(quality))
     assert any("pre_commit run --all-files" in step.get("run", "") for step in _steps(quality))
+
+    ekl = jobs["ekl-portability"]
+    assert ekl["runs-on"] == "ubuntu-latest"
+    assert any(step.get("with", {}).get("python-version") == "3.13" for step in _steps(ekl))
+    ekl_text = "\n".join(step.get("run", "") for step in _steps(ekl))
+    for marker in (
+        "tests/test_project_graph.py",
+        "tests/test_project_preflight.py",
+        "tests/test_project_postflight.py",
+        "--capture-baseline",
+        "--from-baseline",
+    ):
+        assert marker in ekl_text
+    assert "python -m pytest" in ekl_text
+    assert "Run full test suite" not in ekl_text
 
     test_job = jobs["test"]
     assert test_job["needs"] == "quality"
@@ -128,6 +157,40 @@ def test_workflow_has_gated_quality_matrix_build_and_installed_smoke() -> None:
     assert "if" not in plain_step
     assert plain_step["run"] == "python -m pytest"
 
+    platform_smoke = jobs["platform-smoke"]
+    assert platform_smoke["strategy"]["matrix"]["os"] == [
+        "ubuntu-latest",
+        "windows-latest",
+        "macos-latest",
+    ]
+    assert any(
+        step.get("with", {}).get("python-version") == "3.13" for step in _steps(platform_smoke)
+    )
+    platform_text = "\n".join(step.get("run", "") for step in _steps(platform_smoke))
+    assert "scripts/ci/platform_smoke.py" in platform_text
+    assert "platform.machine" in platform_text
+    assert platform_smoke["env"]["NPC_RUN_LIVE_SMOKE"] == "0"
+
+    frontend = jobs["frontend"]
+    frontend_uses = [step.get("uses", "") for step in _steps(frontend)]
+    assert "actions/setup-node@v6" in frontend_uses
+    node_setup = next(
+        step for step in _steps(frontend) if step.get("uses") == "actions/setup-node@v6"
+    )
+    assert node_setup["with"]["node-version"] == "22"
+    assert node_setup["with"]["cache-dependency-path"] == "web/package-lock.json"
+    frontend_text = "\n".join(step.get("run", "") for step in _steps(frontend))
+    for command in ("npm ci", "npm test", "npm run typecheck", "npm run lint", "npm run build"):
+        assert command in frontend_text
+    assert frontend["defaults"]["run"]["working-directory"] == "web"
+
+    frontend_platform = jobs["frontend-platform-smoke"]
+    assert frontend_platform["strategy"]["matrix"]["os"] == ["windows-latest", "macos-latest"]
+    assert frontend_platform["defaults"]["run"]["working-directory"] == "web"
+    frontend_platform_text = "\n".join(step.get("run", "") for step in _steps(frontend_platform))
+    assert "npm ci" in frontend_platform_text
+    assert "npm run build" in frontend_platform_text
+
     build = jobs["build"]
     assert set(build["needs"]) == {"quality", "test"}
     assert any("python -m build" in step.get("run", "") for step in _steps(build))
@@ -138,22 +201,49 @@ def test_workflow_has_gated_quality_matrix_build_and_installed_smoke() -> None:
 
     smoke = jobs["installed-smoke"]
     assert smoke["needs"] == "build"
+    assert smoke["strategy"]["matrix"]["os"] == [
+        "ubuntu-latest",
+        "windows-latest",
+        "macos-latest",
+    ]
     download = next(
         step for step in _steps(smoke) if step.get("uses") == "actions/download-artifact@v8"
     )
     assert download["with"]["name"] == upload["with"]["name"] == "python-dist"
     smoke_text = "\n".join(step.get("run", "") for step in _steps(smoke))
-    assert "dist/*.whl" in smoke_text
-    assert "--no-deps" not in smoke_text
-    assert 'cd "$smoke_cwd"' in smoke_text
-    assert "$GITHUB_WORKSPACE/scripts/ci/installed_smoke.py" in smoke_text
+    assert "scripts/ci/run_installed_smoke.py" in smoke_text
+    assert "dist/*.whl" not in smoke_text
+    assert 'cd "$smoke_cwd"' not in smoke_text
+
+    browser = jobs["browser-e2e"]
+    assert browser["needs"] == "frontend"
+    assert browser["runs-on"] == "ubuntu-latest"
+    browser_uses = [step.get("uses", "") for step in _steps(browser)]
+    assert "actions/setup-node@v6" in browser_uses
+    browser_text = "\n".join(step.get("run", "") for step in _steps(browser))
+    assert "npm ci" in browser_text
+    assert "playwright install --with-deps chromium" in browser_text
+    assert "npm run e2e" in browser_text
+    assert browser["env"]["NPC_RUN_LIVE_SMOKE"] == "0"
 
     success = jobs["ci-success"]
     assert "always()" in success["if"]
-    assert set(success["needs"]) == {"quality", "test", "build", "installed-smoke"}
+    required_jobs = {
+        "quality",
+        "ekl-portability",
+        "test",
+        "platform-smoke",
+        "frontend",
+        "frontend-platform-smoke",
+        "build",
+        "installed-smoke",
+        "browser-e2e",
+    }
+    assert set(success["needs"]) == required_jobs
     success_text = "\n".join(step.get("if", "") for step in _steps(success))
-    for job_name in ("quality", "test", "build", "installed-smoke"):
+    for job_name in required_jobs:
         assert f"needs.{job_name}.result" in success_text
+    assert "!= 'success'" in success_text
 
 
 def test_traversable_import_has_python_310_compatibility_fallback() -> None:
