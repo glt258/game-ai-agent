@@ -7,6 +7,7 @@ import platform
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any
 
 from fastapi.testclient import TestClient
 
@@ -15,7 +16,7 @@ from runtime_paths import resolve_app_data_directory
 from web.app import create_app
 
 
-def _expect(response, status_code: int, label: str) -> dict[str, object]:
+def _expect(response, status_code: int, label: str) -> dict[str, Any]:
     if response.status_code != status_code:
         raise RuntimeError(f"{label} returned {response.status_code}: {response.text}")
     payload = response.json()

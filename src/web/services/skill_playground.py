@@ -39,9 +39,7 @@ from ..schemas.skills import (
 )
 from .live_jobs import LiveJobRegistry, LiveJobSnapshot
 
-ROOT = Path(__file__).resolve().parents[3]
-_FINAL_FIXTURES = ROOT / "tests" / "fixtures" / "hybrid_final_coverage_v2_goldens.json"
-_GENERAL_FIXTURES = ROOT / "tests" / "fixtures" / "hybrid_multi_case_generalization_goldens.json"
+_PACKAGE_ROOT = Path(__file__).resolve().parents[3]
 _PRESETS = {
     "support": "generalization_support_alternate_v1",
     "main_dps": "generalization_dps_v1",
@@ -87,10 +85,10 @@ class SkillPlaygroundApplication:
         self,
         *,
         provider_factory: Callable[[str], HybridProvider] | None = None,
-        repo_root: Path | str = ROOT,
+        repo_root: Path | str | None = None,
     ) -> None:
         self.provider_factory = provider_factory
-        self.repo_root = Path(repo_root)
+        self.repo_root = Path(repo_root) if repo_root is not None else _discover_repo_root()
 
     def meta(self) -> SkillPlaygroundMetaDTO:
         families = []
@@ -225,7 +223,7 @@ class SkillPlaygroundApplication:
         return (
             self.provider_factory(request.model)
             if self.provider_factory is not None
-            else _fixture_provider(request.preset_id)
+            else _fixture_provider(request.preset_id, self.repo_root)
         )
 
     def _provider_mode(self, request: SkillPlaygroundRequestDTO) -> str:
@@ -358,7 +356,14 @@ def _requirement(request: SkillPlaygroundRequestDTO) -> str:
     return request.brief if not constraints else f"{request.brief}\n\nConstraints:\n{constraints}"
 
 
-def _fixture_provider(preset_id: str | None) -> HybridProvider:
+def _discover_repo_root() -> Path:
+    for candidate in (Path.cwd(), *Path.cwd().parents):
+        if (candidate / "tests" / "fixtures" / "hybrid_final_coverage_v2_goldens.json").is_file():
+            return candidate
+    return _PACKAGE_ROOT
+
+
+def _fixture_provider(preset_id: str | None, repo_root: Path) -> HybridProvider:
     fixture_id = _CONTROLLED_PRESETS.get(preset_id, preset_id)
     if fixture_id not in _PRESETS.values():
         raise WebApplicationError(
@@ -368,7 +373,12 @@ def _fixture_provider(preset_id: str | None) -> HybridProvider:
             stage="provider",
             retryable=False,
         )
-    path = _FINAL_FIXTURES if fixture_id in _FINAL_PRESET_IDS else _GENERAL_FIXTURES
+    filename = (
+        "hybrid_final_coverage_v2_goldens.json"
+        if fixture_id in _FINAL_PRESET_IDS
+        else "hybrid_multi_case_generalization_goldens.json"
+    )
+    path = repo_root / "tests" / "fixtures" / filename
     values = json.loads(path.read_text(encoding="utf-8"))
     return FakeProvider(values[fixture_id])
 

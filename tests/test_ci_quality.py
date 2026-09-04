@@ -324,7 +324,10 @@ def test_pre_commit_is_scoped_and_runs_offline_local_guards() -> None:
     local_hooks = {hook["id"]: hook for hook in local["hooks"]}
     assert "src/along_street_resources scripts/ci" in local_hooks["mypy-ci-scope"]["entry"]
     assert local_hooks["mypy-ci-scope"]["language"] == "python"
-    assert local_hooks["mypy-ci-scope"]["additional_dependencies"] == ["mypy>=1.13,<2"]
+    assert local_hooks["mypy-ci-scope"]["additional_dependencies"] == [
+        "mypy>=1.13,<2",
+        "fastapi>=0.115,<1",
+    ]
     assert "scripts/ci/validate_runtime.py" in local_hooks["runtime-data-validation"]["entry"]
     assert local_hooks["runtime-data-validation"]["language"] == "python"
     assert "--model', 'offline" in local_hooks["offline-cli-source-smoke"]["entry"]

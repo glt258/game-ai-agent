@@ -21,7 +21,7 @@ repos:
         name: mypy (P2 CI scope)
         entry: python -m mypy src/along_street_resources scripts/ci
         language: python
-        additional_dependencies: ["mypy>=1.13,<2"]
+        additional_dependencies: ["mypy>=1.13,<2", "fastapi>=0.115,<1"]
         pass_filenames: false
         always_run: true
       - id: runtime-data-validation

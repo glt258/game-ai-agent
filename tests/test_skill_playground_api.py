@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+import web.services.skill_playground as skill_playground_module
 from character_intelligence.hybrid_ir.runner import FakeProvider
 from web.app import create_app
 from web.services.skill_playground import SkillPlaygroundApplication
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _fixture(case_id: str) -> dict:
@@ -76,6 +79,30 @@ def test_offline_presets_cover_the_three_v2_families_with_full_pipeline_passes()
         assert body["status"] == "completed"
         assert body["evaluation"]["outcome"] == "PASS"
         assert all(step["status"] == "passed" for step in body["pipeline"])
+
+
+def test_default_repo_root_resolves_from_web_working_directory(monkeypatch):
+    monkeypatch.chdir(PROJECT_ROOT / "web")
+
+    service = SkillPlaygroundApplication()
+
+    assert service.repo_root == PROJECT_ROOT
+
+
+def test_offline_fixture_provider_uses_application_repo_root(tmp_path):
+    fixture_dir = tmp_path / "tests" / "fixtures"
+    fixture_dir.mkdir(parents=True)
+    shutil.copy2(FIXTURES / "hybrid_final_coverage_v2_goldens.json", fixture_dir)
+
+    request = skill_playground_module.SkillPlaygroundRequestDTO(
+        family="support",
+        mode="active",
+        brief="保护队友。",
+        preset_id="character_support_skill_v1",
+    )
+    provider = SkillPlaygroundApplication(repo_root=tmp_path).provider_for(request)
+
+    assert isinstance(provider, FakeProvider)
 
 
 def test_run_returns_real_pipeline_views_and_canonical_skillkit():
