@@ -119,6 +119,7 @@ def test_workflow_has_gated_cross_platform_matrix_and_installed_smoke() -> None:
         "installed-smoke",
         "browser-e2e",
         "studio-startup-smoke",
+        "final-platform-acceptance",
         "ci-success",
     }
 
@@ -239,6 +240,24 @@ def test_workflow_has_gated_cross_platform_matrix_and_installed_smoke() -> None:
     assert "npm run build" in startup_text
     assert "scripts/ci/studio_startup_smoke.py" in startup_text
 
+    acceptance = jobs["final-platform-acceptance"]
+    assert acceptance["needs"] == "quality"
+    assert acceptance["strategy"]["matrix"]["os"] == [
+        "ubuntu-latest",
+        "windows-latest",
+        "macos-latest",
+    ]
+    assert acceptance["timeout-minutes"] == "20"
+    assert acceptance["env"]["NPC_RUN_LIVE_SMOKE"] == "0"
+    acceptance_text = "\n".join(step.get("run", "") for step in _steps(acceptance))
+    assert 'python-version: "3.13"' not in acceptance_text
+    assert "scripts/ci/final_platform_acceptance.py" in acceptance_text
+    assert any(
+        step.get("with", {}).get("node-version") == "22"
+        for step in _steps(acceptance)
+        if step.get("uses") == "actions/setup-node@v6"
+    )
+
     success = jobs["ci-success"]
     assert "always()" in success["if"]
     required_jobs = {
@@ -252,6 +271,7 @@ def test_workflow_has_gated_cross_platform_matrix_and_installed_smoke() -> None:
         "installed-smoke",
         "browser-e2e",
         "studio-startup-smoke",
+        "final-platform-acceptance",
     }
     assert set(success["needs"]) == required_jobs
     success_text = "\n".join(step.get("if", "") for step in _steps(success))
