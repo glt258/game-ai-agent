@@ -49,8 +49,9 @@ frontend for 60 seconds, then opens the frontend with `webbrowser.open` unless
 `--no-browser` is supplied. Child output is inherited for diagnostics; readiness
 is established by the HTTP probes and child process state rather than a specific
 log line. Ctrl+C, startup failure, or unexpected child exit performs bounded
-sibling cleanup. POSIX uses process groups/signals; Windows uses a new process
-group and `CTRL_BREAK_EVENT`, with a termination fallback. Normal shutdown never
+sibling cleanup. POSIX uses process groups/signals; Windows installs a `SIGBREAK`
+handler so the launcher owns the shutdown lifecycle, then uses a new child
+process group and `CTRL_BREAK_EVENT`, with a termination fallback. Normal shutdown never
 uses `taskkill`.
 
 Argument arrays with `shell=False` preserve paths containing spaces or Unicode.

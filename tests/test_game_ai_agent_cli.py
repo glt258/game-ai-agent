@@ -235,6 +235,70 @@ def test_launcher_does_not_open_browser_in_no_browser_mode(tmp_path: Path, monke
     assert opened == []
 
 
+def test_launcher_converts_windows_ctrl_break_into_controlled_shutdown(tmp_path: Path, monkeypatch) -> None:
+    from game_ai_agent import studio
+
+    _checkout_fixture(tmp_path)
+    backend, frontend = _FakeProcess(1), _FakeProcess(2)
+    processes = [backend, frontend]
+    terminated = []
+    signal_calls = []
+    previous_handler = object()
+    monkeypatch.setattr(studio, "find_npm_executable", lambda: "npm")
+    monkeypatch.setattr(studio, "is_port_available", lambda host, port: True)
+    monkeypatch.setattr(studio, "_popen", lambda *args, **kwargs: processes.pop(0))
+    monkeypatch.setattr(studio, "_wait_for_url", lambda *args: None)
+    monkeypatch.setattr(studio, "_terminate", lambda process: terminated.append(process))
+    monkeypatch.setattr(studio.os, "name", "nt")
+    monkeypatch.setattr(studio.signal, "SIGBREAK", 21, raising=False)
+
+    def fake_signal(signum, handler):
+        signal_calls.append((signum, handler))
+        return previous_handler
+
+    monkeypatch.setattr(studio.signal, "signal", fake_signal)
+
+    def trigger_ctrl_break(_seconds):
+        assert signal_calls, "the launcher must install a Windows shutdown handler"
+        signal_calls[0][1](studio.signal.SIGBREAK, None)
+
+    monkeypatch.setattr(studio.time, "sleep", trigger_ctrl_break)
+
+    assert studio.run_studio(studio.StudioConfig(tmp_path, no_browser=True)) == 0
+    assert terminated == [frontend, backend]
+    assert len(signal_calls) == 2
+    assert signal_calls[1] == (studio.signal.SIGBREAK, previous_handler)
+
+
+def test_launcher_cleanup_is_idempotent_with_partial_children(monkeypatch) -> None:
+    from game_ai_agent import studio
+
+    class StoppableProcess:
+        def __init__(self) -> None:
+            self.alive = True
+            self.signals = []
+
+        def poll(self) -> int | None:
+            return None if self.alive else 0
+
+        def send_signal(self, signum: int) -> None:
+            self.signals.append(signum)
+            self.alive = False
+
+        def wait(self, timeout: float) -> int:
+            del timeout
+            return 0
+
+    monkeypatch.setattr(studio.os, "name", "nt")
+    monkeypatch.setattr(studio.signal, "CTRL_BREAK_EVENT", 21, raising=False)
+    backend = StoppableProcess()
+
+    studio._shutdown_children(None, backend)
+    studio._shutdown_children(None, backend)
+
+    assert backend.signals == [21]
+
+
 def test_launcher_rejects_missing_node_before_startup(tmp_path: Path, monkeypatch) -> None:
     from game_ai_agent import studio
 

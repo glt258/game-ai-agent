@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import os
-import signal
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -122,6 +122,11 @@ def _terminate(process: subprocess.Popen[bytes] | None) -> None:
     process.wait(timeout=5)
 
 
+def _shutdown_children(frontend: subprocess.Popen[bytes] | None, backend: subprocess.Popen[bytes] | None) -> None:
+    _terminate(frontend)
+    _terminate(backend)
+
+
 def run_studio(config: StudioConfig) -> int:
     root = config.repository_root.resolve()
     web_root = root / "web"
@@ -147,7 +152,17 @@ def run_studio(config: StudioConfig) -> int:
     print(f"Backend URL: {backend_url}")
     print(f"Frontend URL: {frontend_url}")
     print(f"DB path: {db_path}")
+    shutdown_requested = False
+    sigbreak = getattr(signal, "SIGBREAK", None) if os.name == "nt" else None
+    previous_sigbreak = None
+
+    def request_shutdown(_signum, _frame) -> None:
+        nonlocal shutdown_requested
+        shutdown_requested = True
+
     try:
+        if sigbreak is not None:
+            previous_sigbreak = signal.signal(sigbreak, request_shutdown)
         print("Startup: starting backend")
         try:
             backend = _popen(build_backend_command(config), cwd=root, environment=environment)
@@ -166,6 +181,9 @@ def run_studio(config: StudioConfig) -> int:
             webbrowser.open(frontend_url)
         print("Studio running. Press Ctrl+C to stop.")
         while True:
+            if shutdown_requested:
+                print("Shutdown: interrupt received")
+                return 0
             backend_exit = backend.poll()
             frontend_exit = frontend.poll()
             if backend_exit is not None:
@@ -180,9 +198,10 @@ def run_studio(config: StudioConfig) -> int:
         print(f"Studio blocked: {error}", file=sys.stderr)
         return 1
     finally:
+        if sigbreak is not None and previous_sigbreak is not None:
+            signal.signal(sigbreak, previous_sigbreak)
         print("Shutdown: stopping frontend and backend")
-        _terminate(frontend)
-        _terminate(backend)
+        _shutdown_children(frontend, backend)
         print("Shutdown: complete")
 
 
