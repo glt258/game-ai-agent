@@ -82,13 +82,17 @@ def _run_console(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _run_unified_console(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+def _run_unified_console(
+    cwd: Path, *args: str, fake_secret: str | None = None
+) -> subprocess.CompletedProcess[str]:
     environment = os.environ.copy()
     for key in ("NPC_LLM_API_KEY", "OPENAI_API_KEY", "DEEPSEEK_API_KEY"):
         environment.pop(key, None)
     environment["NPC_RUN_LIVE_SMOKE"] = "0"
     environment["PYTHONUTF8"] = "1"
     environment["PYTHONIOENCODING"] = "utf-8"
+    if fake_secret is not None:
+        environment["OPENAI_API_KEY"] = fake_secret
     return subprocess.run(
         [*_console_command("game-ai-agent"), *args],
         cwd=cwd,
@@ -130,12 +134,25 @@ def _run_unified_cli_smoke(cwd: Path) -> None:
     help_result = _run_unified_console(cwd, "--help")
     if help_result.returncode != 0:
         raise RuntimeError(f"game-ai-agent --help failed: {help_result.stderr}")
+    version_result = _run_unified_console(cwd, "--version")
+    if version_result.returncode != 0 or not version_result.stdout.strip():
+        raise RuntimeError(f"installed game-ai-agent --version failed: {version_result.stderr}")
+    human_doctor_result = _run_unified_console(cwd, "doctor")
+    if human_doctor_result.returncode != 0 or "Core runtime:" not in human_doctor_result.stdout:
+        raise RuntimeError(f"installed game-ai-agent doctor failed: {human_doctor_result.stderr}")
     doctor_result = _run_unified_console(cwd, "doctor", "--json")
     if doctor_result.returncode != 0:
         raise RuntimeError(f"installed game-ai-agent doctor failed: {doctor_result.stderr}")
     payload = json.loads(doctor_result.stdout)
     if payload.get("core_ready") is not True or payload.get("studio_ready") is not False:
         raise RuntimeError(f"unexpected installed doctor readiness: {payload}")
+    secret = "W4-S5D-FAKE-SECRET-DO-NOT-LEAK"
+    secret_human = _run_unified_console(cwd, "doctor", fake_secret=secret)
+    secret_json = _run_unified_console(cwd, "doctor", "--json", fake_secret=secret)
+    if secret_human.returncode != 0 or secret_json.returncode != 0:
+        raise RuntimeError("installed doctor secret smoke failed")
+    if secret in f"{secret_human.stdout}\n{secret_human.stderr}\n{secret_json.stdout}\n{secret_json.stderr}":
+        raise RuntimeError("installed doctor secret smoke leaked the fake secret")
     outside_result = _run_unified_console(cwd, "studio", "--no-browser")
     combined = f"{outside_result.stdout}\n{outside_result.stderr}"
     if outside_result.returncode != 1 or "source checkout" not in combined.lower():

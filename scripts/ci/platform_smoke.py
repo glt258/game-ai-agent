@@ -33,10 +33,14 @@ def _unified_cli_command() -> list[str]:
     raise RuntimeError(f"game-ai-agent console script not found in {scripts_dir}")
 
 
-def _run_unified_cli(*args: str) -> subprocess.CompletedProcess[str]:
+def _run_unified_cli(
+    *args: str, fake_secret: str | None = None
+) -> subprocess.CompletedProcess[str]:
     environment = os.environ.copy()
     for key in ("NPC_LLM_API_KEY", "OPENAI_API_KEY", "DEEPSEEK_API_KEY"):
         environment.pop(key, None)
+    if fake_secret is not None:
+        environment["OPENAI_API_KEY"] = fake_secret
     environment["NPC_RUN_LIVE_SMOKE"] = "0"
     return subprocess.run(
         [*_unified_cli_command(), *args],
@@ -54,12 +58,25 @@ def _assert_unified_cli() -> None:
     help_result = _run_unified_cli("--help")
     if help_result.returncode != 0 or "doctor" not in help_result.stdout:
         raise RuntimeError(f"game-ai-agent --help failed: {help_result.stderr}")
+    version_result = _run_unified_cli("--version")
+    if version_result.returncode != 0 or not version_result.stdout.strip():
+        raise RuntimeError(f"game-ai-agent --version failed: {version_result.stderr}")
+    human_doctor_result = _run_unified_cli("doctor")
+    if human_doctor_result.returncode != 0 or "Core runtime:" not in human_doctor_result.stdout:
+        raise RuntimeError(f"game-ai-agent doctor failed: {human_doctor_result.stderr}")
     doctor_result = _run_unified_cli("doctor", "--json")
     if doctor_result.returncode != 0:
         raise RuntimeError(f"game-ai-agent doctor failed: {doctor_result.stderr}")
     payload = json.loads(doctor_result.stdout)
     if payload.get("core_ready") is not True:
         raise RuntimeError(f"game-ai-agent doctor did not report core_ready: {payload}")
+    secret = "W4-S5D-FAKE-SECRET-DO-NOT-LEAK"
+    secret_human = _run_unified_cli("doctor", fake_secret=secret)
+    secret_json = _run_unified_cli("doctor", "--json", fake_secret=secret)
+    if secret_human.returncode != 0 or secret_json.returncode != 0:
+        raise RuntimeError("doctor secret smoke failed")
+    if secret in f"{secret_human.stdout}\n{secret_human.stderr}\n{secret_json.stdout}\n{secret_json.stderr}":
+        raise RuntimeError("doctor secret smoke leaked the fake secret")
 
 
 def _expect(response, status_code: int, label: str) -> dict[str, Any]:
