@@ -209,6 +209,22 @@ CI 还会运行 pre-commit 检查、打包数据校验、分发构建检查和�
 未知或伪造的 Canon ID、grounding 失败、具备否定感知的禁止内容、有界修复、恢复诊断以及 provider 的失败即关闭行为。
 fixture 基准是可审计的回归检查，并不代表一般模型性能。
 
+### 统一 CLI 和 Studio 启动
+
+可安装的 Python runtime 提供诊断命令和源码 checkout 的 Studio 启动器：
+
+```bash
+game-ai-agent doctor
+game-ai-agent doctor --json
+game-ai-agent studio --no-browser
+```
+
+wheel 包含 core runtime 和打包资源。v0.1 的 Next.js Studio frontend 仍只在源码
+checkout 中提供：运行 `studio` 时需要 Node/npm 以及已经准备好的 `web/.next` 构建产物。
+启动器会运行 FastAPI 与 `next start`，等待两个 readiness endpoint，并在 Ctrl+C 或子进程
+失败时清理两个子进程。完整约定和退出码见
+`docs/cli_and_studio_startup_contract_v0.1.md`。
+
 使用以下命令运行主要检查：
 
 ```bash

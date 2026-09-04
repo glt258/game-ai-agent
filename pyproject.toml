@@ -26,6 +26,7 @@ dev = [
 ]
 
 [project.scripts]
+game-ai-agent = "game_ai_agent:main"
 along-street-character-author = "agents.official_character_authoring:main"
 
 [tool.pytest.ini_options]
@@ -56,6 +57,7 @@ include = [
     "scripts/ci/**/*.py",
     "tests/test_ci_quality.py",
     "tests/test_cli_startup.py",
+    "tests/test_game_ai_agent_cli.py",
     "tests/test_persistence_foundation.py",
     "tests/test_runtime_paths.py",
     "tests/test_web_api.py",

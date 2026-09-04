@@ -12,6 +12,10 @@ Stable/frozen systems include Character Generation, CanonChecker, the bounded re
 
 Web and W4 CharacterKit are experimental working-tree architecture. They are not represented as released v0.8 architecture.
 
+The W4-S5D unified CLI, runtime diagnostics and source-checkout Studio startup
+orchestration are experimental working-tree components. The wheel exposes the
+core runtime and Doctor; the Next.js Studio remains outside the wheel.
+
 `src/knowledge/` is game runtime knowledge and knowledge-access code. Top-level `knowledge/` is the repository-local Engineering Knowledge Layer.
 
 ## Source Precedence

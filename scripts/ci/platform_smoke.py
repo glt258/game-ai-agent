@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+import os
 import platform
+import subprocess
 import sys
+import sysconfig
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -14,6 +17,49 @@ from fastapi.testclient import TestClient
 from persistence import PersistenceUnitOfWork
 from runtime_paths import resolve_app_data_directory
 from web.app import create_app
+
+
+def _unified_cli_command() -> list[str]:
+    scripts_dir = Path(sysconfig.get_path("scripts"))
+    for candidate in (
+        scripts_dir / "game-ai-agent",
+        scripts_dir / "game-ai-agent.exe",
+        scripts_dir / "game-ai-agent.cmd",
+    ):
+        if candidate.is_file():
+            if candidate.suffix.lower() == ".cmd":
+                return [os.environ.get("COMSPEC", "cmd.exe"), "/d", "/c", str(candidate)]
+            return [str(candidate)]
+    raise RuntimeError(f"game-ai-agent console script not found in {scripts_dir}")
+
+
+def _run_unified_cli(*args: str) -> subprocess.CompletedProcess[str]:
+    environment = os.environ.copy()
+    for key in ("NPC_LLM_API_KEY", "OPENAI_API_KEY", "DEEPSEEK_API_KEY"):
+        environment.pop(key, None)
+    environment["NPC_RUN_LIVE_SMOKE"] = "0"
+    return subprocess.run(
+        [*_unified_cli_command(), *args],
+        cwd=Path.cwd(),
+        env=environment,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="strict",
+        check=False,
+    )
+
+
+def _assert_unified_cli() -> None:
+    help_result = _run_unified_cli("--help")
+    if help_result.returncode != 0 or "doctor" not in help_result.stdout:
+        raise RuntimeError(f"game-ai-agent --help failed: {help_result.stderr}")
+    doctor_result = _run_unified_cli("doctor", "--json")
+    if doctor_result.returncode != 0:
+        raise RuntimeError(f"game-ai-agent doctor failed: {doctor_result.stderr}")
+    payload = json.loads(doctor_result.stdout)
+    if payload.get("core_ready") is not True:
+        raise RuntimeError(f"game-ai-agent doctor did not report core_ready: {payload}")
 
 
 def _expect(response, status_code: int, label: str) -> dict[str, Any]:
@@ -62,6 +108,7 @@ def _save_payload(
 
 
 def main() -> int:
+    _assert_unified_cli()
     _assert_runtime_path_contract()
     with tempfile.TemporaryDirectory(prefix="along-street-platform-测试-") as temp_name:
         database_path = Path(temp_name) / "中文" / "studio.db"
@@ -151,6 +198,7 @@ def main() -> int:
                 "character_skill_kit_round_trip": True,
                 "temporary_unicode_path_cleanup": True,
                 "live_calls": 0,
+                "unified_cli": True,
             },
             ensure_ascii=False,
             sort_keys=True,

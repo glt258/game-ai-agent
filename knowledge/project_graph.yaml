@@ -570,6 +570,46 @@ nodes:
       - path: "docs/live_web_execution_contract_v0.1.md"
         locator: "ephemeral live job and non-persistence contract"
 
+  - id: "component.runtime_diagnostics"
+    type: "component"
+    name: "Runtime Diagnostics"
+    status: "experimental"
+    responsibility: "Perform local, non-mutating readiness checks for the installable core runtime and optional source-checkout Studio prerequisites without provider calls or dependency installation."
+    path: "src/game_ai_agent/doctor.py"
+    canonical_source: "src/game_ai_agent/doctor.py"
+    tests:
+      - "tests/test_game_ai_agent_cli.py"
+    evidence:
+      - path: "docs/cli_and_studio_startup_contract_v0.1.md"
+        locator: "Doctor boundary and status model"
+
+  - id: "component.studio_startup_orchestration"
+    type: "component"
+    name: "Studio Startup Orchestration"
+    status: "experimental"
+    responsibility: "Coordinate the source-checkout FastAPI and Next.js production child processes, bounded readiness probes, browser opening and cross-platform shutdown cleanup."
+    path: "src/game_ai_agent/studio.py"
+    canonical_source: "src/game_ai_agent/studio.py"
+    tests:
+      - "tests/test_game_ai_agent_cli.py"
+    evidence:
+      - path: "docs/cli_and_studio_startup_contract_v0.1.md"
+        locator: "Studio boundary and lifecycle"
+
+  - id: "component.unified_cli"
+    type: "component"
+    name: "Unified game-ai-agent CLI"
+    status: "experimental"
+    responsibility: "Expose the stable top-level doctor and studio commands while retaining the legacy character-authoring entry point and the Python core versus source-checkout Studio boundary."
+    path: "src/game_ai_agent"
+    canonical_source: "src/game_ai_agent"
+    tests:
+      - "tests/test_game_ai_agent_cli.py"
+      - "tests/test_cli_startup.py"
+    evidence:
+      - path: "docs/cli_and_studio_startup_contract_v0.1.md"
+        locator: "Commands and exit codes"
+
 edges:
   - from: "component.character_generation_agent"
     relation: "produces"
@@ -715,6 +755,42 @@ edges:
     evidence:
       - path: "docs/cross_platform_runtime_contract_v0.1.md"
         locator: "Web runtime uses the shared database path resolver"
+  - from: "component.runtime_diagnostics"
+    relation: "depends_on"
+    to: "component.runtime_path_resolution"
+    evidence:
+      - path: "src/game_ai_agent/doctor.py"
+        locator: "resolved database path and writability checks"
+  - from: "component.runtime_diagnostics"
+    relation: "consumes"
+    to: "dataset_boundary.runtime_canon_data"
+    evidence:
+      - path: "src/game_ai_agent/doctor.py"
+        locator: "runtime resource manifest check"
+  - from: "component.studio_startup_orchestration"
+    relation: "adapts"
+    to: "component.web_adapter"
+    evidence:
+      - path: "src/game_ai_agent/studio.py"
+        locator: "FastAPI readiness endpoint and frontend process startup"
+  - from: "component.studio_startup_orchestration"
+    relation: "depends_on"
+    to: "component.runtime_path_resolution"
+    evidence:
+      - path: "src/game_ai_agent/studio.py"
+        locator: "backend database path resolution"
+  - from: "component.unified_cli"
+    relation: "exposes"
+    to: "component.runtime_diagnostics"
+    evidence:
+      - path: "src/game_ai_agent/__main__.py"
+        locator: "doctor subcommand"
+  - from: "component.unified_cli"
+    relation: "exposes"
+    to: "component.studio_startup_orchestration"
+    evidence:
+      - path: "src/game_ai_agent/__main__.py"
+        locator: "studio subcommand"
   - from: "component.saved_character_workspace"
     relation: "depends_on"
     to: "component.character_persistence"

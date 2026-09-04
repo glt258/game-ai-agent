@@ -71,6 +71,7 @@ def test_pyproject_has_explicit_p2_quality_boundaries() -> None:
         "scripts/ci/**/*.py",
         "tests/test_ci_quality.py",
         "tests/test_cli_startup.py",
+        "tests/test_game_ai_agent_cli.py",
         "tests/test_web_api.py",
         "tests/test_persistence_foundation.py",
         "tests/test_runtime_paths.py",
@@ -117,6 +118,7 @@ def test_workflow_has_gated_cross_platform_matrix_and_installed_smoke() -> None:
         "build",
         "installed-smoke",
         "browser-e2e",
+        "studio-startup-smoke",
         "ci-success",
     }
 
@@ -229,6 +231,14 @@ def test_workflow_has_gated_cross_platform_matrix_and_installed_smoke() -> None:
     browser_flow = _step_with_name(browser, "Run offline browser flow")
     assert browser_flow["env"]["GAME_AI_AGENT_DB_PATH"] == "${{ runner.temp }}/s5c-browser.db"
 
+    startup = jobs["studio-startup-smoke"]
+    assert startup["needs"] == "frontend"
+    assert startup["runs-on"] == "ubuntu-latest"
+    startup_text = "\n".join(step.get("run", "") for step in _steps(startup))
+    assert "npm ci" in startup_text
+    assert "npm run build" in startup_text
+    assert "scripts/ci/studio_startup_smoke.py" in startup_text
+
     success = jobs["ci-success"]
     assert "always()" in success["if"]
     required_jobs = {
@@ -241,6 +251,7 @@ def test_workflow_has_gated_cross_platform_matrix_and_installed_smoke() -> None:
         "build",
         "installed-smoke",
         "browser-e2e",
+        "studio-startup-smoke",
     }
     assert set(success["needs"]) == required_jobs
     success_text = "\n".join(step.get("if", "") for step in _steps(success))
@@ -360,6 +371,9 @@ def test_ci_scripts_lock_runtime_and_wheel_smoke_contracts() -> None:
         "console_script_offline",
         "TemporaryDirectory",
         "outside the repository checkout",
+        "game-ai-agent",
+        "doctor",
+        "unified_cli",
     ):
         assert marker in smoke
 

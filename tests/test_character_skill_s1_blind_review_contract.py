@@ -217,9 +217,9 @@ def test_contract_worktree_diff_contains_no_src_changes() -> None:
         text=True,
     )
     allowed_diagnostics = {
-            "src/agents/character_generation.py",
-            "src/agents/models.py",
-            "src/agents/response_contracts.py",
+        "src/agents/character_generation.py",
+        "src/agents/models.py",
+        "src/agents/response_contracts.py",
         "src/character_skill/__init__.py",
         "src/character_skill/contract.py",
         # The generalization pilot adds generic mode and continuation
@@ -228,7 +228,7 @@ def test_contract_worktree_diff_contains_no_src_changes() -> None:
         "src/character_skill/evaluation.py",
         "src/character_skill/errors.py",
     }
-    allowed_h1_prefixes = ("src/character_intelligence/",)
+    allowed_h1_prefixes = ("src/character_intelligence/", "src/game_ai_agent/")
     changed = {
         line[3:].replace("\\", "/")
         for line in result.stdout.splitlines()

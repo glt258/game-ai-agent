@@ -282,6 +282,24 @@ negation-aware forbidden content, bounded repair, recovery diagnostics, and
 fail-closed provider behavior. The fixture benchmarks are auditable regression
 checks, not a claim of general model performance.
 
+### Unified CLI and Studio startup
+
+The installable Python runtime exposes a diagnostic and source-checkout Studio
+launcher:
+
+```bash
+game-ai-agent doctor
+game-ai-agent doctor --json
+game-ai-agent studio --no-browser
+```
+
+The wheel contains the core runtime and packaged resources. The Next.js Studio
+frontend remains source-checkout-only in v0.1: run `studio` from a checkout
+with Node/npm and a prepared `web/.next` build. The launcher starts FastAPI
+and `next start`, waits for both readiness endpoints, and cleans up both child
+processes on Ctrl+C or failure. See
+`docs/cli_and_studio_startup_contract_v0.1.md` for the contract and exit codes.
+
 Run the main checks with:
 
 ```bash

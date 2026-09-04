@@ -119,7 +119,7 @@ def test_problem_scripts_bootstrap_before_top_level_business_imports(
     assert result.returncode == 0, _failure_details(result)
 
 
-def test_pyproject_registers_only_the_production_character_authoring_cli() -> None:
+def test_pyproject_registers_legacy_and_unified_production_clis() -> None:
     try:
         import tomllib
     except ModuleNotFoundError:
@@ -128,5 +128,6 @@ def test_pyproject_registers_only_the_production_character_authoring_cli() -> No
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
     assert project["project"]["scripts"] == {
+        "game-ai-agent": "game_ai_agent:main",
         "along-street-character-author": "agents.official_character_authoring:main",
     }
