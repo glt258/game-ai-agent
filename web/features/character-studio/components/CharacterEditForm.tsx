@@ -60,55 +60,55 @@ export function CharacterEditForm({draft, fieldErrors, sectionErrors, onChange}:
   const personalityError = sectionErrors.has("personality");
   return (
     <div className="edit-form">
-      <p className="edit-helper">Structured fields below update the in-memory draft only. Session changes are not persisted. Validate Changes is the server-side source of truth.</p>
-      {identityError && <p className="section-alert" role="alert">Identity section has validation findings. Review the highlighted fields and validator details.</p>}
+      <p className="edit-helper">以下字段只修改当前会话中的角色方案，不会自动保存。点击“检查修改”后，以服务端结果为准。</p>
+      {identityError && <p className="section-alert" role="alert">身份信息存在检查结果，请查看标记字段和检查详情。</p>}
       <section className="editor-section" aria-labelledby="identity-heading">
-        <h3 id="identity-heading" className="subheading">Identity & role</h3>
+        <h3 id="identity-heading" className="subheading">身份与定位</h3>
         <div className="editor-grid">
-          <TextEditor field="name" label="Name" value={draft.name} errors={fieldErrors.get("name")} onChange={onChange} />
-          <TextEditor field="occupation" label="Occupation" value={draft.occupation} errors={fieldErrors.get("occupation")} onChange={onChange} />
-          <TextEditor field="social_role" label="Social role" value={draft.social_role} errors={fieldErrors.get("social_role")} onChange={onChange} />
-          <TextEditor field="faction_id" label="Affiliation ID" value={draft.faction_id} errors={fieldErrors.get("faction_id")} onChange={onChange} />
-          <TextEditor field="gender" label="Gender" value={draft.gender} errors={fieldErrors.get("gender")} onChange={onChange} />
+          <TextEditor field="name" label="姓名" value={draft.name} errors={fieldErrors.get("name")} onChange={onChange} />
+          <TextEditor field="occupation" label="职业" value={draft.occupation} errors={fieldErrors.get("occupation")} onChange={onChange} />
+          <TextEditor field="social_role" label="社会身份" value={draft.social_role} errors={fieldErrors.get("social_role")} onChange={onChange} />
+          <TextEditor field="faction_id" label="所属组织编号" value={draft.faction_id} errors={fieldErrors.get("faction_id")} onChange={onChange} />
+          <TextEditor field="gender" label="性别" value={draft.gender} errors={fieldErrors.get("gender")} onChange={onChange} />
           <div className={`editor-field ${fieldErrors.get("age")?.length ? "has-error" : ""}`}>
-            <label className="section-label" htmlFor="draft-age">Age</label>
+            <label className="section-label" htmlFor="draft-age">年龄</label>
             <input id="draft-age" className="draft-input" type="number" value={draft.age ?? ""} aria-invalid={fieldErrors.get("age")?.length ? true : undefined} aria-describedby={fieldErrors.get("age")?.length ? "draft-age-errors" : undefined} onChange={(event) => onChange({field: "age", value: event.target.value === "" ? null : Number(event.target.value)})} />
             <FieldErrorList errors={fieldErrors.get("age")} id="draft-age-errors" />
           </div>
-          <TextEditor field="age_range" label="Age range" value={draft.age_range} errors={fieldErrors.get("age_range")} onChange={onChange} />
+          <TextEditor field="age_range" label="年龄范围" value={draft.age_range} errors={fieldErrors.get("age_range")} onChange={onChange} />
         </div>
       </section>
 
-      {personalityError && <p className="section-alert" role="alert">Personality section has validation findings. Review the highlighted field and validator details.</p>}
+      {personalityError && <p className="section-alert" role="alert">性格信息存在检查结果，请查看标记字段和检查详情。</p>}
       <section className="editor-section" aria-labelledby="personality-heading">
-        <h3 id="personality-heading" className="subheading">Personality</h3>
+        <h3 id="personality-heading" className="subheading">性格</h3>
         <div className={`editor-field ${fieldErrors.get("personality")?.length ? "has-error" : ""}`}>
-          <label className="section-label" htmlFor="draft-personality">Personality tags</label>
+          <label className="section-label" htmlFor="draft-personality">性格关键词</label>
           <input id="draft-personality" className="draft-input" value={draft.personality.join(", ")} aria-invalid={fieldErrors.get("personality")?.length ? true : undefined} aria-describedby={fieldErrors.get("personality")?.length ? "draft-personality-errors" : undefined} onChange={(event) => onChange({field: "personality", value: event.target.value})} />
-          <p className="editor-hint">Separate entries with commas.</p>
+          <p className="editor-hint">多个关键词请用逗号分隔。</p>
           <FieldErrorList errors={fieldErrors.get("personality")} id="draft-personality-errors" />
         </div>
       </section>
 
-      {narrativeError && <p className="section-alert" role="alert">Narrative section has validation findings. Review the highlighted fields and validator details.</p>}
+      {narrativeError && <p className="section-alert" role="alert">叙事信息存在检查结果，请查看标记字段和检查详情。</p>}
       <section className="editor-section" aria-labelledby="narrative-heading">
-        <h3 id="narrative-heading" className="subheading">Narrative & capability</h3>
+        <h3 id="narrative-heading" className="subheading">背景与能力</h3>
         <div className="editor-grid">
-          <TextEditor field="design_pitch" label="Design pitch" value={draft.design_pitch} errors={fieldErrors.get("design_pitch")} multiline onChange={onChange} />
-          <TextEditor field="background" label="Background" value={draft.background} errors={fieldErrors.get("background")} multiline onChange={onChange} />
-          <TextEditor field="story_hook" label="Story hook" value={draft.story_hook} errors={fieldErrors.get("story_hook")} multiline onChange={onChange} />
-          <TextEditor field="ability_concept" label="Ability concept" value={draft.ability_concept} errors={fieldErrors.get("ability_concept")} multiline onChange={onChange} />
-          <TextEditor field="knowledge_scope" label="Knowledge scope" value={draft.knowledge_scope} errors={fieldErrors.get("knowledge_scope")} multiline onChange={onChange} />
+          <TextEditor field="design_pitch" label="角色定位" value={draft.design_pitch} errors={fieldErrors.get("design_pitch")} multiline onChange={onChange} />
+          <TextEditor field="background" label="背景经历" value={draft.background} errors={fieldErrors.get("background")} multiline onChange={onChange} />
+          <TextEditor field="story_hook" label="剧情钩子" value={draft.story_hook} errors={fieldErrors.get("story_hook")} multiline onChange={onChange} />
+          <TextEditor field="ability_concept" label="能力构想" value={draft.ability_concept} errors={fieldErrors.get("ability_concept")} multiline onChange={onChange} />
+          <TextEditor field="knowledge_scope" label="知识范围" value={draft.knowledge_scope} errors={fieldErrors.get("knowledge_scope")} multiline onChange={onChange} />
         </div>
       </section>
 
       <section className="editor-section" aria-labelledby="readonly-heading">
-        <h3 id="readonly-heading" className="subheading">Read-only contract fields</h3>
+        <h3 id="readonly-heading" className="subheading">只读技术字段</h3>
         <div className="readonly-grid">
-          <p><strong>Draft ID</strong><span>{draft.draft_id}</span></p>
-          <p><strong>Status</strong><span>{draft.status}</span></p>
-          <p><strong>Combat profile</strong><span>{draft.combat_role_profile.primary_role ?? "Not specified"}</span></p>
-          <p><strong>Nested authoring data</strong><span>Relationships, Canon basis, story link, and proposed content remain read-only in v0.1.</span></p>
+          <p><strong>draft_id</strong><span>{draft.draft_id}</span></p>
+          <p><strong>status</strong><span>{draft.status}</span></p>
+          <p><strong>combat_role_profile</strong><span>{draft.combat_role_profile.primary_role ?? "未指定"}</span></p>
+          <p><strong>其他技术字段</strong><span>关系、世界观依据、剧情关联和新增内容在当前版本保持只读。</span></p>
         </div>
       </section>
     </div>

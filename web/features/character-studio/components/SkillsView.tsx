@@ -91,26 +91,26 @@ export function SkillsView({
   return (
     <div className="stack">
       <div className="session-notice" role="note">
-        <strong>Explicit save workspace</strong>
-        <span>New Skill associations stay local until Save Character commits the workspace.</span>
+        <strong>待保存的角色工作区</strong>
+        <span>新的技能关联会暂存在当前工作区，点击“保存角色”后才会保存。</span>
       </div>
       <div className="session-notice" data-testid="character-kit-summary" role="status">
-        <strong>Character Kit · {kitStructuralStatus}</strong>
-        <span>{attachedSkills.length} association{attachedSkills.length === 1 ? "" : "s"}; structure is independent from role coverage.</span>
+        <strong>角色技能组 · {kitStructuralStatus === "PASS" ? "通过" : "未通过"}</strong>
+        <span>当前有 {attachedSkills.length} 个技能关联；结构检查与定位覆盖检查相互独立。</span>
       </div>
       <RoleCoveragePanel result={roleCoverage} loading={roleCoverageLoading} error={roleCoverageError} />
       {replacement && (
-        <div className="confirm-strip" role="alertdialog" aria-label="Confirm Skill slot replacement">
-          <span>{replacement.slot.label} is occupied. Replace the existing association?</span>
-          <button className="button-primary" onClick={confirmReplacement}>Replace</button>
-          <button className="button-ghost" onClick={() => setReplacement(null)}>Cancel</button>
+        <div className="confirm-strip" role="alertdialog" aria-label="确认替换技能槽位">
+          <span>{replacement.slot.label} 已有技能，是否替换？</span>
+          <button className="button-primary" onClick={confirmReplacement}>替换</button>
+          <button className="button-ghost" onClick={() => setReplacement(null)}>取消</button>
         </div>
       )}
       {notice && <div className="error-notice" role="alert">{notice}</div>}
       {orderedSkills.length === 0 && (
         <div className="empty-state skills-empty-state">
-          <div><strong>No Skill artifacts attached to this Character session.</strong><span>Choose a Skill family and mode, then review the result before attaching it.</span></div>
-          <button className="button-primary" onClick={onDesignSkill}>Design Skill</button>
+          <div><strong>当前角色还没有关联技能。</strong><span>选择技能定位和类型，查看结果后再绑定到角色。</span></div>
+          <button className="button-primary" onClick={onDesignSkill}>设计技能</button>
         </div>
       )}
       {orderedSkills.map((association) => {
@@ -123,32 +123,32 @@ export function SkillsView({
           <article className="field-card full attached-skill-card" key={association.association_id}>
             <div className="attached-skill-header">
               <div>
-                <p className="field-name">{association.slot.toUpperCase()}{association.slot === "passive" ? ` ${placementIndex}` : ""} · Skill association</p>
+                <p className="field-name">{association.slot.toUpperCase()}{association.slot === "passive" ? ` ${placementIndex}` : ""} · 技能关联</p>
                 <strong>{skillFamilyLabel(association.family)} · {skillModeLabel(association.mode)}</strong>
               </div>
               <span className="status-chip passed">{association.slot.toUpperCase()}</span>
             </div>
             <p className="field-value">{association.display_summary}</p>
             <div className="attached-skill-meta">
-                <span>Skill Evaluation: {association.artifact.original_evaluation.outcome}</span>
-              <span>Character Alignment: {alignment.status}</span>
-              <span>Character Context: {freshness ? freshness.toUpperCase() : "CHECKING"}</span>
-                <span>Artifact: {artifactCompatibilityLabel(association.artifact_compatibility)}</span>
+                <span>技能检查：{association.artifact.original_evaluation.outcome === "PASS" ? "通过" : "未通过"}</span>
+              <span>角色适配：{alignment.status === "PASS" ? "通过" : "未通过"}</span>
+              <span>角色上下文：{freshness === "current" ? "当前" : freshness === "stale" ? "已过期" : "检查中"}</span>
+                <span>技能方案：{artifactCompatibilityLabel(association.artifact_compatibility)}</span>
             </div>
-            {freshness === "stale" && <p className="stale-notice">Character context changed. Re-run Skill Design to refresh this association.</p>}
+            {freshness === "stale" && <p className="stale-notice">角色上下文已变化，请重新设计技能以刷新关联。</p>}
             {freshness !== "stale" && <p className="alignment-inline-summary">{alignment.summary}</p>}
             <div className="reference-actions">
-              <button className="button-secondary" onClick={onDesignAgain}>Design Again</button>
-              <button className="button-ghost" onClick={() => onDetach(association.association_id)}>Detach</button>
+              <button className="button-secondary" onClick={onDesignAgain}>重新设计</button>
+              <button className="button-ghost" onClick={() => onDetach(association.association_id)}>解除关联</button>
             </div>
             <details className="attached-skill-inspect">
-              <summary>Inspect artifact</summary>
+              <summary>查看技术详情</summary>
               <pre className="json-view">{JSON.stringify({artifact: association.artifact, binding: association.binding}, null, 2)}</pre>
             </details>
           </article>
         );
       })}
-      {orderedSkills.length > 0 && !designerOpen && <button className="button-primary" onClick={onDesignSkill}>Design another Skill</button>}
+      {orderedSkills.length > 0 && !designerOpen && <button className="button-primary" onClick={onDesignSkill}>再设计一个技能</button>}
       {designerOpen && context && <SkillPlayground key={context.source_context_fingerprint} embedded characterInput={characterInput} characterContext={context} slotOptions={slots} onAttach={requestAttach} />}
     </div>
   );

@@ -4,8 +4,8 @@ import "./globals.css";
 import {PRIMARY_NAVIGATION} from "../lib/ui-labels";
 
 export const metadata: Metadata = {
-  title: "Character Studio | Game AI Agent",
-  description: "A developer workbench for grounded character generation.",
+  title: "角色设计台 | 游戏 AI 工作台",
+  description: "面向角色策划的中文角色方案设计台。",
 };
 
 export default function RootLayout({children}: Readonly<{children: React.ReactNode}>) {

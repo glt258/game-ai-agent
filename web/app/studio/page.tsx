@@ -219,7 +219,7 @@ export default function StudioPage() {
       setRequestState("success");
       setActiveTab("character");
     } catch (caught) {
-      const safeError = caught instanceof ApiClientError ? caught : frontendError("The Character Studio could not complete the request.");
+      const safeError = caught instanceof ApiClientError ? caught : frontendError("角色设计台无法完成本次请求。");
       setError(safeError);
       setRequestState("error");
     }
@@ -291,7 +291,7 @@ export default function StudioPage() {
       if (validationRequestRef.current !== requestToken) {
         return;
       }
-      const safeError = caught instanceof ApiClientError ? caught : frontendError("The edited draft could not be validated.");
+      const safeError = caught instanceof ApiClientError ? caught : frontendError("编辑后的角色方案无法完成检查。");
       setValidationError(safeError);
       setValidationState("error");
     }
@@ -362,7 +362,7 @@ export default function StudioPage() {
       if (openGenerationRef.current === token) applySavedCharacter(saved);
     } catch (caught) {
       if (openGenerationRef.current !== token) return;
-      const safeError = caught instanceof ApiClientError ? caught : frontendError("Saved character could not be opened.");
+      const safeError = caught instanceof ApiClientError ? caught : frontendError("无法打开已保存的角色方案。");
       setError(safeError);
       setRequestState("error");
     }
@@ -394,7 +394,7 @@ export default function StudioPage() {
       setIsEditing(true);
       setSaveState("saved");
     } catch (caught) {
-      const safeError = caught instanceof ApiClientError ? caught : frontendError("The saved Character workspace could not be saved.");
+      const safeError = caught instanceof ApiClientError ? caught : frontendError("角色方案无法保存。");
       setSaveError(safeError.message);
       setSaveState("error");
     }
@@ -406,22 +406,22 @@ export default function StudioPage() {
   }, [roleCoverageCoordinator]);
 
   const healthLabel = healthState === "ready" && health?.status === "ok"
-    ? "Backend online"
+    ? "服务已连接"
     : healthState === "loading"
-      ? "Checking backend"
-      : "Backend unavailable";
+      ? "正在检查服务"
+      : "服务不可用";
 
   return (
     <main className="studio-shell">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark">Game AI Agent</span>
-          <span className="brand-context">/ Character Studio</span>
+          <span className="brand-mark">游戏 AI 工作台</span>
+          <span className="brand-context">/ 角色设计台</span>
         </div>
         <div className={`health ${healthState === "ready" ? "online" : healthState === "error" ? "offline" : ""}`} role="status">
           <span className="health-dot" aria-hidden="true" />
           <span>{healthLabel}</span>
-          {healthState === "error" && <button className="button-ghost" onClick={() => void loadHealth()}>Retry</button>}
+          {healthState === "error" && <button className="button-ghost" onClick={() => void loadHealth()}>重试</button>}
         </div>
       </header>
 

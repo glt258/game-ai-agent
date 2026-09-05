@@ -270,6 +270,26 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .advanced-settings summary, .planner-input-details summary, .technical-view summary { color: var(--accent); cursor: pointer; font-size: 11px; }
 .advanced-settings-body { display: grid; gap: 14px; margin-top: 14px; }
 .planner-summary { display: grid; gap: 14px; }
+.planner-lead { display: grid; gap: 14px; margin-bottom: 14px; border: 1px solid var(--accent); background: #101820; padding: 14px; }
+.planner-check-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.planner-check-card { display: grid; gap: 5px; min-width: 0; border: 1px solid var(--border); background: var(--panel); padding: 10px; }
+.planner-check-card span { color: var(--muted); font-size: 10px; }
+.planner-check-card strong { color: var(--text); font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+.planner-check-card.passed { border-color: rgb(141 211 180 / 40%); }
+.planner-check-card.passed strong { color: var(--accent); }
+.planner-check-card.failed { border-color: rgb(239 139 139 / 45%); }
+.planner-check-card.failed strong { color: var(--danger); }
+.planner-check-card.unavailable strong { color: var(--muted); }
+.planner-check-banner.unavailable { border-color: var(--border); }
+.planner-check-banner.unavailable strong { color: var(--muted); }
+.planner-check-grid + .planner-check-grid { margin-top: 12px; }
+.technical-inspector { border-top: 1px solid var(--border); padding-top: 12px; }
+.technical-inspector > summary { color: var(--accent); cursor: pointer; font-size: 11px; }
+.technical-inspector-body { margin-top: 14px; }
+.technical-inline { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; }
+.technical-inline summary { color: var(--accent); cursor: pointer; font-size: 11px; }
+.technical-id-list { display: grid; gap: 4px; color: var(--muted); font-family: monospace; font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }
+.technical-inline .technical-id-list { margin-top: 8px; }
 .planner-status-row { display: flex; justify-content: flex-end; }
 .planner-summary-text { margin: 0; color: var(--text); font-size: 17px; line-height: 1.6; }
 .planner-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -348,6 +368,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   .workspace-header { display: block; }
   .workspace-meta { margin-top: 8px; }
   .field-grid { grid-template-columns: 1fr; }
+  .planner-check-grid { grid-template-columns: 1fr; }
   .field-card.full { grid-column: auto; }
   .editor-grid, .readonly-grid { grid-template-columns: 1fr; }
   .workspace-actions { justify-content: flex-start; margin-top: 12px; }

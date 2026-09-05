@@ -68,17 +68,17 @@ export function buildCharacterKitEvaluationRequest(
   const ordered = [...associations].sort((left, right) => left.order - right.order || left.association_id.localeCompare(right.association_id));
   for (const association of ordered) {
     if (!association.artifact) {
-      return {ok: false, code: "MISSING_ARTIFACT", message: "Role Coverage unavailable: attached Skill artifact data is incomplete."};
+      return {ok: false, code: "MISSING_ARTIFACT", message: "定位覆盖不可用：已绑定技能的产物数据不完整。"};
     }
     if (!association.binding) {
-      return {ok: false, code: "MISSING_BINDING", message: "Role Coverage unavailable: attached Skill binding data is incomplete."};
+      return {ok: false, code: "MISSING_BINDING", message: "定位覆盖不可用：已绑定技能的绑定数据不完整。"};
     }
     if (association.artifact.identity.artifact_digest !== association.binding.artifact_digest) {
-      return {ok: false, code: "BINDING_DIGEST_MISMATCH", message: "Role Coverage unavailable: Skill binding identity is inconsistent."};
+      return {ok: false, code: "BINDING_DIGEST_MISMATCH", message: "定位覆盖不可用：技能绑定身份不一致。"};
     }
     if (association.association_id.startsWith("session-skill:")
       && association.artifact.identity.artifact_digest !== association.association_id.split(":").at(-1)) {
-      return {ok: false, code: "ARTIFACT_DIGEST_MISMATCH", message: "Role Coverage unavailable: Skill artifact identity is inconsistent."};
+      return {ok: false, code: "ARTIFACT_DIGEST_MISMATCH", message: "定位覆盖不可用：技能产物身份不一致。"};
     }
   }
   const transportAssociations: CharacterKitEvaluationAssociation[] = ordered.map((association) => ({
@@ -140,7 +140,7 @@ export function createRoleCoverageEvaluationCoordinator(
         (result) => {
           if (generation === requestGeneration) {
             if (!isCurrentRoleCoverageResponse(result)) {
-              onState({phase: "error", result: null, message: "Role Coverage unavailable: the backend returned an inconsistent Kit identity."});
+              onState({phase: "error", result: null, message: "定位覆盖不可用：服务端返回的技能组身份不一致。"});
               return;
             }
             onState({phase: "ready", result, message: null});
@@ -148,7 +148,7 @@ export function createRoleCoverageEvaluationCoordinator(
         },
         () => {
           if (generation === requestGeneration) {
-            onState({phase: "error", result: null, message: "Role Coverage unavailable. The backend could not evaluate the current Kit."});
+            onState({phase: "error", result: null, message: "定位覆盖不可用：服务端无法检查当前技能组。"});
           }
         },
       );
@@ -167,13 +167,20 @@ export function orderedAssociations(
 }
 
 export function artifactCompatibilityLabel(value: ArtifactCompatibility): string {
-  return value.replaceAll("_", " ");
+  return {
+    CURRENT_COMPATIBLE: "当前兼容",
+    REEVALUATION_RECOMMENDED: "建议重新检查",
+    REALIGNMENT_RECOMMENDED: "建议重新适配",
+    RECOMPILE_REQUIRED: "需要重新编译",
+    UNSUPPORTED_VERSION: "版本不支持",
+    CONTEXT_PROJECTION_DRIFT: "上下文已变化",
+  }[value];
 }
 
 export function skillFamilyLabel(value: SkillFamily): string {
-  return value === "basic_passive" ? "Basic Passive" : value.replaceAll("_", " ");
+  return {main_dps: "主输出", sub_dps: "副输出", support: "辅助", healer: "治疗", control: "控制", defense: "生存 / 防御", basic_passive: "基础被动"}[value];
 }
 
 export function skillModeLabel(value: SkillMode): string {
-  return value;
+  return {active: "主动", passive: "被动", reaction: "反应"}[value];
 }

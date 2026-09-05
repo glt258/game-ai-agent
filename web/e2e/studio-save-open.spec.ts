@@ -2,43 +2,59 @@ import {expect, test} from "@playwright/test";
 
 test("offline Studio save/open preserves Character Skill and Kit", async ({page}) => {
   await page.goto("/studio");
-  await page.getByRole("button", {name: "Load example brief"}).click();
-  await page.getByRole("button", {name: "Generate"}).click();
-  await expect(page.getByText("Completed candidate")).toBeVisible();
+  await page.getByRole("button", {name: "加载示例需求"}).click();
+  await page.getByRole("button", {name: "生成角色"}).click();
+  await expect(page.getByText("角色方案已生成")).toBeVisible();
 
-  await page.getByRole("button", {name: "Edit"}).click();
-  await page.locator("#draft-name").fill("Edited support character");
-  await page.getByRole("button", {name: "Validate Changes"}).click();
-  await expect(page.getByText("EDITED DRAFT VALIDATION PASSED")).toBeVisible();
+  await page.getByRole("button", {name: "编辑"}).click();
+  await page.locator("#draft-name").fill("编辑后的辅助角色");
+  await page.getByRole("button", {name: "检查修改"}).click();
+  await page.getByText("查看生成与检查明细").click();
+  await expect(page.getByText("修改后的方案检查通过")).toBeVisible();
 
-  await page.getByRole("tab", {name: "Skills"}).click();
-  await expect(page.getByTestId("character-kit-summary")).toContainText("0 associations");
-  await page.getByRole("button", {name: "Design Skill"}).click();
+  await page.getByRole("tab", {name: "技能设计"}).click();
+  await expect(page.getByTestId("character-kit-summary")).toContainText("当前有 0 个技能关联");
+  await page.getByRole("button", {name: "设计技能"}).click();
   await page.getByLabel("技能定位").selectOption("support");
-  await page.getByText("高级设置", {exact: true}).click();
+  await page.getByLabel("技能设计需求").getByText("高级设置", {exact: true}).click();
   await page.getByLabel("离线示例").selectOption("character_support_skill_v1");
   await page.getByLabel("生成方式").selectOption("offline");
   await page.getByRole("button", {name: "生成技能"}).click();
   await expect(page.getByRole("button", {name: "绑定到角色"})).toBeEnabled();
   await page.getByRole("button", {name: "绑定到角色"}).click();
-  await expect(page.getByTestId("character-kit-summary")).toContainText("1 association");
+  await expect(page.getByTestId("character-kit-summary")).toContainText("当前有 1 个技能关联");
 
-  await page.getByRole("button", {name: "Save Character"}).click();
-  await expect(page.getByRole("button", {name: "Saved"})).toBeVisible();
+  await page.getByRole("button", {name: "保存角色"}).click();
+  await expect(page.getByRole("button", {name: "已保存"})).toBeVisible();
 
   await page.goto("/saved-characters");
   await expect(page.getByRole("heading", {name: "Saved Characters"})).toBeVisible();
-  await page.getByRole("article").filter({hasText: "Edited support character"}).first().getByRole("link", {name: "Open"}).click();
+  await page.getByRole("article").filter({hasText: "编辑后的辅助角色"}).first().getByRole("link", {name: "Open"}).click();
   await expect(page).toHaveURL(/\/studio\?character=/);
-  await expect(page.getByText("Completed candidate")).toBeVisible();
-  await page.getByRole("tab", {name: "Skills"}).click();
-  await expect(page.getByTestId("character-kit-summary")).toContainText("1 association");
+  await expect(page.getByText("角色方案已生成")).toBeVisible();
+  await page.getByRole("tab", {name: "技能设计"}).click();
+  await expect(page.getByTestId("character-kit-summary")).toContainText("当前有 1 个技能关联");
 
-  await page.getByRole("tab", {name: "Character"}).click();
-  await page.getByRole("button", {name: "Edit"}).click();
-  await page.locator("#draft-occupation").fill("Field coordinator");
-  await page.getByRole("button", {name: "Save Character"}).click();
-  await expect(page.getByRole("button", {name: "Saved"})).toBeVisible();
+  await page.getByRole("tab", {name: "角色方案"}).click();
+  await page.getByRole("button", {name: "编辑"}).click();
+  await page.locator("#draft-occupation").fill("现场协调员");
+  await page.getByRole("button", {name: "保存角色"}).click();
+  await expect(page.getByRole("button", {name: "已保存"})).toBeVisible();
+});
+
+test("offline Character Studio shows the Chinese planner result and technical details", async ({page}) => {
+  await page.goto("/studio");
+  await page.getByRole("button", {name: "加载示例需求"}).click();
+  await page.getByRole("button", {name: "生成角色"}).click();
+  await expect(page.getByTestId("character-planner-view")).toBeVisible();
+  await expect(page.getByTestId("character-planner-view")).toContainText("性格");
+  await expect(page.getByTestId("character-planner-view")).toContainText("核心玩法");
+  await expect(page.getByTestId("character-planner-view")).toContainText("设计检查");
+  await page.getByRole("tab", {name: "设计检查"}).click();
+  await expect(page.getByTestId("character-design-checks")).toBeVisible();
+  await page.getByRole("tab", {name: "技术详情"}).click();
+  await expect(page.getByTestId("character-technical-details")).toContainText("CharacterDraft 原始数据");
+  await expect(page.getByTestId("character-technical-details")).toContainText("draft_id");
 });
 
 test("offline Skill Playground shows the Chinese planner result and technical details", async ({page}) => {

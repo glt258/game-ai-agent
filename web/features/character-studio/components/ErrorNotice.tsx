@@ -6,7 +6,7 @@ interface ErrorNoticeProps {
   actionLabel?: string;
 }
 
-export function ErrorNotice({error, onRetry, actionLabel = "Retry generation"}: ErrorNoticeProps) {
+export function ErrorNotice({error, onRetry, actionLabel = "重新生成"}: ErrorNoticeProps) {
   if (!error) {
     return null;
   }
@@ -15,7 +15,7 @@ export function ErrorNotice({error, onRetry, actionLabel = "Retry generation"}: 
       <strong>{error.payload.error.code}</strong>
       <p>{error.payload.error.message}</p>
       <button className="button-secondary" onClick={onRetry}>{actionLabel}</button>
-      <div className="notice-meta">HTTP {error.statusCode || "network"}</div>
+      <div className="notice-meta">HTTP {error.statusCode || "网络错误"}</div>
     </div>
   );
 }
