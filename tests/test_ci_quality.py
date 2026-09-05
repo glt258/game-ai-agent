@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+import io
 import re
 from pathlib import Path
 
@@ -41,6 +42,23 @@ def _has_import(nodes: list[ast.AST], module: str) -> bool:
         and any(alias.name == "Traversable" for alias in node.names)
         for node in nodes
     )
+
+
+def test_final_acceptance_console_rendering_is_cp1252_safe() -> None:
+    script = ROOT / "scripts/ci/final_platform_acceptance.py"
+    spec = importlib.util.spec_from_file_location("final_platform_acceptance", script)
+    assert spec is not None and spec.loader is not None
+    acceptance = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(acceptance)
+
+    buffer = io.BytesIO()
+    stream = io.TextIOWrapper(buffer, encoding="cp1252", errors="strict")
+    acceptance._safe_print("temporary Unicode path: 游戏 AI Agent", file=stream)
+    stream.flush()
+
+    rendered = buffer.getvalue().decode("cp1252")
+    assert "temporary Unicode path:" in rendered
+    assert r"\u6e38\u620f" in rendered
 
 
 def test_pyproject_has_explicit_p2_quality_boundaries() -> None:

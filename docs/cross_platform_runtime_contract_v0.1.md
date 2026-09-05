@@ -83,6 +83,11 @@ focused tests. URL values such as `BACKEND_API_URL` remain URLs and are never
 passed through filesystem path resolution; its localhost fallback is
 platform-independent.
 
+Acceptance diagnostics preserve the real Unicode commands, paths, and child
+logs. When the current stdout or stderr encoding cannot represent a value,
+only its display form uses deterministic backslash escapes; execution and
+filesystem semantics remain unchanged.
+
 ## Frontend runtime
 
 The frontend continues to use npm and `web/package-lock.json` with `npm ci`.

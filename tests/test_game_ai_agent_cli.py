@@ -249,7 +249,7 @@ def test_launcher_converts_windows_ctrl_break_into_controlled_shutdown(tmp_path:
     monkeypatch.setattr(studio, "_popen", lambda *args, **kwargs: processes.pop(0))
     monkeypatch.setattr(studio, "_wait_for_url", lambda *args: None)
     monkeypatch.setattr(studio, "_terminate", lambda process: terminated.append(process))
-    monkeypatch.setattr(studio.os, "name", "nt")
+    monkeypatch.setattr(studio, "_is_windows", lambda: True)
     monkeypatch.setattr(studio.signal, "SIGBREAK", 21, raising=False)
 
     def fake_signal(signum, handler):
@@ -289,7 +289,7 @@ def test_launcher_cleanup_is_idempotent_with_partial_children(monkeypatch) -> No
             del timeout
             return 0
 
-    monkeypatch.setattr(studio.os, "name", "nt")
+    monkeypatch.setattr(studio, "_is_windows", lambda: True)
     monkeypatch.setattr(studio.signal, "CTRL_BREAK_EVENT", 21, raising=False)
     backend = StoppableProcess()
 

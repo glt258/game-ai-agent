@@ -16,7 +16,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import Any, TextIO
 
 STAGE_TIMEOUT = 120.0
 READY_TIMEOUTS = {"backend": 45.0, "frontend": 90.0}
@@ -42,6 +42,28 @@ class AcceptanceFailure(RuntimeError):
 
 def _command_text(command: list[str]) -> str:
     return subprocess.list2cmdline(command) if os.name == "nt" else " ".join(command)
+
+
+def _safe_console_text(value: object, stream: TextIO) -> str:
+    text = str(value)
+    encoding = getattr(stream, "encoding", None) or "utf-8"
+    try:
+        text.encode(encoding)
+    except UnicodeEncodeError:
+        return text.encode(encoding, errors="backslashreplace").decode(encoding)
+    except LookupError:
+        return text.encode("utf-8", errors="backslashreplace").decode("utf-8")
+    return text
+
+
+def _safe_print(*values: object, sep: str = " ", end: str = "\n", file: TextIO | None = None) -> None:
+    stream = file or sys.stdout
+    print(
+        *(_safe_console_text(value, stream) for value in values),
+        sep=sep,
+        end=end,
+        file=stream,
+    )
 
 
 def _redact(value: str) -> str:
@@ -116,7 +138,7 @@ def _run(
     if result.returncode != 0:
         detail = _redact((result.stdout + "\n" + result.stderr).strip())[-4000:]
         raise AcceptanceFailure(stage, _command_text(command), result.returncode, detail)
-    print(f"{stage}: PASS")
+    _safe_print(f"{stage}: PASS")
     return result
 
 
@@ -159,7 +181,7 @@ def _wait_for_url(
             with urllib.request.urlopen(url, timeout=2) as response:
                 status_ok = response.status == exact_status if exact_status else 200 <= response.status < 400
                 if status_ok:
-                    print(f"{stage}: PASS ({response.status})")
+                    _safe_print(f"{stage}: PASS ({response.status})")
                     return
                 last_error = f"HTTP {response.status}"
         except (OSError, urllib.error.URLError) as error:
@@ -348,7 +370,7 @@ def _start_studio_cycle(
     frontend_url: str,
     log_path: Path,
 ) -> subprocess.Popen[str]:
-    print(f"studio-start-{cycle}: {_command_text(command)}")
+    _safe_print(f"studio-start-{cycle}: {_command_text(command)}")
     process = _start_studio(command, cwd=root, environment=environment, log_path=log_path)
     try:
         _wait_for_url(
@@ -377,7 +399,7 @@ def _start_studio_cycle(
     except Exception:
         _stop_studio(process)
         raise
-    print(f"studio-start-{cycle}: PASS")
+    _safe_print(f"studio-start-{cycle}: PASS")
     return process
 
 
@@ -389,7 +411,7 @@ def _shutdown_studio(
     log_path: Path,
 ) -> None:
     force_fallback = _stop_studio(process)
-    print(f"shutdown-{cycle}: {'FAIL (force fallback)' if force_fallback else 'PASS'}")
+    _safe_print(f"shutdown-{cycle}: {'FAIL (force fallback)' if force_fallback else 'PASS'}")
     if force_fallback:
         raise AcceptanceFailure(
             f"shutdown-{cycle}",
@@ -424,9 +446,9 @@ def _accept(root: Path) -> None:
         raise RuntimeError("acceptance must run from the repository root")
     environment = _environment()
     environment["OPENAI_API_KEY"] = FAKE_SECRET
-    print(f"platform: {platform.system()}")
-    print(f"architecture: {platform.machine()}")
-    print(f"Python: {sys.version.split()[0]}")
+    _safe_print(f"platform: {platform.system()}")
+    _safe_print(f"architecture: {platform.machine()}")
+    _safe_print(f"Python: {sys.version.split()[0]}")
     cli = _console_command()
     _run("cli", [*cli, "--help"], cwd=root, environment=environment)
     _run("cli", [*cli, "--version"], cwd=root, environment=environment)
@@ -489,13 +511,13 @@ def _accept(root: Path) -> None:
                 raise AcceptanceFailure(
                     "save", "HTTP persistence API", None, _with_log(str(error), log_1), log_1
                 ) from error
-            print("save: PASS (Character + Skill + CharacterKit)")
+            _safe_print("save: PASS (Character + Skill + CharacterKit)")
         finally:
             _shutdown_studio(1, process_1, command, ports, log_1)
         if not database_path.is_file():
             raise RuntimeError("Studio did not create the acceptance database")
         _assert_schema(database_path)
-        print("shutdown-1: PASS (ports released)")
+        _safe_print("shutdown-1: PASS (ports released)")
         log_2 = Path(temp_name) / "studio-run-2.log"
         process_2 = _start_studio_cycle(2, command, root=root, environment=environment, backend_url=backend_url, frontend_url=frontend_url, log_path=log_2)
         try:
@@ -505,14 +527,14 @@ def _accept(root: Path) -> None:
                 raise AcceptanceFailure(
                     "verify", "HTTP persistence API", None, _with_log(str(error), log_2), log_2
                 ) from error
-            print("open: PASS")
-            print("verify: PASS (Character + revision + Skill association + CharacterKit)")
+            _safe_print("open: PASS")
+            _safe_print("verify: PASS (Character + revision + Skill association + CharacterKit)")
         finally:
             _shutdown_studio(2, process_2, command, ports, log_2)
         _assert_schema(database_path)
-        print("shutdown-2: PASS (ports released)")
-    print("cleanup: PASS (temporary Unicode DB/log path removed; no orphan launcher)")
-    print(
+        _safe_print("shutdown-2: PASS (ports released)")
+    _safe_print("cleanup: PASS (temporary Unicode DB/log path removed; no orphan launcher)")
+    _safe_print(
         json.dumps(
             {
                 "acceptance": "W4-S5E",
@@ -534,7 +556,7 @@ def main() -> int:
         _accept(Path.cwd().resolve())
     except AcceptanceFailure as error:
         log = _tail(error.log_path) if error.log_path else "<no process log>"
-        print(
+        _safe_print(
             f"FAIL stage={error.stage} platform={platform.system()} command={error.command} "
             f"exit_code={error.exit_code}\n"
             f"backend log: {error.log_path or '<none>'}\n"
@@ -545,7 +567,7 @@ def main() -> int:
         )
         return 1
     except (OSError, RuntimeError, subprocess.TimeoutExpired, json.JSONDecodeError) as error:
-        print(
+        _safe_print(
             f"FAIL stage=acceptance platform={platform.system()} command=<internal> exit_code=1\n"
             "backend log: <not started or inherited launcher log>\n"
             "frontend log: <not started or inherited launcher log>\n"

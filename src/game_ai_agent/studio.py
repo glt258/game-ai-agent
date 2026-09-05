@@ -22,6 +22,10 @@ class StudioError(RuntimeError):
     """Raised for a clear, user-actionable Studio startup failure."""
 
 
+def _is_windows() -> bool:
+    return os.name == "nt"
+
+
 @dataclass(frozen=True)
 class StudioConfig:
     repository_root: Path
@@ -66,7 +70,7 @@ def build_child_environment(config: StudioConfig) -> dict[str, str]:
 
 
 def _popen(command: list[str], *, cwd: Path, environment: dict[str, str]) -> subprocess.Popen[bytes]:
-    if os.name == "nt":
+    if _is_windows():
         return subprocess.Popen(
             command,
             cwd=cwd,
@@ -99,7 +103,7 @@ def _terminate(process: subprocess.Popen[bytes] | None) -> None:
     if process is None or process.poll() is not None:
         return
     try:
-        if os.name == "nt":
+        if _is_windows():
             process.send_signal(signal.CTRL_BREAK_EVENT)
         else:
             killpg = getattr(os, "killpg")
@@ -112,7 +116,7 @@ def _terminate(process: subprocess.Popen[bytes] | None) -> None:
     except subprocess.TimeoutExpired:
         pass
     try:
-        if os.name == "nt":
+        if _is_windows():
             process.kill()
         else:
             killpg = getattr(os, "killpg")
@@ -153,7 +157,7 @@ def run_studio(config: StudioConfig) -> int:
     print(f"Frontend URL: {frontend_url}")
     print(f"DB path: {db_path}")
     shutdown_requested = False
-    sigbreak = getattr(signal, "SIGBREAK", None) if os.name == "nt" else None
+    sigbreak = getattr(signal, "SIGBREAK", None) if _is_windows() else None
     previous_sigbreak = None
 
     def request_shutdown(_signum, _frame) -> None:
