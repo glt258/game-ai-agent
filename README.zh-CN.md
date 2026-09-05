@@ -1,456 +1,298 @@
-# Along the Street — 游戏 AI Agent 系统
+# Game AI Agent
+
+**结构化的 AI 辅助游戏内容设计与创作系统**
 
 [English](README.md) | **简体中文**
 
 [![CI](https://github.com/glt258/game-ai-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/glt258/game-ai-agent/actions/workflows/ci.yml)
 
-Along the Street 是一个结构化的游戏内容创作系统。当前的 Character
-Authoring 里程碑通过有界检索、严格的结构化定稿、确定性校验、Canon 检查和有界修复，
-将设计师简述转换为可审核、以 Canon 为依据的 `CharacterDraft`。
-Agent 提议内容；它不会写入、发布或批准正式 Canon。
+Game AI Agent 正在构建一个面向游戏开发的结构化 AI 内容设计系统。它不是
+Prompt wrapper，也还不是完整的 AI 原生游戏开发平台。当前重点是角色与技能
+设计、基于 Canon 的检索、确定性校验、评估，以及本地 Studio 工作流。
 
-角色创作支持年龄含混和多样人生阶段的概念，不强制建立年龄与学校/工作之间的对应关系，
-同时保留 Canon、权限以及可玩角色约束。
-v0.3 创作契约还会保留未知的精确年龄、法定年龄和历史年龄信息，
-并将就学经历含混与当前非学生状态分开处理。
+项目长期方向是更广泛的游戏内容开发。当前模型输出是 proposal，创作流程对
+Canon 只读，最终审查权属于人类。
 
-## 当前状态
+## 当前能做什么
 
-### 版本矩阵
+- 将设计师 brief 转换为结构化、可审查的 `CharacterDraft`。
+- 通过有界、只读的 Canon 与 Story 检索支撑角色创作。
+- 结构化设计意图，并从 Reference Corpus 检索设计先例。
+- 通过 Semantic IR、确定性编译、canonical `SkillKit`、评估、安全诊断和
+  有界语义修复进行技能设计。
+- 执行请求、表示、Canon、grounding 和 contract 检查，并审计工具与模型调用。
+- 使用本地 Next.js + FastAPI Studio，包括基于 SQLite 的已保存角色工作区。
 
-| 命名空间 | 当前标识 | 含义 |
-|---|---|---|
-| Project | `0.8.0` | 当前版本 |
-| Public Release | `v0.8` | Skill Design v1 与手工 Skill Playground 版本 |
-| Runtime Baseline | `runtime-v0.6.6` | 冻结的运行时基线 |
-| Reference Corpus | `reference-corpus-v0.5` | 当前包含 16 条记录的扩展语料库基线 |
-| Character Intelligence | `CI-B1.5` | 当前 Canon 化战斗角色兼容性里程碑 |
-| Character Skill | `CS-S1.1` | 当前冻结的接口设计里程碑 |
-| Hybrid Semantic IR | `hybrid-semantic-ir-e2e-v0.1` | 历史真实 provider 端到端 evaluator PASS 基线 |
+## 当前能力
 
-完整的命名策略记录于 [Versioning and Namespace Policy](docs/versioning.md)。
-
-Skill Design v1 已在文档规定的七类语义覆盖边界内冻结。
-本版本记录离线流水线验证和有限的 live 观察，不宣称模型首次生成的普遍可靠性。
-`v0.8` 的发布说明记录于
-[docs/release_notes_v0.8.md](docs/release_notes_v0.8.md)。
-
-## v0.8 新增内容
-
-- 覆盖 Support、Main DPS、Sub-DPS、Control、Reaction / Healer、Defense 和 Basic Passive 七类
-  Skill Design v1 family。
-- 提供 Semantic IR → 确定性 compiler → canonical SkillKit → evaluator 的流水线与引用完整性检查。
-- Manual Skill Playground CLI 支持自然语言需求、role/mode、model、language、安全诊断和一次有界修复。
-- 支持简体中文与英文的人类可读输出，同时保持机器协议字段使用权威英文值。
-- 完成 triggered-v2 契约对齐，以及 generation/repair 的通用 actor/effect-subject 语义约束。
-
-该版本不包含 deferred v2 机制，不改变 provider transport 行为，也不宣称模型可靠性达到普遍保证。
-
-## 这个项目是什么
-
-游戏设计师需要 AI 协助，但不能允许模型自由编造世界事实、覆盖既有故事数据或隐藏未经支持的声明。
-本仓库通过一个小型、可审计的流水线探索这一边界：
-
-- Canon 和世界数据对创作 Agent 保持只读。
-- 现有的、依赖 Canon 的声明必须由成功的检索提供支持。
-- 新角色细节与既有事实分开，作为提议数据处理。
-- 确定性运行时检查会在 Canon 检查和修复之前及之后执行。
-- 人工审核仍拥有最终权威；通过校验的 draft 不等于写入 Canon。
-
-这不只是“让 LLM 生成游戏角色”。这是一个具备显式工具使用、证据积累、结构化契约、失败处理和评估能力的
-受约束创作工作流。
-
-## 为什么这不只是提示词工程
-
-模型获得的是固定且只读的创作工具箱，而不是对仓库或可写对象的直接访问权限。
-检索具备权限感知能力并受到边界限制。最终响应会被解析为严格的 `CharacterDraft` 根对象，
-而不是任意包装器或文本响应。随后，确定性检查会校验 ID、grounding 证据、请求约束、禁止内容，
-以及 Canon 与提议设计之间的分离。
-
-Canon Checker 应用确定性的冲突规则，不使用 LLM 判定器或嵌入相似度决策。
-如果候选违反检查器或允许的修复范围，修复循环最多可以进行一次有界尝试，随后重新检查结果。
-工具调用、来源、模型调用和校验结果都可审计。
-
-## 当前架构
-
-```mermaid
-flowchart TD
-    brief[Designer Brief] --> agent[CharacterGenerationAgent]
-    canon[Canon / World / Story / Knowledge Data] --> tools[Read-only Canon Tools]
-    agent --> retrieval[Retrieval / Authoring Action Phase]
-    retrieval --> tools
-    tools --> evidence[Grounding Evidence Accumulation]
-    evidence --> retrieval
-    retrieval --> finalize[Strict Finalization Phase]
-    finalize --> draft[CharacterDraft]
-    draft --> validate[Deterministic Grounding and Request Validation]
-    validate --> checker[CanonChecker]
-    checker -->|PASS / WARN| review[Reviewable Candidate]
-    checker -->|FAIL and repair allowed| repair[CharacterRepairAgent]
-    repair --> checker
-```
-
-检索与最终结构化 draft 是两个独立阶段。兼容的默认 `model_loop` 策略允许模型请求有界的只读工具调用；
-可选的 `deterministic` 策略会在不改变 grounding 或校验规则的情况下，规划同一安全检索面。
-无论采用哪种策略，定稿轮次都不提供工具，并且必须返回严格的 `CharacterDraft` 契约。
-
-阶段拆分是在提交 `6b9f402`、
-`feat: split character retrieval and finalization turns` 中引入的。
-
-项目将以下职责分开：
-
-- **Canon / 世界数据** — 结构化的世界、阵营、传说、角色和故事信息。
-- **Knowledge / 检索层** — 对这些数据执行只读、限定范围且具备权限感知的检索工具。
-- **Character Generation Agent** — 将设计师简述转换为候选 `CharacterDraft`。
-- **Grounding / 约束校验** — 检查检索到的 ID、Canon Basis、请求约束、禁止内容和提议边界。
-- **Canon Checker** — 根据既有 Canon 检查候选。
-- **Character Repair Loop** — 在允许时进行一次有界修复尝试。
-- **Evaluation layer** — 确定性测试、基准用例和 live-model 检查。
-- **Reference Corpus** — 用于评估和创作质量分析的外部先例/参考数据。
-- **Reference Selection Quality Benchmark v0.4** — 离线排序、敏感性、集中度、稳定性和语料库覆盖率诊断。
-
-## 角色生成流程
-
-1. 接收包含简述、硬约束、软偏好、禁止元素和期望关联的 `CharacterDesignRequest`。
-2. 进入有界检索/动作阶段。兼容的默认模型循环最多允许六轮工具调用；
-   确定性检索可作为受控集成的显式策略使用。
-3. 只有当简述依赖既有阵营、传说事实、角色、世界规则、故事、案件或事件时，才使用只读 Canon 工具。
-4. 从成功的工具结果中积累来源 ID 和 grounding 证据。
-5. 只有收到精确的 `FINALIZE` 信号时才提前停止。格式错误的终止或动作轮次耗尽会失败即关闭，
-   不会调用不安全的定稿流程。
-6. 进入不提供工具的干净定稿轮次，并将直接 JSON 根解析为 `CharacterDraft`。
-7. 以确定性方式校验 Canon ID、grounding、请求约束、禁止内容和提议字段。
-8. 运行 `CanonChecker`；如果允许，则最多进行一次有界修复尝试，并完整重新检查。
-9. 任何不安全失败都会返回 `NOT_COMPLETED`，不伪造 draft 或 Canon 结果。结构化 CharacterDraft 恢复受到有界控制并经过审计。
-
-结果是供人工审核的候选。它永远不会通过该流水线提升为 Canon。
-
-## 基于 Canon 的工具能力
-
-`CharacterAuthoringToolbox` 暴露以下固定的只读工具：
-
-- Lore：`search_lore`、`get_lore`
-- Factions：`search_factions`、`get_faction`
-- Existing characters：`search_characters`、`get_character`
-- World constraints：`get_world_rules`
-- Story context：`search_story_context`、`get_story_context`
-
-搜索会返回有界的安全摘要；详情调用会检索一个稳定 ID。
-工具箱支持面向创作的作用域，不会向模型暴露 resolver、仓库、文件系统路径或写操作。
-
-## Live 可观测性
-
-Live provider 成功不等同于流水线完成。provider 调用可能成功，但后续的 Agent 循环、定稿、grounding 或 draft 校验
-仍可能失败。失败渲染器会保留这种区别：
+### 角色设计与创作
 
 ```text
-Provider invocation: SUCCESS
-Outcome: success
-Error: AgentExecutionError: <safe failure reason>
-Pipeline status: NOT_COMPLETED
-No Character draft or Canon result was fabricated.
+设计师 Brief → 意图 / 计划 → 有界 Canon 检索
+  → CharacterDraft 生成 → 确定性校验 → CanonChecker
+  → 最多一次获准修复 → 人工审查
 ```
 
-诊断信息可能暴露异常类别、固定的安全原因、grounding 检查和经过校验的 Canon ID。
-它们绝不会暴露 API key、provider 响应正文、完整提示词、未经处理的模型输出或未经处理的恢复异常文本。
+`CharacterDraft` 是待审查的 proposal，不是批准结果，也不会写入 Canon。创作
+工具箱只提供白名单内的 lore、faction、character、world-rule 和 story 查询；
+模型不能访问任意文件或写入操作。
 
-## 验证与证据
+### 角色设计智能
 
-### 经过验证的 Live Provider 运行
+`CharacterDesignIntent`、`CharacterDesignPlan` 和 `DesignPatternQuery` 将 brief
+投影为结构化设计信息。确定性的 reference selector 寻找相关先例与对比候选。
+它们是设计辅助，不是隐藏思维链，也不是第二套角色 schema。
 
-一次经过验证的 live Character Authoring E2E 运行使用了 provider `opencode_go` 和模型
-`deepseek-v4-flash`。该依赖 Canon 的简述要求生成的角色属于一个既有组织。Agent 执行了实际检索，选择了
-`faction_005`（`临洲市公共安全联席体系`），并生成了角色 `方宁舒`，其职业为
-`临洲市公共安全联席体系大型活动安全组现场协作员`。
+### 技能设计
 
-该 draft 具有非空的检索来源集合，grounded Canon Basis 条目包括 `faction_005`、`lore_023`、`lore_024`、
-`lore_026` 和 `char_launch_007`。这是一个经过验证的 live E2E 示例，不是基准测试，也不是关于模型普遍质量的声明。
-独立的发布探针发现，DeepSeek Pro 的完整定稿仍可能超过现有的有界 provider 尝试次数；
-该 provider/模型延迟限制仍被有意保留并如实展示。
-
-### 历史 Provider 证据
-
-仓库还保留了后续 Character Skill / S2 / Hybrid Semantic IR 调查中的脱敏历史 provider 证据，记录了有界的结构化输出与契约合规探针、
-形状诊断、超时/重试与延迟观察，以及 Hybrid Semantic IR 的结果。这些观察来自较早的 provider 运行；提交到仓库的副本是位于
-[`tests/fixtures/historical_evidence/`](tests/fixtures/historical_evidence/) 下、仅包含元数据的 fixture，用于可复现验证。
-它们不会让 CI 发起新的 provider 调用，也不是排行榜或一般模型基准，而是有边界的实验性证据。
-
-### Hermetic 端到端验证
-
-Hybrid Semantic IR 执行路径支持显式的 provider 注入 seam，因此测试可以使用确定性的注入 provider，完整走过
-provider → IR → validator → compiler → parser → evaluator 路径。生产/live 的默认 provider factory 仍然受凭据门禁保护：
+Skill Design v1（`CS-S2`）支持 Main DPS、Sub-DPS、Support、Healer/Reaction、
+Control、Defense 和 Basic Passive 七类语义：
 
 ```text
-生产/live 路径      → 必须配置 provider 凭据
-hermetic CI 路径    → 显式注入 provider；不发起真实 provider 调用
+需求 / 上下文 → Semantic IR → IR 校验
+  → 确定性编译器 → canonical SkillKit → parser / 引用完整性
+  → evaluator → 安全诊断
 ```
 
-这个 seam 只是让测试可以无凭据执行完整路径，并未削弱生产 provider 配置，也没有取代 live provider 支持。
+已通过校验的 IR 在 evaluator 失败后最多修复一次。provider、解析、编译和引用
+完整性失败不会被悄悄变成成功；v2 机制不在当前范围内，详见 [Skill Design v1 冻结说明](docs/character_generation/character_skill_design_v1_freeze_v1.0.md)。
 
-### Clean-Checkout CI
+### Canon、知识与 Reference Corpus
 
-已提交的历史证据 fixture store 使干净的公开 checkout 不依赖开发者本地被忽略的 `evals/results` 产物。
-生产证据仍继续使用正常的 `evals/results` 路径；当这些历史结果不存在时，测试 validator 可以读取已提交的脱敏 fixture。
-Fixture 契约明确记录不会保存原始提示词、原始响应、IR payload、凭据或其他 secret。
+- `src/knowledge/` 与打包资源提供 default-deny、只读的 Canon、world、faction、
+  lore、character、case、incident、project 和 story 访问。
+- `CanonChecker` 确定性地检查冲突、权限、grounding、知识范围和硬约束。
+- `reference-corpus-v0.5` 是冻结基线，包含用于设计先例与评估的 facts、sources
+  和 analysis。
 
-在本次文档更新之前，最近一次已验证的 clean-checkout 基线对应 main HEAD
-`cafb72d29580b4d437f886926739703da8c9c545`，见 [GitHub Actions run #17](https://github.com/glt258/game-ai-agent/actions/runs/33238359141)：
-`quality`、Python 3.10/3.13/3.14 测试、`build`、`installed-smoke` 和 `ci-success` 全部通过，结果为
-`1602 passed, 1 skipped`。该 CI 验证产生的真实 provider 调用数为 0：live smoke 已禁用、没有 provider 凭据，
-Hybrid Semantic IR E2E 使用的是显式注入 provider。配置凭据后仍可单独运行 live execution。
+Reference Corpus 不是 copy bank、few-shot answer bank、商业模仿数据集或 Canon
+权威。selector 有界且确定性；其选择指标不代表生成质量提升。
 
-## 评估
+顶层 `knowledge/` 是 Engineering Knowledge Layer 和 Project Graph，属于辅助的
+可追溯基础设施，不代表已降低工具调用或解决 Agent planning。
 
-本仓库评估的是生成周围的边界，而不只是是否生成了某些文本。发布门禁覆盖完整的确定性测试套件、
-provider/adapter 契约、Canon 与 grounding 回归用例、具备否定感知的禁止模式用例、恢复审计保密性检查以及 SkillKit 集成门禁。
-CI 还会运行 pre-commit 检查、打包数据校验、分发构建检查和已安装 wheel 的 smoke 测试。
+### 本地 Studio
 
-覆盖范围包括多轮检索、可选的确定性检索、干净的定稿上下文、精确终止、格式错误的响应处理、伪工具 JSON 拒绝、
-未知或伪造的 Canon ID、grounding 失败、具备否定感知的禁止内容、有界修复、恢复诊断以及 provider 的失败即关闭行为。
-fixture 基准是可审计的回归检查，并不代表一般模型性能。
+本地 Studio 是叠加在 Python runtime 上的实验性工作流：
+
+- `web/`：Next.js App Router、React、TypeScript 和 Tailwind CSS 前端。
+- `src/web/`：FastAPI adapter 与 typed DTO。
+- Character Studio：生成、查看、编辑并重新校验 draft。
+- Reference Corpus 浏览器、public-safe Canon Explorer 和 Skill Playground。
+- Skill Playground 包含中文规划视图，提供“设计结果”“设计检查”“技术详情”
+  三个面向规划的标签页；Character context 会报告技能有效性与对齐状态，并要求
+  显式执行 attach，不会自动批准或绑定。
+- 已保存角色工作区，支持 revision、Skill association、Kit assignment 和 SQLite。
+- Offline 运行保持同步；显式的 live Character/Skill 运行使用有界的进程内 job 与
+  polling，live 结果仅供审查，不会自动附加到 Character 或 Kit。
+
+Studio 不发布 Canon、不暴露原始 provider 响应或 secret，也不提供任意文件访问或
+Multi-Agent 编排。Web API 的 live 执行不使用 WebSocket 或 SSE，而是使用明确的
+polling job contract。
 
 ### 统一 CLI 和 Studio 启动
 
 可安装的 Python runtime 提供诊断命令和源码 checkout 的 Studio 启动器：
 
-```bash
+```powershell
 game-ai-agent doctor
 game-ai-agent doctor --json
 game-ai-agent studio --no-browser
 ```
 
 wheel 包含 core runtime 和打包资源。v0.1 的 Next.js Studio frontend 仍只在源码
-checkout 中提供：运行 `studio` 时需要 Node/npm 以及已经准备好的 `web/.next` 构建产物。
-启动器会运行 FastAPI 与 `next start`，等待两个 readiness endpoint，并在 Ctrl+C 或子进程
-失败时清理两个子进程。完整约定和退出码见
-`docs/cli_and_studio_startup_contract_v0.1.md`。
+checkout 中提供：先执行 `cd web; npm ci; npm run build` 准备 `web/.next`。启动器
+会运行 FastAPI 与 `next start`，等待两个 readiness endpoint，并在退出时清理两个
+子进程。完整约定和退出码见 [CLI 和 Studio 启动约定](docs/cli_and_studio_startup_contract_v0.1.md)。
 
-使用以下命令运行主要检查：
+### Provider 层
 
-```bash
-.\.venv\Scripts\python.exe -m pytest -q
-.\.venv\Scripts\python.exe scripts/run_character_generation_evals.py
-.\.venv\Scripts\python.exe -m pytest -q tests/test_character_generation_benchmark.py
-.\.venv\Scripts\python.exe -m pytest -q tests/test_provider_contracts.py tests/test_openai_provider.py tests/test_live_llm_adapter.py tests/test_live_llm_errors.py
+Agent API 与 provider 解耦。当前逻辑 profile 包括 `openai`、`deepseek`、
+`opencode_go` 和 `openai_compatible`，使用已实现的 OpenAI Chat Completions transport。
+
+- 离线确定性 fixture 支持本地开发和测试。
+- Live 执行需要凭据，并通过 capability profile 配置。
+- 未知或未实现的 transport 在请求前失败，不会静默回退。
+- 审计只输出脱敏元数据，不输出 key、原始 prompt、原始响应或完整异常文本。
+
+仓库中的 live 观察是针对特定配置的有界证据，不是 benchmark 或普遍模型质量结论。
+详见 [Provider Capability Layer](docs/provider_capability_layer.md)。
+
+## 项目架构
+
+仓库区分 UI、设计智能、知识、运行时执行与评估，没有虚构分布式微服务架构。
+
+```mermaid
+flowchart LR
+    designer[设计师] --> ui[Studio / CLI]
+    subgraph intelligence[设计智能]
+        character[角色设计] --> intent[意图 / 计划 / 模式查询]
+        skill[技能设计] --> ir[Semantic IR] --> compiler[确定性编译器] --> kit[canonical SkillKit]
+    end
+    subgraph knowledge[知识层]
+        canon[只读 Canon / Story]
+        corpus[Reference Corpus]
+    end
+    subgraph runtime[运行时与评估]
+        retrieval[有界检索] --> validation[确定性校验] --> checker[CanonChecker] --> evaluator[评估器] --> review[可审查 Proposal]
+        checker -. 允许的失败 .-> repair[有界修复] -. 重新检查 .-> checker
+    end
+    subgraph provider[Provider 层]
+        adapters[离线 fixture / Live provider adapter]
+    end
+    subgraph persistence[Studio 持久化]
+        sqlite[配置的 SQLite 已保存工作区]
+    end
+    ui --> character
+    ui --> skill
+    intent --> retrieval
+    canon --> retrieval
+    corpus --> retrieval
+    kit --> validation
+    adapters --> character
+    adapters --> skill
+    review --> sqlite
 ```
 
-### P2 本地开发质量检查
+## 项目状态
 
-将开发工具安装到当前虚拟环境：
+| 领域 | 状态 |
+| --- | --- |
+| Public release | `v0.8`，Skill Design v1 与 Manual Skill Playground 发布版本 |
+| Character Authoring | 已冻结运行时基线，包含有界检索、校验、Canon 检查和修复 |
+| Character Intelligence | `CI-B1.5` canonical combat-role 边界；意图、计划和模式查询基础设施存在 |
+| Skill Design | `CS-S2` / Skill Design v1 语义覆盖已冻结 |
+| Reference Corpus | `reference-corpus-v0.5`，冻结的扩展基线 |
+| Studio | 本地 Web v0.1 已实现；相对于 `v0.8` release architecture 仍属实验性 |
+| Repository Knowledge | Engineering Knowledge Layer 与 Project Graph，作为辅助基础设施提供 |
 
-```powershell
-py -m pip install -e ".[dev]"
-```
+实验性的 Studio 与 W4 working-tree 架构不会反向改写公开 `v0.8` release 的含义。
+参见 [Versioning](docs/versioning.md) 与 [v0.8 发布说明](docs/release_notes_v0.8.md)。
 
-运行限定范围的质量检查和离线运行时 smoke 测试：
+## 设计原则
 
-```powershell
-py -m pre_commit run --all-files
-py -m ruff check src/along_street_resources src/agents/official_character_authoring.py src/knowledge/loader.py src/reference_corpus/loader.py scripts/ci tests/test_ci_quality.py tests/test_cli_startup.py
-py -m mypy src/along_street_resources scripts/ci
-py scripts/ci/validate_runtime.py
-py -m agents.official_character_authoring --scenario valid --model offline --json
-```
+### 先结构化，再自由表达
 
-在本地运行已暂存的运行时边界覆盖率门禁：
+模型生成不是最终资产；先建立 typed contract、明确字段和可机检关系。
 
-```powershell
-py -m pytest tests/test_runtime_resources.py tests/test_story_state.py tests/test_knowledge_resolver.py tests/test_knowledge_resolver_integration.py tests/test_knowledge_registries.py tests/reference_corpus --cov=along_street_resources --cov=knowledge --cov=story --cov=reference_corpus --cov-branch --cov-report=term-missing --cov-report=xml
-```
+### Canon 是证据，不是 prompt 装饰
 
-固定的 `tool.coverage.report.fail_under = 81` 值会对运行时边界模块
-（`along_street_resources`、`knowledge`、`story` 和 `reference_corpus`）设定门禁。
-实测分支覆盖率基线为 82.25%；门禁是其向下取整值减去一个百分点，而不是动态的运行时计算结果。
-完整套件仍会在每个 CI Python 版本上独立运行。
-使用以下命令构建并检查发布产物：
+已有事实必须经过检索并得到支持；模型记忆不会成为 Canon 证据。
 
-```powershell
-py -m build
-py -m twine check dist/*
-```
+### 能确定性检查，就不交给模型裁决
 
-在 Windows 上从 checkout 外部运行已安装 wheel 的 smoke 测试：
+Schema、ID、关系、grounding 和语义 contract 尽量由代码检查；LLM 不是 Canon 权威。
 
-```powershell
-$repoRoot = (Get-Location).Path
-$smokeVenv = Join-Path $env:TEMP "along-street-smoke-venv"
-$smokeCwd = Join-Path $env:TEMP "along-street-smoke-cwd"
-py -m venv $smokeVenv
-& "$smokeVenv\Scripts\python.exe" -m pip install (Get-ChildItem .\dist\*.whl).FullName
-New-Item -ItemType Directory -Force $smokeCwd | Out-Null
-Push-Location $smokeCwd
-& "$smokeVenv\Scripts\python.exe" (Join-Path $repoRoot "scripts\ci\installed_smoke.py")
-Pop-Location
-```
+### 人类拥有最终权力
 
-### Windows 安装和 wheel smoke
+Agent 提出方案；批准、发布及未来 Canon 变更由人类审查决定。
 
-在 PowerShell 中，先创建或激活项目虚拟环境，再使用以下命令。普通安装会构建并安装包含运行时资源的软件包：
+### 模型可以替换
+
+Agent contract 不绑定单一供应商，provider capability 在 adapter 边界协商。
+
+### Fail closed
+
+结果无法解析、证明或保持在 contract 内时，明确失败而不是偷偷补齐。
+
+## 快速开始
+
+### Python runtime
 
 ```powershell
-py -3.11 -m venv .venv
+git clone https://github.com/glt258/game-ai-agent.git
+cd game-ai-agent
+py -m venv .venv
 .\.venv\Scripts\Activate.ps1
-.\.venv\Scripts\python.exe -m ensurepip --upgrade
-.\.venv\Scripts\python.exe -m pip install .
+python -m pip install -e ".[dev]"
+game-ai-agent doctor
+python -m agents.official_character_authoring --scenario valid --model offline
 ```
 
-从仓库 checkout 外部检查实际发布产物并验证：
+安装后的 authoring entry point 也可以使用 `along-street-character-author`。
+
+### 本地 Studio
+
+在已经安装 Python runtime 的源码 checkout 中执行：
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip wheel . --no-deps --wheel-dir .\dist
-.\.venv\Scripts\python.exe scripts\verify_wheel_runtime_resources.py `
-  --wheel (Get-ChildItem .\dist\*.whl | Select-Object -First 1).FullName
+cd web
+npm ci
+npm run build
+cd ..
+game-ai-agent studio --no-browser
 ```
 
-smoke verifier 会将 wheel 的资源集合与源代码集合进行比较，将 wheel 安装到隔离目标目录，切换到非仓库 CWD，
-并调用默认的 Canon、story、reference-grounding 和 deterministic intent-parser 入口点。
-它还会测试显式的文件系统覆盖项。
+打开 <http://localhost:3000>。启动器会运行 FastAPI backend
+`http://127.0.0.1:8000` 和生产模式 Next.js frontend。已保存工作区默认使用平台
+应用数据目录；可用 `GAME_AI_AGENT_DB_PATH` 指定 SQLite 路径。
 
-生产 CLI 由 PEP 621 的 `project.scripts` 条目注册：
+### 测试
+
+常规检查命令是：
 
 ```powershell
-.\.venv\Scripts\along-street-character-author.exe --scenario valid --model offline
+python -m pytest -q
 ```
 
-同一个生产入口点也可以作为模块运行：
+provider contract、Web、persistence 和 evaluation 的定向检查位于 `tests/` 与
+`scripts/`。Live provider 必须显式启用并配置凭据。
 
-```powershell
-.\.venv\Scripts\python.exe -m agents.official_character_authoring --scenario valid --model offline
-```
-
-旧版源脚本命令仍支持 demo 和评估：
-
-```powershell
-.\.venv\Scripts\python.exe scripts/demo_character_generation_v0_1.py --model offline --json
-.\.venv\Scripts\python.exe scripts/demo_canon_checker_v0_1.py --case good --json
-.\.venv\Scripts\python.exe scripts/demo_character_repair_v0_1.py --case pass --model offline --json
-.\.venv\Scripts\python.exe scripts/run_canon_checker_evals.py
-.\.venv\Scripts\python.exe scripts/run_canon_checker_live_language_evals.py
-.\.venv\Scripts\python.exe scripts/run_canon_checker_redteam.py
-.\.venv\Scripts\python.exe scripts/run_character_generation_evals.py
-.\.venv\Scripts\python.exe scripts/run_character_repair_evals.py
-.\.venv\Scripts\python.exe scripts/run_character_repair_redteam.py
-```
-
-运行离线生成 demo：
-
-```bash
-.\.venv\Scripts\python.exe scripts/demo_character_generation_v0_1.py --model offline
-.\.venv\Scripts\python.exe scripts/demo_character_generation_v0_1.py --model offline --json
-```
-
-运行官方端到端创作 demo：
-
-```bash
-.\.venv\Scripts\python.exe -m agents.official_character_authoring --scenario valid --model offline
-.\.venv\Scripts\python.exe -m agents.official_character_authoring --scenario conflict --model offline
-.\.venv\Scripts\python.exe -m agents.official_character_authoring --brief "设计一个新的都市辅助角色。" --model offline
-```
-
-参见 [Official Character Authoring Demo v0.1](docs/official_character_authoring_demo_v0.1.md)。
-
-离线命令是确定性的回归演示。要使用新的简述运行 live 创作，请配置 `NPC_LLM_API_KEY` 和
-`NPC_LLM_MODEL`，然后运行：
-
-```bash
-.\.venv\Scripts\python.exe -m agents.official_character_authoring --brief-file .\demo_brief.txt --model live
-```
-
-可以使用 `--provider` 和 `--model-name` 进行一次性的 live 覆盖。Live 配置或 provider 失败会报告为
-`NOT_COMPLETED`；CLI 不会回退到离线 fixture，也不会伪造 Canon 结果。
-
-Live 模式使用共享的 OpenAI 兼容传输层。请按照[provider capability layer](docs/provider_capability_layer.md)
-中的说明配置 `NPC_LLM_PROVIDER`、`NPC_LLM_MODEL`、`NPC_LLM_API_KEY` 及相关设置。
-
-## Reference Corpus
-
-Reference Corpus 基线 `reference-corpus-v0.5` 已冻结为 16 个生产角色。
-这里的“生产”指已接受并冻结的语料库记录，并不表示整个 Agent 系统已经具备生产就绪状态。
-该语料库是用于创作质量分析的先例、评估和设计参考 oracle。
-它不是 few-shot 答案库、源代码复制数据、商业模仿数据集或自动模板素材。
-
-语料库与其他运行时资源一起打包在
-`src/along_street_resources/data/reference_corpus/` 下；它与
-`src/along_street_resources/data/characters/characters.yaml` 中的活动世界角色记录分开。
-
-生产边界由
-`src/along_street_resources/data/reference_corpus/characters/_catalog/corpus_manifest.yaml` 声明。
-清单 schema `character-reference-corpus-manifest/0.2` 记录冻结基线 ID、记录 schema 版本、游戏以及精确的记录 ID 到目录路径映射。
-`games.yaml` 是生产游戏目录，仅保留五款商业游戏；合成测试游戏位于
-`tests/reference_corpus/fixtures/test_games.yaml`。
-
-`CharacterReferenceRepository` 默认使用 `manifest_policy="required"`：
-它会校验文件系统集合，并且只加载声明的记录。没有清单的临时合成或外部语料库必须选择
-`manifest_policy="unmanaged"`；该模式保留目录扫描，且不能与显式清单结合使用。
-已被取代的 fixture 规划文件仍可从
-`docs/reference_corpus/archive/fixture_plan_v0.1.yaml` 加载，并不是打包的运行时资源。
-
-扩展以缺口为驱动：只有具体的 Generator、Canon、Repair 或评估失败表明现有语料库缺少有用先例时，
-才会考虑新增记录。参见[生产基线](docs/reference_corpus/production_baseline_v0.1.md)。
-
-所有运行时数据都维护在统一的
-`src/along_street_resources/data/` 树中。生产代码通过 `along_street_resources.data_root()` 和
-`along_street_resources.data_resource(...)` 解析打包资源；它们返回兼容 Python 3.10 的 `Traversable` 对象，
-不依赖 checkout CWD。当调用方有意提供外部数据或语料库目录时，才使用显式的 `Path`，例如
-`load_canon(data_dir=path)`、`load_story_repository(data_dir=path)` 或
-`load_reference_grounding(brief, corpus_root=path)`。
-
-## 安全性和失败边界
-
-- 未经成功检索 grounding 的 Canon 依赖声明会失败即关闭。
-- 虚构、未知或格式错误的 Canon ID 会被拒绝。
-- 用户文本不会被当作 Canon 证据。
-- 伪工具 JSON 不会被当作真实工具调用。
-- 定稿阶段不接收工具；尝试在定稿阶段调用工具会失败。
-- 检索受到边界限制，provider 重试和循环耗尽也受到边界限制。
-- Live 失败诊断只保留经过脱敏的 provider/model 元数据和允许列表中的失败细节。
-- 否定的禁止模式陈述会以确定性方式评估；正面的禁止机构或权威声明仍会使 Canon 检查失败。
-- 不受支持的 Canon 声明会校验失败或进入有界修复路径；不会静默通过。
-- Repair 不能写入 Canon、批准 draft、逃出其可编辑范围或静默违反硬约束。
-
-## 当前状态和限制
-
-较早的运行时基线另行记录为 **Character Authoring Pipeline runtime-v0.6.6**，状态为 `READY_FOR_DEMO`。
-当前扩展的 Reference Corpus 基线为 `reference-corpus-v0.5`；历史生产基线 v0.1 也已冻结。
-当前工作重点是 Agent 质量、评估和 demo 就绪度，而不是推测性的平台功能。
-
-已知限制包括不完善的 Canon 实体和别名解析、对 `canon_basis.supports` 的严格抽取式支持契约、
-检索效率以及瞬时的 live-provider 失败。DeepSeek Pro 的完整定稿在现有 provider 边界下仍可能超时。
-对于格式错误或耗尽的 provider 交互，运行时会失败即关闭。这些限制记录在[运行时冻结](docs/runtime_freeze_v0.6.6.md)中；
-RAG、memory、多 Agent 编排和 Canon 发布等计划中的工作尚未实现。
-
-## 仓库布局
+## 仓库结构
 
 ```text
-src/agents/             Character generation, Canon checking, repair, providers
-src/knowledge/          Scoped knowledge resolution and authorization
-src/story/              Story and StoryState loading / validation
-src/reference_corpus/   Reference-corpus models, loading, and validation
-src/along_street_resources/data/
-                        Packaged Canon, world, story, character, and corpus data
-evals/                  Evaluation cases and fixtures
-scripts/                Offline demos, validators, and evaluation runners
-tests/                  Deterministic unit, integration, red-team, and corpus tests
-docs/                   Freeze manifests, architecture notes, and milestone docs
+src/        Python runtime、agents、design intelligence、knowledge、persistence、Web adapter
+web/        Next.js Studio frontend
+knowledge/  Engineering Knowledge Layer 与 Project Graph
+tests/      确定性、contract、集成和回归测试
+evals/      评估用例、fixture 与脱敏证据
+docs/       contract、freeze、架构说明与发布证据
+scripts/    demo 以及开发 / 校验工具
 ```
 
-## 路线图 / 已知边界
+Along the Street 当前用于仓库内置 Canon、测试世界和开发设定。架构本身旨在支持
+超越这一单一虚构设定的结构化游戏内容创作。
 
-近期工作仅限于在现有边界内改进创作质量、评估深度、检索效率、provider 稳健性和 demo 呈现。
-Canon 批准/发布、RAG、memory、规划、多 Agent 工作流和更大的角色阵容属于未来工作，不是当前能力。
+## 项目路线
+
+### 当前开发重点
+
+1. Studio UX 与产品化。
+2. 更深入的 Character Design Intelligence。
+3. 更深入的 Skill / Combat Design Intelligence。
+4. 更强的评估与模拟。
+5. 面向未来模型训练的受治理数据管线。
+
+### 更长期方向——计划 / 探索中
+
+- 专用小模型 fine-tuning。
+- Story 与 Canon 生成工作流。
+- Multi-Agent 内容设计。
+- 更广泛的 worldbuilding 工作流。
+
+以上不是当前能力，不包含日期或版本承诺。
+
+## 已知边界
+
+- 不是 production-ready 软件，也不是已经完成的游戏开发平台。
+- 不宣称能够自动平衡技能，也不保证模型质量；Skill Design v1 有意保持封闭范围。
+- 创作流程对 Canon 只读；批准、发布和 Canon 修改尚未实现。
+- Reference Corpus 提供先例与分析，不是权威 lore 或商业模仿数据集。
+- Multi-Agent 编排、Story Generation Agent、广泛 memory/planning 和专用 fine-tuning
+  都不是已实现能力。
+- Live 证据是小样本且依赖具体配置；延迟和有界尝试次数仍可能导致流程失败。
 
 ## 延伸阅读
 
 - [Character Generation Agent](docs/character_generation_agent_v0.1.md)
-- [Runtime Freeze runtime-v0.6.6](docs/runtime_freeze_v0.6.6.md)
 - [Canon Checker](docs/canon_checker_v0.1.md)
 - [Character Repair Loop](docs/character_repair_loop_v0.1.md)
 - [Provider Capability Layer](docs/provider_capability_layer.md)
-- [v0.7.1 Release Notes](docs/release_notes_v0.7.1.md)
-- [v0.7.1 Release Scope](docs/v0.7.1_release_scope.md)
-- [Reference Corpus Production Baseline v0.1](docs/reference_corpus/production_baseline_v0.1.md)
-- [Reference Corpus Baseline reference-corpus-v0.5](docs/reference_corpus_expanded_baseline_v0.5.md)
-
-## 致谢
-
-特别感谢段文华。没有你的爱与支持，我不会走到今天。
+- [Skill Design v1 冻结说明](docs/character_generation/character_skill_design_v1_freeze_v1.0.md)
+- [Reference Corpus 基线](docs/reference_corpus_expanded_baseline_v0.5.md)
+- [Studio Web 架构](docs/web/web_v0.1_architecture.md)
+- [Studio Web API Contract](docs/web/web_v0.1_api_contract.md)
+- [Live Web 执行约定](docs/live_web_execution_contract_v0.1.md)
+- [CLI 和 Studio 启动约定](docs/cli_and_studio_startup_contract_v0.1.md)
+- [Persistence Foundation](docs/persistence_foundation_v0.1.md)
+- [Versioning](docs/versioning.md)
