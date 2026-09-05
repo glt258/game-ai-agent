@@ -10,6 +10,24 @@ Game AI Agent is building a structured system for designing and authoring game c
 
 Long-term, the project aims at broader game-content development; today, model output is a proposal, the authoring flow reads Canon without writing it, and human review remains authoritative.
 
+## Project Context
+
+The project began as **Along the Street**, the repository's built-in Canon, test
+world, and development setting. It started from a narrower Character Authoring
+pipeline: help designers turn a brief into a grounded, reviewable proposal
+without letting a model invent world facts or overwrite established story data.
+The current structured character-and-skill system is an evolution of that
+boundary, not a claim that the repository is already a complete game-production
+platform.
+
+The Character Authoring milestone also established age-ambiguous and diverse
+life-stage handling without mechanically mapping presentation to school,
+occupation, authority, or narrative importance. Exact, legal, and historical
+age information remains distinct from current non-student status; see the
+[life-stage coverage](docs/character_diversity_life_stage_v0.3.md) and [age
+information preservation](docs/character_age_information_preservation_v0.3.md)
+contracts.
+
 ## What it can do now
 
 - Turn a designer brief into a structured, reviewable `CharacterDraft`.
@@ -56,6 +74,12 @@ failure. Provider, parse, compiler, and reference-integrity failures do not
 silently become repaired success. Advanced v2 mechanics remain out of scope;
 see the [Skill Design v1 freeze](docs/character_generation/character_skill_design_v1_freeze_v1.0.md).
 
+The `v0.8` release also includes the Manual Skill Playground CLI with
+natural-language requirements, role/mode, model and language selection, safe
+diagnostics, and one bounded repair opportunity. Human-readable playground text
+supports Simplified Chinese and English while machine-readable protocol fields
+remain authoritative English values.
+
 ### Canon, Knowledge & Reference Corpus
 
 - `src/knowledge/` and packaged resources provide default-deny, read-only Canon,
@@ -72,6 +96,24 @@ bounded and deterministic; its selection metrics do not claim better generation.
 The top-level `knowledge/` directory is the Engineering Knowledge Layer and
 Project Graph: supporting traceability infrastructure, not a claim of reduced
 tool usage or solved agent planning.
+
+The frozen `reference-corpus-v0.5` baseline contains 16 accepted corpus
+characters; “production” here means accepted and frozen corpus records, not
+production readiness of the overall Agent system. Its production boundary is
+declared by the manifest at
+`src/along_street_resources/data/reference_corpus/characters/_catalog/corpus_manifest.yaml`.
+Runtime code loads only manifest-declared records by default. Temporary
+synthetic or external corpora must opt into `manifest_policy="unmanaged"`, and
+corpus expansion is gap-driven: a concrete Generator, Canon, Repair, or
+evaluation failure must show that an existing precedent is insufficient first.
+The [Reference Corpus production baseline](docs/reference_corpus/production_baseline_v0.1.md)
+documents this boundary.
+
+Packaged runtime data is resolved from the single
+`src/along_street_resources/data/` tree through `data_root()` and
+`data_resource()`, independently of the checkout working directory. Explicit
+filesystem paths are reserved for callers intentionally supplying external data
+or corpus directories.
 
 ### Local Studio
 
@@ -127,6 +169,30 @@ Chat Completions transport.
 Live observations are bounded evidence for particular configurations, not a
 benchmark or universal model-quality claim. See the [provider capability layer](docs/provider_capability_layer.md).
 
+## Evidence / Verified Runs
+
+One verified live Character Authoring E2E run used provider `opencode_go` with
+model `deepseek-v4-flash`. A Canon-dependent brief required membership in an
+existing organization; retrieval selected `faction_005`
+(`临洲市公共安全联席体系`) and produced the draft character `方宁舒`, whose
+occupation was `临洲市公共安全联席体系大型活动安全组现场协作员`. The draft
+contained grounded Canon Basis entries for `faction_005`, `lore_023`,
+`lore_024`, `lore_026`, and `char_launch_007`. This is one verified live
+example, not a benchmark or a universal model-quality claim.
+
+The repository also preserves sanitized historical provider evidence for
+Character Skill, S2, and Hybrid Semantic IR investigations under
+[`tests/fixtures/historical_evidence/`](tests/fixtures/historical_evidence/).
+These metadata-only fixtures support reproducible validation without causing
+provider calls in CI. The [Hybrid Semantic IR success baseline](docs/hybrid_semantic_ir_e2e_success_baseline_v0.1.md)
+records the corresponding historical contract.
+
+The hermetic E2E seam injects a deterministic provider for the full
+provider-to-evaluator path, while the production/live provider factory remains
+credential-gated. A historical clean-checkout CI baseline is recorded in
+[GitHub Actions run #17](https://github.com/glt258/game-ai-agent/actions/runs/33238359141);
+it is historical evidence, not a current CI-status claim.
+
 ## Architecture
 
 The repository separates UI, design intelligence, knowledge, execution, and evaluation without pretending to be a distributed services system.
@@ -169,9 +235,12 @@ flowchart LR
 | --- | --- |
 | Public release | `v0.8` — Skill Design v1 and Manual Skill Playground release |
 | Character Authoring | Frozen runtime baseline with bounded retrieval, validation, Canon checking, and repair |
+| Runtime Baseline | `runtime-v0.6.6` — frozen Character Authoring runtime baseline |
 | Character Intelligence | `CI-B1.5` canonical combat-role boundary; intent/plan and pattern-query infrastructure present |
+| Character Skill | `CS-S1.1` — frozen skill interface-design milestone |
 | Skill Design | `CS-S2` / Skill Design v1 feature-frozen semantic coverage |
 | Reference Corpus | `reference-corpus-v0.5`, frozen expanded baseline |
+| Hybrid Semantic IR | `hybrid-semantic-ir-e2e-v0.1` — historical real-provider evaluator PASS baseline |
 | Studio | Local Web v0.1 implemented; experimental relative to the `v0.8` release architecture |
 | Repository Knowledge | Engineering Knowledge Layer and Project Graph as supporting infrastructure |
 
@@ -291,11 +360,23 @@ These are planned or exploratory, not current capabilities; no dates or release 
 - Multi-agent orchestration, Story Generation Agent, broad memory/planning, and specialized fine-tuning are not implemented claims.
 - Live evidence is small-sample and configuration-specific; latency and bounded provider attempts can still prevent completion.
 
+At runtime, Canon-dependent claims without successful retrieval grounding,
+unknown or malformed Canon IDs, pseudo-tool JSON, and malformed or exhausted
+provider interactions fail closed. Finalization receives no tools; repair is at
+most one bounded attempt and cannot write Canon, approve a draft, escape its
+editable scope, or silently violate hard constraints. Live diagnostics retain
+only sanitized provider/model metadata and allowlisted failure details.
+
 ## Further Reading
 
 - [Character Generation Agent](docs/character_generation_agent_v0.1.md)
+- [Runtime Freeze runtime-v0.6.6](docs/runtime_freeze_v0.6.6.md)
 - [Canon Checker](docs/canon_checker_v0.1.md)
+- [Character Repair Loop](docs/character_repair_loop_v0.1.md)
 - [Provider Capability Layer](docs/provider_capability_layer.md)
+- [v0.7.1 Release Notes](docs/release_notes_v0.7.1.md)
+- [v0.7.1 Release Scope](docs/v0.7.1_release_scope.md)
+- [Reference Corpus Production Baseline v0.1](docs/reference_corpus/production_baseline_v0.1.md)
 - [Skill Design v1 Freeze](docs/character_generation/character_skill_design_v1_freeze_v1.0.md)
 - [Reference Corpus Baseline](docs/reference_corpus_expanded_baseline_v0.5.md)
 - [Studio Web Architecture](docs/web/web_v0.1_architecture.md)
@@ -304,3 +385,8 @@ These are planned or exploratory, not current capabilities; no dates or release 
 - [CLI and Studio startup](docs/cli_and_studio_startup_contract_v0.1.md)
 - [Persistence Foundation](docs/persistence_foundation_v0.1.md)
 - [Versioning](docs/versioning.md)
+
+## Acknowledgements
+
+Special thanks to Duan Wenhua. Without your love and support, I would not have
+made it this far.

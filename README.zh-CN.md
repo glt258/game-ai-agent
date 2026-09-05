@@ -13,6 +13,19 @@ Prompt wrapper，也还不是完整的 AI 原生游戏开发平台。当前重�
 项目长期方向是更广泛的游戏内容开发。当前模型输出是 proposal，创作流程对
 Canon 只读，最终审查权属于人类。
 
+## 项目语境
+
+项目最初以 **Along the Street** 为名，使用仓库内置的 Canon、测试世界和开发
+设定。它起步于较窄的 Character Authoring 流程：帮助设计师把 brief 转换为有
+grounding、可审查的 proposal，同时不允许模型凭空创造世界事实或覆盖既有故事
+数据。当前的结构化角色与技能系统是在这一边界上的演进，并不声称已经成为完整
+的游戏生产平台。
+
+早期 Character Authoring 里程碑还确立了年龄模糊与多样 life-stage 的处理方式，
+不会把外在呈现机械映射为学校、职业、权威或叙事重要性。精确年龄、法律年龄和
+历史年龄信息也与当前非学生状态保持区分，详见 [life-stage 覆盖约定](docs/character_diversity_life_stage_v0.3.md)
+和[年龄信息保留约定](docs/character_age_information_preservation_v0.3.md)。
+
 ## 当前能做什么
 
 - 将设计师 brief 转换为结构化、可审查的 `CharacterDraft`。
@@ -57,6 +70,10 @@ Control、Defense 和 Basic Passive 七类语义：
 已通过校验的 IR 在 evaluator 失败后最多修复一次。provider、解析、编译和引用
 完整性失败不会被悄悄变成成功；v2 机制不在当前范围内，详见 [Skill Design v1 冻结说明](docs/character_generation/character_skill_design_v1_freeze_v1.0.md)。
 
+`v0.8` 版本还包含 Manual Skill Playground CLI：支持自然语言需求、角色/模式、
+模型与语言选择、安全诊断，以及一次有界修复机会。面向人的 playground 文本支持
+简体中文和英文；机器可读的协议字段仍以英文值为权威。
+
 ### Canon、知识与 Reference Corpus
 
 - `src/knowledge/` 与打包资源提供 default-deny、只读的 Canon、world、faction、
@@ -70,6 +87,17 @@ Reference Corpus 不是 copy bank、few-shot answer bank、商业模仿数据集
 
 顶层 `knowledge/` 是 Engineering Knowledge Layer 和 Project Graph，属于辅助的
 可追溯基础设施，不代表已降低工具调用或解决 Agent planning。
+
+冻结的 `reference-corpus-v0.5` 基线包含 16 个已接受的语料库角色；这里的“生产”
+指已接受并冻结的记录，不表示整个 Agent 系统已经 production-ready。生产边界由
+`src/along_street_resources/data/reference_corpus/characters/_catalog/corpus_manifest.yaml`
+声明，运行时默认只加载清单声明的记录。临时合成或外部语料库必须显式选择
+`manifest_policy="unmanaged"`；语料库扩展以缺口为驱动，只有具体的 Generator、
+Canon、Repair 或评估失败证明现有先例不足时，才考虑新增记录。详见[Reference Corpus 生产基线](docs/reference_corpus/production_baseline_v0.1.md)。
+
+打包运行时数据统一位于 `src/along_street_resources/data/`，通过 `data_root()` 和
+`data_resource()` 解析，不依赖 checkout CWD。只有调用方有意提供外部数据或语料
+库目录时，才使用显式文件系统路径。
 
 ### 本地 Studio
 
@@ -118,6 +146,27 @@ Agent API 与 provider 解耦。当前逻辑 profile 包括 `openai`、`deepseek
 仓库中的 live 观察是针对特定配置的有界证据，不是 benchmark 或普遍模型质量结论。
 详见 [Provider Capability Layer](docs/provider_capability_layer.md)。
 
+## 证据与已验证运行
+
+一次经过验证的 live Character Authoring E2E 运行使用了 `opencode_go` provider 和
+`deepseek-v4-flash` 模型。该 Canon 依赖型 brief 要求角色属于既有组织；检索选择了
+`faction_005`（`临洲市公共安全联席体系`），并生成角色 `方宁舒`，职业为
+`临洲市公共安全联席体系大型活动安全组现场协作员`。draft 中包含
+`faction_005`、`lore_023`、`lore_024`、`lore_026` 和 `char_launch_007` 等 grounded
+Canon Basis 条目。这是一个已验证的 live 示例，不是 benchmark，也不是普遍模型
+质量结论。
+
+仓库还保留了 Character Skill、S2 和 Hybrid Semantic IR 调查中的脱敏历史 provider
+证据，位于[`tests/fixtures/historical_evidence/`](tests/fixtures/historical_evidence/)。
+这些仅含元数据的 fixture 用于可复现校验，不会在 CI 中发起 provider 调用；对应的
+[Hybrid Semantic IR 成功基线](docs/hybrid_semantic_ir_e2e_success_baseline_v0.1.md)
+记录了相关历史 contract。
+
+Hermetic E2E seam 可以注入确定性 provider，覆盖 provider 到 evaluator 的完整路径；
+production/live provider factory 仍需要凭据。历史 clean-checkout CI 基线记录在
+[GitHub Actions run #17](https://github.com/glt258/game-ai-agent/actions/runs/33238359141)，
+这是历史证据，不代表当前 CI 状态。
+
 ## 项目架构
 
 仓库区分 UI、设计智能、知识、运行时执行与评估，没有虚构分布式微服务架构。
@@ -160,9 +209,12 @@ flowchart LR
 | --- | --- |
 | Public release | `v0.8`，Skill Design v1 与 Manual Skill Playground 发布版本 |
 | Character Authoring | 已冻结运行时基线，包含有界检索、校验、Canon 检查和修复 |
+| Runtime Baseline | `runtime-v0.6.6`，冻结的 Character Authoring runtime 基线 |
 | Character Intelligence | `CI-B1.5` canonical combat-role 边界；意图、计划和模式查询基础设施存在 |
+| Character Skill | `CS-S1.1`，冻结的技能接口设计里程碑 |
 | Skill Design | `CS-S2` / Skill Design v1 语义覆盖已冻结 |
 | Reference Corpus | `reference-corpus-v0.5`，冻结的扩展基线 |
+| Hybrid Semantic IR | `hybrid-semantic-ir-e2e-v0.1`，历史 real-provider evaluator PASS 基线 |
 | Studio | 本地 Web v0.1 已实现；相对于 `v0.8` release architecture 仍属实验性 |
 | Repository Knowledge | Engineering Knowledge Layer 与 Project Graph，作为辅助基础设施提供 |
 
@@ -282,17 +334,34 @@ Along the Street 当前用于仓库内置 Canon、测试世界和开发设定。
   都不是已实现能力。
 - Live 证据是小样本且依赖具体配置；延迟和有界尝试次数仍可能导致流程失败。
 
+在运行时，未经成功检索 grounding 的 Canon 依赖声明、未知或格式错误的 Canon ID、
+伪工具 JSON，以及格式错误或耗尽的 provider 交互都会失败即关闭。定稿阶段不接收
+工具；Repair 最多执行一次有界尝试，不能写入 Canon、批准 draft、逃出可编辑范围或
+静默违反硬约束。Live 失败诊断只保留经过脱敏的 provider/model 元数据和允许列表中的
+失败细节。
+
 ## 延伸阅读
 
 - [Character Generation Agent](docs/character_generation_agent_v0.1.md)
+- [Runtime Freeze runtime-v0.6.6](docs/runtime_freeze_v0.6.6.md)
 - [Canon Checker](docs/canon_checker_v0.1.md)
 - [Character Repair Loop](docs/character_repair_loop_v0.1.md)
 - [Provider Capability Layer](docs/provider_capability_layer.md)
+- [v0.7.1 Release Notes](docs/release_notes_v0.7.1.md)
+- [v0.7.1 Release Scope](docs/v0.7.1_release_scope.md)
+- [Reference Corpus Production Baseline v0.1](docs/reference_corpus/production_baseline_v0.1.md)
 - [Skill Design v1 冻结说明](docs/character_generation/character_skill_design_v1_freeze_v1.0.md)
 - [Reference Corpus 基线](docs/reference_corpus_expanded_baseline_v0.5.md)
 - [Studio Web 架构](docs/web/web_v0.1_architecture.md)
 - [Studio Web API Contract](docs/web/web_v0.1_api_contract.md)
 - [Live Web 执行约定](docs/live_web_execution_contract_v0.1.md)
 - [CLI 和 Studio 启动约定](docs/cli_and_studio_startup_contract_v0.1.md)
+- [Hybrid Semantic IR 成功基线](docs/hybrid_semantic_ir_e2e_success_baseline_v0.1.md)
+- [Character Diversity & Life-Stage Coverage v0.3](docs/character_diversity_life_stage_v0.3.md)
+- [Character Age Information Preservation v0.3](docs/character_age_information_preservation_v0.3.md)
 - [Persistence Foundation](docs/persistence_foundation_v0.1.md)
 - [Versioning](docs/versioning.md)
+
+## 致谢
+
+特别感谢段文华。没有你的爱与支持，我不会走到今天。
