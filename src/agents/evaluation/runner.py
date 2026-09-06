@@ -13,6 +13,7 @@ from .models import (
 )
 from .validators import (
     IdentityCoherenceValidator,
+    PersonalityGameplayAlignmentValidator,
     RepresentationCompletenessValidator,
     RequestAlignmentValidator,
 )
@@ -36,6 +37,7 @@ class EvaluationRunner:
                 RequestAlignmentValidator(),
                 IdentityCoherenceValidator(),
                 RepresentationCompletenessValidator(),
+                PersonalityGameplayAlignmentValidator(),
             )
             if validators is None
             else tuple(validators)

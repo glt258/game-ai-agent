@@ -10,6 +10,7 @@ from .models import (
 from .runner import EvaluationRunner, EvaluationValidator
 from .validators import (
     IdentityCoherenceValidator,
+    PersonalityGameplayAlignmentValidator,
     RepresentationCompletenessValidator,
     RequestAlignmentValidator,
 )
@@ -17,6 +18,7 @@ from .validators import (
 __all__ = [
     "EVALUATION_SCHEMA_VERSION",
     "IdentityCoherenceValidator",
+    "PersonalityGameplayAlignmentValidator",
     "EvaluationFinding",
     "EvaluationContext",
     "EvaluationOutcome",
