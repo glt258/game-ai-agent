@@ -27,7 +27,7 @@ from .models import (
     SegmentKind,
     ToolCall,
 )
-from .provider_profiles import ProviderProfile, resolve_provider_profile
+from .provider_profiles import ProviderProfile, ProviderRoute, resolve_provider_profile
 from .provider_protocol import (
     NegotiatedResponseContract,
     ProviderChatClient,
@@ -73,6 +73,7 @@ class LiveLLMAdapter:
         sleep: Callable[[float], None] = time.sleep,
         monotonic: Callable[[], float] = time.monotonic,
         logger: logging.Logger = LOGGER,
+        route: ProviderRoute | None = None,
     ) -> None:
         if not provider.strip():
             raise ModelConfigurationError("Live LLM provider must be non-empty")
@@ -97,13 +98,20 @@ class LiveLLMAdapter:
         ):
             raise ModelConfigurationError("Live LLM backoff must not be negative")
         self._client = client
-        self.profile = profile or resolve_provider_profile(provider, model)
+        if route is not None:
+            if route.provider_id != provider.strip().lower() or route.model_id != model.strip():
+                raise ModelConfigurationError("Live LLM route identity must match provider and model")
+            self.profile = route.profile
+        else:
+            self.profile = profile or resolve_provider_profile(provider, model)
         if self.profile.logical_provider != provider.strip().lower():
             raise ModelConfigurationError(
                 "Live LLM provider must match the resolved provider profile"
             )
         self.provider = self.profile.logical_provider
         self.model = model.strip()
+        self.route = route
+        self.operation = route.operation if route is not None else None
         self.transport = self.profile.transport_family.value
         self.timeout_seconds = float(timeout_seconds)
         self.max_retries = max_retries

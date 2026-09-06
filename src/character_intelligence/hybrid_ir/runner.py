@@ -208,6 +208,7 @@ class OpenCodeGoHybridProvider:
         timeout_seconds: int,
         provider: str = "opencode_go",
         max_transport_retries: int = 0,
+        route: object | None = None,
     ) -> None:
         self._client = client
         self._model = model
@@ -222,13 +223,11 @@ class OpenCodeGoHybridProvider:
         self.usage = None
         self.provider_request_id: str | None = None
         self.provider_error_kind: str | None = None
+        self.route = route
 
     def complete(self, request_text: str) -> object:
-        from agents.provider_protocol import (
-            NegotiatedResponseContract,
-            ProviderClientError,
-            ResponseMode,
-        )
+        from agents.provider_protocol import ProviderClientError, negotiate_response_contract
+        from agents.response_contracts import response_contract_for
 
         self.calls += 1
         started = time.monotonic()
@@ -240,7 +239,12 @@ class OpenCodeGoHybridProvider:
                     messages=({"role": "user", "content": request_text},),
                     tools=(),
                     timeout_seconds=self._timeout_seconds,
-                    response_contract=NegotiatedResponseContract("hybrid_semantic_ir", ResponseMode.JSON_OBJECT),
+                    response_contract=negotiate_response_contract(
+                        response_contract_for("hybrid_semantic_ir"),
+                        self.route.profile.capabilities
+                        if self.route is not None
+                        else self._client_profile_capabilities(),
+                    ),
                 )
             except ProviderClientError as error:
                 self.provider_error_kind = error.kind
@@ -255,6 +259,11 @@ class OpenCodeGoHybridProvider:
         self.usage = response.usage
         self.provider_request_id = response.request_id
         return response.text
+
+    def _client_profile_capabilities(self):
+        from agents.provider_profiles import CHAT_JSON_OBJECT_CAPABILITIES
+
+        return CHAT_JSON_OBJECT_CAPABILITIES
 
 
 @dataclass(frozen=True)
@@ -858,7 +867,7 @@ def _blocked_live_result(status: str) -> HybridLiveResult:
 
 
 def _default_hybrid_provider_factory(*, model: str = "deepseek-v4-pro") -> HybridProvider:
-    from agents.model_factory import LiveLLMSettings
+    from agents.model_factory import LiveLLMSettings, resolve_provider_route
     from agents.openai_provider import OpenAIChatClient
 
     api_key = os.environ.get("NPC_LLM_API_KEY", "").strip()
@@ -872,7 +881,8 @@ def _default_hybrid_provider_factory(*, model: str = "deepseek-v4-pro") -> Hybri
         "NPC_LLM_MAX_RETRIES": "0",
         "NPC_LLM_API_KEY": api_key,
     }
-    settings = LiveLLMSettings.from_environment(environment)
+    route = resolve_provider_route("skill_generation", environment=environment)
+    settings = LiveLLMSettings.from_environment(environment, operation="skill_generation")
     client = OpenAIChatClient(
         api_key=settings.api_key,
         base_url=settings.base_url,
@@ -883,6 +893,7 @@ def _default_hybrid_provider_factory(*, model: str = "deepseek-v4-pro") -> Hybri
         client,
         model=settings.model,
         timeout_seconds=int(settings.timeout_seconds),
+        route=route,
     )
 
 
@@ -899,7 +910,11 @@ def live_hybrid_provider_from_environment(
     caller must opt into a live pipeline execution separately.
     """
 
-    from agents.model_factory import LiveLLMSettings, _ensure_transport_implemented
+    from agents.model_factory import (
+        LiveLLMSettings,
+        _ensure_transport_implemented,
+        resolve_provider_route,
+    )
     from agents.openai_provider import OpenAIChatClient
 
     values = dict(os.environ if environment is None else environment)
@@ -914,7 +929,17 @@ def live_hybrid_provider_from_environment(
         values["NPC_LLM_PROVIDER"] = provider
     if model is not None:
         values["NPC_LLM_MODEL"] = model
-    settings = LiveLLMSettings.from_environment(values)
+    runtime_override = None
+    if provider is not None or model is not None:
+        if provider is None or model is None:
+            raise ValueError("provider and model overrides must be provided together")
+        runtime_override = {"provider": provider, "model": model}
+    route = resolve_provider_route(
+        "skill_generation",
+        environment=values,
+        runtime_override=runtime_override,
+    )
+    settings = LiveLLMSettings.from_environment(values, operation="skill_generation")
     _ensure_transport_implemented(settings.profile)
     client = OpenAIChatClient(
         api_key=settings.api_key,
@@ -928,6 +953,7 @@ def live_hybrid_provider_from_environment(
         timeout_seconds=int(settings.timeout_seconds),
         provider=settings.provider,
         max_transport_retries=settings.max_retries,
+        route=route,
     )
 
 

@@ -20,6 +20,8 @@ from character_intelligence.hybrid_ir.runner import (
     HybridProviderInvocationError,
     live_hybrid_provider_from_environment,
 )
+from agents.errors import ModelConfigurationError
+from agents.model_factory import resolve_provider_route
 from character_intelligence.skill_artifact import (
     SkillDesignArtifact,
     build_skill_design_artifact_from_pipeline_result,
@@ -163,10 +165,32 @@ class SkillPlaygroundApplication:
                 stage="live_execution",
                 retryable=False,
             )
+        route = None
+        if self.provider_factory is None:
+            try:
+                route = resolve_provider_route("skill_generation")
+            except ModelConfigurationError as error:
+                raise WebApplicationError(
+                    "SKILL_PLAYGROUND_LIVE_CONFIGURATION_INVALID",
+                    "The backend live provider is not configured for this request.",
+                    status_code=503,
+                    stage="routing",
+                    retryable=False,
+                ) from error
+            if (request.provider, request.model) != (route.provider_id, route.model_id):
+                raise WebApplicationError(
+                    "LIVE_ROUTE_OVERRIDE_NOT_ALLOWED",
+                    "Provider and model are controlled by the backend route.",
+                    status_code=422,
+                    stage="routing",
+                    retryable=False,
+                )
+        provider_name = route.provider_id if route is not None else request.provider
+        model_name = route.model_id if route is not None else request.model
         return registry.submit(
             kind="skill_playground",
-            provider=request.provider,
-            model=request.model,
+            provider=provider_name,
+            model=model_name,
             work=lambda: self.run(request),
         )
 
@@ -208,10 +232,21 @@ class SkillPlaygroundApplication:
             if self.provider_factory is not None:
                 return self.provider_factory(request.model)
             try:
-                return live_hybrid_provider_from_environment(
-                    provider=request.provider,
-                    model=request.model,
-                )
+                provider = live_hybrid_provider_from_environment()
+                if (request.provider, request.model) != (
+                    getattr(provider, "provider", None),
+                    getattr(provider, "model", None),
+                ):
+                    raise WebApplicationError(
+                        "LIVE_ROUTE_OVERRIDE_NOT_ALLOWED",
+                        "Provider and model are controlled by the backend route.",
+                        status_code=422,
+                        stage="routing",
+                        retryable=False,
+                    )
+                return provider
+            except WebApplicationError:
+                raise
             except Exception as error:
                 raise WebApplicationError(
                     "SKILL_PLAYGROUND_LIVE_CONFIGURATION_INVALID",

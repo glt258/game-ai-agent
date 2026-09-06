@@ -504,6 +504,9 @@ CHARACTER_DRAFT_RESPONSE_CONTRACT = ResponseContract(
 CHARACTER_SKILL_KIT_RESPONSE_CONTRACT = ResponseContract(
     "character_skill_kit", strict=True, json_schema=CHARACTER_SKILL_KIT_JSON_SCHEMA
 )
+HYBRID_SEMANTIC_IR_RESPONSE_CONTRACT = ResponseContract(
+    "hybrid_semantic_ir", strict=True
+)
 GROUNDED_RESPONSE_CONTRACT = ResponseContract(
     "grounded_response", strict=True, json_schema=GROUNDED_RESPONSE_JSON_SCHEMA
 )
@@ -514,6 +517,8 @@ def response_contract_for(response_format: str) -> ResponseContract:
         return CHARACTER_DRAFT_RESPONSE_CONTRACT
     if response_format == "character_skill_kit":
         return CHARACTER_SKILL_KIT_RESPONSE_CONTRACT
+    if response_format == "hybrid_semantic_ir":
+        return HYBRID_SEMANTIC_IR_RESPONSE_CONTRACT
     if response_format == "character_authoring_action":
         return CHARACTER_AUTHORING_ACTION_RESPONSE_CONTRACT
     if response_format == "grounded_response":
@@ -577,6 +582,7 @@ __all__ = [
     "CHARACTER_DRAFT_CORE_FIELDS",
     "CHARACTER_DRAFT_RESPONSE_CONTRACT",
     "CHARACTER_SKILL_KIT_RESPONSE_CONTRACT",
+    "HYBRID_SEMANTIC_IR_RESPONSE_CONTRACT",
     "CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL",
     "CHARACTER_AUTHORING_ACTION_RESPONSE_CONTRACT",
     "GROUNDED_RESPONSE_CONTRACT",

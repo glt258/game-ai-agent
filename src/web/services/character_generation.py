@@ -69,11 +69,30 @@ class CharacterGenerationApplication:
         self.checker = checker or CanonChecker()
         self.evaluation_runner = evaluation_runner or EvaluationRunner()
         if generation_agent is None:
-            model = character_model_from_environment(mode_override=generation_mode)
-            generation_agent = CharacterGenerationAgent(model)
+            model = character_model_from_environment(
+                mode_override=generation_mode,
+                operation="character_generation",
+            )
+            recovery_model = (
+                character_model_from_environment(
+                    mode_override="live",
+                    operation="character_structural_recovery",
+                )
+                if generation_mode == "live"
+                else None
+            )
+            generation_agent = CharacterGenerationAgent(
+                model,
+                recovery_model=recovery_model,
+            )
             if repair_agent is None:
                 repair_model: AgentModel = (
-                    DeterministicCharacterRepairModel() if generation_mode == "offline" else model
+                    DeterministicCharacterRepairModel()
+                    if generation_mode == "offline"
+                    else character_model_from_environment(
+                        mode_override="live",
+                        operation="character_repair",
+                    )
                 )
                 repair_agent = CharacterRepairAgent(repair_model, checker=self.checker)
         elif repair_agent is None:

@@ -1,6 +1,6 @@
 # W5-S1A Production Live Provider Contract v0.1
 
-W5-S1A architecture audit and **future implementation contract freeze**.
+W5-S1A architecture audit and W5-S1B production provider contract freeze.
 Audited source: `e4bf2b20acbe14bd2d8cf7b4eeaf7e4543bbfb71` (2026-09-06).
 This document changes no runtime behavior. “Current” means that exact committed
 tree; “Frozen target” means work still required in W5-S1B–E. Readiness means the
@@ -8,14 +8,29 @@ audit is ready for implementation, not that production integration already works
 
 ## A. Verdict and scope
 
-`W5_S1A_READY` once the documentation candidate passes the verification in V/Y.
+`W5_S1A_READY` was satisfied by the prior audit candidate and remote CI.
 Decision: **EVOLVE_EXISTING**, **PARTIALLY_SHARED**, **PROVIDER_UNIFICATION_GAP**.
 Reuse `ProviderChatClient`, `ProviderCompletion`, `ProviderClientError`,
 `LiveLLMSettings`, `ProviderProfile`, and `ModelInvocationAudit`. Preserve
 `AgentModel` and the Hybrid domain seam. Do not create another provider system.
 
-Production code changes, live model calls, migrations, frontend changes, W5-S2,
-pushes and tags: **0**. One documentation commit only.
+S1A had no production code changes. S1B changes only the provider routing/config
+seams described below; there are no live model calls, migrations, frontend
+feature changes, W5-S2 work, or tags.
+
+## S1B implementation update
+
+The S1B implementation evolves this contract in the existing seams. `ProviderRoute`
+and `resolve_provider_route` now resolve the five actual operation roles using
+trusted runtime overrides, operation-specific environment pairs, or the
+default `NPC_LLM_PROVIDER`/`NPC_LLM_MODEL` route. `LiveLLMSettings` exposes the
+resolved route and renders its credential as `<redacted>`; route objects never
+carry credentials. Character generation and repair factories receive explicit
+operation roles, and the Hybrid live factory uses the same `skill_generation`
+resolver while retaining `OpenCodeGoHybridProvider`.
+
+S1B deliberately leaves retry/deadline policy, job cancellation/cleanup,
+usage aggregation, Character async jobs and the full error taxonomy to S1C–E.
 
 ## B. Baseline and evidence precedence
 
@@ -362,16 +377,13 @@ proxy settings can influence SDK behavior independently of the project loader;
 S1 must make the effective endpoint explicit and review SDK settings, not assume
 that passing `None` establishes a trusted fixed endpoint.
 
-Current precedence: supplied environment mapping **replaces** os.environ for
-settings; mode_override > NPC_AGENT_MODEL > offline. CLI explicit provider/model
-overwrites a copy of env. Hybrid Web explicit request provider/model overwrites env;
-60/0 defaults apply only if absent. No production role routes exist. Browser model
-allowlist: web-offline-fixture, deepseek-v4-pro, deepseek-chat, mimo-v2.5,
-mimo-v2.5-pro; provider allowlist: deepseek/opencode_go; pair compatibility not
-enforced. Config profile/model compatibility and Hybrid forced JSON mode can differ.
+Before S1B, supplied environment mapping **replaced** os.environ for settings;
+mode_override > NPC_AGENT_MODEL > offline. CLI and Hybrid Web could overwrite
+provider/model on copied environment values, and no production role routes existed.
 
-Frozen target precedence: explicit trusted application route/profile config >
-NPC_* environment fallback > safe defaults. No new env names in S1A. Existing
+S1B precedence: trusted runtime override > operation-specific configured route >
+default configured route > environment-backed route. Operation-specific pairs use
+`NPC_LLM_<OPERATION>_PROVIDER` and `NPC_LLM_<OPERATION>_MODEL`; existing
 NPC_* names stay supported; OPENAI_API_KEY/DEEPSEEK_API_KEY are not promoted to
 aliases. Unknown/invalid explicit values fail typed configuration validation;
 they never silently fall back. Lower-priority conflicts select the higher source;
@@ -545,8 +557,9 @@ not merely a changed job status; no distributed cancellation or global queue.
 ## O. Role routing and Hermes/OpenCode boundary
 
 Frozen route: `task role → trusted configured route → provider_id + model_id`.
-Roles: **character_generation**, **skill_generation**, **character_repair**,
-**skill_repair**. Character structural recovery uses character_repair route with
+Roles: **character_generation**, **character_structural_recovery**,
+**character_repair**, **skill_generation**, **skill_repair**. Character
+structural recovery uses the character_structural_recovery route with
 its existing recovery purpose; semantic repair keeps its own scope. Absent
 explicit repair route may inherit the corresponding generation route, resolved
 and recorded before operation start. Evaluation is deterministic; no S1 evaluator
@@ -779,15 +792,15 @@ metadata; not executed in S1A. Quality/model behavior studies are separate evide
 | Area | Status | Evidence / boundary |
 | --- | --- | --- |
 | provider abstraction | PARTIAL | Shared `ProviderChatClient` exists; Hybrid path still carries a parallel policy seam |
-| routing | MISSING | Environment/provider profile selection exists; no server-owned operation-role route |
-| secret handling | PARTIAL | Keys are environment/injection only, but settings `repr` and generic exception paths need hardening |
+| routing | IMPLEMENTED | `ProviderRoute` resolves five server-owned operation roles with trusted precedence and request mismatch rejection |
+| secret handling | IMPROVED | `LiveLLMSettings` redacts credentials in `repr`/`str`; endpoint credentials are rejected; remaining SDK logging risk is deferred |
 | timeouts | PARTIAL | Provider, adapter, job and browser budgets exist but are not one absolute operation deadline |
 | retry | PARTIAL | Adapter retries are bounded; Hybrid/SDK ownership is duplicated and job retry is undefined |
 | errors | PARTIAL | Core typed errors exist; Hybrid and Web projections lose distinctions |
 | async jobs | PARTIAL | Skill jobs are process-local and TTL-bounded; Character live generation has no job route |
 | cleanup | MISSING | Timed-out workers can continue HTTP and retain executor capacity |
 | concurrency | PARTIAL | Registry admission is bounded at two workers; active work is not accounted through completion |
-| structured output | PARTIAL | Provider response contracts exist; Hybrid forces JSON object regardless of profile capability |
+| structured output | IMPROVED | Hybrid negotiates its contract against the resolved route profile capabilities |
 | invocation audit | PARTIAL | `ModelInvocationAudit` records core attempts; Hybrid and some repair failures omit it |
 | usage/cost | MISSING | Usage can be nullable on completions; no durable usage or pricing contract |
 | doctor | READY | Configuration presence only, no live call, no secret values |
@@ -801,13 +814,13 @@ metadata; not executed in S1A. Quality/model behavior studies are separate evide
 | --- | --- | --- |
 | W5-S1B — Production Provider Runtime & Configuration | evolve settings/profile/ProviderChatClient; separate secret values from repr/export; resolved provider/model route; canonical config precedence and capability validation; fake tests | Codex |
 | W5-S1C — Shared Error / Retry / Timeout / Audit Policy | one invocation policy on existing boundary; typed taxonomy; bounded retry/deadline and failure audit; SDK malformed-envelope/local HTTP checks | Codex |
-| W5-S1D — Character / Skill / Repair Integration | bridge both domain seams to shared policy/audit; role routing incl. repair; correct actual provider/model provenance; unchanged domain/deterministic validators | Codex; DeepSeek/MIMO only separate prompt/output analysis if explicitly requested |
+| W5-S1D — Character / Skill / Repair Integration | remaining shared policy/audit and taxonomy work after S1B route wiring | Codex |
 | W5-S1E — Web Job + Inspector Productionization | reuse registry, Character job support, effective worker admission/shutdown, safe HTTP mapping, server routing, finite polling/failure metadata | Codex |
 
 Each slice requires its own Preflight, bounded tests, Postflight and reviewable
 commit. If S1C or E spans too much, split invocation policy from lifetime handling
 within that slice before editing; do not bundle model research into runtime code.
-No S1B implementation begins automatically from this audit.
+S1B implementation is complete in the candidate commit; S1C–E remain separate slices.
 
 ## Y. Deferred
 

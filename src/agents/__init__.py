@@ -24,7 +24,12 @@ from .grounding import (
     safe_fallback_segments,
 )
 from .live_llm import LiveLLMAdapter
-from .model_factory import LiveLLMSettings, character_model_from_environment, model_from_environment
+from .model_factory import (
+    LiveLLMSettings,
+    character_model_from_environment,
+    model_from_environment,
+    resolve_provider_route,
+)
 from .model_protocol import AgentModel, ScriptedAgentModel
 from .models import (
     AgentPrompt,
@@ -125,6 +130,9 @@ from .provider_profiles import (
     PROVIDER_PROFILES,
     ProviderCapabilities,
     ProviderProfile,
+    ProviderOperation,
+    ProviderRoute,
+    SUPPORTED_OPERATIONS,
     ThinkingModeBehavior,
     TransportFamily,
     apply_structured_output_override,
@@ -241,6 +249,9 @@ __all__ = [
     "ProviderToolCall",
     "ProviderCapabilities",
     "ProviderProfile",
+    "ProviderOperation",
+    "ProviderRoute",
+    "SUPPORTED_OPERATIONS",
     "NegotiatedResponseContract",
     "ResponseMode",
     "ResponseContract",
@@ -268,6 +279,7 @@ __all__ = [
     "ToolExecution",
     "model_from_environment",
     "character_model_from_environment",
+    "resolve_provider_route",
     "ALLOWED_NON_FACTUAL_TEXTS",
     "ALLOWED_UNCERTAINTY_TEXTS",
     "SAFE_FALLBACK_TEXT",

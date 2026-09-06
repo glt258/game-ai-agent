@@ -1995,7 +1995,7 @@ class CharacterGenerationResult:
 class CharacterGenerationAgent:
     """Sibling consumer to NpcConversationAgent for one-shot draft generation."""
 
-    def __init__(self, model: AgentModel, *, resolver: KnowledgeResolver | None = None, story_repository: StoryRepository | None = None, max_tool_rounds: int = 6, authoring_context: CharacterAuthoringKnowledgeContext | None = None, reference_context: Sequence[Mapping[str, Any]] = (), shadow_config: SkillShadowConfig | None = None, retrieval_strategy: str = "model_loop") -> None:
+    def __init__(self, model: AgentModel, *, resolver: KnowledgeResolver | None = None, story_repository: StoryRepository | None = None, max_tool_rounds: int = 6, authoring_context: CharacterAuthoringKnowledgeContext | None = None, reference_context: Sequence[Mapping[str, Any]] = (), shadow_config: SkillShadowConfig | None = None, retrieval_strategy: str = "model_loop", recovery_model: AgentModel | None = None) -> None:
         if max_tool_rounds < 1:
             raise ValueError("max_tool_rounds must be positive")
         if shadow_config is not None and not isinstance(shadow_config, SkillShadowConfig):
@@ -2006,6 +2006,7 @@ class CharacterGenerationAgent:
         self.story_repository = story_repository or load_story_repository()
         self.tools = CharacterAuthoringToolbox(self.resolver, self.story_repository)
         self.model = model
+        self.recovery_model = recovery_model or model
         self.max_tool_rounds = max_tool_rounds
         self.authoring_context = authoring_context or CharacterAuthoringKnowledgeContext()
         self.reference_context = tuple(dict(item) for item in reference_context)
@@ -2753,7 +2754,7 @@ class CharacterGenerationAgent:
             invocation_purpose="character_draft_recovery",
         )
         try:
-            recovery_turn = self.model.generate(recovery_prompt)
+            recovery_turn = self.recovery_model.generate(recovery_prompt)
             if recovery_turn.invocation is not None:
                 invocations.append(recovery_turn.invocation)
             if recovery_turn.tool_calls:

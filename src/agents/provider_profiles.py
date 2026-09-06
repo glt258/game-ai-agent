@@ -4,7 +4,8 @@ from copy import deepcopy
 from dataclasses import dataclass, replace
 from enum import Enum
 from types import MappingProxyType
-from typing import Any, Mapping
+from typing import Any, Literal, Mapping
+from urllib.parse import urlparse
 
 from .errors import ModelConfigurationError
 
@@ -72,6 +73,76 @@ class ProviderProfile:
             "provider_options",
             MappingProxyType(deepcopy(dict(self.provider_options))),
         )
+
+
+ProviderOperation = Literal[
+    "character_generation",
+    "character_structural_recovery",
+    "character_repair",
+    "skill_generation",
+    "skill_repair",
+]
+
+SUPPORTED_OPERATIONS = frozenset(
+    {
+        "character_generation",
+        "character_structural_recovery",
+        "character_repair",
+        "skill_generation",
+        "skill_repair",
+    }
+)
+
+
+@dataclass(frozen=True)
+class ProviderRoute:
+    """Trusted, secret-free route selected for one model operation."""
+
+    operation: str
+    provider_id: str
+    model_id: str
+    profile: ProviderProfile
+    base_url: str | None = None
+    source: str = "default"
+
+    def __post_init__(self) -> None:
+        operation = self.operation.strip()
+        provider_id = self.provider_id.strip().lower()
+        model_id = self.model_id.strip()
+        if not operation or operation not in SUPPORTED_OPERATIONS:
+            raise ModelConfigurationError(
+                f"Unsupported provider operation '{self.operation}'. "
+                f"Supported operations: {', '.join(sorted(SUPPORTED_OPERATIONS))}"
+            )
+        if not provider_id or provider_id != self.profile.logical_provider:
+            raise ModelConfigurationError("Provider route identity does not match its profile")
+        if not model_id:
+            raise ModelConfigurationError("Provider route model_id must be non-empty")
+        if not self.source.strip():
+            raise ModelConfigurationError("Provider route source must be non-empty")
+        if self.base_url is not None:
+            parsed = urlparse(self.base_url)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                raise ModelConfigurationError(
+                    "Provider route base_url must be an absolute HTTP(S) URL"
+                )
+            if parsed.username or parsed.password:
+                raise ModelConfigurationError(
+                    "Provider route base_url must not contain credentials"
+                )
+        object.__setattr__(self, "operation", operation)
+        object.__setattr__(self, "provider_id", provider_id)
+        object.__setattr__(self, "model_id", model_id)
+        if self.base_url is None:
+            object.__setattr__(self, "base_url", self.profile.default_base_url)
+
+    @property
+    def provider(self) -> str:
+        return self.provider_id
+
+    @property
+    def model(self) -> str:
+        return self.model_id
 
 
 CHAT_JSON_OBJECT_CAPABILITIES = ProviderCapabilities(
@@ -276,7 +347,10 @@ __all__ = [
     "OPENCODE_GO_BASE_URL",
     "PROVIDER_PROFILES",
     "ProviderCapabilities",
+    "ProviderOperation",
     "ProviderProfile",
+    "ProviderRoute",
+    "SUPPORTED_OPERATIONS",
     "SUPPORTED_PROVIDERS",
     "ThinkingModeBehavior",
     "TransportFamily",

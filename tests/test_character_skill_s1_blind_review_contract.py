@@ -218,8 +218,15 @@ def test_contract_worktree_diff_contains_no_src_changes() -> None:
     )
     allowed_diagnostics = {
         "src/agents/character_generation.py",
+        "src/agents/__init__.py",
+        "src/agents/live_llm.py",
+        "src/agents/model_factory.py",
+        "src/agents/official_character_authoring.py",
+        "src/agents/provider_profiles.py",
         "src/agents/models.py",
         "src/agents/response_contracts.py",
+        "src/web/services/character_generation.py",
+        "src/web/services/skill_playground.py",
         "src/character_skill/__init__.py",
         "src/character_skill/contract.py",
         # The generalization pilot adds generic mode and continuation

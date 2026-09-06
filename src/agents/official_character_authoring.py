@@ -381,6 +381,7 @@ class OfficialCharacterAuthoringDemo:
         self,
         *,
         generation_model: Any | None = None,
+        recovery_model: Any | None = None,
         repair_model: Any | None = None,
         reference_grounding: ReferenceGrounding | None = None,
         generation_agent: Any | None = None,
@@ -391,6 +392,7 @@ class OfficialCharacterAuthoringDemo:
         self.checker = checker or CanonChecker()
         self.generation_agent = generation_agent or CharacterGenerationAgent(
             generation_model or DeterministicCharacterGenerationModel(),
+            recovery_model=recovery_model,
             reference_context=self.references.selected,
         )
         self.repair_agent = repair_agent or CharacterRepairAgent(
@@ -443,10 +445,21 @@ def make_demo(
         generation_model = character_model_from_environment(
             environment=environment,
             mode_override="live",
+            operation="character_generation",
         )
-        repair_model = generation_model
+        recovery_model = character_model_from_environment(
+            environment=environment,
+            mode_override="live",
+            operation="character_structural_recovery",
+        )
+        repair_model = character_model_from_environment(
+            environment=environment,
+            mode_override="live",
+            operation="character_repair",
+        )
     return OfficialCharacterAuthoringDemo(
         generation_model=generation_model,
+        recovery_model=recovery_model if mode != "offline" else None,
         repair_model=repair_model,
         reference_grounding=references,
     )

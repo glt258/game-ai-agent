@@ -534,7 +534,7 @@ def test_default_factory_forwards_model_to_existing_provider_config(monkeypatch)
         profile = SimpleNamespace(provider_options={})
 
         @classmethod
-        def from_environment(cls, environment):
+        def from_environment(cls, environment, *, operation="character_generation"):
             captured.update(environment)
             return cls
 
