@@ -5,11 +5,17 @@ import threading
 import time
 import uuid
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any, Literal
 
 from ..errors import WebApplicationError
+from agents.reliability import (
+    CancellationToken,
+    InvocationPolicy,
+    OperationDeadline,
+    invocation_context,
+)
 
 LiveJobStatus = Literal["PENDING", "RUNNING", "SUCCEEDED", "FAILED"]
 LiveJobKind = Literal["skill_playground", "character_skill_design"]
@@ -41,6 +47,10 @@ class _LiveJob:
     result: Any = None
     error: WebApplicationError | None = None
     timer: threading.Timer | None = None
+    cancellation: CancellationToken | None = None
+    deadline: OperationDeadline | None = None
+    future: Future[Any] | None = None
+    worker_settled: bool = False
 
 
 class LiveJobRegistry:
@@ -71,6 +81,7 @@ class LiveJobRegistry:
             max_workers=max_workers,
             thread_name_prefix="live-web",
         )
+        self._closed = False
 
     @classmethod
     def from_environment(cls) -> "LiveJobRegistry":
@@ -95,8 +106,20 @@ class LiveJobRegistry:
         work: Callable[[], Any],
     ) -> LiveJobSnapshot:
         with self._lock:
+            if self._closed:
+                raise WebApplicationError(
+                    "LIVE_EXECUTION_SHUTDOWN",
+                    "Live execution is shutting down and cannot accept new work.",
+                    status_code=503,
+                    stage="live_execution",
+                    retryable=True,
+                )
             self._cleanup_locked()
-            in_flight = sum(item.status in {"PENDING", "RUNNING"} for item in self._jobs.values())
+            in_flight = sum(
+                not item.worker_settled
+                for item in self._jobs.values()
+                if item.status in {"PENDING", "RUNNING", "FAILED"}
+            )
             if in_flight >= self.max_in_flight:
                 raise WebApplicationError(
                     "LIVE_EXECUTION_BUSY",
@@ -112,8 +135,10 @@ class LiveJobRegistry:
                 model=model,
                 created_at=self._clock(),
             )
+            job.cancellation = CancellationToken()
+            job.deadline = OperationDeadline(self.timeout_seconds, monotonic=self._clock)
             self._jobs[job.job_id] = job
-            self._executor.submit(self._execute, job.job_id, work)
+            job.future = self._executor.submit(self._execute, job.job_id, work)
             timer = threading.Timer(
                 self.timeout_seconds,
                 self._mark_timeout,
@@ -139,6 +164,39 @@ class LiveJobRegistry:
             return self._snapshot_locked(job)
 
     def shutdown(self) -> None:
+        with self._lock:
+            if self._closed:
+                return
+            self._closed = True
+            for job in self._jobs.values():
+                if job.cancellation is not None:
+                    job.cancellation.cancel()
+                if job.status == "PENDING":
+                    if job.future is None or job.future.cancel():
+                        job.status = "FAILED"
+                        job.error = WebApplicationError(
+                            "LIVE_EXECUTION_CANCELLED",
+                            "The live execution was cancelled during shutdown.",
+                            status_code=503,
+                            stage="live_execution",
+                            retryable=True,
+                        )
+                        job.finished_at = self._clock()
+                        job.worker_settled = True
+                elif job.status == "RUNNING":
+                    job.status = "FAILED"
+                    job.error = WebApplicationError(
+                        "LIVE_EXECUTION_CANCELLED",
+                        "The live execution was cancelled during shutdown.",
+                        status_code=503,
+                        stage="live_execution",
+                        retryable=True,
+                    )
+                    job.finished_at = self._clock()
+                    if job.timer is not None:
+                        job.timer.cancel()
+        # Running synchronous calls cannot be force-killed; their provider and
+        # operation deadlines bound eventual worker settlement.
         self._executor.shutdown(wait=False, cancel_futures=True)
 
     def _execute(self, job_id: str, work: Callable[[], Any]) -> None:
@@ -149,7 +207,18 @@ class LiveJobRegistry:
             job.status = "RUNNING"
             job.started_at = self._clock()
         try:
-            result = work()
+            if job is None or job.deadline is None or job.cancellation is None:
+                return
+            with invocation_context(
+                deadline=job.deadline,
+                cancellation=job.cancellation,
+                policy=InvocationPolicy(
+                    max_attempts=3,
+                    attempt_timeout_cap=self.timeout_seconds,
+                    operation_deadline_seconds=self.timeout_seconds,
+                ),
+            ):
+                result = work()
         except WebApplicationError as error:
             self._finish(job_id, error=error)
         except Exception:
@@ -165,6 +234,8 @@ class LiveJobRegistry:
             )
         else:
             self._finish(job_id, result=result)
+        finally:
+            self._settle(job_id)
 
     def _finish(
         self,
@@ -184,11 +255,20 @@ class LiveJobRegistry:
             if job.timer is not None:
                 job.timer.cancel()
 
+    def _settle(self, job_id: str) -> None:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None:
+                return
+            job.worker_settled = True
+
     def _mark_timeout(self, job_id: str) -> None:
         with self._lock:
             job = self._jobs.get(job_id)
             if job is None or job.status in {"SUCCEEDED", "FAILED"}:
                 return
+            if job.cancellation is not None:
+                job.cancellation.cancel()
             job.status = "FAILED"
             job.error = WebApplicationError(
                 "BACKEND_REQUEST_TIMEOUT",
@@ -206,6 +286,7 @@ class LiveJobRegistry:
             job_id
             for job_id, job in self._jobs.items()
             if job.status in {"SUCCEEDED", "FAILED"}
+            and job.worker_settled
             and job.finished_at is not None
             and now - job.finished_at >= self.ttl_seconds
         ]

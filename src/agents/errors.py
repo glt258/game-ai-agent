@@ -67,3 +67,23 @@ class ModelProviderError(ModelError):
 
 class ModelMalformedResponseError(ModelError):
     """Raised when a provider response cannot become a safe ModelTurn."""
+
+
+class ModelUnavailableError(ModelError):
+    """Raised when a provider is temporarily unavailable."""
+
+
+class ModelContextLimitError(ModelError):
+    """Raised when the provider rejects an over-long request."""
+
+
+class ModelRefusalError(ModelError):
+    """Raised when the provider refuses a request under its contract."""
+
+
+class ModelCancelledError(ModelError):
+    """Raised when cooperative cancellation stops an invocation."""
+
+
+class ModelDeadlineExceededError(ModelError):
+    """Raised when an invocation's absolute deadline is exhausted."""

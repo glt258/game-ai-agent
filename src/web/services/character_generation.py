@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from contextlib import nullcontext
 from uuid import uuid4
 
 from agents.canon_checker import CanonChecker
@@ -20,6 +21,7 @@ from agents.evaluation.models import EvaluationResult
 from agents.evaluation.runner import EvaluationRunner
 from agents.model_factory import character_model_from_environment
 from agents.model_protocol import AgentModel
+from agents.reliability import default_invocation_context
 from combat_semantics import CombatRoleProfile
 
 from ..errors import WebApplicationError, map_generation_exception
@@ -62,6 +64,7 @@ class CharacterGenerationApplication:
         evaluation_runner: EvaluationRunner | None = None,
         generation_mode: str = "offline",
         use_intent_layer: bool = True,
+        operation_deadline_seconds: float = 90.0,
     ) -> None:
         if generation_mode not in {"offline", "live"}:
             raise ValueError("generation_mode must be 'offline' or 'live'")
@@ -103,6 +106,7 @@ class CharacterGenerationApplication:
         self.generation_agent = generation_agent
         self.repair_agent = repair_agent
         self.use_intent_layer = use_intent_layer
+        self.operation_deadline_seconds = operation_deadline_seconds
 
     @staticmethod
     def to_domain_request(payload: CharacterGenerationRequestDTO) -> CharacterDesignRequest:
@@ -139,7 +143,10 @@ class CharacterGenerationApplication:
             checker=self.checker,
         )
         try:
-            authoring = workflow.run(request)
+            with default_invocation_context(
+                budget_seconds=self.operation_deadline_seconds,
+            ) if self.generation_mode == "live" else nullcontext():
+                authoring = workflow.run(request)
             generation = recorder.result
             if generation is None:
                 raise RuntimeError("generation workflow returned no result")

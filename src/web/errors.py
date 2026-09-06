@@ -8,11 +8,16 @@ from agents.errors import (
     AgentExecutionError,
     AgentToolError,
     ModelAuthenticationError,
+    ModelCancelledError,
     ModelCapabilityError,
     ModelConfigurationError,
+    ModelContextLimitError,
+    ModelDeadlineExceededError,
     ModelMalformedResponseError,
     ModelRateLimitError,
+    ModelRefusalError,
     ModelTimeoutError,
+    ModelUnavailableError,
 )
 from agents.models import ModelInvocationAudit
 from persistence.errors import (
@@ -104,6 +109,56 @@ def map_generation_exception(error: BaseException) -> WebApplicationError:
             status_code=503,
             stage="provider",
             retryable=True,
+            details=details,
+            model_invocations=audits,
+        )
+    if isinstance(error, ModelCancelledError):
+        return WebApplicationError(
+            "PROVIDER_CANCELLED",
+            "The live model invocation was cancelled.",
+            status_code=499,
+            stage="provider",
+            retryable=False,
+            details=details,
+            model_invocations=audits,
+        )
+    if isinstance(error, ModelDeadlineExceededError):
+        return WebApplicationError(
+            "PROVIDER_DEADLINE_EXCEEDED",
+            "The live model invocation exceeded its operation deadline.",
+            status_code=504,
+            stage="provider",
+            retryable=True,
+            details=details,
+            model_invocations=audits,
+        )
+    if isinstance(error, ModelUnavailableError):
+        return WebApplicationError(
+            "PROVIDER_UNAVAILABLE",
+            "The configured model provider is temporarily unavailable.",
+            status_code=503,
+            stage="provider",
+            retryable=True,
+            details=details,
+            model_invocations=audits,
+        )
+    if isinstance(error, ModelContextLimitError):
+        return WebApplicationError(
+            "MODEL_CONTEXT_LIMIT_EXCEEDED",
+            "The model context limit was exceeded.",
+            status_code=413,
+            stage="provider",
+            retryable=False,
+            details=details,
+            model_invocations=audits,
+        )
+    if isinstance(error, ModelRefusalError):
+        return WebApplicationError(
+            "MODEL_REFUSED_REQUEST",
+            "The model refused the request under its safety policy.",
+            status_code=502,
+            stage="provider",
+            retryable=False,
             details=details,
             model_invocations=audits,
         )

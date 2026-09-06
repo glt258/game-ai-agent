@@ -113,13 +113,23 @@ class OpenAIChatClient(ProviderChatClient):
                 "rate_limit", retryable=True, status_code=429
             ) from None
         except openai.APIConnectionError:
-            raise ProviderClientError("provider", retryable=True) from None
+            raise ProviderClientError("network", retryable=True) from None
         except openai.APIStatusError as error:
             status_code = error.status_code
+            # Keep the SDK's concrete 5xx error compatibility while exposing
+            # generic status failures as the typed unavailable category.
+            concrete_server_error = type(error).__name__ == "InternalServerError"
+            error_code = getattr(error, "code", None)
             if status_code == 401:
                 kind = "authentication"
             elif status_code == 429:
                 kind = "rate_limit"
+            elif error_code in {"context_length_exceeded", "max_context_length"}:
+                kind = "context_limit"
+            elif error_code in {"content_filter", "refusal"}:
+                kind = "refusal"
+            elif status_code >= 500 and not concrete_server_error:
+                kind = "unavailable"
             else:
                 kind = "provider"
             raise ProviderClientError(
@@ -130,10 +140,11 @@ class OpenAIChatClient(ProviderChatClient):
         except openai.OpenAIError:
             raise ProviderClientError("provider", retryable=False) from None
 
-        if not completion.choices:
-            return ProviderCompletion(request_id=getattr(completion, "_request_id", None))
-        choice = completion.choices[0]
-        message = choice.message
+        try:
+            choice = completion.choices[0]
+            message = choice.message
+        except (AttributeError, IndexError, TypeError):
+            raise ProviderClientError("malformed_response", retryable=False) from None
         calls = tuple(
             ProviderToolCall(
                 id=getattr(call, "id", None),

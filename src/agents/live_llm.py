@@ -10,12 +10,17 @@ from typing import Any, Callable, Mapping, Sequence
 
 from .errors import (
     ModelAuthenticationError,
+    ModelCancelledError,
     ModelCapabilityError,
     ModelConfigurationError,
+    ModelContextLimitError,
+    ModelDeadlineExceededError,
     ModelMalformedResponseError,
     ModelProviderError,
     ModelRateLimitError,
     ModelTimeoutError,
+    ModelUnavailableError,
+    ModelRefusalError,
 )
 from .grounding import GroundingValidator
 from .models import (
@@ -40,6 +45,14 @@ from .response_contracts import (
     CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL,
     has_terminal_authoring_finalize_signal,
     response_contract_for,
+)
+from .reliability import (
+    CancellationToken,
+    DeadlineExceededError,
+    InvocationCancelledError,
+    InvocationPolicy,
+    OperationDeadline,
+    current_invocation_context,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -74,6 +87,9 @@ class LiveLLMAdapter:
         monotonic: Callable[[], float] = time.monotonic,
         logger: logging.Logger = LOGGER,
         route: ProviderRoute | None = None,
+        operation_deadline_seconds: float | None = None,
+        cancellation: CancellationToken | None = None,
+        policy: InvocationPolicy | None = None,
     ) -> None:
         if not provider.strip():
             raise ModelConfigurationError("Live LLM provider must be non-empty")
@@ -119,6 +135,9 @@ class LiveLLMAdapter:
         self._sleep = sleep
         self._monotonic = monotonic
         self._logger = logger
+        self._operation_deadline_seconds = operation_deadline_seconds
+        self._cancellation = cancellation
+        self._policy = policy
 
     def generate(self, prompt: AgentPrompt) -> ModelTurn:
         messages = self._provider_messages(prompt)
@@ -129,27 +148,95 @@ class LiveLLMAdapter:
             )
         response_contract = self._response_contract(prompt)
         started = self._monotonic()
+        context = current_invocation_context()
+        policy = context.policy if context is not None else (
+            self._policy
+            or InvocationPolicy.from_legacy(
+                timeout_seconds=self.timeout_seconds,
+                max_retries=self.max_retries,
+                backoff_seconds=self.backoff_seconds,
+                operation_deadline_seconds=self._operation_deadline_seconds,
+            )
+        )
+        deadline = context.deadline if context is not None else OperationDeadline(
+            policy.operation_deadline_seconds
+            or policy.attempt_timeout_cap * policy.max_attempts
+            + policy.retry_backoff_seconds * max(0, policy.max_attempts - 1),
+            monotonic=self._monotonic,
+        )
+        cancellation = context.cancellation if context is not None else (
+            self._cancellation or CancellationToken()
+        )
         retry_count = 0
         while True:
             try:
+                cancellation.raise_if_cancelled()
+                deadline.raise_if_expired()
+                effective_timeout = min(
+                    self.timeout_seconds,
+                    policy.attempt_timeout_cap,
+                    deadline.remaining_seconds(),
+                )
+                if effective_timeout <= 0:
+                    raise DeadlineExceededError()
                 response = self._client.complete(
                     model=self.model,
                     messages=messages,
                     tools=tools,
-                    timeout_seconds=self.timeout_seconds,
+                    timeout_seconds=effective_timeout,
                     response_contract=response_contract,
                 )
+                cancellation.raise_if_cancelled()
+                deadline.raise_if_expired()
                 turn = self._normalize(response, prompt, started, retry_count)
+                cancellation.raise_if_cancelled()
+                deadline.raise_if_expired()
                 self._log_audit(turn.invocation)
                 return turn
             except ProviderClientError as error:
-                if error.retryable and retry_count < self.max_retries:
-                    self._sleep(self.backoff_seconds * (2**retry_count))
+                if (
+                    error.retryable
+                    and retry_count + 1 < policy.max_attempts
+                    and not cancellation.is_cancelled()
+                    and not deadline.expired()
+                ):
+                    delay = min(
+                        policy.retry_backoff_seconds * (2**retry_count),
+                        deadline.remaining_seconds(),
+                    )
+                    if context is None and self._cancellation is None:
+                        self._sleep(delay)
+                    elif cancellation.wait(delay):
+                        latency_ms = (self._monotonic() - started) * 1000
+                        self._log_failure(prompt, "cancelled", latency_ms, retry_count)
+                        self._raise_reliability_error(
+                            prompt, "cancelled", latency_ms, retry_count
+                        )
                     retry_count += 1
                     continue
                 latency_ms = (self._monotonic() - started) * 1000
+                if cancellation.is_cancelled():
+                    self._log_failure(prompt, "cancelled", latency_ms, retry_count)
+                    self._raise_reliability_error(
+                        prompt, "cancelled", latency_ms, retry_count
+                    )
+                if deadline.expired():
+                    self._log_failure(prompt, "deadline_exceeded", latency_ms, retry_count)
+                    self._raise_reliability_error(
+                        prompt, "deadline_exceeded", latency_ms, retry_count
+                    )
                 self._log_failure(prompt, error.kind, latency_ms, retry_count)
                 self._raise_model_error(error, prompt, latency_ms, retry_count)
+            except InvocationCancelledError:
+                latency_ms = (self._monotonic() - started) * 1000
+                self._log_failure(prompt, "cancelled", latency_ms, retry_count)
+                self._raise_reliability_error(prompt, "cancelled", latency_ms, retry_count)
+            except DeadlineExceededError:
+                latency_ms = (self._monotonic() - started) * 1000
+                self._log_failure(prompt, "deadline_exceeded", latency_ms, retry_count)
+                self._raise_reliability_error(
+                    prompt, "deadline_exceeded", latency_ms, retry_count
+                )
             except ModelMalformedResponseError as error:
                 latency_ms = (self._monotonic() - started) * 1000
                 self._log_failure(prompt, "malformed_response", latency_ms, retry_count)
@@ -615,6 +702,14 @@ class LiveLLMAdapter:
             raised = ModelRateLimitError(
                 "Live LLM rate limit persisted after bounded retries"
             )
+        elif error.kind == "unavailable":
+            raised = ModelUnavailableError("Live LLM provider is temporarily unavailable")
+        elif error.kind == "context_limit":
+            raised = ModelContextLimitError("Live LLM request exceeds the provider context limit")
+        elif error.kind == "refusal":
+            raised = ModelRefusalError("Live LLM provider refused the request")
+        elif error.kind == "malformed_response":
+            raised = ModelMalformedResponseError("Live LLM provider response envelope is malformed")
         else:
             raised = ModelProviderError("Live LLM provider request failed")
         raised.audit = self._failure_audit(
@@ -626,6 +721,22 @@ class LiveLLMAdapter:
             str(raised),
             provider_status_code=error.status_code,
             provider_retryable=error.retryable,
+        )
+        raise raised from None
+
+    def _raise_reliability_error(
+        self,
+        prompt: AgentPrompt,
+        outcome: str,
+        latency_ms: float,
+        retry_count: int,
+    ) -> None:
+        if outcome == "cancelled":
+            raised = ModelCancelledError("Live LLM invocation was cancelled cooperatively")
+        else:
+            raised = ModelDeadlineExceededError("Live LLM invocation exceeded its absolute deadline")
+        raised.audit = self._failure_audit(
+            prompt, outcome, latency_ms, retry_count, None, str(raised)
         )
         raise raised from None
 

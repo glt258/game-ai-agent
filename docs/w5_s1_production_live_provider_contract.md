@@ -32,6 +32,28 @@ resolver while retaining `OpenCodeGoHybridProvider`.
 S1B deliberately leaves retry/deadline policy, job cancellation/cleanup,
 usage aggregation, Character async jobs and the full error taxonomy to S1C–E.
 
+## S1C implementation update — reliability contract
+
+W5-S1C closes the shared live-invocation reliability boundary on the existing
+provider and job seams. Each logical live operation owns one monotonic absolute
+deadline and one cooperative `CancellationToken`; every attempt receives the
+minimum of the configured timeout, the policy cap and remaining operation time.
+The shared `InvocationPolicy` defines at most three attempts (two retries) with
+bounded cancellation-aware backoff. Only normalized transient timeout, network,
+rate-limit and unavailable failures are retryable; authentication, malformed
+provider envelopes, context-limit and refusal failures fail fast. Failure audits
+contain sanitized metadata only.
+
+`LiveJobRegistry` separates logical state from physical worker settlement. A
+timed-out or cancelled job stops publishing results immediately, but its worker
+continues cooperatively until the provider returns or its shared deadline
+expires. The unsettled worker still consumes admission capacity, preventing late
+results from bypassing `max_in_flight`. Shutdown closes admission, cancels queued
+work and signals running work; Python threads are never force-killed. Submission
+after shutdown returns `LIVE_EXECUTION_SHUTDOWN`. This slice covers provider,
+Hybrid, Character generation and Skill Playground live contexts plus safe Web
+projections; public Character async routes and usage aggregation remain S1D–E.
+
 ## B. Baseline and evidence precedence
 
 | Item | Evidence |
@@ -742,13 +764,9 @@ at the existing application/invocation boundary.
 
 ## V. Verification and future test matrix
 
-S1A adds no behavioral tests. Required gates: `git diff --check`, pre-commit on
-the new document (including always-run quality hooks), repository's targeted EKL
-portability/quality files, Postflight from captured baseline, and the same
-appropriate checks from a clean checkout of the committed candidate. No full
-pytest or costly three-platform acceptance is required for this docs-only task;
-this task's targeted-testing rule supersedes the generic full-suite example in
-`docs/ci_clean_checkout_verification.md` while preserving committed-content testing.
+S1C adds targeted reliability tests and requires the repository's full
+collect-only/full pytest, frontend, browser, pre-commit, Postflight and clean
+checkout gates. No external provider calls are permitted.
 
 Candidate verification commands:
 
@@ -794,12 +812,12 @@ metadata; not executed in S1A. Quality/model behavior studies are separate evide
 | provider abstraction | PARTIAL | Shared `ProviderChatClient` exists; Hybrid path still carries a parallel policy seam |
 | routing | IMPLEMENTED | `ProviderRoute` resolves five server-owned operation roles with trusted precedence and request mismatch rejection |
 | secret handling | IMPROVED | `LiveLLMSettings` redacts credentials in `repr`/`str`; endpoint credentials are rejected; remaining SDK logging risk is deferred |
-| timeouts | PARTIAL | Provider, adapter, job and browser budgets exist but are not one absolute operation deadline |
-| retry | PARTIAL | Adapter retries are bounded; Hybrid/SDK ownership is duplicated and job retry is undefined |
-| errors | PARTIAL | Core typed errors exist; Hybrid and Web projections lose distinctions |
-| async jobs | PARTIAL | Skill jobs are process-local and TTL-bounded; Character live generation has no job route |
-| cleanup | MISSING | Timed-out workers can continue HTTP and retain executor capacity |
-| concurrency | PARTIAL | Registry admission is bounded at two workers; active work is not accounted through completion |
+| timeouts | IMPLEMENTED | One monotonic operation deadline caps provider, adapter, workflow and job attempts |
+| retry | IMPLEMENTED | Shared bounded attempt policy and cancellation-aware backoff cap transient retries |
+| errors | IMPLEMENTED | Provider, reliability, Hybrid and Web layers preserve safe typed categories |
+| async jobs | PARTIAL | Skill jobs are process-local and TTL-bounded; Character public async routes remain S1E |
+| cleanup | IMPLEMENTED | Timeout/cancel suppresses publication while physical workers settle before capacity is released |
+| concurrency | IMPLEMENTED | Admission counts unsettled physical workers, including timed-out work |
 | structured output | IMPROVED | Hybrid negotiates its contract against the resolved route profile capabilities |
 | invocation audit | PARTIAL | `ModelInvocationAudit` records core attempts; Hybrid and some repair failures omit it |
 | usage/cost | MISSING | Usage can be nullable on completions; no durable usage or pricing contract |
@@ -813,14 +831,14 @@ metadata; not executed in S1A. Quality/model behavior studies are separate evide
 | Slice | Small deliverable / acceptance boundary | Owner |
 | --- | --- | --- |
 | W5-S1B — Production Provider Runtime & Configuration | evolve settings/profile/ProviderChatClient; separate secret values from repr/export; resolved provider/model route; canonical config precedence and capability validation; fake tests | Codex |
-| W5-S1C — Shared Error / Retry / Timeout / Audit Policy | one invocation policy on existing boundary; typed taxonomy; bounded retry/deadline and failure audit; SDK malformed-envelope/local HTTP checks | Codex |
+| W5-S1C — Shared Error / Retry / Timeout / Audit Policy | one invocation policy on existing boundary; typed taxonomy; bounded retry/deadline and failure audit; SDK malformed-envelope/local HTTP checks; physical job lifecycle | Codex |
 | W5-S1D — Character / Skill / Repair Integration | remaining shared policy/audit and taxonomy work after S1B route wiring | Codex |
 | W5-S1E — Web Job + Inspector Productionization | reuse registry, Character job support, effective worker admission/shutdown, safe HTTP mapping, server routing, finite polling/failure metadata | Codex |
 
 Each slice requires its own Preflight, bounded tests, Postflight and reviewable
 commit. If S1C or E spans too much, split invocation policy from lifetime handling
 within that slice before editing; do not bundle model research into runtime code.
-S1B implementation is complete in the candidate commit; S1C–E remain separate slices.
+S1B and S1C implementation are complete in their candidate commits; S1D–E remain separate slices.
 
 ## Y. Deferred
 
@@ -842,11 +860,10 @@ automatically update graph nodes, decisions, limitations or lifecycle status.
 
 ## AA. Git and next
 
-One commit: `docs: freeze W5-S1 live provider contract`.
-Stage only this document. Commit SHA, clean verification and work-log location
-belong in the task completion report. Primary workspace remains untouched.
-Push **NO**; tag **NO**. Next only after W5_S1A_READY:
-**W5-S1B — Production Provider Runtime & Configuration**; do not implement automatically.
+One commit: `feat: harden live invocation reliability`. Stage only the S1C
+implementation, tests and this contract update. Commit SHA, clean verification
+and work-log location belong in the task completion report. Primary workspace
+remains untouched. Push **NO**; tag **NO**.
 
 ## Appendix 1. Exhaustive source symbol and call-site index
 

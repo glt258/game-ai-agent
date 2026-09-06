@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from contextlib import nullcontext
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,7 @@ from character_intelligence.hybrid_ir.runner import (
 )
 from agents.errors import ModelConfigurationError
 from agents.model_factory import resolve_provider_route
+from agents.reliability import default_invocation_context
 from character_intelligence.skill_artifact import (
     SkillDesignArtifact,
     build_skill_design_artifact_from_pipeline_result,
@@ -121,26 +123,44 @@ class SkillPlaygroundApplication:
             provider_mode = self._provider_mode(request)
             provider = self.provider_for(request)
             requirement = _requirement(request)
-            execution = execute_playground(
-                provider,
-                request.family,
-                request.mode,
-                requirement,
-                model=request.model,
-                language=request.language,
-                repo_root=self.repo_root,
+            context = (
+                default_invocation_context(budget_seconds=90.0)
+                if request.execution_mode == "live"
+                else nullcontext()
             )
+            with context:
+                execution = execute_playground(
+                    provider,
+                    request.family,
+                    request.mode,
+                    requirement,
+                    model=request.model,
+                    language=request.language,
+                    repo_root=self.repo_root,
+                )
         except WebApplicationError:
             raise
         except HybridProviderInvocationError as error:
+            error_projection = {
+                "TIMEOUT": ("PROVIDER_TIMEOUT", "The model provider timed out after its bounded provider budget.", 504, True),
+                "DEADLINE_EXCEEDED": ("PROVIDER_DEADLINE_EXCEEDED", "The live model invocation exceeded its operation deadline.", 504, True),
+                "CANCELLED": ("PROVIDER_CANCELLED", "The live model invocation was cancelled.", 499, False),
+                "AUTHENTICATION": ("PROVIDER_AUTHENTICATION_FAILED", "Configured model provider authentication failed.", 502, False),
+                "RATE_LIMIT": ("PROVIDER_RATE_LIMITED", "The model provider rate-limited the request.", 503, True),
+                "UNAVAILABLE": ("PROVIDER_UNAVAILABLE", "The configured model provider is temporarily unavailable.", 503, True),
+                "MALFORMED_RESPONSE": ("PROVIDER_RESPONSE_INVALID", "The model provider returned an invalid response envelope.", 502, False),
+                "TRANSPORT_FAILURE": ("PROVIDER_CONNECTION_FAILURE", "The model provider could not be reached.", 503, True),
+            }
+            code, message, status_code, retryable = error_projection.get(
+                error.outcome,
+                error_projection["TRANSPORT_FAILURE"],
+            )
             raise WebApplicationError(
-                "PROVIDER_TIMEOUT" if error.outcome == "TIMEOUT" else "PROVIDER_CONNECTION_FAILURE",
-                "The model provider timed out after its bounded provider budget."
-                if error.outcome == "TIMEOUT"
-                else "The model provider could not be reached.",
-                status_code=504 if error.outcome == "TIMEOUT" else 503,
+                code,
+                message,
+                status_code=status_code,
                 stage="provider",
-                retryable=True,
+                retryable=retryable,
             ) from None
         except Exception as error:
             raise WebApplicationError(

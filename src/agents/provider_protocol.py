@@ -12,10 +12,18 @@ from .response_contracts import ResponseContract
 
 
 ProviderErrorKind = Literal[
+    "configuration",
     "authentication",
     "timeout",
     "rate_limit",
     "provider",
+    "network",
+    "unavailable",
+    "malformed_response",
+    "context_limit",
+    "refusal",
+    "cancelled",
+    "deadline_exceeded",
 ]
 
 class ResponseMode(str, Enum):

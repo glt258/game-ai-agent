@@ -234,6 +234,13 @@ def test_contract_worktree_diff_contains_no_src_changes() -> None:
         "src/character_skill/context.py",
         "src/character_skill/evaluation.py",
         "src/character_skill/errors.py",
+        # W5-S1C closes the live provider reliability boundary in these seams.
+        "src/agents/errors.py",
+        "src/agents/provider_protocol.py",
+        "src/agents/reliability.py",
+        "src/agents/openai_provider.py",
+        "src/web/errors.py",
+        "src/web/services/live_jobs.py",
     }
     allowed_h1_prefixes = ("src/character_intelligence/", "src/game_ai_agent/")
     changed = {

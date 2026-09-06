@@ -191,7 +191,10 @@ class HybridProviderInvocationError(RuntimeError):
     """Safe provider failure with no raw transport details."""
 
     def __init__(self, outcome: str) -> None:
-        if outcome not in {"TIMEOUT", "TRANSPORT_FAILURE"}:
+        if outcome not in {
+            "TIMEOUT", "TRANSPORT_FAILURE", "AUTHENTICATION", "RATE_LIMIT",
+            "UNAVAILABLE", "MALFORMED_RESPONSE", "CANCELLED", "DEADLINE_EXCEEDED",
+        }:
             raise ValueError("unsupported Hybrid provider outcome")
         self.outcome = outcome
         super().__init__(outcome)
@@ -209,6 +212,7 @@ class OpenCodeGoHybridProvider:
         provider: str = "opencode_go",
         max_transport_retries: int = 0,
         route: object | None = None,
+        backoff_seconds: float = 0.5,
     ) -> None:
         self._client = client
         self._model = model
@@ -224,21 +228,47 @@ class OpenCodeGoHybridProvider:
         self.provider_request_id: str | None = None
         self.provider_error_kind: str | None = None
         self.route = route
+        self.backoff_seconds = backoff_seconds
 
     def complete(self, request_text: str) -> object:
         from agents.provider_protocol import ProviderClientError, negotiate_response_contract
+        from agents.reliability import (
+            CancellationToken,
+            DeadlineExceededError,
+            InvocationCancelledError,
+            InvocationPolicy,
+            OperationDeadline,
+            current_invocation_context,
+        )
         from agents.response_contracts import response_contract_for
 
         self.calls += 1
         started = time.monotonic()
-        for attempt in range(self.max_transport_retries + 1):
+        context = current_invocation_context()
+        policy = context.policy if context is not None else InvocationPolicy.from_legacy(
+            timeout_seconds=self._timeout_seconds,
+            max_retries=self.max_transport_retries,
+            backoff_seconds=self.backoff_seconds,
+        )
+        deadline = context.deadline if context is not None else OperationDeadline(
+            policy.attempt_timeout_cap * policy.max_attempts
+            + policy.retry_backoff_seconds * max(0, policy.max_attempts - 1)
+        )
+        cancellation = context.cancellation if context is not None else CancellationToken()
+        for attempt in range(policy.max_attempts):
             self.transport_attempts += 1
             try:
+                cancellation.raise_if_cancelled()
+                deadline.raise_if_expired()
                 response = self._client.complete(
                     model=self._model,
                     messages=({"role": "user", "content": request_text},),
                     tools=(),
-                    timeout_seconds=self._timeout_seconds,
+                    timeout_seconds=min(
+                        self._timeout_seconds,
+                        policy.attempt_timeout_cap,
+                        deadline.remaining_seconds(),
+                    ),
                     response_contract=negotiate_response_contract(
                         response_contract_for("hybrid_semantic_ir"),
                         self.route.profile.capabilities
@@ -248,12 +278,47 @@ class OpenCodeGoHybridProvider:
                 )
             except ProviderClientError as error:
                 self.provider_error_kind = error.kind
-                if error.retryable and attempt < self.max_transport_retries:
+                if (
+                    error.retryable
+                    and attempt + 1 < policy.max_attempts
+                    and not cancellation.is_cancelled()
+                    and not deadline.expired()
+                ):
+                    if cancellation.wait(
+                        min(
+                            policy.retry_backoff_seconds * (2**attempt),
+                            deadline.remaining_seconds(),
+                        )
+                    ):
+                        self.latency_ms = (time.monotonic() - started) * 1000
+                        self.outcome = "CANCELLED"
+                        raise HybridProviderInvocationError(self.outcome) from None
                     continue
                 self.latency_ms = (time.monotonic() - started) * 1000
-                self.outcome = "TIMEOUT" if error.kind == "timeout" else "TRANSPORT_FAILURE"
+                if cancellation.is_cancelled():
+                    self.outcome = "CANCELLED"
+                elif deadline.expired():
+                    self.outcome = "DEADLINE_EXCEEDED"
+                else:
+                    self.outcome = {
+                        "timeout": "TIMEOUT",
+                        "authentication": "AUTHENTICATION",
+                        "rate_limit": "RATE_LIMIT",
+                        "unavailable": "UNAVAILABLE",
+                        "malformed_response": "MALFORMED_RESPONSE",
+                    }.get(error.kind, "TRANSPORT_FAILURE")
+                raise HybridProviderInvocationError(self.outcome) from None
+            except InvocationCancelledError:
+                self.latency_ms = (time.monotonic() - started) * 1000
+                self.outcome = "CANCELLED"
+                raise HybridProviderInvocationError(self.outcome) from None
+            except DeadlineExceededError:
+                self.latency_ms = (time.monotonic() - started) * 1000
+                self.outcome = "DEADLINE_EXCEEDED"
                 raise HybridProviderInvocationError(self.outcome) from None
             break
+        cancellation.raise_if_cancelled()
+        deadline.raise_if_expired()
         self.latency_ms = (time.monotonic() - started) * 1000
         self.outcome = "SUCCESS"
         self.usage = response.usage
@@ -565,12 +630,22 @@ def _run_pipeline(
     try:
         response = provider.complete(request.text)
     except HybridProviderInvocationError as error:
+        failure_code = {
+            "TIMEOUT": "PROVIDER_TIMEOUT",
+            "DEADLINE_EXCEEDED": "PROVIDER_DEADLINE_EXCEEDED",
+            "CANCELLED": "PROVIDER_CANCELLED",
+            "AUTHENTICATION": "PROVIDER_AUTHENTICATION_FAILED",
+            "RATE_LIMIT": "PROVIDER_RATE_LIMITED",
+            "UNAVAILABLE": "PROVIDER_UNAVAILABLE",
+            "MALFORMED_RESPONSE": "PROVIDER_RESPONSE_INVALID",
+            "TRANSPORT_FAILURE": "PROVIDER_TRANSPORT_FAILURE",
+        }.get(error.outcome, "PROVIDER_TRANSPORT_FAILURE")
         return _failure(
             resolved_identity,
             request,
             provider,
             "PROVIDER",
-            "PROVIDER_TIMEOUT" if error.outcome == "TIMEOUT" else "PROVIDER_TRANSPORT_FAILURE",
+            failure_code,
             SafeIRDiagnostics(),
             principal_verdict="UNAVAILABLE",
             sample_index=sample_index,
