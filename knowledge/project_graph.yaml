@@ -16,7 +16,7 @@ nodes:
     type: "component"
     name: "CharacterGenerationAgent"
     status: "frozen"
-    responsibility: "Generate strict, reviewable CharacterDraft proposals through bounded read-only retrieval."
+    responsibility: "Generate strict, reviewable CharacterDraft proposals through bounded read-only retrieval and consume the shared live invocation deadline, retry and cancellation contract."
     path: "src/agents/character_generation.py"
     canonical_source: "src/agents/character_generation.py"
     tests:
@@ -27,6 +27,8 @@ nodes:
         locator: "frozen components and authoring pipeline"
       - path: "README.md"
         locator: "character authoring flow"
+      - path: "src/web/services/character_generation.py"
+        locator: "live generation invocation context"
 
   - id: "contract.character_draft"
     type: "contract"
@@ -77,7 +79,7 @@ nodes:
     type: "component"
     name: "CharacterRepairWorkflow"
     status: "frozen"
-    responsibility: "Perform at most one bounded repair, preserve unaffected fields and re-run the full check."
+    responsibility: "Perform at most one bounded repair, preserve unaffected fields, re-run the full check and remain within the parent live invocation budget."
     path: "src/agents/character_repair.py"
     canonical_source: "src/agents/character_repair.py"
     tests:
@@ -86,6 +88,8 @@ nodes:
     evidence:
       - path: "docs/character_repair_loop_v0.1.1.md"
         locator: "repair scope and maximum-attempt contract"
+      - path: "src/agents/live_llm.py"
+        locator: "shared deadline and cancellation checks around provider generation"
 
   - id: "component.character_evaluation"
     type: "component"
@@ -272,18 +276,24 @@ nodes:
     type: "contract"
     name: "ProviderProtocol"
     status: "stable"
-    responsibility: "Provider-neutral completion, tool-call, response-contract and sanitized error boundary."
+    responsibility: "Provider-neutral completion, tool-call, response-contract, typed safe errors and shared live invocation reliability boundary."
     path: "src/agents/provider_protocol.py"
     canonical_source: "src/agents/provider_protocol.py"
     tests:
       - "tests/test_provider_contracts.py"
       - "tests/test_live_llm_errors.py"
+      - "tests/test_live_reliability.py"
+    evidence:
+      - path: "src/agents/reliability.py"
+        locator: "OperationDeadline, InvocationPolicy and CancellationToken"
+      - path: "docs/w5_s1_production_live_provider_contract.md"
+        locator: "S1C reliability contract"
 
   - id: "component.live_llm_settings"
     type: "component"
     name: "LiveLLMSettings"
     status: "stable"
-    responsibility: "Resolve provider, model, transport, structured-output, timeout and bounded retry configuration."
+    responsibility: "Own S1B provider/model routing and transport capability configuration; S1C owns the shared operation deadline, attempt and cancellation policy."
     path: "src/agents/model_factory.py"
     canonical_source: "src/agents/model_factory.py"
     tests:
@@ -305,18 +315,22 @@ nodes:
     type: "component"
     name: "OpenAI-compatible Live Adapter"
     status: "stable"
-    responsibility: "Adapt compatible live provider transport and map failures to sanitized ProviderClientError values."
+    responsibility: "Adapt compatible live provider transport, keep SDK retries disabled and map transport/envelope failures to sanitized typed ProviderClientError values."
     path: "src/agents/openai_provider.py"
     canonical_source: "src/agents/openai_provider.py"
     tests:
       - "tests/test_openai_provider.py"
       - "tests/test_live_llm_errors.py"
+      - "tests/test_live_reliability.py"
+    evidence:
+      - path: "src/agents/openai_provider.py"
+        locator: "typed status, network and malformed-envelope mapping"
 
   - id: "component.web_adapter"
     type: "component"
     name: "Web Adapter"
     status: "experimental"
-    responsibility: "Expose current runtime capabilities through Web DTOs, saved Character workspace APIs and asynchronous live jobs without direct persistence access or Canon publishing."
+    responsibility: "Expose current runtime capabilities through Web DTOs and asynchronous live jobs with safe reliability error projections, without direct persistence access or Canon publishing."
     path: "src/web"
     tests: []
     evidence:
@@ -324,6 +338,8 @@ nodes:
         locator: "DTO boundary and explicit non-goals"
       - path: "docs/web/web_v0.1_architecture.md"
         locator: "historical architecture candidate; current existence is snapshot-drift sensitive"
+      - path: "src/web/errors.py"
+        locator: "safe provider and live execution error projections"
 
   - id: "component.runtime_path_resolution"
     type: "component"
@@ -562,13 +578,19 @@ nodes:
     type: "component"
     name: "Live Execution Job"
     status: "experimental"
-    responsibility: "Process-local, session-oriented, TTL-bounded live execution state; it is ephemeral and is not persisted by the W4-S4 persistence boundary."
+    responsibility: "Own process-local, session-oriented, TTL-bounded live execution state; logical terminal state is separate from physical worker settlement, unsettled workers consume capacity, and late results cannot overwrite terminal outcomes. Jobs are ephemeral and are not persisted by the W4-S4 persistence boundary."
     path: "src/web/services/live_jobs.py"
     canonical_source: "src/web/services/live_jobs.py"
-    tests: []
+    tests:
+      - "tests/test_live_reliability.py"
+      - "tests/test_live_web_execution.py"
     evidence:
       - path: "docs/live_web_execution_contract_v0.1.md"
         locator: "ephemeral live job and non-persistence contract"
+      - path: "src/web/services/live_jobs.py"
+        locator: "physical worker settlement, timeout suppression and shutdown lifecycle"
+      - path: "docs/w5_s1_production_live_provider_contract.md"
+        locator: "S1C LiveJobRegistry reliability contract"
 
   - id: "component.runtime_diagnostics"
     type: "component"
@@ -737,6 +759,18 @@ edges:
     evidence:
       - path: "src/agents/model_factory.py"
         locator: "LiveLLMSettings"
+  - from: "component.character_generation_agent"
+    relation: "depends_on"
+    to: "contract.provider_protocol"
+    evidence:
+      - path: "src/agents/live_llm.py"
+        locator: "LiveLLMAdapter provider completion and shared invocation context"
+  - from: "component.character_repair_workflow"
+    relation: "depends_on"
+    to: "contract.provider_protocol"
+    evidence:
+      - path: "src/agents/live_llm.py"
+        locator: "repair provider calls inherit the parent invocation context"
   - from: "component.web_adapter"
     relation: "adapts"
     to: "component.character_generation_agent"
@@ -1004,6 +1038,35 @@ edges:
         locator: "Web live job API boundary"
 
 constraints:
+  - id: "constraint.live_invocation_reliability"
+    statement: "One live operation owns one absolute monotonic deadline and bounded typed retry policy. Attempts consume remaining budget; cancellation stops further retries cooperatively. Provider envelope failures remain distinct from domain schema and business evaluation failures."
+    severity: "high"
+    scope:
+      - "contract.provider_protocol"
+      - "component.openai_compatible_adapter"
+      - "component.character_generation_agent"
+      - "component.character_repair_workflow"
+      - "component.live_execution_job"
+    evidence:
+      - path: "src/agents/reliability.py"
+        locator: "OperationDeadline, InvocationPolicy and CancellationToken"
+      - path: "tests/test_live_reliability.py"
+        locator: "deadline, retry, cancellation and typed error invariants"
+      - path: "docs/w5_s1_production_live_provider_contract.md"
+        locator: "S1C reliability contract"
+
+  - id: "constraint.live_job_physical_lifecycle"
+    statement: "Live jobs are ephemeral. A logical timeout or cancellation suppresses publication, but physical capacity is released only after the worker settles; shutdown stops admission, cancels queued work where possible and signals running work without claiming hard thread termination."
+    severity: "high"
+    scope:
+      - "component.live_execution_job"
+      - "component.web_adapter"
+    evidence:
+      - path: "src/web/services/live_jobs.py"
+        locator: "worker_settled, timeout suppression and shutdown"
+      - path: "tests/test_live_reliability.py"
+        locator: "physical capacity, late result and shutdown invariants"
+
   - id: "constraint.combat_role_canonical_ownership"
     statement: "src/combat_semantics/roles.py is the sole canonical combat-role definition source; legacy taxonomy and compatibility adapters must not become parallel canonical owners."
     severity: "high"
