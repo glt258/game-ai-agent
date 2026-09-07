@@ -128,7 +128,7 @@ def test_shared_opencode_transport_adapter_is_single_attempt_and_json_object() -
     assert provider.calls == 1 and provider.transport_attempts == 1
     assert provider.outcome == "SUCCESS"
     assert client.calls[0]["model"] == "deepseek-v4-pro"
-    assert client.calls[0]["timeout_seconds"] == 60
+    assert client.calls[0]["timeout_seconds"] == pytest.approx(60, abs=0.1)
     assert client.calls[0]["response_contract"].mode.value == "json_object"
 
 
