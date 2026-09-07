@@ -27,6 +27,7 @@ from .models import (
     AgentPrompt,
     ConversationMessage,
     GroundedResponseSegment,
+    ModelAttemptAudit,
     ModelInvocationAudit,
     ModelTurn,
     SegmentKind,
@@ -142,12 +143,19 @@ class LiveLLMAdapter:
     def generate(self, prompt: AgentPrompt) -> ModelTurn:
         messages = self._provider_messages(prompt)
         tools = self._provider_tools(prompt)
-        if tools and not self.profile.capabilities.supports_tools:
-            raise ModelCapabilityError(
-                f"Provider profile '{self.provider}' does not support tool calls"
-            )
-        response_contract = self._response_contract(prompt)
         started = self._monotonic()
+        attempts: list[ModelAttemptAudit] = []
+        try:
+            if tools and not self.profile.capabilities.supports_tools:
+                raise ModelCapabilityError(
+                    f"Provider profile '{self.provider}' does not support tool calls"
+                )
+            response_contract = self._response_contract(prompt)
+        except ModelCapabilityError as error:
+            error.audit = self._failure_audit(
+                prompt, "capability", 0.0, 0, None, str(error), attempts=attempts
+            )
+            raise
         context = current_invocation_context()
         policy = context.policy if context is not None else (
             self._policy
@@ -168,6 +176,7 @@ class LiveLLMAdapter:
             self._cancellation or CancellationToken()
         )
         retry_count = 0
+        response: ProviderCompletion | None = None
         while True:
             try:
                 cancellation.raise_if_cancelled()
@@ -179,6 +188,7 @@ class LiveLLMAdapter:
                 )
                 if effective_timeout <= 0:
                     raise DeadlineExceededError()
+                attempt_started = self._monotonic()
                 response = self._client.complete(
                     model=self.model,
                     messages=messages,
@@ -186,14 +196,32 @@ class LiveLLMAdapter:
                     timeout_seconds=effective_timeout,
                     response_contract=response_contract,
                 )
+                attempts.append(
+                    ModelAttemptAudit(
+                        len(attempts) + 1,
+                        "success",
+                        (self._monotonic() - attempt_started) * 1000,
+                        provider_request_id=response.request_id,
+                        finish_reason=response.finish_reason,
+                        usage=response.usage,
+                    )
+                )
                 cancellation.raise_if_cancelled()
                 deadline.raise_if_expired()
-                turn = self._normalize(response, prompt, started, retry_count)
+                turn = self._normalize(response, prompt, started, retry_count, attempts)
                 cancellation.raise_if_cancelled()
                 deadline.raise_if_expired()
                 self._log_audit(turn.invocation)
                 return turn
             except ProviderClientError as error:
+                attempts.append(
+                    ModelAttemptAudit(
+                        len(attempts) + 1,
+                        error.kind,
+                        (self._monotonic() - attempt_started) * 1000,
+                        error_code=error.kind,
+                    )
+                )
                 if (
                     error.retryable
                     and retry_count + 1 < policy.max_attempts
@@ -210,7 +238,7 @@ class LiveLLMAdapter:
                         latency_ms = (self._monotonic() - started) * 1000
                         self._log_failure(prompt, "cancelled", latency_ms, retry_count)
                         self._raise_reliability_error(
-                            prompt, "cancelled", latency_ms, retry_count
+                            prompt, "cancelled", latency_ms, retry_count, attempts
                         )
                     retry_count += 1
                     continue
@@ -218,24 +246,24 @@ class LiveLLMAdapter:
                 if cancellation.is_cancelled():
                     self._log_failure(prompt, "cancelled", latency_ms, retry_count)
                     self._raise_reliability_error(
-                        prompt, "cancelled", latency_ms, retry_count
+                        prompt, "cancelled", latency_ms, retry_count, attempts
                     )
                 if deadline.expired():
                     self._log_failure(prompt, "deadline_exceeded", latency_ms, retry_count)
                     self._raise_reliability_error(
-                        prompt, "deadline_exceeded", latency_ms, retry_count
+                        prompt, "deadline_exceeded", latency_ms, retry_count, attempts
                     )
                 self._log_failure(prompt, error.kind, latency_ms, retry_count)
-                self._raise_model_error(error, prompt, latency_ms, retry_count)
+                self._raise_model_error(error, prompt, latency_ms, retry_count, attempts)
             except InvocationCancelledError:
                 latency_ms = (self._monotonic() - started) * 1000
                 self._log_failure(prompt, "cancelled", latency_ms, retry_count)
-                self._raise_reliability_error(prompt, "cancelled", latency_ms, retry_count)
+                self._raise_reliability_error(prompt, "cancelled", latency_ms, retry_count, attempts)
             except DeadlineExceededError:
                 latency_ms = (self._monotonic() - started) * 1000
                 self._log_failure(prompt, "deadline_exceeded", latency_ms, retry_count)
                 self._raise_reliability_error(
-                    prompt, "deadline_exceeded", latency_ms, retry_count
+                    prompt, "deadline_exceeded", latency_ms, retry_count, attempts
                 )
             except ModelMalformedResponseError as error:
                 latency_ms = (self._monotonic() - started) * 1000
@@ -247,6 +275,7 @@ class LiveLLMAdapter:
                     retry_count,
                     response,
                     str(error),
+                    attempts=attempts,
                 )
                 raise
 
@@ -256,6 +285,7 @@ class LiveLLMAdapter:
         prompt: AgentPrompt,
         started: float,
         retry_count: int,
+        attempts: Sequence[ModelAttemptAudit] = (),
     ) -> ModelTurn:
         calls = tuple(
             self._normalize_tool_call(call, index)
@@ -282,6 +312,7 @@ class LiveLLMAdapter:
             transport=self.transport,
             response_contract=self._response_contract(prompt).mode.value,
             purpose=prompt.invocation_purpose,
+            attempts=tuple(attempts),
         )
         if calls:
             segments = ()
@@ -669,6 +700,7 @@ class LiveLLMAdapter:
         outcome: str,
         latency_ms: float,
         retry_count: int,
+        attempts: Sequence[ModelAttemptAudit] = (),
     ) -> None:
         self._logger.warning(
             "live_llm_request provider=%s model=%s transport=%s outcome=%s latency_ms=%.3f "
@@ -689,6 +721,7 @@ class LiveLLMAdapter:
         prompt: AgentPrompt,
         latency_ms: float,
         retry_count: int,
+        attempts: Sequence[ModelAttemptAudit] = (),
     ) -> None:
         if error.kind == "authentication":
             raised = ModelAuthenticationError(
@@ -721,6 +754,7 @@ class LiveLLMAdapter:
             str(raised),
             provider_status_code=error.status_code,
             provider_retryable=error.retryable,
+            attempts=attempts,
         )
         raise raised from None
 
@@ -730,13 +764,14 @@ class LiveLLMAdapter:
         outcome: str,
         latency_ms: float,
         retry_count: int,
+        attempts: Sequence[ModelAttemptAudit] = (),
     ) -> None:
         if outcome == "cancelled":
             raised = ModelCancelledError("Live LLM invocation was cancelled cooperatively")
         else:
             raised = ModelDeadlineExceededError("Live LLM invocation exceeded its absolute deadline")
         raised.audit = self._failure_audit(
-            prompt, outcome, latency_ms, retry_count, None, str(raised)
+            prompt, outcome, latency_ms, retry_count, None, str(raised), attempts=attempts
         )
         raise raised from None
 
@@ -751,6 +786,7 @@ class LiveLLMAdapter:
         *,
         provider_status_code: Any = None,
         provider_retryable: Any = None,
+        attempts: Sequence[ModelAttemptAudit] = (),
     ) -> ModelInvocationAudit:
         """Build a provider-neutral failure audit from sanitized metadata only.
 
@@ -758,6 +794,10 @@ class LiveLLMAdapter:
         lore, or player input; error_message carries only schema-shape or
         normalized transport details already safe for logs.
         """
+        try:
+            response_contract = self._response_contract(prompt).mode.value
+        except ModelCapabilityError:
+            response_contract = None
         return ModelInvocationAudit(
             session_id=prompt.session_id,
             turn_number=prompt.turn_number,
@@ -770,9 +810,10 @@ class LiveLLMAdapter:
             usage=response.usage if response is not None else None,
             provider_request_id=response.request_id if response is not None else None,
             transport=self.transport,
-            response_contract=self._response_contract(prompt).mode.value,
+            response_contract=response_contract,
             error_message=error_message,
             purpose=prompt.invocation_purpose,
             provider_status_code=provider_status_code,
             provider_retryable=provider_retryable,
+            attempts=tuple(attempts),
         )

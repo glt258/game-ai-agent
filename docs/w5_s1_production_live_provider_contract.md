@@ -1096,3 +1096,26 @@ Historical pilot models/timeout settings above must not be copied into runtime
 role selection. `ShadowEvidenceModelRouter` preserves offline Character work while
 calling the selected live shadow model; tiny diagnostic subclasses reuse transport
 and ModelInvocationAudit but deliberately bypass normal domain output parsing.
+# W5-S1D Invocation Audit and Usage Contract
+
+The production boundary records one `ModelInvocationAudit` per logical model
+invocation. Retries remain inside that record as ordered, typed attempt
+summaries (`attempt_number`, outcome/error code, latency, safe request ID,
+finish reason, and usage). `retry_count` is retained as the number of retries
+for compatibility; it is never a substitute for the attempt list.
+
+Usage is optional and normalized at the provider seam. Invalid, negative, or
+boolean token values become unknown. Aggregation sums only reported fields and
+never converts unknown or partial data to zero or derives `total_tokens` from
+input plus output. A zero-invocation summary is explicitly empty; a summary
+with missing or partial provider usage is marked incomplete.
+
+The Web projection is an explicit allowlist: provider/model, purpose, outcome,
+latency, retries, safe provider request ID, finish reason, tool-call count,
+typed attempts, and usage summary. Prompts, raw request/response bodies,
+headers, credentials, cookies, costs, and secrets are never projected or
+persisted. Character generation, repair/recovery, Hybrid skill generation,
+success, retry exhaustion, malformed response, cancellation, deadline, and
+configuration/capability failures preserve the audit when an invocation object
+exists. Offline fixtures report zero model invocations and do not invent a
+fake usage record.

@@ -4,6 +4,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
 from types import MappingProxyType
+from collections.abc import Sequence
 from typing import Any, Mapping
 
 from character_skill.errors import SkillKitShapeDiagnostic
@@ -41,6 +42,25 @@ class ModelUsage:
     output_tokens: int | None = None
     total_tokens: int | None = None
 
+    def __post_init__(self) -> None:
+        for name in ("input_tokens", "output_tokens", "total_tokens"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                object.__setattr__(self, name, None)
+
+
+@dataclass(frozen=True)
+class ModelAttemptAudit:
+    """Safe summary of one transport attempt within a logical invocation."""
+
+    attempt_number: int
+    outcome: str
+    latency_ms: float | None = None
+    error_code: str | None = None
+    provider_request_id: str | None = None
+    finish_reason: str | None = None
+    usage: ModelUsage | None = None
+
 
 @dataclass(frozen=True)
 class ModelInvocationAudit:
@@ -67,6 +87,10 @@ class ModelInvocationAudit:
     # Safe provider diagnostics only; values are sanitized at this audit seam.
     provider_status_code: int | None = None
     provider_retryable: bool | None = None
+    # One logical invocation owns all provider attempts.  The tuple is an
+    # allowlisted summary and never contains prompts, bodies, headers, or
+    # model output.
+    attempts: tuple[ModelAttemptAudit, ...] = ()
 
     def __post_init__(self) -> None:
         status_code = self.provider_status_code
@@ -83,6 +107,49 @@ class ModelInvocationAudit:
         )
         object.__setattr__(self, "provider_status_code", status_code)
         object.__setattr__(self, "provider_retryable", retryable)
+        object.__setattr__(self, "attempts", tuple(self.attempts))
+
+
+@dataclass(frozen=True)
+class ModelUsageSummary:
+    invocation_count: int
+    reported_usage_count: int
+    known_input_tokens: int | None
+    known_output_tokens: int | None
+    known_total_tokens: int | None
+    complete: bool
+
+
+def summarize_model_usage(
+    invocations: Sequence[ModelInvocationAudit],
+) -> ModelUsageSummary:
+    """Aggregate reported usage without turning unknown values into zero."""
+
+    if not invocations:
+        return ModelUsageSummary(0, 0, None, None, None, True)
+    usage = [item.usage for item in invocations]
+    totals = tuple(
+        (sum(value for value in values if value is not None) if any(value is not None for value in values) else None)
+        for values in zip(
+            *(tuple(getattr(item, field_name) for field_name in ("input_tokens", "output_tokens", "total_tokens")) if item else (None, None, None) for item in usage),
+            strict=False,
+        )
+    )
+    complete = all(
+        item is not None
+        and item.input_tokens is not None
+        and item.output_tokens is not None
+        and item.total_tokens is not None
+        for item in usage
+    )
+    return ModelUsageSummary(
+        len(invocations),
+        sum(item is not None for item in usage),
+        totals[0],
+        totals[1],
+        totals[2],
+        complete,
+    )
 
 
 @dataclass(frozen=True)

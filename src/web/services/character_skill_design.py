@@ -257,6 +257,8 @@ class CharacterSkillDesignApplication:
                 artifact_digest=artifact_digest,
                 freshness="current",
                 provider=skill_response.provider,
+                model_invocations=skill_response.model_invocations,
+                usage_summary=skill_response.usage_summary,
                 evidence=skill_response.evidence,
                 artifact_versions=skill_response.artifact_versions,
                 artifact_compatibility=skill_response.artifact_compatibility,

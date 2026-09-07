@@ -4,7 +4,7 @@ from typing import Any, Literal
 
 from pydantic import Field, field_validator, model_validator
 
-from .common import PipelineStepDTO, WebModel
+from .common import ModelInvocationDTO, ModelUsageSummaryDTO, PipelineStepDTO, WebModel
 
 SkillFamily = Literal[
     "main_dps", "sub_dps", "support", "healer", "control", "defense", "basic_passive"
@@ -130,6 +130,8 @@ class SkillPlaygroundResponseDTO(WebModel):
     evaluation: SkillEvaluationDTO
     pipeline: list[PipelineStepDTO]
     provider: SkillProviderDTO
+    model_invocations: list[ModelInvocationDTO]
+    usage_summary: ModelUsageSummaryDTO
     evidence: dict[str, Any]
     artifact_versions: SkillArtifactVersionsDTO | None = None
     artifact_compatibility: ArtifactCompatibility | None = None

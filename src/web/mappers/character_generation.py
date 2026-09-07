@@ -5,7 +5,11 @@ from typing import Any
 from agents.canon_checker import CanonCheckReport, CanonCheckStatus
 from agents.character_generation import CharacterDraft
 from agents.evaluation.models import EvaluationOutcome, EvaluationResult
-from agents.models import ModelInvocationAudit, ModelUsage
+from agents.models import (
+    ModelInvocationAudit,
+    ModelUsage,
+    summarize_model_usage,
+)
 
 from ..errors import WebApplicationError
 from ..schemas.characters import (
@@ -30,7 +34,9 @@ from ..schemas.common import (
     ErrorBodyDTO,
     ErrorResponseDTO,
     ModelInvocationDTO,
+    ModelAttemptDTO,
     ModelUsageDTO,
+    ModelUsageSummaryDTO,
     ValidatorResultDTO,
 )
 from ..schemas.validation import (
@@ -67,6 +73,31 @@ def to_model_invocation(value: ModelInvocationAudit) -> ModelInvocationDTO:
         purpose=value.purpose,
         provider_status_code=value.provider_status_code,
         provider_retryable=value.provider_retryable,
+        provider_request_id=value.provider_request_id,
+        attempts=[
+            ModelAttemptDTO(
+                attempt_number=item.attempt_number,
+                outcome=item.outcome,
+                latency_ms=item.latency_ms,
+                error_code=item.error_code,
+                provider_request_id=item.provider_request_id,
+                finish_reason=item.finish_reason,
+                usage=_usage(item.usage),
+            )
+            for item in value.attempts
+        ],
+    )
+
+
+def to_usage_summary(values: tuple[ModelInvocationAudit, ...]) -> ModelUsageSummaryDTO:
+    summary = summarize_model_usage(values)
+    return ModelUsageSummaryDTO(
+        invocation_count=summary.invocation_count,
+        reported_usage_count=summary.reported_usage_count,
+        known_input_tokens=summary.known_input_tokens,
+        known_output_tokens=summary.known_output_tokens,
+        known_total_tokens=summary.known_total_tokens,
+        complete=summary.complete,
     )
 
 
@@ -299,6 +330,7 @@ def to_character_generation_response(
     invocations = [
         to_model_invocation(item) for item in (*generation_invocations, *repair_invocations)
     ]
+    invocation_values = tuple((*generation_invocations, *repair_invocations))
     validators = [
         ValidatorResultDTO(
             name="generation_runtime",
@@ -332,6 +364,7 @@ def to_character_generation_response(
         validators=validators,
         repair=_repair(result),
         model_invocations=invocations,
+        usage_summary=to_usage_summary(invocation_values),
         pipeline=_pipeline(result),
         audit=audit,
         raw_data=raw,

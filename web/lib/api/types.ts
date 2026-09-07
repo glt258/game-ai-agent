@@ -93,6 +93,8 @@ export interface SkillPlaygroundResponse {
   evaluation: SkillEvaluation;
   pipeline: PipelineStep[];
   provider: SkillProvider;
+  model_invocations?: ModelInvocation[];
+  usage_summary?: ModelUsageSummary;
   evidence: Record<string, unknown>;
   artifact_versions: SkillArtifactVersions | null;
   artifact_compatibility: ArtifactCompatibility | null;
@@ -151,6 +153,8 @@ export interface CharacterSkillDesignResponse {
   artifact_digest: string | null;
   freshness: "current" | "stale";
   provider: SkillProvider;
+  model_invocations?: ModelInvocation[];
+  usage_summary?: ModelUsageSummary;
   evidence: Record<string, unknown>;
   artifact_versions: SkillArtifactVersions | null;
   artifact_compatibility: ArtifactCompatibility | null;
@@ -520,6 +524,25 @@ export interface ModelUsage {
   total_tokens: number | null;
 }
 
+export interface ModelAttempt {
+  attempt_number: number;
+  outcome: string;
+  latency_ms: number | null;
+  error_code: string | null;
+  provider_request_id: string | null;
+  finish_reason: string | null;
+  usage: ModelUsage | null;
+}
+
+export interface ModelUsageSummary {
+  invocation_count: number;
+  reported_usage_count: number;
+  known_input_tokens: number | null;
+  known_output_tokens: number | null;
+  known_total_tokens: number | null;
+  complete: boolean;
+}
+
 export interface ModelInvocation {
   provider: string;
   model: string;
@@ -533,6 +556,8 @@ export interface ModelInvocation {
   purpose: string;
   provider_status_code: number | null;
   provider_retryable: boolean | null;
+  provider_request_id: string | null;
+  attempts: ModelAttempt[];
 }
 
 export interface ContractRecovery {
@@ -590,6 +615,7 @@ export interface CharacterGenerationResponse {
   validators: ValidatorResult[];
   repair: RepairSummary;
   model_invocations: ModelInvocation[];
+  usage_summary?: ModelUsageSummary;
   pipeline: PipelineStep[];
   audit: GenerationAudit;
   raw_data: RawCharacterResult;

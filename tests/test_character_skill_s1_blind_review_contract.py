@@ -240,8 +240,16 @@ def test_contract_worktree_diff_contains_no_src_changes() -> None:
         "src/agents/reliability.py",
         "src/agents/openai_provider.py",
         "src/web/errors.py",
-        "src/web/services/live_jobs.py",
-    }
+            "src/web/services/live_jobs.py",
+            # W5-S1D adds the shared invocation-attempt audit and safe usage
+            # projection across the Character and Skill Web contracts.
+            "src/web/mappers/character_generation.py",
+            "src/web/schemas/common.py",
+            "src/web/schemas/characters.py",
+            "src/web/schemas/skills.py",
+            "src/web/schemas/character_skill.py",
+            "src/web/services/character_skill_design.py",
+        }
     allowed_h1_prefixes = ("src/character_intelligence/", "src/game_ai_agent/")
     changed = {
         line[3:].replace("\\", "/")

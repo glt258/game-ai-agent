@@ -42,6 +42,16 @@ class ModelUsageDTO(WebModel):
     total_tokens: int | None = None
 
 
+class ModelAttemptDTO(WebModel):
+    attempt_number: int
+    outcome: str
+    latency_ms: float | None = None
+    error_code: str | None = None
+    provider_request_id: str | None = None
+    finish_reason: str | None = None
+    usage: ModelUsageDTO | None = None
+
+
 class ModelInvocationDTO(WebModel):
     provider: str
     model: str
@@ -55,6 +65,17 @@ class ModelInvocationDTO(WebModel):
     purpose: str
     provider_status_code: int | None = None
     provider_retryable: bool | None = None
+    provider_request_id: str | None = None
+    attempts: list[ModelAttemptDTO] = Field(default_factory=list)
+
+
+class ModelUsageSummaryDTO(WebModel):
+    invocation_count: int
+    reported_usage_count: int
+    known_input_tokens: int | None = None
+    known_output_tokens: int | None = None
+    known_total_tokens: int | None = None
+    complete: bool
 
 
 class ErrorAuditDTO(WebModel):

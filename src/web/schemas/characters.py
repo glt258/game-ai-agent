@@ -8,6 +8,7 @@ from combat_semantics import CANONICAL_COMBAT_ROLES
 
 from .common import (
     ModelInvocationDTO,
+    ModelUsageSummaryDTO,
     PipelineStepDTO,
     ValidatorResultDTO,
     WebModel,
@@ -218,6 +219,7 @@ class CharacterGenerationResponseDTO(WebModel):
     validators: list[ValidatorResultDTO]
     repair: RepairDTO
     model_invocations: list[ModelInvocationDTO]
+    usage_summary: ModelUsageSummaryDTO
     pipeline: list[PipelineStepDTO]
     audit: GenerationAuditDTO
     raw_data: RawCharacterResultDTO

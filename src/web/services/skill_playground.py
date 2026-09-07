@@ -32,6 +32,7 @@ from character_intelligence.skill_artifact import (
 )
 
 from ..errors import WebApplicationError
+from ..mappers.character_generation import to_model_invocation, to_usage_summary
 from ..schemas.common import PipelineStepDTO
 from ..schemas.skills import (
     SkillEvaluationDTO,
@@ -161,6 +162,11 @@ class SkillPlaygroundApplication:
                 status_code=status_code,
                 stage="provider",
                 retryable=retryable,
+                model_invocations=(
+                    (provider.audit,)
+                    if getattr(provider, "audit", None) is not None
+                    else ()
+                ),
             ) from None
         except Exception as error:
             raise WebApplicationError(
@@ -169,6 +175,11 @@ class SkillPlaygroundApplication:
                 status_code=503,
                 stage="provider",
                 retryable=True,
+                model_invocations=(
+                    (provider.audit,)
+                    if "provider" in locals() and getattr(provider, "audit", None) is not None
+                    else ()
+                ),
             ) from error
         return self.response_from_result(request, execution.final, provider, provider_mode)
 
@@ -400,6 +411,14 @@ class SkillPlaygroundApplication:
                 transport_attempts=evidence.fake_transport_attempts,
                 latency_ms=getattr(provider, "latency_ms", None),
             ),
+            model_invocations=[
+                to_model_invocation(item)
+                for item in evidence.model_invocations
+                if hasattr(item, "provider")
+            ],
+            usage_summary=to_usage_summary(tuple(
+                item for item in evidence.model_invocations if hasattr(item, "provider")
+            )),
             evidence=_safe_evidence(evidence.to_mapping()),
             artifact_versions=(artifact.versions.to_mapping() if artifact is not None else None),
             artifact_compatibility=compatibility,

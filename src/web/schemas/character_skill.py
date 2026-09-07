@@ -10,7 +10,7 @@ from .characters import (
     CharacterPlanDTO,
     CombatRoleProfileDTO,
 )
-from .common import PipelineStepDTO, WebModel
+from .common import ModelInvocationDTO, ModelUsageSummaryDTO, PipelineStepDTO, WebModel
 from .skills import (
     ArtifactCompatibility,
     SkillArtifactVersionsDTO,
@@ -294,6 +294,8 @@ class CharacterSkillDesignResponseDTO(WebModel):
     artifact_digest: str | None
     freshness: Literal["current", "stale"]
     provider: SkillProviderDTO
+    model_invocations: list[ModelInvocationDTO]
+    usage_summary: ModelUsageSummaryDTO
     evidence: dict[str, Any]
     artifact_versions: SkillArtifactVersionsDTO | None = None
     artifact_compatibility: ArtifactCompatibility | None = None

@@ -227,10 +227,12 @@ class OpenCodeGoHybridProvider:
         self.usage = None
         self.provider_request_id: str | None = None
         self.provider_error_kind: str | None = None
+        self.audit = None
         self.route = route
         self.backoff_seconds = backoff_seconds
 
     def complete(self, request_text: str) -> object:
+        from agents.models import ModelAttemptAudit
         from agents.provider_protocol import ProviderClientError, negotiate_response_contract
         from agents.reliability import (
             CancellationToken,
@@ -244,6 +246,7 @@ class OpenCodeGoHybridProvider:
 
         self.calls += 1
         started = time.monotonic()
+        attempts: list[ModelAttemptAudit] = []
         context = current_invocation_context()
         policy = context.policy if context is not None else InvocationPolicy.from_legacy(
             timeout_seconds=self._timeout_seconds,
@@ -260,6 +263,7 @@ class OpenCodeGoHybridProvider:
             try:
                 cancellation.raise_if_cancelled()
                 deadline.raise_if_expired()
+                attempt_started = time.monotonic()
                 response = self._client.complete(
                     model=self._model,
                     messages=({"role": "user", "content": request_text},),
@@ -276,7 +280,25 @@ class OpenCodeGoHybridProvider:
                         else self._client_profile_capabilities(),
                     ),
                 )
+                attempts.append(
+                    ModelAttemptAudit(
+                        len(attempts) + 1,
+                        "success",
+                        (time.monotonic() - attempt_started) * 1000,
+                        provider_request_id=response.request_id,
+                        finish_reason=response.finish_reason,
+                        usage=response.usage,
+                    )
+                )
             except ProviderClientError as error:
+                attempts.append(
+                    ModelAttemptAudit(
+                        len(attempts) + 1,
+                        error.kind,
+                        (time.monotonic() - attempt_started) * 1000,
+                        error_code=error.kind,
+                    )
+                )
                 self.provider_error_kind = error.kind
                 if (
                     error.retryable
@@ -292,6 +314,9 @@ class OpenCodeGoHybridProvider:
                     ):
                         self.latency_ms = (time.monotonic() - started) * 1000
                         self.outcome = "CANCELLED"
+                        self.audit = self._audit(
+                            started, attempts, "cancelled", None, None
+                        )
                         raise HybridProviderInvocationError(self.outcome) from None
                     continue
                 self.latency_ms = (time.monotonic() - started) * 1000
@@ -307,14 +332,19 @@ class OpenCodeGoHybridProvider:
                         "unavailable": "UNAVAILABLE",
                         "malformed_response": "MALFORMED_RESPONSE",
                     }.get(error.kind, "TRANSPORT_FAILURE")
+                self.audit = self._audit(
+                    started, attempts, self.outcome, None, error
+                )
                 raise HybridProviderInvocationError(self.outcome) from None
             except InvocationCancelledError:
                 self.latency_ms = (time.monotonic() - started) * 1000
                 self.outcome = "CANCELLED"
+                self.audit = self._audit(started, attempts, self.outcome, None, None)
                 raise HybridProviderInvocationError(self.outcome) from None
             except DeadlineExceededError:
                 self.latency_ms = (time.monotonic() - started) * 1000
                 self.outcome = "DEADLINE_EXCEEDED"
+                self.audit = self._audit(started, attempts, self.outcome, None, None)
                 raise HybridProviderInvocationError(self.outcome) from None
             break
         cancellation.raise_if_cancelled()
@@ -323,7 +353,30 @@ class OpenCodeGoHybridProvider:
         self.outcome = "SUCCESS"
         self.usage = response.usage
         self.provider_request_id = response.request_id
+        self.audit = self._audit(started, attempts, self.outcome, response, None)
         return response.text
+
+    def _audit(self, started, attempts, outcome, response, error):
+        from agents.models import ModelInvocationAudit
+
+        return ModelInvocationAudit(
+            session_id="hybrid",
+            turn_number=self.calls,
+            provider=self.provider,
+            model=self.model,
+            outcome=outcome.lower(),
+            latency_ms=(time.monotonic() - started) * 1000,
+            retry_count=max(0, len(attempts) - 1),
+            finish_reason=response.finish_reason if response is not None else None,
+            usage=response.usage if response is not None else None,
+            provider_request_id=response.request_id if response is not None else None,
+            transport="openai_chat_completions",
+            response_contract="hybrid_semantic_ir",
+            purpose="skill_generation",
+            provider_status_code=getattr(error, "status_code", None),
+            provider_retryable=getattr(error, "retryable", None),
+            attempts=tuple(attempts),
+        )
 
     def _client_profile_capabilities(self):
         from agents.provider_profiles import CHAT_JSON_OBJECT_CAPABILITIES
@@ -421,6 +474,7 @@ class HybridEvidence:
     raw_prompt_stored: bool = False
     raw_response_stored: bool = False
     secrets_detected: bool = False
+    model_invocations: tuple[object, ...] = ()
 
     def to_mapping(self) -> dict[str, object]:
         """Serialize a positive allowlist only; never dump internal objects."""
@@ -591,6 +645,9 @@ def _failure(
         semantic_ir_digest,
         candidate_digest,
         diagnostics,
+        model_invocations=(getattr(provider, "audit", None),)
+        if getattr(provider, "audit", None) is not None
+        else (),
     )
     return FakePipelineResult(evidence)
 
@@ -751,6 +808,9 @@ def _run_pipeline(
             candidate_digest,
             diagnostics,
             evaluator_diagnostics=adapt_skill_validation_report(report),
+            model_invocations=(getattr(provider, "audit", None),)
+            if getattr(provider, "audit", None) is not None
+            else (),
         ),
         parsed,
         report,

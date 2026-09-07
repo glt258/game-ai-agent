@@ -103,6 +103,7 @@ function ValidationInspector({state, result, error, stale, onRetry}: {state: Val
 }
 
 export function AgentInspector({result, requestState, error, validationState, validationResult, validationError, validationStale, onRetry, onRetryValidation, history}: AgentInspectorProps) {
+  const invocations = result?.model_invocations ?? [];
   const status = result?.status ?? (requestState === "loading" ? "loading" : requestState === "error" ? "failed" : "idle");
   const evaluationStatus = plannerStatus(result?.pipeline.find((step) => step.id === "evaluation")?.status);
   const canonStatus = plannerStatus(result?.pipeline.find((step) => step.id === "canon")?.status);
@@ -132,13 +133,17 @@ export function AgentInspector({result, requestState, error, validationState, va
                 {result.repair.changed_fields.length > 0 && <div className="audit-row"><span>修改字段</span><strong>{result.repair.changed_fields.join(", ")}</strong></div>}
               </InspectorSection>
               <InspectorSection title="模型调用记录">
-                {result.model_invocations.length === 0 ? <p className="column-subtitle" style={{margin: 0}}>没有可用的调用记录。</p> : result.model_invocations.map((invocation, index) => (
+                {invocations.length === 0 ? <p className="column-subtitle" style={{margin: 0}}>没有可用的调用记录。</p> : invocations.map((invocation, index) => (
                   <div className="stack" key={`${invocation.purpose}-${index}`}>
                     <div className="audit-row"><span>Provider / 模型</span><strong>{invocation.provider} / {invocation.model}</strong></div>
                     <div className="audit-row"><span>用途</span><strong>{invocation.purpose}</strong></div>
                     <div className="audit-row"><span>结果</span><strong>{invocation.outcome}</strong></div>
+                    <div className="audit-row"><span>延迟 / 重试</span><strong>{invocation.latency_ms === null ? "未报告" : `${Math.round(invocation.latency_ms)} ms`} / {invocation.retry_count}</strong></div>
+                    <div className="audit-row"><span>Token 用量</span><strong>{invocation.usage ? `${invocation.usage.input_tokens ?? "?"} in / ${invocation.usage.output_tokens ?? "?"} out / ${invocation.usage.total_tokens ?? "?"} total` : "未报告"}</strong></div>
+                    <div className="audit-row"><span>尝试次数</span><strong>{invocation.attempts.length || (invocation.retry_count + 1)}</strong></div>
                   </div>
                 ))}
+                {result.usage_summary && <div className="audit-row"><span>用量汇总</span><strong>{result.usage_summary.complete ? "完整" : "部分/未知"} · {result.usage_summary.known_total_tokens ?? "未报告"} total</strong></div>}
               </InspectorSection>
               <ValidationInspector state={validationState} result={validationResult} error={validationError} stale={validationStale} onRetry={onRetryValidation} />
             </div>
