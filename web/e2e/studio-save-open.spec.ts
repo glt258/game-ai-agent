@@ -18,7 +18,7 @@ test("offline Studio save/open preserves Character Skill and Kit", async ({page}
   await page.getByLabel("技能定位").selectOption("support");
   await page.getByLabel("技能设计需求").getByText("高级设置", {exact: true}).click();
   await page.getByLabel("离线示例").selectOption("character_support_skill_v1");
-  await page.getByLabel("生成方式").selectOption("offline");
+  await page.getByRole("region", {name: "技能设计需求"}).getByLabel("生成方式").selectOption("offline");
   await page.getByRole("button", {name: "生成技能"}).click();
   await expect(page.getByRole("button", {name: "绑定到角色"})).toBeEnabled();
   await page.getByRole("button", {name: "绑定到角色"}).click();
@@ -90,4 +90,47 @@ test("offline Skill Playground explains a business failure in planner language",
   await expect(page.getByTestId("planner-checks")).toContainText("缺少核心机制");
   await expect(page.getByTestId("planner-checks")).toContainText("战斗定位与技能效果不匹配");
   await expect(page.getByTestId("planner-checks")).toContainText("需要重新生成");
+});
+
+test("live Character Studio submits and polls a bounded fake job", async ({page}) => {
+  const offline = await page.request.post("/api/characters/generate", {
+    data: {brief: "设计一名辅助角色。", request_id: "e2e_live_fixture"},
+  });
+  expect(offline.ok()).toBeTruthy();
+  const result = await offline.json();
+  let pollCount = 0;
+  await page.route(/\/api\/characters\/generate\/jobs(?:\/.*)?$/, async (route) => {
+    if (route.request().method() === "POST") {
+      await route.fulfill({status: 202, contentType: "application/json", body: JSON.stringify({
+        schema_version: "web-live-skill-job/0.1",
+        job_id: "e2e-character-job",
+        kind: "character_generation",
+        status: "PENDING",
+        provider: "local_fake",
+        model: "fixture-character-model",
+        poll_after_ms: 250,
+      })});
+      return;
+    }
+    pollCount += 1;
+    await route.fulfill({status: 200, contentType: "application/json", body: JSON.stringify({
+      schema_version: "web-live-skill-job/0.1",
+      job_id: "e2e-character-job",
+      kind: "character_generation",
+      status: "SUCCEEDED",
+      provider: "local_fake",
+      model: "fixture-character-model",
+      elapsed_ms: 18,
+      result,
+      error: null,
+    })});
+  });
+
+  await page.goto("/studio");
+  await page.getByRole("button", {name: "加载示例需求"}).click();
+  await page.getByLabel("生成方式").selectOption("live");
+  await page.getByRole("button", {name: "生成角色"}).click();
+  await expect(page.getByTestId("character-planner-view")).toBeVisible();
+  await expect(page.getByText("角色方案已生成")).toBeVisible();
+  expect(pollCount).toBeGreaterThanOrEqual(1);
 });

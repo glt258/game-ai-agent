@@ -91,6 +91,28 @@ def generate(
 
 
 @router.post(
+    "/generate/jobs",
+    response_model=LiveJobAcceptedDTO,
+    status_code=202,
+    responses={422: {"model": ErrorResponseDTO}, 429: {"model": ErrorResponseDTO}, 503: {"model": ErrorResponseDTO}},
+)
+def submit_generation_job(
+    payload: CharacterGenerationRequestDTO,
+    request: Request,
+) -> LiveJobAcceptedDTO:
+    return _accepted(_service(request).submit_live_job(payload, _jobs(request)))
+
+
+@router.get(
+    "/generate/jobs/{job_id}",
+    response_model=LiveJobStatusDTO,
+    responses={404: {"model": ErrorResponseDTO}},
+)
+def get_generation_job(job_id: str, request: Request) -> LiveJobStatusDTO:
+    return _status(_jobs(request).get(job_id))
+
+
+@router.post(
     "/skill-context",
     response_model=CharacterSkillContextResponseDTO,
     responses={422: {"model": ErrorResponseDTO}, 500: {"model": ErrorResponseDTO}},

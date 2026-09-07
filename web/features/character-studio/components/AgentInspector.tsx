@@ -17,6 +17,7 @@ interface AgentInspectorProps {
   onRetry: () => void;
   onRetryValidation: () => void;
   history: SavedCharacterHistorySummary[];
+  liveJobStatus?: "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED" | null;
 }
 
 function InspectorSection({title, children}: {title: string; children: React.ReactNode}) {
@@ -102,7 +103,7 @@ function ValidationInspector({state, result, error, stale, onRetry}: {state: Val
   );
 }
 
-export function AgentInspector({result, requestState, error, validationState, validationResult, validationError, validationStale, onRetry, onRetryValidation, history}: AgentInspectorProps) {
+export function AgentInspector({result, requestState, error, validationState, validationResult, validationError, validationStale, onRetry, onRetryValidation, history, liveJobStatus}: AgentInspectorProps) {
   const invocations = result?.model_invocations ?? [];
   const status = result?.status ?? (requestState === "loading" ? "loading" : requestState === "error" ? "failed" : "idle");
   const evaluationStatus = plannerStatus(result?.pipeline.find((step) => step.id === "evaluation")?.status);
@@ -113,7 +114,7 @@ export function AgentInspector({result, requestState, error, validationState, va
       <p className="column-subtitle">查看角色方案的生成状态、设计检查和世界观检查。</p>
 
       <InspectorSection title="生成状态">
-        {requestState === "loading" ? <div className="loading"><span className="loading-dot" />正在生成角色方案…</div> : <StatusChip status={status} />}
+        {requestState === "loading" ? <div className="loading"><span className="loading-dot" />{liveJobStatus === "PENDING" ? "正在等待模型任务…" : liveJobStatus === "RUNNING" ? "正在生成角色方案…" : "正在准备角色方案…"}</div> : <StatusChip status={status} />}
         {requestState === "idle" && <p className="column-subtitle" style={{margin: "10px 0 0"}}>尚未生成方案。</p>}
         {requestState === "error" && <div style={{marginTop: "12px"}}><ErrorNotice error={error} onRetry={onRetry} actionLabel="重新生成" /></div>}
       </InspectorSection>

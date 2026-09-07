@@ -376,7 +376,7 @@ function isLiveJobAccepted(value: unknown): value is LiveJobAccepted {
   return isRecord(value)
     && value.schema_version === "web-live-skill-job/0.1"
     && typeof value.job_id === "string"
-    && (value.kind === "skill_playground" || value.kind === "character_skill_design")
+    && (value.kind === "skill_playground" || value.kind === "character_skill_design" || value.kind === "character_generation")
     && (value.status === "PENDING" || value.status === "RUNNING" || value.status === "SUCCEEDED" || value.status === "FAILED")
     && typeof value.provider === "string"
     && typeof value.model === "string"
@@ -395,7 +395,7 @@ function isLiveJobStatusResponse(value: unknown): value is LiveJobStatusResponse
   if (!isRecord(value)
     || value.schema_version !== "web-live-skill-job/0.1"
     || typeof value.job_id !== "string"
-    || (value.kind !== "skill_playground" && value.kind !== "character_skill_design")
+    || (value.kind !== "skill_playground" && value.kind !== "character_skill_design" && value.kind !== "character_generation")
     || (value.status !== "PENDING" && value.status !== "RUNNING" && value.status !== "SUCCEEDED" && value.status !== "FAILED")
     || typeof value.provider !== "string"
     || typeof value.model !== "string"
@@ -408,7 +408,9 @@ function isLiveJobStatusResponse(value: unknown): value is LiveJobStatusResponse
   }
   return value.kind === "skill_playground"
     ? isSkillPlaygroundResponse(value.result)
-    : isCharacterSkillDesignResponse(value.result);
+    : value.kind === "character_skill_design"
+      ? isCharacterSkillDesignResponse(value.result)
+      : isGenerationResponse(value.result);
 }
 
 function isSavedCharacterSummary(value: unknown): boolean {
@@ -550,6 +552,24 @@ export const apiClient = {
       },
       isGenerationResponse,
       "GENERATION_RESPONSE_INVALID",
+    );
+  },
+
+  createCharacterLiveJob(payload: CharacterGenerationRequest, signal?: AbortSignal): Promise<LiveJobAccepted> {
+    return request(
+      "/characters/generate/jobs",
+      {method: "POST", body: JSON.stringify(payload), signal},
+      isLiveJobAccepted,
+      "LIVE_JOB_ACCEPTANCE_INVALID",
+    );
+  },
+
+  getCharacterLiveJob(jobId: string, signal?: AbortSignal): Promise<LiveJobStatusResponse> {
+    return request(
+      `/characters/generate/jobs/${encodeURIComponent(jobId)}`,
+      {method: "GET", signal},
+      isLiveJobStatusResponse,
+      "LIVE_JOB_STATUS_INVALID",
     );
   },
 
@@ -695,3 +715,29 @@ export const apiClient = {
     return request(`/saved-characters/${encodeURIComponent(characterId)}`, {method: "PUT", body: JSON.stringify(payload)}, isSavedCharacterSaveResponse, "SAVED_CHARACTER_SAVE_RESPONSE_INVALID");
   },
 };
+
+export async function waitForLiveJob(
+  accepted: LiveJobAccepted,
+  getStatus: (jobId: string, signal?: AbortSignal) => Promise<LiveJobStatusResponse>,
+  signal?: AbortSignal,
+  isCurrent: () => boolean = () => true,
+): Promise<LiveJobStatusResponse> {
+  const deadline = Date.now() + 120_000;
+  while (true) {
+    const status = await getStatus(accepted.job_id, signal);
+    if (!isCurrent() || signal?.aborted) {
+      throw new ApiClientError(
+        {error: {code: "CLIENT_ABORTED", message: "The live request was cancelled.", stage: "client", retryable: false, details: {}, audit: null}},
+        0,
+      );
+    }
+    if (status.status === "SUCCEEDED" || status.status === "FAILED") return status;
+    if (Date.now() >= deadline) {
+      throw new ApiClientError(
+        {error: {code: "CLIENT_TIMEOUT", message: "生成请求超出浏览器等待时间。", stage: "client", retryable: true, details: {}, audit: null}},
+        504,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, Math.max(accepted.poll_after_ms, 1000)));
+  }
+}

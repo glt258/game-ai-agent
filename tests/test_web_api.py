@@ -429,6 +429,8 @@ def test_openapi_freezes_web_routes_and_public_error_models():
         "/api/canon/entities/{entity_id}",
         "/api/characters/character-kit/evaluate",
         "/api/characters/generate",
+        "/api/characters/generate/jobs",
+        "/api/characters/generate/jobs/{job_id}",
         "/api/characters/skill-context",
         "/api/characters/skill-design",
         "/api/characters/skill-design/jobs",

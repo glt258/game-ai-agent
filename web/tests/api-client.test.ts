@@ -307,6 +307,55 @@ test("live job endpoints accept quickly and preserve the normal result contract"
   }
 });
 
+test("character live job endpoints use the shared job contract", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = async (input, init) => {
+    calls.push(String(input));
+    if (String(input) === "/api/characters/generate/jobs") {
+      assert.equal(init?.method, "POST");
+      return new Response(JSON.stringify({
+        schema_version: "web-live-skill-job/0.1",
+        job_id: "character_job_123",
+        kind: "character_generation",
+        status: "PENDING",
+        provider: "opencode_go",
+        model: "deepseek-v4-pro",
+        poll_after_ms: 1500,
+      }), {status: 202, headers: {"Content-Type": "application/json"}});
+    }
+    return new Response(JSON.stringify({
+      schema_version: "web-live-skill-job/0.1",
+      job_id: "character_job_123",
+      kind: "character_generation",
+      status: "FAILED",
+      provider: "opencode_go",
+      model: "deepseek-v4-pro",
+      elapsed_ms: 12,
+      result: null,
+      error: {code: "PROVIDER_UNAVAILABLE", message: "模型服务暂时不可用", stage: "provider", retryable: true, details: {}, audit: null},
+    }), {status: 200, headers: {"Content-Type": "application/json"}});
+  };
+
+  try {
+    const accepted = await apiClient.createCharacterLiveJob({
+      brief: "中文实时角色。",
+      hard_constraints: [],
+      soft_preferences: [],
+      forbidden_elements: [],
+      desired_connections: [],
+      request_id: null,
+      combat_role_profile: null,
+    });
+    const result = await apiClient.getCharacterLiveJob(accepted.job_id);
+    assert.equal(accepted.kind, "character_generation");
+    assert.equal(result.status, "FAILED");
+    assert.deepEqual(calls, ["/api/characters/generate/jobs", "/api/characters/generate/jobs/character_job_123"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("Character Kit role coverage client preserves typed semantic status and evidence", async () => {
   const originalFetch = globalThis.fetch;
   const response: CharacterKitRoleCoverageResponse = {

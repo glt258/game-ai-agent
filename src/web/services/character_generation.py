@@ -20,12 +20,15 @@ from agents.evaluation.context import EvaluationSubject
 from agents.evaluation.models import EvaluationResult
 from agents.evaluation.runner import EvaluationRunner
 from agents.model_factory import character_model_from_environment
+from agents.model_factory import resolve_provider_route
+from agents.errors import ModelConfigurationError
 from agents.model_protocol import AgentModel
 from agents.reliability import default_invocation_context
 from combat_semantics import CombatRoleProfile
 
 from ..errors import WebApplicationError, map_generation_exception
 from ..schemas.characters import CharacterGenerationRequestDTO
+from .live_jobs import LiveJobRegistry, LiveJobSnapshot
 
 
 @dataclass(frozen=True)
@@ -168,6 +171,44 @@ class CharacterGenerationApplication:
             raise
         except Exception as error:
             raise map_generation_exception(error) from None
+
+    def submit_live_job(
+        self,
+        payload: CharacterGenerationRequestDTO,
+        registry: LiveJobRegistry,
+    ) -> LiveJobSnapshot:
+        """Submit the existing Character workflow to the shared live registry."""
+
+        try:
+            route = resolve_provider_route("character_generation")
+        except ModelConfigurationError as error:
+            raise WebApplicationError(
+                "CHARACTER_LIVE_CONFIGURATION_INVALID",
+                "The backend live provider is not configured for this request.",
+                status_code=503,
+                stage="routing",
+                retryable=False,
+            ) from error
+        service = self
+        if self.generation_mode != "live":
+            try:
+                service = CharacterGenerationApplication(generation_mode="live")
+            except ModelConfigurationError as error:
+                raise WebApplicationError(
+                    "CHARACTER_LIVE_CONFIGURATION_INVALID",
+                    "The backend live provider is not configured for this request.",
+                    status_code=503,
+                    stage="routing",
+                    retryable=False,
+                ) from error
+        from ..mappers.character_generation import to_character_generation_response
+
+        return registry.submit(
+            kind="character_generation",
+            provider=route.provider_id,
+            model=route.model_id,
+            work=lambda: to_character_generation_response(payload, service.generate(payload)),
+        )
 
 
 __all__ = ["CharacterGenerationApplication", "CharacterGenerationApplicationResult"]

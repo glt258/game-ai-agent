@@ -1,12 +1,14 @@
 interface CharacterBriefPanelProps {
   brief: string;
   loading: boolean;
+  executionMode: "offline" | "live";
   exampleBrief: string;
   onBriefChange: (value: string) => void;
+  onExecutionModeChange: (value: "offline" | "live") => void;
   onGenerate: () => void;
 }
 
-export function CharacterBriefPanel({brief, loading, exampleBrief, onBriefChange, onGenerate}: CharacterBriefPanelProps) {
+export function CharacterBriefPanel({brief, loading, executionMode, exampleBrief, onBriefChange, onExecutionModeChange, onGenerate}: CharacterBriefPanelProps) {
   return (
     <section className="column column-left" aria-labelledby="brief-title">
       <h1 id="brief-title" className="column-title">角色设计需求</h1>
@@ -29,7 +31,8 @@ export function CharacterBriefPanel({brief, loading, exampleBrief, onBriefChange
       <button className="button-ghost" onClick={() => onBriefChange(exampleBrief)}>加载示例需求</button>
       <div className="deferred-card">
         <p className="section-label">高级设置</p>
-        <p>高级设置暂未开放。当前页面只提交既定的角色设计需求字段。</p>
+        <label className="skill-field"><span className="section-label">生成方式</span><select aria-label="生成方式" value={executionMode} onChange={(event) => onExecutionModeChange(event.target.value as "offline" | "live")}><option value="offline">离线示例</option><option value="live">AI 生成</option></select></label>
+        <p>{executionMode === "live" ? "AI 生成通过后台任务执行，凭据保留在 FastAPI 环境中。" : "当前使用离线示例，不会调用 live model。"}</p>
       </div>
     </section>
   );

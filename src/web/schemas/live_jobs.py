@@ -5,7 +5,7 @@ from typing import Any, Literal
 from .common import ErrorBodyDTO, WebModel
 
 LiveJobStatus = Literal["PENDING", "RUNNING", "SUCCEEDED", "FAILED"]
-LiveJobKind = Literal["skill_playground", "character_skill_design"]
+LiveJobKind = Literal["skill_playground", "character_skill_design", "character_generation"]
 
 
 class LiveJobAcceptedDTO(WebModel):

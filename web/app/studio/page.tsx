@@ -2,8 +2,8 @@
 
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 
-import {apiClient, ApiClientError} from "../../lib/api/client";
-import type {CharacterGenerationRequest, CharacterGenerationResponse, CharacterPlan, CharacterSkillAssociation, CharacterSkillContextRequest, CharacterSkillContextResponse, CharacterSkillDesignResponse, CharacterSkillMetaResponse, CharacterSkillSlot, CharacterValidationResponse, HealthResponse, SavedCharacter, SavedCharacterHistorySummary} from "../../lib/api/types";
+import {apiClient, ApiClientError, waitForLiveJob} from "../../lib/api/client";
+import type {CharacterGenerationRequest, CharacterGenerationResponse, CharacterPlan, CharacterSkillAssociation, CharacterSkillContextRequest, CharacterSkillContextResponse, CharacterSkillDesignResponse, CharacterSkillMetaResponse, CharacterSkillSlot, CharacterValidationResponse, HealthResponse, LiveJobStatusResponse, SavedCharacter, SavedCharacterHistorySummary} from "../../lib/api/types";
 import {AgentInspector} from "../../features/character-studio/components/AgentInspector";
 import {CharacterBriefPanel} from "../../features/character-studio/components/CharacterBriefPanel";
 import {CharacterWorkspace, type SaveState, type StudioTab} from "../../features/character-studio/components/CharacterWorkspace";
@@ -21,6 +21,7 @@ const EXAMPLE_BRIEF = `设计一名临洲市公共安全联席体系所属的新
 - 与现有世界观保持一致`;
 
 type RequestState = "idle" | "loading" | "success" | "error";
+type ExecutionMode = "offline" | "live";
 
 function requestFromBrief(brief: string): CharacterGenerationRequest {
   const trimmedBrief = brief.trim();
@@ -46,6 +47,8 @@ function frontendError(message: string): ApiClientError {
 export default function StudioPage() {
   const [brief, setBrief] = useState("");
   const [requestState, setRequestState] = useState<RequestState>("idle");
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>("offline");
+  const [liveJobStatus, setLiveJobStatus] = useState<LiveJobStatusResponse["status"] | null>(null);
   const [result, setResult] = useState<CharacterGenerationResponse | null>(null);
   const [generatedDraft, setGeneratedDraft] = useState<CharacterGenerationResponse["draft"] | null>(null);
   const [savedDraft, setSavedDraft] = useState<CharacterGenerationResponse["draft"] | null>(null);
@@ -74,6 +77,8 @@ export default function StudioPage() {
   const [history, setHistory] = useState<SavedCharacterHistorySummary[]>([]);
   const validationRequestRef = useRef(0);
   const openGenerationRef = useRef(0);
+  const generationRef = useRef(0);
+  const activeController = useRef<AbortController | null>(null);
   const roleCoverageInputsRef = useRef<{associations: CharacterSkillAssociation[]; roleKey: string} | null>(null);
 
   const roleCoverageCoordinator = useMemo(() => createRoleCoverageEvaluationCoordinator(
@@ -183,8 +188,14 @@ export default function StudioPage() {
     if (!brief.trim() || requestState === "loading") {
       return;
     }
+    activeController.current?.abort();
+    const generation = generationRef.current + 1;
+    generationRef.current = generation;
+    const controller = new AbortController();
+    activeController.current = controller;
     validationRequestRef.current += 1;
     setRequestState("loading");
+    setLiveJobStatus(executionMode === "live" ? "PENDING" : null);
     setError(null);
     setValidationState("idle");
     setValidationResult(null);
@@ -192,7 +203,25 @@ export default function StudioPage() {
     setValidationStale(false);
     setRegenerateConfirm(false);
     try {
-      const response = await apiClient.generateCharacter(requestFromBrief(brief));
+      const payload = requestFromBrief(brief);
+      let response: CharacterGenerationResponse;
+      if (executionMode === "live") {
+        const accepted = await apiClient.createCharacterLiveJob(payload, controller.signal);
+        setLiveJobStatus(accepted.status);
+        const status = await waitForLiveJob(
+          accepted,
+          apiClient.getCharacterLiveJob,
+          controller.signal,
+          () => generation === generationRef.current,
+        );
+        if (status.status !== "SUCCEEDED" || !status.result || status.kind !== "character_generation") {
+          throw new ApiClientError(status.error ? {error: status.error} : {error: {code: "LIVE_EXECUTION_FAILED", message: "角色生成没有返回可用结果。", stage: "live_execution", retryable: true, details: {}, audit: null}}, status.error ? 503 : 500);
+        }
+        response = status.result as CharacterGenerationResponse;
+      } else {
+        response = await apiClient.generateCharacter(payload);
+      }
+      if (generation !== generationRef.current || controller.signal.aborted) return;
       const nextGenerated = cloneDraft(response.draft);
       setResult(response);
       setGeneratedDraft(nextGenerated);
@@ -217,13 +246,21 @@ export default function StudioPage() {
       roleCoverageCoordinator.reset();
       setSkillsDesignerOpen(false);
       setRequestState("success");
+      setLiveJobStatus(null);
       setActiveTab("character");
     } catch (caught) {
+      if (generation !== generationRef.current || controller.signal.aborted) return;
       const safeError = caught instanceof ApiClientError ? caught : frontendError("角色设计台无法完成本次请求。");
       setError(safeError);
       setRequestState("error");
+      setLiveJobStatus(null);
     }
-  }, [brief, requestState, roleCoverageCoordinator]);
+  }, [brief, executionMode, requestState, roleCoverageCoordinator]);
+
+  useEffect(() => () => {
+    generationRef.current += 1;
+    activeController.current?.abort();
+  }, []);
 
   const startEdit = useCallback(() => {
     if (editedDraft) {
@@ -429,8 +466,10 @@ export default function StudioPage() {
         <CharacterBriefPanel
           brief={brief}
           loading={requestState === "loading"}
+          executionMode={executionMode}
           exampleBrief={EXAMPLE_BRIEF}
           onBriefChange={setBrief}
+          onExecutionModeChange={setExecutionMode}
           onGenerate={() => void generate()}
         />
           <CharacterWorkspace
@@ -481,6 +520,7 @@ export default function StudioPage() {
           validationState={validationState}
           validationResult={validationResult}
           validationError={validationError}
+          liveJobStatus={liveJobStatus}
           validationStale={validationStale}
           onRetry={() => void generate()}
           onRetryValidation={() => void validate()}

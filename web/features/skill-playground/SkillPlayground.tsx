@@ -2,7 +2,7 @@
 
 import {useEffect, useMemo, useRef, useState} from "react";
 
-import {apiClient, ApiClientError} from "../../lib/api/client";
+import {apiClient, ApiClientError, waitForLiveJob} from "../../lib/api/client";
 import type {
   CharacterSkillContextRequest,
   CharacterSkillContextResponse,
@@ -21,7 +21,6 @@ import {canAttachSkill} from "../character-studio/skill-session";
 import {projectSkillPlanner, type PlannerResult, type PlannerViewModel} from "./planner-view";
 
 const DEFAULT_PRESET = "generalization_sub_dps_v1";
-const MAX_LIVE_WAIT_MS = 120_000;
 type Tab = "planner" | "checks" | "technical";
 
 export interface SkillPlaygroundProps {
@@ -122,16 +121,17 @@ export function SkillPlayground({embedded = false, characterInput = null, charac
       if (executionMode === "live") {
         const accepted = inCharacterMode && characterInput ? await apiClient.createCharacterSkillDesignLiveJob({character: characterInput, skill: skillPayload}, controller.signal) : await apiClient.createSkillPlaygroundLiveJob(skillPayload, controller.signal);
         setLiveJobStatus(accepted.status === "PENDING" ? "PENDING" : "RUNNING");
-        const deadline = Date.now() + MAX_LIVE_WAIT_MS;
-        while (true) {
-          const status = inCharacterMode && characterInput ? await apiClient.getCharacterSkillDesignLiveJob(accepted.job_id, controller.signal) : await apiClient.getSkillPlaygroundLiveJob(accepted.job_id, controller.signal);
-          if (generation !== runGeneration.current || controller.signal.aborted) return;
-          setLiveJobStatus(status.status === "PENDING" ? "PENDING" : status.status === "RUNNING" ? "RUNNING" : null); setLiveElapsedMs(status.elapsed_ms);
-          if (status.status === "SUCCEEDED") { if (!status.result) throw liveJobError(status); response = status.result as PlannerResult; break; }
-          if (status.status === "FAILED") throw liveJobError(status);
-          if (Date.now() >= deadline) throw new ApiClientError({error: {code: "CLIENT_TIMEOUT", message: "生成请求超出浏览器等待时间。", stage: "client", retryable: true, details: {}, audit: null}}, 504);
-          await new Promise((resolve) => setTimeout(resolve, Math.max(accepted.poll_after_ms, 1000)));
-        }
+        const status = await waitForLiveJob(
+          accepted,
+          (jobId, signal) => inCharacterMode && characterInput
+            ? apiClient.getCharacterSkillDesignLiveJob(jobId, signal)
+            : apiClient.getSkillPlaygroundLiveJob(jobId, signal),
+          controller.signal,
+          () => generation === runGeneration.current,
+        );
+        setLiveJobStatus(null); setLiveElapsedMs(status.elapsed_ms);
+        if (status.status === "SUCCEEDED") { if (!status.result) throw liveJobError(status); response = status.result as PlannerResult; }
+        else throw liveJobError(status);
       } else {
         response = inCharacterMode && characterInput ? await apiClient.runCharacterSkillDesign({character: characterInput, skill: skillPayload}) : await apiClient.runSkillPlayground(skillPayload);
       }

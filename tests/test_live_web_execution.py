@@ -10,7 +10,12 @@ from character_intelligence.hybrid_ir.runner import (
     FakeProvider,
     HybridProviderInvocationError,
 )
+from agents.character_generation import CharacterGenerationAgent, DeterministicCharacterGenerationModel
+from agents.character_repair import CharacterRepairAgent, DeterministicCharacterRepairModel
+from agents.canon_checker import CanonChecker
+from agents.errors import AgentExecutionError
 from web.app import create_app
+from web.services.character_generation import CharacterGenerationApplication
 from web.services.live_jobs import LiveJobRegistry
 from web.services.skill_playground import SkillPlaygroundApplication
 
@@ -79,6 +84,10 @@ def _payload() -> dict[str, object]:
         "execution_mode": "live",
         "provider": "opencode_go",
     }
+
+
+def _character_payload() -> dict[str, object]:
+    return {"brief": "设计一名公共安全辅助角色。", "request_id": "live_character_job"}
 
 
 def _wait_for_terminal(client: TestClient, job_id: str) -> dict[str, object]:
@@ -235,6 +244,85 @@ def test_character_skill_live_job_is_a_separate_transport_for_the_same_pipeline(
             return
         time.sleep(0.01)
     raise AssertionError("character job did not reach a terminal state")
+
+
+def _character_client(*, scenario: str = "valid") -> TestClient:
+    checker = CanonChecker()
+    service = CharacterGenerationApplication(
+        generation_mode="live",
+        generation_agent=CharacterGenerationAgent(
+            DeterministicCharacterGenerationModel(scenario=scenario),
+        ),
+        repair_agent=CharacterRepairAgent(
+            DeterministicCharacterRepairModel(),
+            checker=checker,
+        ),
+        checker=checker,
+    )
+    return TestClient(
+        create_app(
+            generation_service=service,
+            live_job_registry=LiveJobRegistry(max_workers=1, max_in_flight=2, timeout_seconds=2, ttl_seconds=2),
+        )
+    )
+
+
+def _wait_for_character_terminal(client: TestClient, job_id: str) -> dict[str, object]:
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline:
+        response = client.get(f"/api/characters/generate/jobs/{job_id}")
+        assert response.status_code == 200
+        body = response.json()
+        if body["status"] in {"SUCCEEDED", "FAILED"}:
+            return body
+        time.sleep(0.01)
+    raise AssertionError("character job did not reach a terminal state")
+
+
+def test_character_live_job_returns_quickly_and_preserves_planner_result(monkeypatch) -> None:
+    monkeypatch.setenv("NPC_LLM_PROVIDER", "opencode_go")
+    monkeypatch.setenv("NPC_LLM_MODEL", "deepseek-v4-pro")
+    client = _character_client()
+
+    response = client.post("/api/characters/generate/jobs", json=_character_payload())
+
+    assert response.status_code == 202
+    accepted = response.json()
+    assert accepted["kind"] == "character_generation"
+    result = _wait_for_character_terminal(client, accepted["job_id"])
+    assert result["status"] == "SUCCEEDED"
+    assert result["result"]["schema_version"] == "web-character-generation/0.1"
+    assert result["result"]["draft"]["draft_id"].startswith("draft_live_character_job")
+
+
+def test_character_live_job_failure_is_safe_and_unknown_job_is_explicit(monkeypatch) -> None:
+    monkeypatch.setenv("NPC_LLM_PROVIDER", "opencode_go")
+    monkeypatch.setenv("NPC_LLM_MODEL", "deepseek-v4-pro")
+    class ExplodingModel:
+        def generate(self, _prompt):
+            raise AgentExecutionError("S1E_SUPER_SECRET_TEST_VALUE Authorization: Bearer token")
+
+    checker = CanonChecker()
+    client = TestClient(
+        create_app(
+            generation_service=CharacterGenerationApplication(
+                generation_mode="live",
+                generation_agent=CharacterGenerationAgent(ExplodingModel()),
+                repair_agent=CharacterRepairAgent(DeterministicCharacterRepairModel(), checker=checker),
+                checker=checker,
+            ),
+            live_job_registry=LiveJobRegistry(max_workers=1, max_in_flight=2, timeout_seconds=2, ttl_seconds=2),
+        )
+    )
+
+    accepted = client.post("/api/characters/generate/jobs", json=_character_payload()).json()
+    failed = _wait_for_character_terminal(client, accepted["job_id"])
+    assert failed["status"] == "FAILED"
+    assert failed["error"]["code"] in {"GENERATION_NOT_COMPLETED", "LIVE_EXECUTION_FAILED"}
+    assert "S1E_SUPER_SECRET_TEST_VALUE" not in json.dumps(failed)
+    unknown = client.get("/api/characters/generate/jobs/not-a-real-job")
+    assert unknown.status_code == 404
+    assert unknown.json()["error"]["code"] == "LIVE_JOB_NOT_FOUND"
 
 
 def test_web_live_provider_default_matches_the_benchmark_timeout_baseline(monkeypatch) -> None:

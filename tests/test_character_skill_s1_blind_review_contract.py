@@ -241,6 +241,8 @@ def test_contract_worktree_diff_contains_no_src_changes() -> None:
         "src/agents/openai_provider.py",
         "src/web/errors.py",
             "src/web/services/live_jobs.py",
+            "src/web/routes/characters.py",
+            "src/web/schemas/live_jobs.py",
             # W5-S1D adds the shared invocation-attempt audit and safe usage
             # projection across the Character and Skill Web contracts.
             "src/web/mappers/character_generation.py",

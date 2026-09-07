@@ -1119,3 +1119,32 @@ success, retry exhaustion, malformed response, cancellation, deadline, and
 configuration/capability failures preserve the audit when an invocation object
 exists. Offline fixtures report zero model invocations and do not invent a
 fake usage record.
+
+# W5-S1E Live Web Contract
+
+Character live generation uses the existing `LiveJobRegistry` through
+`POST /api/characters/generate/jobs` and
+`GET /api/characters/generate/jobs/{job_id}`. The worker calls the existing
+Character generation application, including structural recovery, Canon,
+evaluation, and repair, then serializes the normal
+`web-character-generation/0.1` response. The existing synchronous
+`POST /api/characters/generate` endpoint remains for offline/manual callers.
+
+Skill Playground and Character live jobs share the same process-local registry,
+bounded capacity, terminal states (`PENDING`, `RUNNING`, `SUCCEEDED`, `FAILED`),
+90-second server budget, 900-second terminal TTL, and 1500 ms poll hint. The
+browser waits at most 120 seconds, stops on terminal or unknown jobs, and does
+not claim that client timeout cancelled the provider. Backend restart loses
+ephemeral jobs; the browser receives a safe expired-job error and can submit a
+new explicit request.
+
+The Character Studio keeps offline generation unchanged and adds an explicit
+offline/live mode choice. Live submission disables Generate while active and
+uses the shared bounded polling helper. Provider and model remain backend-owned;
+the browser cannot route a request or provide credentials. Live job IDs,
+deadlines, worker state, audit, and usage are transient and are not persisted
+in Character, Skill, CharacterKit, or schema v4 storage.
+
+S1E local acceptance uses fake or local fixtures only. Production live-provider
+acceptance is a separate post-remote-green step and is not part of this
+candidate.

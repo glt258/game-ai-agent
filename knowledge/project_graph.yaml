@@ -340,6 +340,8 @@ nodes:
         locator: "historical architecture candidate; current existence is snapshot-drift sensitive"
       - path: "src/web/errors.py"
         locator: "safe provider and live execution error projections"
+      - path: "docs/w5_s1_production_live_provider_contract.md"
+        locator: "W5-S1E Live Web Contract: Character async job, shared polling, restart and safe projection"
 
   - id: "component.runtime_path_resolution"
     type: "component"
@@ -591,6 +593,8 @@ nodes:
         locator: "physical worker settlement, timeout suppression and shutdown lifecycle"
       - path: "docs/w5_s1_production_live_provider_contract.md"
         locator: "S1C LiveJobRegistry reliability contract"
+      - path: "docs/w5_s1_production_live_provider_contract.md"
+        locator: "W5-S1E Live Web Contract: Character and Skill shared job lifecycle"
 
   - id: "component.runtime_diagnostics"
     type: "component"

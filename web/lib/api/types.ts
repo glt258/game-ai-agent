@@ -163,7 +163,7 @@ export interface CharacterSkillDesignResponse {
 }
 
 export type LiveJobStatus = "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED";
-export type LiveJobKind = "skill_playground" | "character_skill_design";
+export type LiveJobKind = "skill_playground" | "character_skill_design" | "character_generation";
 
 export interface LiveJobAccepted {
   schema_version: "web-live-skill-job/0.1";
@@ -183,7 +183,7 @@ export interface LiveJobStatusResponse {
   provider: string;
   model: string;
   elapsed_ms: number;
-  result: SkillPlaygroundResponse | CharacterSkillDesignResponse | null;
+  result: SkillPlaygroundResponse | CharacterSkillDesignResponse | CharacterGenerationResponse | null;
   error: ApiErrorBody | null;
 }
 
