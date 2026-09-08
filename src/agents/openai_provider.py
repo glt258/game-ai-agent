@@ -5,16 +5,34 @@ from typing import Any, Mapping, Sequence
 
 import openai
 
-from .models import ModelUsage
+from .models import ModelUsage, safe_provider_metadata
 from .provider_protocol import (
+    TEXT_NEGOTIATED_RESPONSE,
     NegotiatedResponseContract,
     ProviderChatClient,
     ProviderClientError,
     ProviderCompletion,
     ProviderToolCall,
     ResponseMode,
-    TEXT_NEGOTIATED_RESPONSE,
 )
+
+
+def _safe_sdk_error_metadata(error: Any) -> dict[str, str | None]:
+    """Copy only SDK-normalized scalars; never retain or serialize the body."""
+
+    body = getattr(error, "body", None)
+    nested = body.get("error") if isinstance(body, Mapping) else None
+    if not isinstance(nested, Mapping):
+        nested = {}
+    values: dict[str, str | None] = {}
+    for name in ("type", "code", "param"):
+        value = getattr(error, name, None)
+        if value is None:
+            value = nested.get(name)
+        values[name] = value if isinstance(value, str) else None
+    request_id = getattr(error, "request_id", None)
+    values["request_id"] = request_id if isinstance(request_id, str) else None
+    return values
 
 
 class OpenAIChatClient(ProviderChatClient):
@@ -119,7 +137,8 @@ class OpenAIChatClient(ProviderChatClient):
             # Keep the SDK's concrete 5xx error compatibility while exposing
             # generic status failures as the typed unavailable category.
             concrete_server_error = type(error).__name__ == "InternalServerError"
-            error_code = getattr(error, "code", None)
+            metadata = _safe_sdk_error_metadata(error)
+            error_code = metadata["code"]
             if status_code == 401:
                 kind = "authentication"
             elif status_code == 429:
@@ -136,6 +155,20 @@ class OpenAIChatClient(ProviderChatClient):
                 kind,
                 retryable=status_code == 429 or status_code >= 500,
                 status_code=status_code,
+                upstream_error_type=metadata["type"],
+                upstream_error_code=metadata["code"],
+                upstream_error_param=metadata["param"],
+                provider_request_id=metadata["request_id"],
+            ) from None
+        except openai.APIError as error:
+            metadata = _safe_sdk_error_metadata(error)
+            raise ProviderClientError(
+                "provider",
+                retryable=False,
+                upstream_error_type=metadata["type"],
+                upstream_error_code=metadata["code"],
+                upstream_error_param=metadata["param"],
+                provider_request_id=metadata["request_id"],
             ) from None
         except openai.OpenAIError:
             raise ProviderClientError("provider", retryable=False) from None
@@ -166,5 +199,5 @@ class OpenAIChatClient(ProviderChatClient):
             tool_calls=calls,
             finish_reason=choice.finish_reason,
             usage=usage,
-            request_id=getattr(completion, "_request_id", None),
+            request_id=safe_provider_metadata(getattr(completion, "_request_id", None)),
         )

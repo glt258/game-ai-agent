@@ -186,13 +186,21 @@ test("live Character Studio explains a typed provider failure without leaking de
             purpose: "generation",
             provider_status_code: null,
             provider_retryable: null,
-            provider_request_id: null,
+            provider_request_id: "req-f3-safe",
+            upstream_status: 400,
+            upstream_error_type: "invalid_request_error",
+            upstream_error_code: "unsupported_tool_schema",
+            upstream_error_param: "tools",
             attempts: [{
               attempt_number: 1,
               outcome: "provider",
               latency_ms: 2875,
               error_code: "provider",
-              provider_request_id: null,
+              provider_request_id: "req-f3-safe",
+              upstream_status: 400,
+              upstream_error_type: "invalid_request_error",
+              upstream_error_code: "unsupported_tool_schema",
+              upstream_error_param: "tools",
               finish_reason: null,
               usage: null,
             }],
@@ -214,5 +222,9 @@ test("live Character Studio explains a typed provider failure without leaking de
   await expect(diagnostics).toContainText("generation_provider_invocation");
   await expect(diagnostics).toContainText("opencode_go / deepseek-v4-flash");
   await expect(diagnostics).toContainText("1 / 0");
-  await expect(diagnostics).toContainText("未报告");
+  await expect(diagnostics).toContainText("400");
+  await expect(diagnostics).toContainText("invalid_request_error");
+  await expect(diagnostics).toContainText("unsupported_tool_schema");
+  await expect(diagnostics).toContainText("tools");
+  await expect(diagnostics).toContainText("req-f3-safe");
 });

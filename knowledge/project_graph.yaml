@@ -288,6 +288,8 @@ nodes:
         locator: "OperationDeadline, InvocationPolicy and CancellationToken"
       - path: "docs/w5_s1_production_live_provider_contract.md"
         locator: "S1C reliability contract"
+      - path: "src/agents/provider_protocol.py"
+        locator: "ProviderClientError safe upstream metadata allowlist"
 
   - id: "component.live_llm_settings"
     type: "component"
@@ -325,6 +327,8 @@ nodes:
     evidence:
       - path: "src/agents/openai_provider.py"
         locator: "typed status, network and malformed-envelope mapping"
+      - path: "src/agents/openai_provider.py"
+        locator: "structured SDK error metadata extraction without raw body persistence"
 
   - id: "component.web_adapter"
     type: "component"
@@ -342,6 +346,8 @@ nodes:
         locator: "safe provider and live execution error projections"
       - path: "docs/w5_s1_production_live_provider_contract.md"
         locator: "W5-S1E Live Web Contract: Character async job, shared polling, restart and safe projection"
+      - path: "src/web/errors.py"
+        locator: "PROVIDER_FAILURE safe upstream metadata technical details"
 
   - id: "component.runtime_path_resolution"
     type: "component"
@@ -595,6 +601,8 @@ nodes:
         locator: "S1C LiveJobRegistry reliability contract"
       - path: "docs/w5_s1_production_live_provider_contract.md"
         locator: "W5-S1E Live Web Contract: Character and Skill shared job lifecycle"
+      - path: "src/web/schemas/live_jobs.py"
+        locator: "ephemeral live job failure DTO carries allowlisted technical details"
 
   - id: "component.runtime_diagnostics"
     type: "component"

@@ -33,8 +33,8 @@ from ..schemas.common import (
     ErrorAuditDTO,
     ErrorBodyDTO,
     ErrorResponseDTO,
-    ModelInvocationDTO,
     ModelAttemptDTO,
+    ModelInvocationDTO,
     ModelUsageDTO,
     ModelUsageSummaryDTO,
     ValidatorResultDTO,
@@ -74,6 +74,10 @@ def to_model_invocation(value: ModelInvocationAudit) -> ModelInvocationDTO:
         provider_status_code=value.provider_status_code,
         provider_retryable=value.provider_retryable,
         provider_request_id=value.provider_request_id,
+        upstream_status=value.upstream_status,
+        upstream_error_type=value.upstream_error_type,
+        upstream_error_code=value.upstream_error_code,
+        upstream_error_param=value.upstream_error_param,
         attempts=[
             ModelAttemptDTO(
                 attempt_number=item.attempt_number,

@@ -87,6 +87,11 @@ def _provider_failure_details(
     latest = audits[-1]
     details.update(
         {
+            "upstream_status": latest.upstream_status,
+            "upstream_error_type": latest.upstream_error_type,
+            "upstream_error_code": latest.upstream_error_code,
+            "upstream_error_param": latest.upstream_error_param,
+            "provider_request_id": latest.provider_request_id,
             "provider_status_code": latest.provider_status_code,
             "provider_retryable": latest.provider_retryable,
             "attempt_count": len(latest.attempts) if latest.attempts else None,

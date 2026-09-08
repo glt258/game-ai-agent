@@ -369,12 +369,20 @@ class OpenCodeGoHybridProvider:
             retry_count=max(0, len(attempts) - 1),
             finish_reason=response.finish_reason if response is not None else None,
             usage=response.usage if response is not None else None,
-            provider_request_id=response.request_id if response is not None else None,
+            provider_request_id=(
+                response.request_id
+                if response is not None
+                else getattr(error, "provider_request_id", None)
+            ),
             transport="openai_chat_completions",
             response_contract="hybrid_semantic_ir",
             purpose="skill_generation",
             provider_status_code=getattr(error, "status_code", None),
             provider_retryable=getattr(error, "retryable", None),
+            upstream_status=getattr(error, "upstream_status", None),
+            upstream_error_type=getattr(error, "upstream_error_type", None),
+            upstream_error_code=getattr(error, "upstream_error_code", None),
+            upstream_error_param=getattr(error, "upstream_error_param", None),
             attempts=tuple(attempts),
         )
 

@@ -18,9 +18,9 @@ from .errors import (
     ModelMalformedResponseError,
     ModelProviderError,
     ModelRateLimitError,
+    ModelRefusalError,
     ModelTimeoutError,
     ModelUnavailableError,
-    ModelRefusalError,
 )
 from .grounding import GroundingValidator
 from .models import (
@@ -42,11 +42,6 @@ from .provider_protocol import (
     ProviderToolCall,
     negotiate_response_contract,
 )
-from .response_contracts import (
-    CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL,
-    has_terminal_authoring_finalize_signal,
-    response_contract_for,
-)
 from .reliability import (
     CancellationToken,
     DeadlineExceededError,
@@ -54,6 +49,11 @@ from .reliability import (
     InvocationPolicy,
     OperationDeadline,
     current_invocation_context,
+)
+from .response_contracts import (
+    CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL,
+    has_terminal_authoring_finalize_signal,
+    response_contract_for,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -754,6 +754,10 @@ class LiveLLMAdapter:
             str(raised),
             provider_status_code=error.status_code,
             provider_retryable=error.retryable,
+            upstream_error_type=error.upstream_error_type,
+            upstream_error_code=error.upstream_error_code,
+            upstream_error_param=error.upstream_error_param,
+            provider_request_id=error.provider_request_id,
             attempts=attempts,
         )
         raise raised from None
@@ -786,6 +790,10 @@ class LiveLLMAdapter:
         *,
         provider_status_code: Any = None,
         provider_retryable: Any = None,
+        upstream_error_type: Any = None,
+        upstream_error_code: Any = None,
+        upstream_error_param: Any = None,
+        provider_request_id: Any = None,
         attempts: Sequence[ModelAttemptAudit] = (),
     ) -> ModelInvocationAudit:
         """Build a provider-neutral failure audit from sanitized metadata only.
@@ -808,7 +816,9 @@ class LiveLLMAdapter:
             retry_count=retry_count,
             finish_reason=response.finish_reason if response is not None else None,
             usage=response.usage if response is not None else None,
-            provider_request_id=response.request_id if response is not None else None,
+            provider_request_id=(
+                response.request_id if response is not None else provider_request_id
+            ),
             transport=self.transport,
             response_contract=response_contract,
             error_message=error_message,
@@ -816,4 +826,8 @@ class LiveLLMAdapter:
             provider_status_code=provider_status_code,
             provider_retryable=provider_retryable,
             attempts=tuple(attempts),
+            upstream_status=provider_status_code,
+            upstream_error_type=upstream_error_type,
+            upstream_error_code=upstream_error_code,
+            upstream_error_param=upstream_error_param,
         )

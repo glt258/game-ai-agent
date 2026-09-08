@@ -67,6 +67,10 @@ class ModelInvocationDTO(WebModel):
     provider_retryable: bool | None = None
     provider_request_id: str | None = None
     attempts: list[ModelAttemptDTO] = Field(default_factory=list)
+    upstream_status: int | None = None
+    upstream_error_type: str | None = None
+    upstream_error_code: str | None = None
+    upstream_error_param: str | None = None
 
 
 class ModelUsageSummaryDTO(WebModel):

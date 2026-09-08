@@ -6,10 +6,9 @@ from enum import Enum
 from typing import Any, Literal, Mapping, Protocol, Sequence
 
 from .errors import ModelCapabilityError
-from .models import ModelUsage
+from .models import ModelUsage, safe_provider_metadata
 from .provider_profiles import ProviderCapabilities
 from .response_contracts import ResponseContract
-
 
 ProviderErrorKind = Literal[
     "configuration",
@@ -80,11 +79,28 @@ class ProviderClientError(Exception):
         *,
         retryable: bool,
         status_code: int | None = None,
+        upstream_status: int | None = None,
+        upstream_error_type: str | None = None,
+        upstream_error_code: str | None = None,
+        upstream_error_param: str | None = None,
+        provider_request_id: str | None = None,
     ) -> None:
         super().__init__(f"Provider request failed ({kind})")
         self.kind = kind
         self.retryable = retryable
-        self.status_code = status_code
+        normalized_status = upstream_status if upstream_status is not None else status_code
+        self.status_code = (
+            normalized_status
+            if isinstance(normalized_status, int)
+            and not isinstance(normalized_status, bool)
+            and 100 <= normalized_status <= 599
+            else None
+        )
+        self.upstream_status = self.status_code
+        self.upstream_error_type = safe_provider_metadata(upstream_error_type)
+        self.upstream_error_code = safe_provider_metadata(upstream_error_code)
+        self.upstream_error_param = safe_provider_metadata(upstream_error_param)
+        self.provider_request_id = safe_provider_metadata(provider_request_id)
 
 
 @dataclass(frozen=True)

@@ -558,6 +558,10 @@ export interface ModelInvocation {
   provider_retryable: boolean | null;
   provider_request_id: string | null;
   attempts: ModelAttempt[];
+  upstream_status: number | null;
+  upstream_error_type: string | null;
+  upstream_error_code: string | null;
+  upstream_error_param: string | null;
 }
 
 export interface ContractRecovery {

@@ -194,6 +194,7 @@ def test_provider_metadata_sanitizes_invalid_values_without_leaking_content():
         retryable=retryable_sentinel,
         status_code=status_sentinel,
     )
+
     error.response = {"body": raw_response_sentinel}
     agent, client, session, state = run_live([error], max_retries=0)
 
@@ -214,6 +215,31 @@ def test_provider_metadata_sanitizes_invalid_values_without_leaking_content():
             "PROMPT_SECRET",
         )
     )
+
+
+def test_structured_provider_metadata_reaches_failure_audit_and_model_error():
+    error = ProviderClientError(
+        "provider",
+        retryable=False,
+        status_code=400,
+        upstream_error_type="invalid_request_error",
+        upstream_error_code="unsupported_tool_schema",
+        upstream_error_param="tools",
+        provider_request_id="req-f3-safe",
+    )
+    agent, client, session, state = run_live([error], max_retries=0)
+
+    with pytest.raises(ModelProviderError) as captured:
+        agent.chat(session, state, "你好")
+
+    audit = captured.value.audit
+    assert audit is not None
+    assert audit.upstream_status == 400
+    assert audit.provider_status_code == 400
+    assert audit.upstream_error_type == "invalid_request_error"
+    assert audit.upstream_error_code == "unsupported_tool_schema"
+    assert audit.upstream_error_param == "tools"
+    assert audit.provider_request_id == "req-f3-safe"
 
 
 def test_provider_metadata_is_fail_closed_at_audit_construction():

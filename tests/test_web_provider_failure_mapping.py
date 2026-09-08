@@ -30,8 +30,13 @@ class ProviderFailureModel:
             transport="openai_chat_completions",
             response_contract="json_object",
             error_message="provider request failed",
-            provider_status_code=None,
+            provider_status_code=400,
             provider_retryable=None,
+            upstream_status=400,
+            upstream_error_type="invalid_request_error",
+            upstream_error_code="unsupported_tool_schema",
+            upstream_error_param="tools",
+            provider_request_id="req-f3-safe",
             attempts=(
                 ModelAttemptAudit(
                     attempt_number=1,
@@ -144,7 +149,12 @@ def test_failed_character_job_preserves_safe_provider_diagnostics(monkeypatch) -
         assert error["details"] == {
             "provider": "opencode_go",
             "model": "deepseek-v4-flash",
-            "provider_status_code": None,
+            "upstream_status": 400,
+            "upstream_error_type": "invalid_request_error",
+            "upstream_error_code": "unsupported_tool_schema",
+            "upstream_error_param": "tools",
+            "provider_request_id": "req-f3-safe",
+            "provider_status_code": 400,
             "provider_retryable": None,
             "attempt_count": 1,
             "retry_count": 0,
@@ -156,8 +166,13 @@ def test_failed_character_job_preserves_safe_provider_diagnostics(monkeypatch) -
         assert audit["attempts"][0]["attempt_number"] == 1
         assert audit["attempts"][0]["outcome"] == "provider"
         assert audit["usage"] is None
-        assert audit["provider_status_code"] is None
+        assert audit["provider_status_code"] == 400
         assert audit["provider_retryable"] is None
+        assert audit["upstream_status"] == 400
+        assert audit["upstream_error_type"] == "invalid_request_error"
+        assert audit["upstream_error_code"] == "unsupported_tool_schema"
+        assert audit["upstream_error_param"] == "tools"
+        assert audit["provider_request_id"] == "req-f3-safe"
         assert "S1E_PROVIDER_FAILURE_SUPER_SECRET" not in json.dumps(failed)
     finally:
         registry.shutdown()

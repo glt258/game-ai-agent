@@ -1,13 +1,31 @@
 from __future__ import annotations
 
+import re
+from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
 from types import MappingProxyType
-from collections.abc import Sequence
 from typing import Any, Mapping
 
 from character_skill.errors import SkillKitShapeDiagnostic
+
+_PROVIDER_METADATA_SECRET = re.compile(
+    r"(?:authorization|bearer|api[_-]?key|secret|password|token)",
+    re.IGNORECASE,
+)
+
+
+def safe_provider_metadata(value: Any, *, max_length: int = 128) -> str | None:
+    """Keep only bounded, printable provider scalars at the audit boundary."""
+
+    if not isinstance(value, str) or not value or len(value) > max_length:
+        return None
+    if any(ord(char) < 32 or ord(char) == 127 for char in value):
+        return None
+    if _PROVIDER_METADATA_SECRET.search(value):
+        return None
+    return value
 
 
 @dataclass(frozen=True)
@@ -61,6 +79,13 @@ class ModelAttemptAudit:
     finish_reason: str | None = None
     usage: ModelUsage | None = None
 
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "provider_request_id",
+            safe_provider_metadata(self.provider_request_id),
+        )
+
 
 @dataclass(frozen=True)
 class ModelInvocationAudit:
@@ -91,9 +116,19 @@ class ModelInvocationAudit:
     # allowlisted summary and never contains prompts, bodies, headers, or
     # model output.
     attempts: tuple[ModelAttemptAudit, ...] = ()
+    upstream_status: int | None = None
+    upstream_error_type: str | None = None
+    upstream_error_code: str | None = None
+    upstream_error_param: str | None = None
 
     def __post_init__(self) -> None:
-        status_code = self.provider_status_code
+        status_code = self.upstream_status
+        if (
+            isinstance(status_code, bool)
+            or not isinstance(status_code, int)
+            or not 100 <= status_code <= 599
+        ):
+            status_code = self.provider_status_code
         if (
             isinstance(status_code, bool)
             or not isinstance(status_code, int)
@@ -106,7 +141,15 @@ class ModelInvocationAudit:
             else None
         )
         object.__setattr__(self, "provider_status_code", status_code)
+        object.__setattr__(self, "upstream_status", status_code)
         object.__setattr__(self, "provider_retryable", retryable)
+        for name in (
+            "upstream_error_type",
+            "upstream_error_code",
+            "upstream_error_param",
+            "provider_request_id",
+        ):
+            object.__setattr__(self, name, safe_provider_metadata(getattr(self, name)))
         object.__setattr__(self, "attempts", tuple(self.attempts))
 
 

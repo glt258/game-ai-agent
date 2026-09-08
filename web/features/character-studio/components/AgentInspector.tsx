@@ -76,7 +76,11 @@ function FailureDiagnostics({error}: {error: ApiClientError}) {
         <div className="audit-row"><span>失败阶段</span><strong>{body.stage ?? "未知"}</strong></div>
         <div className="audit-row"><span>Provider / 模型</span><strong>{latest ? `${latest.provider} / ${latest.model}` : "未报告"}</strong></div>
         <div className="audit-row"><span>尝试 / 重试</span><strong>{attempts === null ? "未报告" : `${attempts} / ${latest?.retry_count ?? "未知"}`}</strong></div>
-        <div className="audit-row"><span>上游状态</span><strong>{latest?.provider_status_code ?? "未知"}</strong></div>
+        <div className="audit-row"><span>Provider status</span><strong>{latest?.upstream_status ?? "未知"}</strong></div>
+        {latest?.upstream_error_type && <div className="audit-row"><span>Provider error type</span><strong>{latest.upstream_error_type}</strong></div>}
+        {latest?.upstream_error_code && <div className="audit-row"><span>Provider error code</span><strong>{latest.upstream_error_code}</strong></div>}
+        {latest?.upstream_error_param && <div className="audit-row"><span>Provider parameter</span><strong>{latest.upstream_error_param}</strong></div>}
+        {latest?.provider_request_id && <div className="audit-row"><span>Request ID</span><strong>{latest.provider_request_id}</strong></div>}
         <div className="audit-row"><span>Provider 可重试</span><strong>{latest?.provider_retryable === null || latest?.provider_retryable === undefined ? "未知" : latest.provider_retryable ? "是" : "否"}</strong></div>
         <div className="audit-row"><span>Token 用量</span><strong>{usage ? `${usage.input_tokens ?? "?"} in / ${usage.output_tokens ?? "?"} out / ${usage.total_tokens ?? "?"} total` : "未报告"}</strong></div>
       </div>

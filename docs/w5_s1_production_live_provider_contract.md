@@ -1170,3 +1170,14 @@ in Character, Skill, CharacterKit, or schema v4 storage.
 S1E local acceptance uses fake or local fixtures only. Production live-provider
 acceptance is a separate post-remote-green step and is not part of this
 candidate.
+
+## Safe upstream provider failure metadata
+
+Provider failures may expose only this nullable allowlist when the
+OpenAI-compatible SDK supplies the fields structurally: `upstream_status`,
+`upstream_error_type`, `upstream_error_code`, `upstream_error_param`, and
+`provider_request_id`. Values are bounded printable scalars; unknown or unsafe
+values remain `null`. The adapter never projects raw response bodies, error
+messages, headers, credentials, request payloads, prompts, tool payloads, or
+stack traces. HTTP status remains the upstream status even when the Web layer
+maps the failure to HTTP 502/503.

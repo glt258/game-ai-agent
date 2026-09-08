@@ -407,3 +407,81 @@ def test_openai_sdk_errors_are_sanitized(sdk_error, kind, retryable):
     assert captured.value.retryable is retryable
     assert "credential-secret" not in str(captured.value)
     assert "provider body" not in str(captured.value)
+
+
+def test_openai_status_error_extracts_only_structured_safe_metadata():
+    sdk_error = openai.BadRequestError(
+        "F3_SUPER_SECRET_VALUE raw message",
+        response=httpx.Response(
+            400,
+            headers={"x-request-id": "req-f3-safe"},
+            request=httpx.Request("POST", "https://example.test"),
+        ),
+        body={
+            "error": {
+                "type": "invalid_request_error",
+                "code": "unsupported_tool_schema",
+                "param": "tools",
+                "message": "F3_SUPER_SECRET_VALUE body message",
+            },
+            "extra": "F3_SUPER_SECRET_VALUE",
+        },
+    )
+    client = OpenAIChatClient(
+        api_key="placeholder-test-key",
+        sdk_client=SimpleNamespace(
+            chat=SimpleNamespace(completions=FakeCompletions(sdk_error))
+        ),
+    )
+
+    with pytest.raises(ProviderClientError) as captured:
+        client.complete(
+            model="configured-model",
+            messages=[{"role": "user", "content": "你好"}],
+            tools=[],
+            timeout_seconds=30,
+        )
+
+    error = captured.value
+    assert error.status_code == 400
+    assert error.upstream_status == 400
+    assert error.upstream_error_type == "invalid_request_error"
+    assert error.upstream_error_code == "unsupported_tool_schema"
+    assert error.upstream_error_param == "tools"
+    assert error.provider_request_id == "req-f3-safe"
+    assert "F3_SUPER_SECRET_VALUE" not in repr(error)
+    assert "F3_SUPER_SECRET_VALUE" not in repr(vars(error))
+
+
+def test_openai_status_error_rejects_malicious_structured_metadata():
+    sdk_error = openai.BadRequestError(
+        "safe",
+        response=httpx.Response(
+            400, request=httpx.Request("POST", "https://example.test")
+        ),
+        body={
+            "error": {
+                "type": "invalid_request_error",
+                "code": "abc\nAuthorization: Bearer SECRET",
+                "param": "tools",
+            }
+        },
+    )
+    client = OpenAIChatClient(
+        api_key="placeholder-test-key",
+        sdk_client=SimpleNamespace(
+            chat=SimpleNamespace(completions=FakeCompletions(sdk_error))
+        ),
+    )
+
+    with pytest.raises(ProviderClientError) as captured:
+        client.complete(
+            model="configured-model",
+            messages=[{"role": "user", "content": "你好"}],
+            tools=[],
+            timeout_seconds=30,
+        )
+
+    assert captured.value.upstream_error_code is None
+    assert captured.value.upstream_error_type == "invalid_request_error"
+    assert captured.value.upstream_error_param == "tools"
