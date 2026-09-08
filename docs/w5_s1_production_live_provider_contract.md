@@ -689,10 +689,14 @@ registry exists, no hard-coded model price or token-to-currency calculation.
 Character skill-context/meta, skill-kit/validate, character-kit/evaluate and
 edited-draft validation routes are deterministic, not live entry points.
 Current Character mapper: auth 502, timeout 504, rate_limit 503, config 503,
-malformed response 502, generic ModelProviderError falls through AgentError→502.
+malformed response 502, and generic `ModelProviderError` maps to the typed
+`PROVIDER_FAILURE` 502 response at stage `generation_provider_invocation`.
+The response keeps provider/model and sanitized attempt/status/retryability
+metadata; missing upstream status, retryability and usage remain null/unknown.
 Unexpected app errors 500. Job timer maps BACKEND_REQUEST_TIMEOUT internally to
-504 but GET remains 200. Frontend `liveJobError` maps timeout codes to 504 and
-everything else to 503; category fidelity needs improvement.
+504 but GET remains 200. The Studio terminal-job client continues to display
+non-timeout failed jobs as HTTP 503, an intentional UI abstraction over the
+200 poll response and its typed error body.
 
 Frozen target: keep offline synchronous endpoints first-class; explicit live uses
 the existing job model, adding Character generation kind/routes in S1E, not S1A.
@@ -707,11 +711,25 @@ no automatic retry or reattachment of generated artifacts.
 
 `web/features/character-studio/components/AgentInspector.tsx` shows status,
 pipeline, validators, repair, invocation provider/model/purpose/outcome and report
-history. `ModelInvocationDTO` already transports latency_ms, retry_count, usage,
-finish_reason, tool_call_count and safe provider status/retryability; the Inspector
-does not render all of them. ErrorNotice has safe code/message and retry action.
+history. Failed Character jobs now expose a read-only safe diagnostics panel with
+error code, workflow stage, provider/model, attempts, usage, upstream status and
+retryability. `ModelInvocationDTO` already transports latency_ms, retry_count,
+usage, finish_reason, tool_call_count and safe provider status/retryability.
+ErrorNotice has the user-safe provider failure message and retry action.
 SkillPlayground shows provider/model selection, job state, elapsed time, evidence,
 transport count and outcome, but has no shared invocation/usage panel.
+
+## S1E-F1 provider failure mapping update
+
+`ModelProviderError` is a normalized provider invocation failure whose upstream
+subtype may be unknown. It maps to `PROVIDER_FAILURE` with the safe message
+`模型服务调用失败，请稍后重试。` and stage
+`generation_provider_invocation`; it must not fall through to `AGENT_FAILURE`.
+The generic `AGENT_FAILURE` fallback remains reserved for otherwise-unmapped
+agent failures. Failed live jobs carry only allowlisted audit metadata: no
+prompt, provider body, headers, credentials or stack trace. This change does not
+alter routing, retry/deadline/cancellation policy, parser/recovery, Canon,
+evaluation, repair, usage semantics or persistence schema (v4).
 
 S1 minimum: render provider, model, attempt count, observed latency, outcome,
 usage if available and error category for both success/failure, preserving repair

@@ -134,3 +134,85 @@ test("live Character Studio submits and polls a bounded fake job", async ({page}
   await expect(page.getByText("角色方案已生成")).toBeVisible();
   expect(pollCount).toBeGreaterThanOrEqual(1);
 });
+
+test("live Character Studio explains a typed provider failure without leaking details", async ({page}) => {
+  await page.route(/\/api\/characters\/generate\/jobs(?:\/.*)?$/, async (route) => {
+    if (route.request().method() === "POST") {
+      await route.fulfill({status: 202, contentType: "application/json", body: JSON.stringify({
+        schema_version: "web-live-skill-job/0.1",
+        job_id: "e2e-character-provider-failure",
+        kind: "character_generation",
+        status: "PENDING",
+        provider: "opencode_go",
+        model: "deepseek-v4-flash",
+        poll_after_ms: 250,
+      })});
+      return;
+    }
+    await route.fulfill({status: 200, contentType: "application/json", body: JSON.stringify({
+      schema_version: "web-live-skill-job/0.1",
+      job_id: "e2e-character-provider-failure",
+      kind: "character_generation",
+      status: "FAILED",
+      provider: "opencode_go",
+      model: "deepseek-v4-flash",
+      elapsed_ms: 2875,
+      result: null,
+      error: {
+        code: "PROVIDER_FAILURE",
+        message: "模型服务调用失败，请稍后重试。",
+        stage: "generation_provider_invocation",
+        retryable: false,
+        details: {
+          provider: "opencode_go",
+          model: "deepseek-v4-flash",
+          provider_status_code: null,
+          provider_retryable: null,
+          attempt_count: 1,
+          retry_count: 0,
+        },
+        audit: {
+          stage: "generation_provider_invocation",
+          model_invocations: [{
+            provider: "opencode_go",
+            model: "deepseek-v4-flash",
+            turn_number: 1,
+            outcome: "provider",
+            latency_ms: 2875,
+            retry_count: 0,
+            finish_reason: null,
+            tool_call_count: 0,
+            usage: null,
+            purpose: "generation",
+            provider_status_code: null,
+            provider_retryable: null,
+            provider_request_id: null,
+            attempts: [{
+              attempt_number: 1,
+              outcome: "provider",
+              latency_ms: 2875,
+              error_code: "provider",
+              provider_request_id: null,
+              finish_reason: null,
+              usage: null,
+            }],
+          }],
+        },
+      },
+    })});
+  });
+
+  await page.goto("/studio");
+  await page.getByRole("button", {name: "加载示例需求"}).click();
+  await page.getByLabel("生成方式").selectOption("live");
+  await page.getByRole("button", {name: "生成角色"}).click();
+
+  await expect(page.getByText("模型服务调用失败，请稍后重试。")).toBeVisible();
+  const diagnostics = page.getByTestId("character-failure-diagnostics");
+  await diagnostics.locator("summary").click();
+  await expect(diagnostics).toContainText("PROVIDER_FAILURE");
+  await expect(diagnostics).toContainText("generation_provider_invocation");
+  await expect(diagnostics).toContainText("opencode_go / deepseek-v4-flash");
+  await expect(diagnostics).toContainText("1 / 0");
+  await expect(diagnostics).toContainText("未报告");
+});

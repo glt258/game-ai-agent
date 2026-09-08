@@ -14,6 +14,7 @@ from agents.errors import (
     ModelContextLimitError,
     ModelDeadlineExceededError,
     ModelMalformedResponseError,
+    ModelProviderError,
     ModelRateLimitError,
     ModelRefusalError,
     ModelTimeoutError,
@@ -74,6 +75,24 @@ def _provider_details(audits: Sequence[ModelInvocationAudit]) -> dict[str, Any]:
         details["provider"] = latest.provider
     if latest.model:
         details["model"] = latest.model
+    return details
+
+
+def _provider_failure_details(
+    audits: Sequence[ModelInvocationAudit],
+) -> dict[str, Any]:
+    details = _provider_details(audits)
+    if not audits:
+        return details
+    latest = audits[-1]
+    details.update(
+        {
+            "provider_status_code": latest.provider_status_code,
+            "provider_retryable": latest.provider_retryable,
+            "attempt_count": len(latest.attempts) if latest.attempts else None,
+            "retry_count": latest.retry_count,
+        }
+    )
     return details
 
 
@@ -190,6 +209,17 @@ def map_generation_exception(error: BaseException) -> WebApplicationError:
             stage=getattr(error, "phase", "generation"),
             retryable=False,
             details=details,
+            model_invocations=audits,
+        )
+    if isinstance(error, ModelProviderError):
+        provider_retryable = audits[-1].provider_retryable if audits else None
+        return WebApplicationError(
+            "PROVIDER_FAILURE",
+            "模型服务调用失败，请稍后重试。",
+            status_code=502,
+            stage="generation_provider_invocation",
+            retryable=provider_retryable if isinstance(provider_retryable, bool) else False,
+            details=_provider_failure_details(audits),
             model_invocations=audits,
         )
     if isinstance(error, AgentToolError):

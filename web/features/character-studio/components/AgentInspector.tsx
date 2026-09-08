@@ -62,6 +62,28 @@ function ValidatorList({validators, showTargets = false}: {validators: Validator
   );
 }
 
+function FailureDiagnostics({error}: {error: ApiClientError}) {
+  const body = error.payload.error;
+  const invocations = body.audit?.model_invocations ?? [];
+  const latest = invocations.length > 0 ? invocations[invocations.length - 1] : null;
+  const attempts = latest ? latest.attempts.length || latest.retry_count + 1 : null;
+  const usage = latest?.usage;
+  return (
+    <details className="technical-inspector" data-testid="character-failure-diagnostics">
+      <summary>查看失败技术明细</summary>
+      <div className="technical-inspector-body">
+        <div className="audit-row"><span>安全错误码</span><strong>{body.code}</strong></div>
+        <div className="audit-row"><span>失败阶段</span><strong>{body.stage ?? "未知"}</strong></div>
+        <div className="audit-row"><span>Provider / 模型</span><strong>{latest ? `${latest.provider} / ${latest.model}` : "未报告"}</strong></div>
+        <div className="audit-row"><span>尝试 / 重试</span><strong>{attempts === null ? "未报告" : `${attempts} / ${latest?.retry_count ?? "未知"}`}</strong></div>
+        <div className="audit-row"><span>上游状态</span><strong>{latest?.provider_status_code ?? "未知"}</strong></div>
+        <div className="audit-row"><span>Provider 可重试</span><strong>{latest?.provider_retryable === null || latest?.provider_retryable === undefined ? "未知" : latest.provider_retryable ? "是" : "否"}</strong></div>
+        <div className="audit-row"><span>Token 用量</span><strong>{usage ? `${usage.input_tokens ?? "?"} in / ${usage.output_tokens ?? "?"} out / ${usage.total_tokens ?? "?"} total` : "未报告"}</strong></div>
+      </div>
+    </details>
+  );
+}
+
 function ValidationInspector({state, result, error, stale, onRetry}: {state: ValidationState; result: CharacterValidationResponse | null; error: ApiClientError | null; stale: boolean; onRetry: () => void}) {
   return (
     <InspectorSection title="编辑后检查">
@@ -116,7 +138,7 @@ export function AgentInspector({result, requestState, error, validationState, va
       <InspectorSection title="生成状态">
         {requestState === "loading" ? <div className="loading"><span className="loading-dot" />{liveJobStatus === "PENDING" ? "正在等待模型任务…" : liveJobStatus === "RUNNING" ? "正在生成角色方案…" : "正在准备角色方案…"}</div> : <StatusChip status={status} />}
         {requestState === "idle" && <p className="column-subtitle" style={{margin: "10px 0 0"}}>尚未生成方案。</p>}
-        {requestState === "error" && <div style={{marginTop: "12px"}}><ErrorNotice error={error} onRetry={onRetry} actionLabel="重新生成" /></div>}
+        {requestState === "error" && <div style={{marginTop: "12px"}}><ErrorNotice error={error} onRetry={onRetry} actionLabel="重新生成" />{error && <FailureDiagnostics error={error} />}</div>}
       </InspectorSection>
 
       {result && (
