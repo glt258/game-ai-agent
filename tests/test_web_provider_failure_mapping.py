@@ -84,7 +84,28 @@ def test_model_provider_error_preserves_known_retryability() -> None:
     assert mapped.details["provider_retryable"] is True
 
 
-def test_failed_character_job_preserves_safe_provider_diagnostics() -> None:
+def test_unknown_provider_retryability_stays_unknown_in_safe_details() -> None:
+    error = ModelProviderError("provider request failed")
+    error.audit = ModelInvocationAudit(
+        session_id="unknown-provider-retryability",
+        turn_number=1,
+        provider="opencode_go",
+        model="deepseek-v4-flash",
+        outcome="provider",
+        latency_ms=5.0,
+        retry_count=0,
+        provider_retryable=None,
+    )
+
+    mapped = map_generation_exception(error)
+
+    assert mapped.retryable is False
+    assert mapped.details["provider_retryable"] is None
+
+
+def test_failed_character_job_preserves_safe_provider_diagnostics(monkeypatch) -> None:
+    monkeypatch.setenv("NPC_LLM_PROVIDER", "opencode_go")
+    monkeypatch.setenv("NPC_LLM_MODEL", "deepseek-v4-flash")
     checker = CanonChecker()
     registry = LiveJobRegistry(
         max_workers=1,

@@ -730,6 +730,10 @@ agent failures. Failed live jobs carry only allowlisted audit metadata: no
 prompt, provider body, headers, credentials or stack trace. This change does not
 alter routing, retry/deadline/cancellation policy, parser/recovery, Canon,
 evaluation, repair, usage semantics or persistence schema (v4).
+The top-level `retryable` field remains the boolean Web/UI automatic-action
+policy. `provider_retryable` is a separate nullable upstream fact: when it is
+unknown, the UI policy may conservatively remain `false`, but that does not
+claim that the provider reported a non-retryable failure.
 
 S1 minimum: render provider, model, attempt count, observed latency, outcome,
 usage if available and error category for both success/failure, preserving repair

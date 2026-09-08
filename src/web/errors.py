@@ -213,6 +213,9 @@ def map_generation_exception(error: BaseException) -> WebApplicationError:
         )
     if isinstance(error, ModelProviderError):
         provider_retryable = audits[-1].provider_retryable if audits else None
+        # `retryable` is the Web/UI automatic-action policy. The nullable
+        # `provider_retryable` detail remains the upstream fact and must not
+        # turn UNKNOWN into a claimed provider-side false.
         return WebApplicationError(
             "PROVIDER_FAILURE",
             "模型服务调用失败，请稍后重试。",
