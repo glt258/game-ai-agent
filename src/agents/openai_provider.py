@@ -5,6 +5,7 @@ from typing import Any, Mapping, Sequence
 
 import openai
 
+from .errors import ModelConfigurationError
 from .models import ModelUsage, safe_provider_metadata
 from .provider_protocol import (
     TEXT_NEGOTIATED_RESPONSE,
@@ -15,6 +16,7 @@ from .provider_protocol import (
     ProviderToolCall,
     ResponseMode,
 )
+from .reliability import current_invocation_context
 
 
 def _safe_sdk_error_metadata(error: Any) -> dict[str, str | None]:
@@ -42,14 +44,23 @@ class OpenAIChatClient(ProviderChatClient):
         self,
         *,
         api_key: str,
+        provider: str | None = None,
         base_url: str | None = None,
         timeout_seconds: float = 30.0,
         request_options: Mapping[str, Any] | None = None,
         sdk_client: Any | None = None,
     ) -> None:
         self.base_url = base_url
+        self.provider = provider.strip().lower() if isinstance(provider, str) else None
         self.request_options = deepcopy(dict(request_options or {}))
-        reserved = {"model", "messages", "tools", "timeout", "response_format"}
+        reserved = {
+            "model",
+            "messages",
+            "tools",
+            "timeout",
+            "response_format",
+            "extra_headers",
+        }
         if reserved & set(self.request_options):
             raise ValueError(
                 "Provider request options cannot override core request fields"
@@ -118,6 +129,15 @@ class OpenAIChatClient(ProviderChatClient):
             raise ValueError(
                 f"Unsupported provider response mode: {response_contract.mode}"
             )
+        if self.provider == "opencode_go":
+            context = current_invocation_context()
+            if context is None:
+                raise ModelConfigurationError(
+                    "OpenCode Go requests require a parent live invocation context"
+                )
+            request["extra_headers"] = {
+                "x-opencode-session": context.provider_session_id,
+            }
         try:
             completion = self._client.chat.completions.create(**request)
         except openai.AuthenticationError:

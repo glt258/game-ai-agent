@@ -49,6 +49,7 @@ from .reliability import (
     InvocationPolicy,
     OperationDeadline,
     current_invocation_context,
+    invocation_context,
 )
 from .response_contracts import (
     CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL,
@@ -141,6 +142,23 @@ class LiveLLMAdapter:
         self._policy = policy
 
     def generate(self, prompt: AgentPrompt) -> ModelTurn:
+        if self.provider == "opencode_go" and current_invocation_context() is None:
+            budget_seconds = self._operation_deadline_seconds or (
+                self.timeout_seconds * (self.max_retries + 1)
+                + self.backoff_seconds * self.max_retries
+            )
+            policy = self._policy or InvocationPolicy.from_legacy(
+                timeout_seconds=self.timeout_seconds,
+                max_retries=self.max_retries,
+                backoff_seconds=self.backoff_seconds,
+                operation_deadline_seconds=self._operation_deadline_seconds,
+            )
+            with invocation_context(
+                deadline=OperationDeadline(budget_seconds, monotonic=self._monotonic),
+                cancellation=self._cancellation or CancellationToken(),
+                policy=policy,
+            ):
+                return self.generate(prompt)
         messages = self._provider_messages(prompt)
         tools = self._provider_tools(prompt)
         started = self._monotonic()

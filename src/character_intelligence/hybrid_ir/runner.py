@@ -232,6 +232,19 @@ class OpenCodeGoHybridProvider:
         self.backoff_seconds = backoff_seconds
 
     def complete(self, request_text: str) -> object:
+        from agents.reliability import current_invocation_context, default_invocation_context
+
+        if current_invocation_context() is None:
+            with default_invocation_context(
+                budget_seconds=(
+                    self._timeout_seconds * (self.max_transport_retries + 1)
+                    + self.backoff_seconds * self.max_transport_retries
+                ),
+                max_attempts=self.max_transport_retries + 1,
+                attempt_timeout_cap=float(self._timeout_seconds),
+                retry_backoff_seconds=self.backoff_seconds,
+            ):
+                return self.complete(request_text)
         from agents.models import ModelAttemptAudit
         from agents.provider_protocol import ProviderClientError, negotiate_response_contract
         from agents.reliability import (
@@ -1028,6 +1041,7 @@ def _default_hybrid_provider_factory(*, model: str = "deepseek-v4-pro") -> Hybri
     settings = LiveLLMSettings.from_environment(environment, operation="skill_generation")
     client = OpenAIChatClient(
         api_key=settings.api_key,
+        provider=getattr(settings, "provider", "opencode_go"),
         base_url=settings.base_url,
         timeout_seconds=settings.timeout_seconds,
         request_options=settings.profile.provider_options,
@@ -1086,6 +1100,7 @@ def live_hybrid_provider_from_environment(
     _ensure_transport_implemented(settings.profile)
     client = OpenAIChatClient(
         api_key=settings.api_key,
+        provider=settings.provider,
         base_url=settings.base_url,
         timeout_seconds=settings.timeout_seconds,
         request_options=settings.profile.provider_options,

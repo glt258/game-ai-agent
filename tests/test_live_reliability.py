@@ -17,6 +17,8 @@ from agents import (
     ProviderClientError,
     ProviderCompletion,
     InvocationPolicy,
+    current_invocation_context,
+    default_invocation_context,
     invocation_context,
 )
 from web.errors import WebApplicationError
@@ -54,6 +56,16 @@ def test_operation_deadline_uses_monotonic_remaining_budget() -> None:
     assert not deadline.expired()
     now[0] = 12.0
     assert deadline.expired()
+
+
+def test_parent_invocation_context_owns_one_session_affinity_id():
+    with default_invocation_context(budget_seconds=2.0):
+        first = current_invocation_context().provider_session_id
+        with default_invocation_context(budget_seconds=2.0):
+            assert current_invocation_context().provider_session_id == first
+    with default_invocation_context(budget_seconds=2.0):
+        second = current_invocation_context().provider_session_id
+    assert first != second
 
 
 def test_adapter_retries_transient_failure_with_bounded_attempts() -> None:

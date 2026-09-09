@@ -12,6 +12,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from agents import ProviderClientError, ProviderCompletion, current_invocation_context
 
 from character_intelligence.hybrid_ir import runner as hybrid_runner
 from character_intelligence.hybrid_ir import (
@@ -551,6 +552,42 @@ def test_default_factory_forwards_model_to_existing_provider_config(monkeypatch)
     assert provider._model == "deepseek-v4-flash"
     assert provider.calls == 0
     assert provider.transport_attempts == 0
+
+
+def test_sync_hybrid_provider_reuses_session_affinity_across_retry_and_rotates_jobs():
+    class CaptureClient:
+        def __init__(self, *, fail_first=True):
+            self.calls = 0
+            self.session_ids = []
+            self.fail_first = fail_first
+
+        def complete(self, **_request):
+            self.calls += 1
+            self.session_ids.append(current_invocation_context().provider_session_id)
+            if self.fail_first and self.calls == 1:
+                raise ProviderClientError("rate_limit", retryable=True, status_code=429)
+            return ProviderCompletion(text="{}")
+
+    first_client = CaptureClient()
+    first_provider = hybrid_runner.OpenCodeGoHybridProvider(
+        first_client,
+        model="deepseek-v4-flash",
+        timeout_seconds=5,
+        max_transport_retries=1,
+    )
+    first_provider.complete("request")
+
+    second_client = CaptureClient(fail_first=False)
+    second_provider = hybrid_runner.OpenCodeGoHybridProvider(
+        second_client,
+        model="deepseek-v4-flash",
+        timeout_seconds=5,
+        max_transport_retries=0,
+    )
+    second_provider.complete("request")
+
+    assert first_client.session_ids[0] == first_client.session_ids[1]
+    assert first_client.session_ids[0] != second_client.session_ids[0]
 
 
 def test_manual_execution_does_not_write_formal_evidence():

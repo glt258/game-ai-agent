@@ -7,10 +7,12 @@ import openai
 import pytest
 
 from agents import (
+    ModelConfigurationError,
     NegotiatedResponseContract,
     OpenAIChatClient,
     ProviderClientError,
     ResponseMode,
+    default_invocation_context,
 )
 
 
@@ -18,9 +20,11 @@ class FakeCompletions:
     def __init__(self, response):
         self.response = response
         self.request = None
+        self.requests = []
 
     def create(self, **request):
         self.request = request
+        self.requests.append(request)
         if isinstance(self.response, BaseException):
             raise self.response
         return self.response
@@ -337,6 +341,124 @@ def test_provider_request_options_cannot_override_core_fields():
         OpenAIChatClient(
             api_key="placeholder-test-key",
             request_options={"model": "unsafe-override"},
+            sdk_client=SimpleNamespace(),
+        )
+
+
+def test_opencode_go_adds_server_session_header_from_parent_context():
+    sdk_response = SimpleNamespace(
+        choices=[SimpleNamespace(finish_reason="stop", message=SimpleNamespace(content="ok", tool_calls=None))],
+        usage=None,
+        _request_id=None,
+    )
+    completions = FakeCompletions(sdk_response)
+    client = OpenAIChatClient(
+        api_key="placeholder-test-key",
+        provider="opencode_go",
+        sdk_client=SimpleNamespace(chat=SimpleNamespace(completions=completions)),
+    )
+
+    with default_invocation_context(budget_seconds=30.0):
+        client.complete(
+            model="deepseek-v4-flash",
+            messages=[{"role": "user", "content": "hello"}],
+            tools=[],
+            timeout_seconds=10,
+        )
+
+    assert completions.request["extra_headers"]["x-opencode-session"]
+    assert len(completions.request["extra_headers"]["x-opencode-session"]) == 32
+    assert "provider_session_id" not in completions.request
+
+
+def test_opencode_go_reuses_session_header_for_repeated_calls_and_rotates_per_context():
+    sdk_response = SimpleNamespace(
+        choices=[SimpleNamespace(finish_reason="stop", message=SimpleNamespace(content="ok", tool_calls=None))],
+        usage=None,
+        _request_id=None,
+    )
+    completions = FakeCompletions(sdk_response)
+    client = OpenAIChatClient(
+        api_key="placeholder-test-key",
+        provider="opencode_go",
+        sdk_client=SimpleNamespace(chat=SimpleNamespace(completions=completions)),
+    )
+
+    with default_invocation_context(budget_seconds=30.0):
+        for _ in range(2):
+            client.complete(
+                model="deepseek-v4-flash",
+                messages=[{"role": "user", "content": "hello"}],
+                tools=[],
+                timeout_seconds=10,
+            )
+    first, second = (item["extra_headers"]["x-opencode-session"] for item in completions.requests)
+    with default_invocation_context(budget_seconds=30.0):
+        client.complete(
+            model="deepseek-v4-flash",
+            messages=[{"role": "user", "content": "hello"}],
+            tools=[],
+            timeout_seconds=10,
+        )
+    third = completions.requests[-1]["extra_headers"]["x-opencode-session"]
+
+    assert first == second
+    assert first != third
+
+
+def test_opencode_go_requires_parent_context_before_network():
+    completions = FakeCompletions(
+        SimpleNamespace(
+            choices=[SimpleNamespace(finish_reason="stop", message=SimpleNamespace(content="ok", tool_calls=None))],
+            usage=None,
+            _request_id=None,
+        )
+    )
+    client = OpenAIChatClient(
+        api_key="placeholder-test-key",
+        provider="opencode_go",
+        sdk_client=SimpleNamespace(chat=SimpleNamespace(completions=completions)),
+    )
+
+    with pytest.raises(ModelConfigurationError, match="parent live invocation context"):
+        client.complete(
+            model="deepseek-v4-flash",
+            messages=[{"role": "user", "content": "hello"}],
+            tools=[],
+            timeout_seconds=10,
+        )
+    assert completions.requests == []
+
+
+def test_non_opencode_provider_omits_opencode_session_header():
+    sdk_response = SimpleNamespace(
+        choices=[SimpleNamespace(finish_reason="stop", message=SimpleNamespace(content="ok", tool_calls=None))],
+        usage=None,
+        _request_id=None,
+    )
+    completions = FakeCompletions(sdk_response)
+    client = OpenAIChatClient(
+        api_key="placeholder-test-key",
+        provider="deepseek",
+        sdk_client=SimpleNamespace(chat=SimpleNamespace(completions=completions)),
+    )
+
+    with default_invocation_context(budget_seconds=30.0):
+        client.complete(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": "hello"}],
+            tools=[],
+            timeout_seconds=10,
+        )
+
+    assert "extra_headers" not in completions.request
+
+
+def test_provider_request_options_cannot_inject_headers():
+    with pytest.raises(ValueError, match="core request fields"):
+        OpenAIChatClient(
+            api_key="placeholder-test-key",
+            request_options={"extra_headers": {"x-opencode-session": "unsafe"}},
             sdk_client=SimpleNamespace(),
         )
 

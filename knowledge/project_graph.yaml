@@ -290,6 +290,8 @@ nodes:
         locator: "S1C reliability contract"
       - path: "src/agents/provider_protocol.py"
         locator: "ProviderClientError safe upstream metadata allowlist"
+      - path: "src/agents/reliability.py"
+        locator: "InvocationContext provider_session_id parent-operation affinity"
 
   - id: "component.live_llm_settings"
     type: "component"
@@ -329,6 +331,8 @@ nodes:
         locator: "typed status, network and malformed-envelope mapping"
       - path: "src/agents/openai_provider.py"
         locator: "structured SDK error metadata extraction without raw body persistence"
+      - path: "src/agents/openai_provider.py"
+        locator: "OpenCode Go x-opencode-session extra_headers injection"
 
   - id: "component.web_adapter"
     type: "component"
@@ -603,6 +607,8 @@ nodes:
         locator: "W5-S1E Live Web Contract: Character and Skill shared job lifecycle"
       - path: "src/web/schemas/live_jobs.py"
         locator: "ephemeral live job failure DTO carries allowlisted technical details"
+      - path: "src/web/services/live_jobs.py"
+        locator: "one InvocationContext per live job; provider session ID is runtime-only"
 
   - id: "component.runtime_diagnostics"
     type: "component"

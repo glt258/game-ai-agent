@@ -7,6 +7,7 @@ import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Callable, Iterator
+from uuid import uuid4
 
 from .errors import ModelConfigurationError
 
@@ -101,6 +102,7 @@ class InvocationContext:
     deadline: OperationDeadline
     cancellation: CancellationToken
     policy: InvocationPolicy
+    provider_session_id: str
 
 
 _CURRENT_CONTEXT: contextvars.ContextVar[InvocationContext | None] = contextvars.ContextVar(
@@ -119,7 +121,7 @@ def invocation_context(
     cancellation: CancellationToken,
     policy: InvocationPolicy,
 ) -> Iterator[InvocationContext]:
-    context = InvocationContext(deadline, cancellation, policy)
+    context = InvocationContext(deadline, cancellation, policy, uuid4().hex)
     token = _CURRENT_CONTEXT.set(context)
     try:
         yield context

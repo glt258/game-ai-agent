@@ -286,6 +286,7 @@ def model_from_environment(
     if provider_client is None:
         provider_client = OpenAIChatClient(
             api_key=settings.api_key,
+            provider=settings.provider,
             base_url=settings.base_url,
             timeout_seconds=settings.timeout_seconds,
             request_options=settings.profile.provider_options,
@@ -348,6 +349,7 @@ def character_model_from_environment(
     if provider_client is None:
         provider_client = OpenAIChatClient(
             api_key=settings.api_key,
+            provider=settings.provider,
             base_url=settings.base_url,
             timeout_seconds=settings.timeout_seconds,
             request_options=settings.profile.provider_options,

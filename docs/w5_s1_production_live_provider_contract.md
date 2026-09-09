@@ -32,6 +32,24 @@ resolver while retaining `OpenCodeGoHybridProvider`.
 S1B deliberately leaves retry/deadline policy, job cancellation/cleanup,
 usage aggregation, Character async jobs and the full error taxonomy to S1C–E.
 
+## W5-S1E-F4 update — OpenCode Go session affinity
+
+OpenCode Go Chat Completions requires the server-controlled
+`x-opencode-session` request header. The existing parent `InvocationContext`
+now owns one opaque `uuid4().hex` provider-session ID for the lifetime of one
+logical live operation. Character and Skill live jobs create that context once;
+retries, structural recovery and repair reuse the same ID, while a new job gets
+a new ID. Synchronous live adapters establish the same local parent context
+when called without one.
+
+`OpenAIChatClient` injects the header through the OpenAI SDK's `extra_headers`
+argument only when the resolved provider is `opencode_go`. Other providers do
+not receive it, and request bodies, routing, retry policy, deadlines, usage and
+F3 safe error metadata remain unchanged. The session ID is generated only on
+the server, is never accepted from browser or prompt input, is not logged,
+persisted or exposed in Web DTOs/Inspector, and OpenCode calls fail closed if
+they reach the transport without a parent invocation context.
+
 ## S1C implementation update — reliability contract
 
 W5-S1C closes the shared live-invocation reliability boundary on the existing
