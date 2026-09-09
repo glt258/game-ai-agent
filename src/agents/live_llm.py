@@ -33,7 +33,12 @@ from .models import (
     SegmentKind,
     ToolCall,
 )
-from .provider_profiles import ProviderProfile, ProviderRoute, resolve_provider_profile
+from .provider_profiles import (
+    ProviderProfile,
+    ProviderRoute,
+    ThinkingModeBehavior,
+    resolve_provider_profile,
+)
 from .provider_protocol import (
     NegotiatedResponseContract,
     ProviderChatClient,
@@ -216,6 +221,12 @@ class LiveLLMAdapter:
                 }
                 if prompt.tool_invocation == "required":
                     request["tool_choice"] = "required"
+                if (
+                    tools
+                    and self.profile.capabilities.thinking_mode_behavior
+                    is ThinkingModeBehavior.DISABLED
+                ):
+                    request["thinking"] = "disabled"
                 response = self._client.complete(
                     **request,
                 )

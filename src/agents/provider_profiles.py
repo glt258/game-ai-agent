@@ -9,7 +9,6 @@ from urllib.parse import urlparse
 
 from .errors import ModelConfigurationError
 
-
 OPENCODE_GO_BASE_URL = "https://opencode.ai/zen/go/v1"
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 
@@ -218,6 +217,12 @@ def _opencode_go_profile(
     )
 
 
+OPENCODE_DEEPSEEK_CAPABILITIES = replace(
+    CHAT_JSON_OBJECT_CAPABILITIES,
+    thinking_mode_behavior=ThinkingModeBehavior.DISABLED,
+)
+
+
 KNOWN_OPENCODE_GO_MODEL_PROFILES: Mapping[str, ProviderProfile] = MappingProxyType(
     {
         **{
@@ -238,11 +243,11 @@ KNOWN_OPENCODE_GO_MODEL_PROFILES: Mapping[str, ProviderProfile] = MappingProxyTy
         },
         "deepseek-v4-pro": _opencode_go_profile(
             TransportFamily.OPENAI_CHAT_COMPLETIONS,
-            CHAT_JSON_OBJECT_CAPABILITIES,
+            OPENCODE_DEEPSEEK_CAPABILITIES,
         ),
         "deepseek-v4-flash": _opencode_go_profile(
             TransportFamily.OPENAI_CHAT_COMPLETIONS,
-            CHAT_JSON_OBJECT_CAPABILITIES,
+            OPENCODE_DEEPSEEK_CAPABILITIES,
         ),
         **{
             model: _opencode_go_profile(TransportFamily.OPENAI_RESPONSES)

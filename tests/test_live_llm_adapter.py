@@ -7,8 +7,10 @@ from typing import Any
 import pytest
 
 from agents import (
+    KNOWN_OPENCODE_GO_MODEL_PROFILES,
     AgentPrompt,
     AgentToolError,
+    ConversationMessage,
     LiveLLMAdapter,
     ModelMalformedResponseError,
     ModelUsage,
@@ -270,6 +272,78 @@ def test_fake_live_text_response_is_normalized_and_audited(story_setup):
     assert audit.provider_request_id == "req_text" and audit.retry_count == 0
     assert client.requests[0]["timeout_seconds"] == 30.0
     assert client.requests[0]["response_contract"]["mode"] == "json_object"
+
+
+def test_deepseek_tool_turn_disables_thinking_but_finalization_stays_unmodified():
+    profile = KNOWN_OPENCODE_GO_MODEL_PROFILES["deepseek-v4-flash"]
+    client = FakeProviderClient(
+        [
+            ProviderCompletion(text="not a tool call"),
+            ProviderCompletion(text='{"draft_id":"draft_x"}'),
+        ]
+    )
+    adapter = LiveLLMAdapter(
+        client,
+        provider="opencode_go",
+        model="deepseek-v4-flash",
+        profile=profile,
+        sleep=lambda _: None,
+    )
+
+    action_prompt = AgentPrompt(
+        "action",
+        NpcCharacterView("character", "test", "", (), (), "", "", (), "", ""),
+        NpcRuntimeView("story", "Story", None, (), ()),
+        (ConversationMessage("user", "retrieve"),),
+        (ToolDefinition("search_lore", "Search", {"type": "object"}),),
+        "session",
+        1,
+        response_format="character_authoring_action",
+        tool_invocation="required",
+    )
+    with pytest.raises(ModelMalformedResponseError):
+        adapter.generate(action_prompt)
+
+    final_prompt = AgentPrompt(
+        "final",
+        action_prompt.character,
+        action_prompt.runtime,
+        action_prompt.messages,
+        (),
+        "session",
+        2,
+        response_format="character_draft",
+    )
+    adapter.generate(final_prompt)
+
+    assert client.requests[0]["tool_choice"] == "required"
+    assert client.requests[0]["thinking"] == "disabled"
+    assert "thinking" not in client.requests[1]
+
+    later_client = FakeProviderClient(
+        [ProviderCompletion(tool_calls=(ProviderToolCall("call-1", "search_lore", {}),))]
+    )
+    later_adapter = LiveLLMAdapter(
+        later_client,
+        provider="opencode_go",
+        model="deepseek-v4-flash",
+        profile=profile,
+        sleep=lambda _: None,
+    )
+    later_prompt = AgentPrompt(
+        "action",
+        action_prompt.character,
+        action_prompt.runtime,
+        action_prompt.messages,
+        action_prompt.available_tools,
+        "session",
+        2,
+        response_format="character_authoring_action",
+        tool_invocation="optional",
+    )
+    later_adapter.generate(later_prompt)
+    assert "tool_choice" not in later_client.requests[0]
+    assert later_client.requests[0]["thinking"] == "disabled"
 
 
 def test_live_grounding_repair_uses_only_safe_evidence_and_no_tools(story_setup):

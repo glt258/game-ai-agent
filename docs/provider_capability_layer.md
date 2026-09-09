@@ -31,12 +31,16 @@ OpenAI SDK options and contain no provider/model conditionals.
 | --- | --- | --- | --- | --- |
 | `openai` | OpenAI SDK default | OpenAI Chat Completions | conservative JSON Object | none |
 | `deepseek` | `https://api.deepseek.com` | OpenAI Chat Completions | JSON Object | thinking disabled |
-| `opencode_go` | `https://opencode.ai/zen/go/v1` | per known model profile | JSON Object for verified Chat profiles | none |
+| `opencode_go` | `https://opencode.ai/zen/go/v1` | per known model profile | JSON Object for verified Chat profiles | DeepSeek V4 tool turns explicitly disable thinking |
 | `openai_compatible` | must be configured | OpenAI Chat Completions | conservative JSON Object | none |
 
-The direct DeepSeek `thinking={type: disabled}` option belongs only to the
-direct `deepseek` profile. An OpenCode Go model whose ID contains `deepseek`
-does not inherit that extension.
+The direct DeepSeek `thinking={type: disabled}` option remains owned by the
+direct `deepseek` profile. Verified OpenCode Go `deepseek-v4-flash` and
+`deepseek-v4-pro` profiles separately declare the same thinking policy for
+tool-bearing requests through the provider capability seam. The adapter sends
+`extra_body={"thinking":{"type":"disabled"}}` only while tools are present;
+no-tools finalization keeps its existing request shape. Other OpenCode Go
+models do not inherit the DeepSeek option from their model ID.
 
 `NPC_LLM_BASE_URL` still overrides every provider default. Existing `openai`
 and `deepseek` configuration remains valid.

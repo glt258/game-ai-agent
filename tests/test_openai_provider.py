@@ -342,6 +342,42 @@ def test_deepseek_compatible_request_disables_thinking_only_via_extra_body():
     assert client.base_url == "https://api.deepseek.com"
 
 
+def test_thinking_option_is_encoded_in_extra_body_without_overwriting_other_options():
+    sdk_response = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                finish_reason="tool_calls",
+                message=SimpleNamespace(content=None, tool_calls=None),
+            )
+        ],
+        usage=None,
+        _request_id=None,
+    )
+    completions = FakeCompletions(sdk_response)
+    client = OpenAIChatClient(
+        api_key="placeholder-test-key",
+        provider="opencode_go",
+        request_options={"extra_body": {"gateway_flag": "keep"}},
+        sdk_client=SimpleNamespace(chat=SimpleNamespace(completions=completions)),
+    )
+
+    with default_invocation_context(budget_seconds=30.0):
+        client.complete(
+            model="deepseek-v4-flash",
+            messages=[{"role": "system", "content": "Retrieve evidence."}],
+            tools=[{"type": "function", "function": {"name": "search"}}],
+            timeout_seconds=20,
+            tool_choice="required",
+            thinking="disabled",
+        )
+
+    assert completions.request["tool_choice"] == "required"
+    assert completions.request["extra_body"] == {
+        "gateway_flag": "keep",
+        "thinking": {"type": "disabled"},
+    }
+
+
 def test_deepseek_structured_request_combines_json_mode_with_disabled_thinking():
     sdk_response = SimpleNamespace(
         choices=[

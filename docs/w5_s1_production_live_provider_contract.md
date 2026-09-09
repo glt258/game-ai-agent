@@ -200,7 +200,8 @@ today's remote model catalog or successful live verification.
 ## E. Existing interfaces and structures
 
 `ProviderChatClient.complete` keyword request: `model`, `messages`, `tools`,
-`timeout_seconds`, `response_contract` (default text). No request dataclass,
+`timeout_seconds`, `response_contract` (default text), optional `tool_choice`
+and optional `thinking`. No request dataclass,
 operation role, correlation ID, deadline, cancellation or typed output limit.
 `ProviderCompletion`: nullable `text`, tuple `tool_calls`, nullable `finish_reason`,
 `usage`, `request_id`. `ProviderToolCall`: `id`, `name`, `arguments`.
@@ -271,6 +272,21 @@ intent to `tool_choice="required"`. Later action turns remain provider-auto so t
 model can emit the exact `FINALIZE` signal. Finalization uses no tools and keeps
 `tool_choice` absent while requesting structured JSON; structural recovery, repair,
 NPC and Skill paths retain their existing optional/disabled behavior.
+
+DeepSeek V4 thinking defaults to enabled, but the current provider-neutral
+conversation model does not retain or replay `reasoning_content`. The verified
+OpenCode Go DeepSeek Flash/Pro profiles therefore declare a disabled-thinking
+compatibility policy for every tool-bearing request. The adapter preserves the
+application's `tool_choice="required"` intent and transports the provider
+compatibility choice as `extra_body={"thinking":{"type":"disabled"}}`.
+No-tools finalization is not given this adapter override, and no reasoning
+content is persisted, logged, or exposed. DeepSeek's official tool-call
+guidance requires full `reasoning_content` round-trip when thinking is enabled;
+the current DeepSeek Agent integration guidance additionally records
+`supportsToolChoice: false` and `requiresReasoningContentForToolCalls: true` for
+V4 thinking integrations
+([DeepSeek Agent integrations](https://api-docs.deepseek.com/quick_start/agent_integrations/oh_my_pi/)).
+Supporting that larger history contract remains out of scope.
 
 Timeout/retry: adapter 30s, 2 retries, backoff .5s then 1s; no whole Character
 operation deadline, no Character job. A successful call gets audit in `_normalize`;
@@ -414,7 +430,7 @@ gitignored and can be sourced manually; it is not automatically read.
 | `NPC_RUN_LIVE_SMOKE` | optional real test gate; CI sets 0 | TEST_ONLY / explicit probe |
 | `GAME_AI_AGENT_DB_PATH` | SQLite path only | CANONICAL persistence; not provider registry |
 | `LiveLLMAdapter.backoff_seconds` | .5; constructor-only, exponential | CANONICAL adapter option, no env name |
-| `OpenAIChatClient.request_options` / profile.provider_options | direct DeepSeek extra_body.thinking.type=disabled; reserved core fields rejected | CANONICAL trusted options; not browser input |
+| `OpenAIChatClient.request_options` / profile.provider_options | direct DeepSeek extra_body.thinking.type=disabled; verified OpenCode Go DeepSeek tool turns use the adapter thinking option; reserved core fields rejected | CANONICAL trusted options; not browser input |
 | `OpenAIChatClient.complete(response_mode=...)` | legacy text/structured_json alias | LEGACY direct-call compatibility |
 | `SkillPlaygroundRequestDTO` | mode offline; provider opencode_go; model web-offline-fixture | PILOT_ONLY browser selection; model allowlist below |
 | `_default_hybrid_provider_factory` | opencode_go, deepseek-v4-pro, 60s, 0 retries, JSON object, only key copied from process | PILOT_ONLY |

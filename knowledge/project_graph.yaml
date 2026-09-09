@@ -278,7 +278,7 @@ nodes:
     type: "contract"
     name: "ProviderProtocol"
     status: "stable"
-    responsibility: "Provider-neutral completion, tool-call invocation intent, response-contract, typed safe errors and shared live invocation reliability boundary."
+    responsibility: "Provider-neutral completion, tool-call invocation intent, optional thinking-mode compatibility intent, response-contract, typed safe errors and shared live invocation reliability boundary."
     path: "src/agents/provider_protocol.py"
     canonical_source: "src/agents/provider_protocol.py"
     tests:
@@ -295,7 +295,7 @@ nodes:
       - path: "src/agents/reliability.py"
         locator: "InvocationContext provider_session_id parent-operation affinity"
       - path: "src/agents/provider_protocol.py"
-        locator: "optional tool_choice transport field"
+        locator: "optional tool_choice and thinking transport fields"
 
   - id: "component.live_llm_settings"
     type: "component"
@@ -312,7 +312,7 @@ nodes:
     type: "component"
     name: "ProviderProfiles"
     status: "stable"
-    responsibility: "Describe supported provider transports and capability mappings without making individual models graph nodes."
+    responsibility: "Describe supported provider transports, capability mappings and verified model-specific thinking policies without making individual models graph nodes."
     path: "src/agents/provider_profiles.py"
     canonical_source: "src/agents/provider_profiles.py"
     tests:
@@ -323,7 +323,7 @@ nodes:
     type: "component"
     name: "OpenAI-compatible Live Adapter"
     status: "stable"
-    responsibility: "Adapt compatible live provider transport, map required tool invocation to tool_choice without changing other request fields, keep SDK retries disabled and map transport/envelope failures to sanitized typed ProviderClientError values."
+    responsibility: "Adapt compatible live provider transport, map required tool invocation and optional thinking compatibility intent without changing unrelated request fields, keep SDK retries disabled and map transport/envelope failures to sanitized typed ProviderClientError values."
     path: "src/agents/openai_provider.py"
     canonical_source: "src/agents/openai_provider.py"
     tests:
@@ -338,7 +338,7 @@ nodes:
       - path: "src/agents/openai_provider.py"
         locator: "OpenCode Go x-opencode-session extra_headers injection"
       - path: "src/agents/openai_provider.py"
-        locator: "provider-neutral required tool_choice mapping"
+        locator: "provider-neutral required tool_choice and thinking option mapping"
 
   - id: "component.web_adapter"
     type: "component"

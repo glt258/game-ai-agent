@@ -100,7 +100,7 @@ OpenCode/Anomaly metadata 当前记录：
 
 直连 DeepSeek 的官方行为仍然清楚：thinking 默认 enabled；tool-call turn 必须在后续请求完整回传 `reasoning_content`，否则返回 400；也可显式发送 `thinking: {"type":"disabled"}` 关闭。[DeepSeek — Thinking Mode](https://api-docs.deepseek.com/guides/thinking_mode)
 
-实现边界应是：
+原始 OpenCode Go 基线的实现边界应是：
 
 ```text
 DeepSeek direct profile
@@ -110,6 +110,14 @@ OpenCode Go profile
   -> no DeepSeek-private option merely because of model name
   -> add an option only after OpenCode Go docs or reproducible gateway payload + regression test establish it
 ```
+
+W5-S1E-F6 added the narrow exception established by the production failure
+audit: the two verified OpenCode Go DeepSeek V4 Chat profiles explicitly
+disable thinking on tool-bearing requests because this application's action
+history does not round-trip `reasoning_content`. The option is selected by the
+profile capability and adapter phase, not by a model-name substring; no-tools
+finalization remains unchanged. This does not claim that every OpenCode Go
+model accepts DeepSeek-private fields.
 
 ## 建议的本轮 profile 基线
 

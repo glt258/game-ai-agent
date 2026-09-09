@@ -12,11 +12,12 @@ from typing import Any
 import pytest
 
 from agents import (
+    KNOWN_OPENCODE_GO_MODEL_PROFILES,
+    PROVIDER_PROFILES,
     AgentPrompt,
     CharacterAuthoringView,
     CharacterGenerationRuntimeView,
     ConversationMessage,
-    KNOWN_OPENCODE_GO_MODEL_PROFILES,
     LiveLLMAdapter,
     LiveLLMSettings,
     ModelAuthenticationError,
@@ -26,7 +27,6 @@ from agents import (
     ModelProviderError,
     ModelRateLimitError,
     ModelTimeoutError,
-    PROVIDER_PROFILES,
     ProviderCapabilities,
     ProviderClientError,
     ProviderCompletion,
@@ -245,6 +245,17 @@ def test_current_opencode_go_model_routing_is_centralized(models, transport):
         assert profile.transport_family is transport
         assert profile.default_base_url == "https://opencode.ai/zen/go/v1"
         assert profile.capabilities.supports_tools
+
+
+def test_opencode_deepseek_tool_profiles_disable_thinking_without_changing_other_profiles():
+    for model in ("deepseek-v4-flash", "deepseek-v4-pro"):
+        profile = KNOWN_OPENCODE_GO_MODEL_PROFILES[model]
+        assert profile.capabilities.thinking_mode_behavior is ThinkingModeBehavior.DISABLED
+        assert profile.provider_options == {}
+
+    for model in ("glm-5.3", "mimo-v2.5"):
+        profile = KNOWN_OPENCODE_GO_MODEL_PROFILES[model]
+        assert profile.capabilities.thinking_mode_behavior is ThinkingModeBehavior.PROVIDER_DEFAULT
 
 
 class ContractClient:

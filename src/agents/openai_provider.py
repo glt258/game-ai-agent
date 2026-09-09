@@ -88,6 +88,7 @@ class OpenAIChatClient(ProviderChatClient):
         response_contract: NegotiatedResponseContract = TEXT_NEGOTIATED_RESPONSE,
         response_mode: str | None = None,
         tool_choice: str | None = None,
+        thinking: str | None = None,
     ) -> ProviderCompletion:
         # Preserve the v0.2 client API for direct callers while the runtime now
         # uses the richer negotiated contract.
@@ -122,6 +123,18 @@ class OpenAIChatClient(ProviderChatClient):
             if not tools:
                 raise ValueError("tool_choice requires provider tools")
             request["tool_choice"] = tool_choice
+        if thinking is not None:
+            if thinking not in {"enabled", "disabled"}:
+                raise ValueError("thinking must be enabled, disabled, or omitted")
+            extra_body = request.get("extra_body")
+            if extra_body is None:
+                extra_body = {}
+            elif not isinstance(extra_body, Mapping):
+                raise ValueError("Provider extra_body must be a mapping")
+            else:
+                extra_body = deepcopy(dict(extra_body))
+            extra_body["thinking"] = {"type": thinking}
+            request["extra_body"] = extra_body
         if response_contract.mode is ResponseMode.JSON_OBJECT:
             request["response_format"] = {"type": "json_object"}
         elif response_contract.mode is ResponseMode.JSON_SCHEMA:

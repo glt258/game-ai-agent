@@ -131,4 +131,5 @@ class ProviderChatClient(Protocol):
         timeout_seconds: float,
         response_contract: NegotiatedResponseContract = TEXT_NEGOTIATED_RESPONSE,
         tool_choice: str | None = None,
+        thinking: str | None = None,
     ) -> ProviderCompletion: ...
