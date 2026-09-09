@@ -7,17 +7,20 @@ from typing import Any
 import pytest
 
 from agents import (
+    AgentPrompt,
     AgentToolError,
     LiveLLMAdapter,
     ModelMalformedResponseError,
     ModelUsage,
+    NpcCharacterView,
     NpcConversationAgent,
+    NpcRuntimeView,
     ProviderCompletion,
     ProviderToolCall,
+    ToolDefinition,
 )
 from knowledge import KnowledgeResolver
 from story import StoryRuntime
-
 
 STORY_ID = "story_after_the_show_001"
 PUBLIC_STATEMENT = "临洲公共安全联席体系是警务、消防、急救和大型活动安全之间的协作机制，不是独立的能力管理机关。"
@@ -93,6 +96,71 @@ def test_normalized_segment_ids_must_still_be_unique():
     )
     with pytest.raises(ModelMalformedResponseError, match="unique"):
         LiveLLMAdapter._parse_segments(payload)
+
+
+@pytest.mark.parametrize(
+    ("label", "completion", "accepted"),
+    [
+        ("stop_none_content", ProviderCompletion(text="plain", finish_reason="stop"), False),
+        (
+            "tool_calls_valid",
+            ProviderCompletion(
+                tool_calls=(ProviderToolCall("call_1", "get_world_rules", {}),),
+                finish_reason="tool_calls",
+            ),
+            True,
+        ),
+        (
+            "stop_valid_calls",
+            ProviderCompletion(
+                text="plain",
+                tool_calls=(ProviderToolCall("call_1", "get_world_rules", {}),),
+                finish_reason="stop",
+            ),
+            True,
+        ),
+        ("tool_calls_none", ProviderCompletion(finish_reason="tool_calls"), False),
+        ("length_none", ProviderCompletion(finish_reason="length"), False),
+        (
+            "null_finish_valid_calls",
+            ProviderCompletion(
+                tool_calls=(ProviderToolCall("call_1", "get_world_rules", {}),),
+                finish_reason=None,
+            ),
+            True,
+        ),
+    ],
+    ids=lambda value: value if isinstance(value, str) else None,
+)
+def test_authoring_finish_reason_matrix_uses_structured_calls_as_authority(
+    label, completion, accepted
+):
+    prompt = AgentPrompt(
+        system_contract="Retrieve evidence.",
+        character=NpcCharacterView("c", "C", "", (), (), "", "", (), "", ""),
+        runtime=NpcRuntimeView("s", "", None, (), ()),
+        messages=(),
+        available_tools=(
+            ToolDefinition("get_world_rules", "Read world rules", {"type": "object"}),
+        ),
+        session_id="s",
+        turn_number=1,
+        response_format="character_authoring_action",
+    )
+    client = FakeProviderClient([completion])
+    adapter = LiveLLMAdapter(
+        client,
+        provider="openai",
+        model="test-model",
+        sleep=lambda _: None,
+    )
+
+    if accepted:
+        turn = adapter.generate(prompt)
+        assert turn.tool_calls or turn.text == "plain"
+    else:
+        with pytest.raises(ModelMalformedResponseError):
+            adapter.generate(prompt)
 
 
 @pytest.mark.parametrize("segment_id", ["   ", "\t", " \t "])

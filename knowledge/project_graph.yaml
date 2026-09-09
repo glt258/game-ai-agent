@@ -16,7 +16,7 @@ nodes:
     type: "component"
     name: "CharacterGenerationAgent"
     status: "frozen"
-    responsibility: "Generate strict, reviewable CharacterDraft proposals through bounded read-only retrieval and consume the shared live invocation deadline, retry and cancellation contract."
+    responsibility: "Generate strict, reviewable CharacterDraft proposals through bounded read-only retrieval, express Canon-dependent initial action turns as required tool invocation, and consume the shared live invocation deadline, retry and cancellation contract."
     path: "src/agents/character_generation.py"
     canonical_source: "src/agents/character_generation.py"
     tests:
@@ -29,6 +29,8 @@ nodes:
         locator: "character authoring flow"
       - path: "src/web/services/character_generation.py"
         locator: "live generation invocation context"
+      - path: "src/agents/character_generation.py"
+        locator: "initial Canon-dependent action tool requirement"
 
   - id: "contract.character_draft"
     type: "contract"
@@ -276,7 +278,7 @@ nodes:
     type: "contract"
     name: "ProviderProtocol"
     status: "stable"
-    responsibility: "Provider-neutral completion, tool-call, response-contract, typed safe errors and shared live invocation reliability boundary."
+    responsibility: "Provider-neutral completion, tool-call invocation intent, response-contract, typed safe errors and shared live invocation reliability boundary."
     path: "src/agents/provider_protocol.py"
     canonical_source: "src/agents/provider_protocol.py"
     tests:
@@ -292,6 +294,8 @@ nodes:
         locator: "ProviderClientError safe upstream metadata allowlist"
       - path: "src/agents/reliability.py"
         locator: "InvocationContext provider_session_id parent-operation affinity"
+      - path: "src/agents/provider_protocol.py"
+        locator: "optional tool_choice transport field"
 
   - id: "component.live_llm_settings"
     type: "component"
@@ -319,7 +323,7 @@ nodes:
     type: "component"
     name: "OpenAI-compatible Live Adapter"
     status: "stable"
-    responsibility: "Adapt compatible live provider transport, keep SDK retries disabled and map transport/envelope failures to sanitized typed ProviderClientError values."
+    responsibility: "Adapt compatible live provider transport, map required tool invocation to tool_choice without changing other request fields, keep SDK retries disabled and map transport/envelope failures to sanitized typed ProviderClientError values."
     path: "src/agents/openai_provider.py"
     canonical_source: "src/agents/openai_provider.py"
     tests:
@@ -333,6 +337,8 @@ nodes:
         locator: "structured SDK error metadata extraction without raw body persistence"
       - path: "src/agents/openai_provider.py"
         locator: "OpenCode Go x-opencode-session extra_headers injection"
+      - path: "src/agents/openai_provider.py"
+        locator: "provider-neutral required tool_choice mapping"
 
   - id: "component.web_adapter"
     type: "component"

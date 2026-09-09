@@ -435,6 +435,15 @@ class AgentPrompt:
     # Allows provider-neutral audit consumers to distinguish a bounded
     # structural recovery invocation from ordinary generation.
     invocation_purpose: str = "generation"
+    # Provider-neutral action intent.  ``optional`` preserves provider auto
+    # selection; only semantically action-required turns map to ``required``.
+    tool_invocation: str = "optional"
+
+    def __post_init__(self) -> None:
+        if self.tool_invocation not in {"required", "optional", "disabled"}:
+            raise ValueError(
+                "tool_invocation must be required, optional, or disabled"
+            )
 
 
 @dataclass(frozen=True)

@@ -2069,6 +2069,7 @@ class CharacterGenerationAgent:
                 action_rounds: Sequence[int] = ()
             else:
                 action_rounds = range(1, self.max_tool_rounds + 1)
+            initial_action_requires_tool = self._initial_action_requires_tool(request)
             for round_number in action_rounds:
                 evidence = tuple(
                     GroundingEvidence(f"canon:{source_id}", GroundingEvidenceType.TOOL_LORE, source_id, source_id if source_type == "lore" else None)
@@ -2084,6 +2085,11 @@ class CharacterGenerationAgent:
                     round_number,
                     evidence,
                     response_format="character_authoring_action",
+                    tool_invocation=(
+                        "required"
+                        if round_number == 1 and initial_action_requires_tool
+                        else "optional"
+                    ),
                 )
                 try:
                     turn = self.model.generate(prompt)
@@ -2298,6 +2304,9 @@ class CharacterGenerationAgent:
             1,
             evidence,
             response_format="character_authoring_action",
+            tool_invocation=(
+                "required" if plan.requires_model_planning else "optional"
+            ),
         )
         try:
             turn = self.model.generate(prompt)
@@ -2330,6 +2339,17 @@ class CharacterGenerationAgent:
             )
             raise error
         return 2
+
+    def _initial_action_requires_tool(self, request: CharacterDesignRequest) -> bool:
+        """Require one structured action when the brief has Canon dependencies."""
+
+        plan = build_character_retrieval_plan(
+            request,
+            known_source_ids=self._known_canon_source_ids(),
+            known_source_aliases=self._known_canon_source_aliases(),
+            source_types=self._known_canon_source_types(),
+        )
+        return any(call.name != "get_world_rules" for call in plan.tool_calls) or plan.requires_model_planning
 
     def _execute_tool_calls(
         self,

@@ -207,12 +207,17 @@ class LiveLLMAdapter:
                 if effective_timeout <= 0:
                     raise DeadlineExceededError()
                 attempt_started = self._monotonic()
+                request = {
+                    "model": self.model,
+                    "messages": messages,
+                    "tools": tools,
+                    "timeout_seconds": effective_timeout,
+                    "response_contract": response_contract,
+                }
+                if prompt.tool_invocation == "required":
+                    request["tool_choice"] = "required"
                 response = self._client.complete(
-                    model=self.model,
-                    messages=messages,
-                    tools=tools,
-                    timeout_seconds=effective_timeout,
-                    response_contract=response_contract,
+                    **request,
                 )
                 attempts.append(
                     ModelAttemptAudit(

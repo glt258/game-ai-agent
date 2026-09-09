@@ -7,6 +7,7 @@ from dataclasses import asdict, replace
 import pytest
 
 from agents import (
+    PROVIDER_PROFILES,
     AgentExecutionError,
     AgentToolError,
     CharacterAuthoringToolbox,
@@ -21,17 +22,16 @@ from agents import (
     ModelRateLimitError,
     ModelTimeoutError,
     ModelTurn,
+    ProviderCapabilities,
     ProviderClientError,
     ProviderCompletion,
     ProviderToolCall,
-    ProviderCapabilities,
-    PROVIDER_PROFILES,
     ScriptedAgentModel,
     ThinkingModeBehavior,
-    ToolCall,
     ToolAuditEntry,
+    ToolCall,
 )
-from agents.character_generation import AuthoringToolExecution, CHARACTER_SYSTEM_CONTRACT
+from agents.character_generation import CHARACTER_SYSTEM_CONTRACT, AuthoringToolExecution
 
 
 def _payload(**overrides):
@@ -542,6 +542,20 @@ def test_live_character_draft_request_uses_structured_json_mode():
     assert client.requests[2]["response_contract"]["mode"] == "json_object"
 
 
+def test_live_character_initial_action_requires_tool_choice_for_canon_dependency():
+    agent, client = live_agent([ProviderCompletion(text="not FINALIZE", finish_reason="stop")])
+
+    with pytest.raises(ModelMalformedResponseError, match="real tool call") as captured:
+        agent.generate(
+            "设计一名临洲市公共安全联席体系所属的新角色。与现有世界观保持一致"
+        )
+
+    assert getattr(captured.value, "phase", None) == "action_termination"
+    assert client.requests[0]["tool_choice"] == "required"
+    assert len(client.requests[0]["tools"]) == 9
+    assert client.requests[0]["response_contract"]["mode"] == "text"
+
+
 def test_live_character_generation_separates_retrieval_and_finalization_contracts():
     agent, client = live_agent(
         [
@@ -609,6 +623,7 @@ def test_live_authoring_action_accepts_exact_finalize_with_outer_whitespace(acti
 
     assert result.draft.status == "draft"
     assert client.requests[0]["response_contract"]["mode"] == "text"
+    assert "tool_choice" not in client.requests[0]
     assert client.requests[1]["response_contract"]["mode"] == "json_object"
     assert client.requests[1]["tools"] == []
 

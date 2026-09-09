@@ -60,6 +60,7 @@ class OpenAIChatClient(ProviderChatClient):
             "timeout",
             "response_format",
             "extra_headers",
+            "tool_choice",
         }
         if reserved & set(self.request_options):
             raise ValueError(
@@ -86,6 +87,7 @@ class OpenAIChatClient(ProviderChatClient):
         timeout_seconds: float,
         response_contract: NegotiatedResponseContract = TEXT_NEGOTIATED_RESPONSE,
         response_mode: str | None = None,
+        tool_choice: str | None = None,
     ) -> ProviderCompletion:
         # Preserve the v0.2 client API for direct callers while the runtime now
         # uses the richer negotiated contract.
@@ -112,6 +114,14 @@ class OpenAIChatClient(ProviderChatClient):
         )
         if tools:
             request["tools"] = list(tools)
+        if tool_choice is not None:
+            if tool_choice not in {"required", "auto", "none"}:
+                raise ValueError(
+                    "tool_choice must be required, auto, none, or omitted"
+                )
+            if not tools:
+                raise ValueError("tool_choice requires provider tools")
+            request["tool_choice"] = tool_choice
         if response_contract.mode is ResponseMode.JSON_OBJECT:
             request["response_format"] = {"type": "json_object"}
         elif response_contract.mode is ResponseMode.JSON_SCHEMA:

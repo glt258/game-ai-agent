@@ -217,7 +217,8 @@ ModelMalformedResponseError. `HybridProviderInvocationError` exposes only
 TIMEOUT/TRANSPORT_FAILURE. AgentExecutionError/AgentToolError are domain failures.
 
 `AgentPrompt` holds safe views, conversation, tools, session/turn, optional
-authoring payload/response format/purpose. `ModelTurn` holds text/tools,
+authoring payload/response format/purpose and provider-neutral tool invocation
+intent. `ModelTurn` holds text/tools,
 structured output, segments and optional invocation. Hybrid uses
 `ModelFacingRequest` in `hybrid_ir/contract.py`, `HybridGenerationContext`,
 `HybridExperimentIdentity`, `HybridEvidence`, `HybridLiveResult` and
@@ -262,6 +263,14 @@ adapter serializes views/payload. Retrieval defaults to `model_loop`; the existi
 `retrieval_strategy='deterministic'` alternative executes deterministic retrieval
 then one finalize-signal model action (`_run_deterministic_retrieval`), followed by
 final generation. Do not silently switch strategies during provider work.
+
+Character action semantics keep tool availability separate from tool invocation
+requirement. The initial action turn is marked `required` only when the request's
+deterministic retrieval plan proves a Canon dependency; the transport maps that
+intent to `tool_choice="required"`. Later action turns remain provider-auto so the
+model can emit the exact `FINALIZE` signal. Finalization uses no tools and keeps
+`tool_choice` absent while requesting structured JSON; structural recovery, repair,
+NPC and Skill paths retain their existing optional/disabled behavior.
 
 Timeout/retry: adapter 30s, 2 retries, backoff .5s then 1s; no whole Character
 operation deadline, no Character job. A successful call gets audit in `_normalize`;
