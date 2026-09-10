@@ -64,6 +64,8 @@ function ValidatorList({validators, showTargets = false}: {validators: Validator
 
 function FailureDiagnostics({error}: {error: ApiClientError}) {
   const body = error.payload.error;
+  const action = body.details.action_termination;
+  const actionDiagnostics = action && typeof action === "object" ? action as Record<string, unknown> : null;
   const invocations = body.audit?.model_invocations ?? [];
   const latest = invocations.length > 0 ? invocations[invocations.length - 1] : null;
   const attempts = latest ? latest.attempts.length || latest.retry_count + 1 : null;
@@ -84,6 +86,17 @@ function FailureDiagnostics({error}: {error: ApiClientError}) {
         {latest?.provider_request_id && <div className="audit-row"><span>Request ID</span><strong>{latest.provider_request_id}</strong></div>}
         <div className="audit-row"><span>Provider 可重试</span><strong>{latest?.provider_retryable === null || latest?.provider_retryable === undefined ? "未知" : latest.provider_retryable ? "是" : "否"}</strong></div>
         <div className="audit-row"><span>Token 用量</span><strong>{usage ? `${usage.input_tokens ?? "?"} in / ${usage.output_tokens ?? "?"} out / ${usage.total_tokens ?? "?"} total` : "未报告"}</strong></div>
+        {actionDiagnostics && <>
+          <div className="audit-row"><span>Action phase</span><strong>{String(actionDiagnostics.action_phase ?? "未知")}</strong></div>
+          <div className="audit-row"><span>Action round</span><strong>{String(actionDiagnostics.action_round_index ?? "未知")}</strong></div>
+          <div className="audit-row"><span>Tool-choice semantic</span><strong>{String(actionDiagnostics.request_tool_invocation ?? "未知")}</strong></div>
+          <div className="audit-row"><span>Wire tool_choice</span><strong>{String(actionDiagnostics.outbound_tool_choice ?? "absent")}</strong></div>
+          <div className="audit-row"><span>Tools / tool calls</span><strong>{String(actionDiagnostics.tool_count ?? "?")} / {String(actionDiagnostics.structured_tool_call_count ?? "?")}</strong></div>
+          <div className="audit-row"><span>Assistant content</span><strong>{actionDiagnostics.assistant_content_present ? `present (${String(actionDiagnostics.assistant_content_length ?? 0)} chars)` : "absent"}</strong></div>
+          <div className="audit-row"><span>Finish reason</span><strong>{String(actionDiagnostics.finish_reason ?? "null")}</strong></div>
+          <div className="audit-row"><span>Exact FINALIZE</span><strong>{actionDiagnostics.exact_finalize_match ? "yes" : "no"}</strong></div>
+          <div className="audit-row"><span>Termination reason</span><strong>{String(actionDiagnostics.action_termination_reason ?? "未知")}</strong></div>
+        </>}
       </div>
     </details>
   );

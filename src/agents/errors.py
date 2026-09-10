@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any
 
-from .models import ModelInvocationAudit
+from .models import ActionTerminationDiagnostic, ModelInvocationAudit
 
 
 class AgentError(Exception):
@@ -15,6 +15,7 @@ class AgentError(Exception):
         # failures so live renderers can distinguish recovery from Canon
         # repair without exposing model content.
         self.contract_recovery = None
+        self.action_termination_diagnostics: ActionTerminationDiagnostic | None = None
 
 
 class AgentExecutionError(AgentError):
@@ -76,11 +77,14 @@ class ModelMalformedResponseError(ModelError):
         message: str,
         *,
         finalization_diagnostics: dict[str, Any] | None = None,
+        action_termination_diagnostics: ActionTerminationDiagnostic | None = None,
     ) -> None:
         super().__init__(message)
         # Shape-only metadata populated by the finalization parser.  It never
         # contains response values, raw JSON, or arbitrary model-generated keys.
         self.finalization_diagnostics = finalization_diagnostics
+        self.action_termination_diagnostics = action_termination_diagnostics
+        self.action_termination_reason = None
 
 
 class FinalizationContextFailureReason(str, Enum):

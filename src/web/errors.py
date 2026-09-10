@@ -7,13 +7,13 @@ from agents.errors import (
     AgentError,
     AgentExecutionError,
     AgentToolError,
+    FinalizationContextFailureReason,
     ModelAuthenticationError,
     ModelCancelledError,
     ModelCapabilityError,
     ModelConfigurationError,
     ModelContextLimitError,
     ModelDeadlineExceededError,
-    FinalizationContextFailureReason,
     ModelMalformedResponseError,
     ModelProviderError,
     ModelRateLimitError,
@@ -124,6 +124,15 @@ def _finalization_details(error: BaseException) -> dict[str, Any]:
         if isinstance(result.get(key), tuple):
             result[key] = list(result[key])
     return result
+
+
+def _action_termination_details(error: BaseException) -> dict[str, Any]:
+    diagnostic = getattr(error, "action_termination_diagnostics", None)
+    to_dict = getattr(diagnostic, "to_dict", None)
+    if not callable(to_dict):
+        return {}
+    value = to_dict()
+    return value if isinstance(value, dict) else {}
 
 
 def map_generation_exception(error: BaseException) -> WebApplicationError:
@@ -260,6 +269,10 @@ def map_generation_exception(error: BaseException) -> WebApplicationError:
         finalization = _finalization_details(error)
         if finalization:
             failure_details["finalization"] = finalization
+        if getattr(error, "phase", None) == "action_termination":
+            action_termination = _action_termination_details(error)
+            if action_termination:
+                failure_details["action_termination"] = action_termination
         return WebApplicationError(
             "MODEL_RESPONSE_INVALID",
             "The model returned a response that did not satisfy the runtime contract.",
@@ -303,6 +316,10 @@ def map_generation_exception(error: BaseException) -> WebApplicationError:
         failure_details = dict(details)
         failure_details["reason_code"] = reason or "generation_execution_failed"
         failure_details["model_invocation_count"] = len(audits)
+        if getattr(error, "phase", None) == "action_termination":
+            action_termination = _action_termination_details(error)
+            if action_termination:
+                failure_details["action_termination"] = action_termination
         recovery = getattr(error, "contract_recovery", None)
         recovery_status = getattr(recovery, "status", None)
         if isinstance(recovery_status, str):

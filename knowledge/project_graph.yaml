@@ -37,6 +37,12 @@ nodes:
         locator: "finite safe finalization-context failure reasons and fail-closed diagnostics"
       - path: "src/agents/character_generation.py"
         locator: "ordered one-per-execution tool audits retain original structured call arguments"
+      - path: "src/agents/models.py"
+        locator: "finite action phases and bounded failing-turn termination diagnostics"
+      - path: "tests/test_character_generation.py"
+        locator: "initial required versus later optional action termination attribution"
+      - path: "docs/project_memory/frozen_contracts.md"
+        locator: "phase-attributed action termination diagnostic contract"
 
   - id: "contract.character_draft"
     type: "contract"
@@ -372,6 +378,10 @@ nodes:
         locator: "MODEL_RESPONSE_INVALID safe finalization shape projection"
       - path: "src/web/errors.py"
         locator: "GENERATION_CONTEXT_FAILED finite context_failure_reason projection"
+      - path: "src/web/errors.py"
+        locator: "MODEL_RESPONSE_INVALID action-termination safe metadata projection"
+      - path: "web/features/character-studio/components/AgentInspector.tsx"
+        locator: "read-only failing-turn action diagnostics"
 
   - id: "component.runtime_path_resolution"
     type: "component"
@@ -631,6 +641,8 @@ nodes:
         locator: "nullable context_failure_reason in safe error DTO"
       - path: "src/web/services/live_jobs.py"
         locator: "one InvocationContext per live job; provider session ID is runtime-only"
+      - path: "src/web/services/live_jobs.py"
+        locator: "job polling is separate from logical provider invocation counting"
 
   - id: "component.runtime_diagnostics"
     type: "component"

@@ -1279,3 +1279,26 @@ values remain `null`. The adapter never projects raw response bodies, error
 messages, headers, credentials, request payloads, prompts, tool payloads, or
 stack traces. HTTP status remains the upstream status even when the Web layer
 maps the failure to HTTP 502/503.
+# W5-S1E-F11 Action Termination Attribution
+
+Character authoring action turns keep a finite phase distinction. The first
+Canon-dependent turn is `INITIAL_CANON_REQUIRED` with semantic `REQUIRED` and
+wire `tool_choice=required`; subsequent action turns are `LATER_ACTION` with
+semantic `OPTIONAL` and the canonical absent wire value, so the provider may
+emit either a structured tool call or the exact `FINALIZE` signal. Final draft
+generation is `FINALIZATION` and has no tools.
+
+When an action turn fails closed, the Web error projection may include only the
+failing turn's bounded metadata: phase, one-based round index, semantic and
+wire tool-choice values, tool presence/count, structured call count, assistant
+content presence/length, allowlisted finish reason, exact `FINALIZE` match, and
+a finite termination reason. It never includes assistant content, arguments,
+tool names, tool results, prompts, Canon text, raw provider data, headers or
+credentials. The main UI continues to show the fixed `MODEL_RESPONSE_INVALID`
+message; the fields are technical inspector data only.
+
+`submit` and job-poll HTTP responses are not provider invocation counts. Live
+jobs remain ephemeral and diagnostics are not persisted. The F10 deterministic
+fix is remote closed, while live F10 status remains inconclusive until a probe
+reaches `_build_finalization_context`; an `action_termination` observation
+alone does not confirm an F5 regression.

@@ -87,6 +87,136 @@ class ModelAttemptAudit:
         )
 
 
+class ActionPhase(str, Enum):
+    """Finite phases for the Character authoring action protocol."""
+
+    INITIAL_CANON_REQUIRED = "INITIAL_CANON_REQUIRED"
+    LATER_ACTION = "LATER_ACTION"
+    FINALIZATION = "FINALIZATION"
+
+
+class ActionTerminationReason(str, Enum):
+    """Finite, content-free reasons for action-loop termination."""
+
+    NO_TOOL_CALL_NON_FINALIZE = "NO_TOOL_CALL_NON_FINALIZE"
+    EMPTY_COMPLETION = "EMPTY_COMPLETION"
+    MALFORMED_TOOL_CALL = "MALFORMED_TOOL_CALL"
+    UNKNOWN_TOOL = "UNKNOWN_TOOL"
+    INVALID_TOOL_ARGUMENTS = "INVALID_TOOL_ARGUMENTS"
+    ACTION_ROUNDS_EXHAUSTED = "ACTION_ROUNDS_EXHAUSTED"
+    INVALID_FINALIZE = "INVALID_FINALIZE"
+    OTHER = "OTHER"
+
+
+@dataclass(frozen=True)
+class ActionTerminationDiagnostic:
+    """Bounded metadata for one failing action turn; never carries content."""
+
+    action_phase: ActionPhase
+    action_round_index: int
+    request_tool_invocation: str
+    outbound_tool_choice: str | None
+    tools_present: bool
+    tool_count: int
+    structured_tool_call_count: int
+    assistant_content_present: bool
+    assistant_content_length: int
+    finish_reason: str | None
+    exact_finalize_match: bool
+    action_termination_reason: ActionTerminationReason
+
+    def __post_init__(self) -> None:
+        if self.action_round_index < 0:
+            raise ValueError("action_round_index must not be negative")
+        if self.request_tool_invocation not in {"REQUIRED", "OPTIONAL", "DISABLED"}:
+            raise ValueError("request_tool_invocation must be finite")
+        if self.outbound_tool_choice not in {None, "required"}:
+            raise ValueError("outbound_tool_choice must be required or absent")
+        for name in ("tool_count", "structured_tool_call_count", "assistant_content_length"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ValueError(f"{name} must be a non-negative integer")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "action_phase": self.action_phase.value,
+            "action_round_index": self.action_round_index,
+            "request_tool_invocation": self.request_tool_invocation,
+            "outbound_tool_choice": self.outbound_tool_choice,
+            "tools_present": self.tools_present,
+            "tool_count": self.tool_count,
+            "structured_tool_call_count": self.structured_tool_call_count,
+            "assistant_content_present": self.assistant_content_present,
+            "assistant_content_length": self.assistant_content_length,
+            "finish_reason": self.finish_reason,
+            "exact_finalize_match": self.exact_finalize_match,
+            "action_termination_reason": self.action_termination_reason.value,
+        }
+
+
+def action_termination_reason_for_text(text: Any) -> ActionTerminationReason:
+    if not isinstance(text, str) or not text.strip():
+        return ActionTerminationReason.EMPTY_COMPLETION
+    return (
+        ActionTerminationReason.INVALID_FINALIZE
+        if "FINALIZE" in text
+        else ActionTerminationReason.NO_TOOL_CALL_NON_FINALIZE
+    )
+
+
+def build_action_termination_diagnostic(
+    prompt: "AgentPrompt",
+    *,
+    reason: ActionTerminationReason,
+    text: Any = None,
+    tool_call_count: int = 0,
+    finish_reason: Any = None,
+    exact_finalize_match: bool | None = None,
+) -> ActionTerminationDiagnostic:
+    """Build bounded action metadata from a provider-neutral prompt/shape."""
+
+    semantic = {
+        "required": "REQUIRED",
+        "optional": "OPTIONAL",
+        "disabled": "DISABLED",
+    }[prompt.tool_invocation]
+    phase = {
+        "required": ActionPhase.INITIAL_CANON_REQUIRED,
+        "optional": ActionPhase.LATER_ACTION,
+        "disabled": ActionPhase.FINALIZATION,
+    }[prompt.tool_invocation]
+    content_present = isinstance(text, str)
+    normalized_finish_reason = (
+        finish_reason
+        if isinstance(finish_reason, str)
+        and finish_reason in {"stop", "tool_calls", "length", "content_filter", "null"}
+        else (None if finish_reason is None else "other")
+    )
+    safe_tool_call_count = (
+        tool_call_count
+        if isinstance(tool_call_count, int) and not isinstance(tool_call_count, bool) and tool_call_count >= 0
+        else 0
+    )
+    return ActionTerminationDiagnostic(
+        action_phase=phase,
+        action_round_index=prompt.turn_number,
+        request_tool_invocation=semantic,
+        outbound_tool_choice="required" if prompt.tool_invocation == "required" else None,
+        tools_present=bool(prompt.available_tools),
+        tool_count=len(prompt.available_tools),
+        structured_tool_call_count=safe_tool_call_count,
+        assistant_content_present=content_present,
+        assistant_content_length=min(len(text), 4096) if content_present else 0,
+        finish_reason=normalized_finish_reason,
+        exact_finalize_match=(
+            text.strip() == "FINALIZE"
+            if exact_finalize_match is None and isinstance(text, str)
+            else bool(exact_finalize_match)
+        ),
+        action_termination_reason=reason,
+    )
+
+
 @dataclass(frozen=True)
 class ModelInvocationAudit:
     session_id: str

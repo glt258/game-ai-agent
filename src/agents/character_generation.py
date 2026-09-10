@@ -47,6 +47,7 @@ from .errors import (
 )
 from .model_protocol import AgentModel
 from .models import (
+    ActionTerminationReason,
     AgentPrompt,
     CharacterDraftRecoveryAudit,
     CharacterSkillShadowResult,
@@ -60,6 +61,8 @@ from .models import (
     ToolAuditEntry,
     ToolCall,
     ToolDefinition,
+    action_termination_reason_for_text,
+    build_action_termination_diagnostic,
 )
 from .response_contracts import (
     CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL,
@@ -2164,6 +2167,8 @@ class CharacterGenerationAgent:
             else:
                 action_rounds = range(1, self.max_tool_rounds + 1)
             initial_action_requires_tool = self._initial_action_requires_tool(request)
+            last_action_prompt: AgentPrompt | None = None
+            last_action_turn: ModelTurn | None = None
             for round_number in action_rounds:
                 evidence = tuple(
                     GroundingEvidence(f"canon:{source_id}", GroundingEvidenceType.TOOL_LORE, source_id, source_id if source_type == "lore" else None)
@@ -2185,15 +2190,22 @@ class CharacterGenerationAgent:
                         else "optional"
                     ),
                 )
+                last_action_prompt = prompt
                 try:
                     turn = self.model.generate(prompt)
                 except ModelMalformedResponseError as error:
+                    if error.action_termination_diagnostics is None:
+                        error.action_termination_diagnostics = build_action_termination_diagnostic(
+                            prompt,
+                            reason=ActionTerminationReason.OTHER,
+                        )
                     _classify_generation_failure(
                         error,
                         phase=_ACTION_TERMINATION_PHASE,
                         reason="invalid_termination_signal",
                     )
                     raise
+                last_action_turn = turn
                 if turn.invocation is not None:
                     invocations.append(turn.invocation)
                 if turn.tool_calls:
@@ -2210,6 +2222,13 @@ class CharacterGenerationAgent:
                     error = ModelMalformedResponseError(
                         "Authoring action must be a real tool call or end with the exact FINALIZE signal"
                     )
+                    error.action_termination_diagnostics = build_action_termination_diagnostic(
+                        prompt,
+                        reason=action_termination_reason_for_text(turn.text),
+                        text=turn.text,
+                        tool_call_count=len(turn.tool_calls),
+                        finish_reason=turn.finish_reason,
+                    )
                     _classify_generation_failure(
                         error,
                         phase=_ACTION_TERMINATION_PHASE,
@@ -2222,6 +2241,22 @@ class CharacterGenerationAgent:
                 error = ModelMalformedResponseError(
                     "Authoring action round limit exhausted before exact FINALIZE"
                 )
+                if last_action_prompt is not None:
+                    error.action_termination_diagnostics = build_action_termination_diagnostic(
+                        last_action_prompt,
+                        reason=ActionTerminationReason.ACTION_ROUNDS_EXHAUSTED,
+                        text=last_action_turn.text if last_action_turn is not None else None,
+                        tool_call_count=(
+                            len(last_action_turn.tool_calls)
+                            if last_action_turn is not None
+                            else 0
+                        ),
+                        finish_reason=(
+                            last_action_turn.finish_reason
+                            if last_action_turn is not None
+                            else None
+                        ),
+                    )
                 _classify_generation_failure(
                     error,
                     phase=_ACTION_TERMINATION_PHASE,
@@ -2429,6 +2464,11 @@ class CharacterGenerationAgent:
         try:
             turn = self.model.generate(prompt)
         except ModelMalformedResponseError as error:
+            if error.action_termination_diagnostics is None:
+                error.action_termination_diagnostics = build_action_termination_diagnostic(
+                    prompt,
+                    reason=ActionTerminationReason.OTHER,
+                )
             _classify_generation_failure(
                 error,
                 phase=_ACTION_TERMINATION_PHASE,
@@ -2449,6 +2489,13 @@ class CharacterGenerationAgent:
         elif not has_terminal_authoring_finalize_signal(turn.text or ""):
             error = ModelMalformedResponseError(
                 "Authoring action must be a real tool call or end with the exact FINALIZE signal"
+            )
+            error.action_termination_diagnostics = build_action_termination_diagnostic(
+                prompt,
+                reason=action_termination_reason_for_text(turn.text),
+                text=turn.text,
+                tool_call_count=len(turn.tool_calls),
+                finish_reason=turn.finish_reason,
             )
             _classify_generation_failure(
                 error,

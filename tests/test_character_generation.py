@@ -658,6 +658,59 @@ def test_live_character_initial_action_requires_tool_choice_for_canon_dependency
     assert client.requests[0]["response_contract"]["mode"] == "text"
 
 
+def test_action_termination_diagnostics_attribute_initial_required_plain_text_safely():
+    agent, client = live_agent([ProviderCompletion(text="ordinary assistant text", finish_reason="stop")])
+
+    with pytest.raises(ModelMalformedResponseError) as captured:
+        agent.generate("设计一名临洲市公共安全联席体系所属的新角色。与现有世界观保持一致")
+
+    diagnostic = captured.value.action_termination_diagnostics
+    assert diagnostic is not None
+    assert diagnostic.to_dict() == {
+        "action_phase": "INITIAL_CANON_REQUIRED",
+        "action_round_index": 1,
+        "request_tool_invocation": "REQUIRED",
+        "outbound_tool_choice": "required",
+        "tools_present": True,
+        "tool_count": 9,
+        "structured_tool_call_count": 0,
+        "assistant_content_present": True,
+        "assistant_content_length": len("ordinary assistant text"),
+        "finish_reason": "stop",
+        "exact_finalize_match": False,
+        "action_termination_reason": "NO_TOOL_CALL_NON_FINALIZE",
+    }
+    mapped = map_generation_exception(captured.value)
+    assert mapped.details["action_termination"] == diagnostic.to_dict()
+    assert "ordinary assistant text" not in str(mapped.details)
+    assert client.requests[0]["tool_choice"] == "required"
+
+
+def test_action_termination_diagnostics_distinguish_later_auto_plain_text():
+    agent, client = live_agent(
+        [
+            ProviderCompletion(
+                tool_calls=(ProviderToolCall("world", "get_world_rules", {}),),
+                finish_reason="tool_calls",
+            ),
+            ProviderCompletion(text="ordinary assistant text", finish_reason="stop"),
+        ]
+    )
+
+    with pytest.raises(ModelMalformedResponseError) as captured:
+        agent.generate("设计一个必须参考现有世界规则的角色")
+
+    diagnostic = captured.value.action_termination_diagnostics
+    assert diagnostic is not None
+    assert diagnostic.action_phase.value == "LATER_ACTION"
+    assert diagnostic.action_round_index == 2
+    assert diagnostic.request_tool_invocation == "OPTIONAL"
+    assert diagnostic.outbound_tool_choice is None
+    assert diagnostic.structured_tool_call_count == 0
+    assert diagnostic.action_termination_reason.value == "NO_TOOL_CALL_NON_FINALIZE"
+    assert "tool_choice" not in client.requests[1]
+
+
 def test_live_character_generation_separates_retrieval_and_finalization_contracts():
     agent, client = live_agent(
         [

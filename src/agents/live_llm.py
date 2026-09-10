@@ -24,6 +24,7 @@ from .errors import (
 )
 from .grounding import GroundingValidator
 from .models import (
+    ActionTerminationReason,
     AgentPrompt,
     ConversationMessage,
     GroundedResponseSegment,
@@ -32,6 +33,8 @@ from .models import (
     ModelTurn,
     SegmentKind,
     ToolCall,
+    action_termination_reason_for_text,
+    build_action_termination_diagnostic,
 )
 from .provider_profiles import (
     ProviderProfile,
@@ -322,10 +325,23 @@ class LiveLLMAdapter:
         retry_count: int,
         attempts: Sequence[ModelAttemptAudit] = (),
     ) -> ModelTurn:
-        calls = tuple(
-            self._normalize_tool_call(call, index)
-            for index, call in enumerate(response.tool_calls, start=1)
-        )
+        try:
+            calls = tuple(
+                self._normalize_tool_call(call, index)
+                for index, call in enumerate(response.tool_calls, start=1)
+            )
+        except ModelMalformedResponseError as error:
+            error.action_termination_diagnostics = build_action_termination_diagnostic(
+                prompt,
+                reason=(
+                    error.action_termination_reason
+                    or ActionTerminationReason.MALFORMED_TOOL_CALL
+                ),
+                text=response.text,
+                tool_call_count=len(response.tool_calls),
+                finish_reason=response.finish_reason,
+            )
+            raise
         text = response.text if isinstance(response.text, str) else None
         if not calls and (text is None or not text.strip()):
             if (
@@ -333,9 +349,17 @@ class LiveLLMAdapter:
                 and prompt.invocation_purpose == "generation"
             ):
                 raise self._finalization_error(text or "", "FINALIZATION_EMPTY")
-            raise ModelMalformedResponseError(
+            error = ModelMalformedResponseError(
                 "Provider returned neither tool calls nor assistant text"
             )
+            error.action_termination_diagnostics = build_action_termination_diagnostic(
+                prompt,
+                reason=ActionTerminationReason.EMPTY_COMPLETION,
+                text=response.text,
+                tool_call_count=0,
+                finish_reason=response.finish_reason,
+            )
+            raise error
         latency_ms = (self._monotonic() - started) * 1000
         invocation = ModelInvocationAudit(
             session_id=prompt.session_id,
@@ -360,9 +384,18 @@ class LiveLLMAdapter:
             rendered_text = text
         elif prompt.response_format == "character_authoring_action":
             if not has_terminal_authoring_finalize_signal(text or ""):
-                raise ModelMalformedResponseError(
+                error = ModelMalformedResponseError(
                     "Authoring action must be a real tool call or end with the exact FINALIZE signal"
                 )
+                error.action_termination_diagnostics = build_action_termination_diagnostic(
+                    prompt,
+                    reason=action_termination_reason_for_text(text),
+                    text=text,
+                    tool_call_count=0,
+                    finish_reason=response.finish_reason,
+                    exact_finalize_match=False,
+                )
+                raise error
             structured_output = None
             segments = ()
             rendered_text = CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL
@@ -395,19 +428,25 @@ class LiveLLMAdapter:
     @staticmethod
     def _normalize_tool_call(call: ProviderToolCall, index: int) -> ToolCall:
         if not isinstance(call.name, str) or not call.name:
-            raise ModelMalformedResponseError("Provider tool call has no valid name")
+            error = ModelMalformedResponseError("Provider tool call has no valid name")
+            error.action_termination_reason = ActionTerminationReason.MALFORMED_TOOL_CALL
+            raise error
         arguments = call.arguments
         if isinstance(arguments, str):
             try:
                 arguments = json.loads(arguments)
             except json.JSONDecodeError:
-                raise ModelMalformedResponseError(
+                error = ModelMalformedResponseError(
                     "Provider tool arguments are not valid JSON"
-                ) from None
+                )
+                error.action_termination_reason = ActionTerminationReason.INVALID_TOOL_ARGUMENTS
+                raise error from None
         if not isinstance(arguments, Mapping):
-            raise ModelMalformedResponseError(
+            error = ModelMalformedResponseError(
                 "Provider tool arguments must be a JSON object"
             )
+            error.action_termination_reason = ActionTerminationReason.INVALID_TOOL_ARGUMENTS
+            raise error
         call_id = call.id if isinstance(call.id, str) and call.id else f"call_{index}"
         return ToolCall(call_id, call.name, dict(arguments))
 
