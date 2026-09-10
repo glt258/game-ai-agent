@@ -35,6 +35,8 @@ nodes:
         locator: "finalization response phase and strict CharacterDraft contract diagnostics"
       - path: "src/agents/character_generation.py"
         locator: "finite safe finalization-context failure reasons and fail-closed diagnostics"
+      - path: "src/agents/character_generation.py"
+        locator: "ordered one-per-execution tool audits retain original structured call arguments"
 
   - id: "contract.character_draft"
     type: "contract"
@@ -64,6 +66,8 @@ nodes:
     evidence:
       - path: "README.md"
         locator: "fixed authoring toolbox"
+      - path: "src/agents/character_generation.py"
+        locator: "tool execution audit preserves original call arguments while search execution normalizes inputs"
 
   - id: "component.canon_checker"
     type: "component"

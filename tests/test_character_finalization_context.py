@@ -20,6 +20,7 @@ from agents import (
 )
 from agents.character_generation import (
     AuthoringToolExecution,
+    CharacterAuthoringToolbox,
     _build_finalization_context,
 )
 from agents.live_llm import LiveLLMAdapter
@@ -513,6 +514,35 @@ def test_filtered_tool_call_groups_have_no_orphan_tool_messages() -> None:
         [message.content for message in context.messages], ensure_ascii=False
     )
     assert context.evidence_bundle[0]["source_id"] == "faction_001"
+
+
+def test_search_audit_preserves_original_arguments_for_context_pairing() -> None:
+    resolver = KnowledgeResolver()
+    toolbox = CharacterAuthoringToolbox(resolver)
+    call = ToolCall("search", "search_factions", {"query": " faction "})
+    execution = toolbox.execute(
+        tool_name=call.name,
+        arguments=call.arguments,
+        round_number=1,
+    )
+    messages = [
+        ConversationMessage("user", '{"brief":"original request"}'),
+        _assistant(call),
+        _tool(call.id, dict(execution.observation)),
+    ]
+
+    context = _build_finalization_context(
+        _request(),
+        messages=messages,
+        source_ids=execution.allowed_source_ids,
+        source_types=execution.source_types,
+        audits=[execution.audit],
+        known_source_ids=set(resolver.factions),
+        known_source_types={source_id: "faction" for source_id in resolver.factions},
+    )
+
+    assert dict(execution.audit.arguments) == dict(call.arguments)
+    assert context.messages[0].role == "user"
 
 
 class _SyntheticToolbox:

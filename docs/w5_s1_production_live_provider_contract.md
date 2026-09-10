@@ -116,6 +116,17 @@ This diagnostic metadata is ephemeral and does not change the context builder's
 fail-closed rules, finalization response mapping, persistence schema or usage
 accounting.
 
+## W5-S1E-F10 update — tool audit argument fidelity
+
+Each successful authoring-tool execution emits one `ToolAuditEntry`. The audit
+retains the original structured call arguments and the execution normalizes only
+the arguments used by the bounded search operation (for example, trimming the
+query and applying the default limit). Finalization context pairing remains
+ordered by the assistant tool-call sequence and compares tool name plus the
+original arguments. This keeps a valid omitted-default or whitespace-bearing
+search call aligned with its audit while preserving fail-closed mismatch
+handling for genuinely different calls or orphan audits.
+
 ## B. Baseline and evidence precedence
 
 | Item | Evidence |

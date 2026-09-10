@@ -999,7 +999,7 @@ class CharacterAuthoringToolbox:
                 "search_story_context": self._search_story_context,
             }
             payload, types = handlers[tool_name](query, limit, context)
-            return self._execution(tool_name, {"query": query, "limit": limit}, round_number, payload, types)
+            return self._execution(tool_name, arguments, round_number, payload, types)
         expected = {
             "get_lore": ("lore_id", "lore"),
             "get_faction": ("faction_id", "factions"),
