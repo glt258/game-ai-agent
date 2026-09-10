@@ -228,6 +228,22 @@ def map_generation_exception(error: BaseException) -> WebApplicationError:
             details=details,
             model_invocations=audits,
         )
+    if (
+        isinstance(error, ModelMalformedResponseError)
+        and getattr(error, "reason", None) == "context_construction_failed"
+    ):
+        failure_details = dict(details)
+        failure_details["reason_code"] = "context_construction_failed"
+        failure_details["model_invocation_count"] = len(audits)
+        return WebApplicationError(
+            "GENERATION_CONTEXT_FAILED",
+            "Character generation context could not be constructed safely.",
+            status_code=502,
+            stage=getattr(error, "phase", "finalization_context"),
+            retryable=False,
+            details=failure_details,
+            model_invocations=audits,
+        )
     if isinstance(error, ModelMalformedResponseError):
         failure_details = dict(details)
         finalization = _finalization_details(error)

@@ -1013,6 +1013,13 @@ def test_termination_then_context_construction_failure_is_classified_without_fin
     assert [item.tool_call_count for item in error.model_invocations] == [1, 0]
     assert getattr(error, "phase", None) == "finalization_context"
     assert getattr(error, "reason", None) == "context_construction_failed"
+    mapped = map_generation_exception(error)
+    assert mapped.code == "GENERATION_CONTEXT_FAILED"
+    assert mapped.stage == "finalization_context"
+    assert mapped.details["reason_code"] == "context_construction_failed"
+    assert mapped.details["model_invocation_count"] == 2
+    assert mapped.details["provider"] == "openai"
+    assert mapped.details["model"] == "test-model"
 
 
 def test_live_budget_exhaustion_fails_closed_before_draft_grounding_validation():

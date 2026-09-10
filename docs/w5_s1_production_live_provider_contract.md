@@ -82,6 +82,15 @@ store raw response text, field values, arbitrary generated key names, prompts,
 reasoning, tool arguments or credentials. Parser strictness, recovery boundaries,
 retry/deadline policy, routing and provider thinking policy are unchanged.
 
+## W5-S1E-F8 update — finalization context boundary
+
+`finalization_context` is the pre-provider seam that reconstructs the bounded
+Canon Evidence Bundle from successful action history. If that construction
+fails, Web mapping emits `GENERATION_CONTEXT_FAILED` with the context stage and
+safe reason/count metadata. This remains distinct from
+`MODEL_RESPONSE_INVALID` at `finalization_response`, which is reserved for a
+provider response received after the finalization request begins.
+
 `LiveJobRegistry` separates logical state from physical worker settlement. A
 timed-out or cancelled job stops publishing results immediately, but its worker
 continues cooperatively until the provider returns or its shared deadline
