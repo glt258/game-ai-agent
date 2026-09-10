@@ -388,6 +388,7 @@ def to_error_response(error: WebApplicationError) -> ErrorResponseDTO:
             message=error.message,
             stage=error.stage,
             retryable=error.retryable,
+            context_failure_reason=error.context_failure_reason,
             details=error.details,
             audit=audit,
         )

@@ -42,6 +42,54 @@ test("offline Studio save/open preserves Character Skill and Kit", async ({page}
   await expect(page.getByRole("button", {name: "已保存"})).toBeVisible();
 });
 
+test("live Character Studio renders a safe finalization context reason", async ({page}) => {
+  await page.route(/\/api\/characters\/generate\/jobs(?:\/.*)?$/, async (route) => {
+    if (route.request().method() === "POST") {
+      await route.fulfill({status: 202, contentType: "application/json", body: JSON.stringify({
+        schema_version: "web-live-skill-job/0.1",
+        job_id: "e2e-character-context-failure",
+        kind: "character_generation",
+        status: "PENDING",
+        provider: "local_fake",
+        model: "fixture-character-model",
+        poll_after_ms: 250,
+      })});
+      return;
+    }
+    await route.fulfill({status: 200, contentType: "application/json", body: JSON.stringify({
+      schema_version: "web-live-skill-job/0.1",
+      job_id: "e2e-character-context-failure",
+      kind: "character_generation",
+      status: "FAILED",
+      provider: "local_fake",
+      model: "fixture-character-model",
+      elapsed_ms: 18,
+      result: null,
+      error: {
+        code: "GENERATION_CONTEXT_FAILED",
+        message: "Character generation context could not be constructed safely.",
+        stage: "finalization_context",
+        context_failure_reason: "HISTORY_PAIRING_MISMATCH",
+        retryable: false,
+        details: {},
+        audit: null,
+      },
+    })});
+  });
+
+  await page.goto("/studio");
+  await page.getByRole("button", {name: "加载示例需求"}).click();
+  await page.getByLabel("生成方式").selectOption("live");
+  await page.getByRole("button", {name: "生成角色"}).click();
+
+  const diagnostics = page.getByTestId("character-failure-diagnostics");
+  await expect(page.getByText("Character generation context could not be constructed safely.")).toBeVisible();
+  await diagnostics.locator("summary").click();
+  await expect(diagnostics).toContainText("GENERATION_CONTEXT_FAILED");
+  await expect(diagnostics).toContainText("finalization_context");
+  await expect(diagnostics).toContainText("HISTORY_PAIRING_MISMATCH");
+});
+
 test("offline Character Studio shows the Chinese planner result and technical details", async ({page}) => {
   await page.goto("/studio");
   await page.getByRole("button", {name: "加载示例需求"}).click();

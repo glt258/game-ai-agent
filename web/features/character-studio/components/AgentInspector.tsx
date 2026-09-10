@@ -74,6 +74,7 @@ function FailureDiagnostics({error}: {error: ApiClientError}) {
       <div className="technical-inspector-body">
         <div className="audit-row"><span>安全错误码</span><strong>{body.code}</strong></div>
         <div className="audit-row"><span>失败阶段</span><strong>{body.stage ?? "未知"}</strong></div>
+        {body.context_failure_reason && <div className="audit-row"><span>Context failure reason</span><strong>{body.context_failure_reason}</strong></div>}
         <div className="audit-row"><span>Provider / 模型</span><strong>{latest ? `${latest.provider} / ${latest.model}` : "未报告"}</strong></div>
         <div className="audit-row"><span>尝试 / 重试</span><strong>{attempts === null ? "未报告" : `${attempts} / ${latest?.retry_count ?? "未知"}`}</strong></div>
         <div className="audit-row"><span>Provider status</span><strong>{latest?.upstream_status ?? "未知"}</strong></div>

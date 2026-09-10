@@ -33,6 +33,8 @@ nodes:
         locator: "initial Canon-dependent action tool requirement"
       - path: "src/agents/character_generation.py"
         locator: "finalization response phase and strict CharacterDraft contract diagnostics"
+      - path: "src/agents/character_generation.py"
+        locator: "finite safe finalization-context failure reasons and fail-closed diagnostics"
 
   - id: "contract.character_draft"
     type: "contract"
@@ -364,6 +366,8 @@ nodes:
         locator: "PROVIDER_FAILURE safe upstream metadata technical details"
       - path: "src/web/errors.py"
         locator: "MODEL_RESPONSE_INVALID safe finalization shape projection"
+      - path: "src/web/errors.py"
+        locator: "GENERATION_CONTEXT_FAILED finite context_failure_reason projection"
 
   - id: "component.runtime_path_resolution"
     type: "component"
@@ -619,6 +623,8 @@ nodes:
         locator: "W5-S1E Live Web Contract: Character and Skill shared job lifecycle"
       - path: "src/web/schemas/live_jobs.py"
         locator: "ephemeral live job failure DTO carries allowlisted technical details"
+      - path: "src/web/schemas/common.py"
+        locator: "nullable context_failure_reason in safe error DTO"
       - path: "src/web/services/live_jobs.py"
         locator: "one InvocationContext per live job; provider session ID is runtime-only"
 

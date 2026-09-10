@@ -14,6 +14,7 @@ from agents import (
     CharacterDesignRequest,
     CharacterGenerationAgent,
     DeterministicCharacterGenerationModel,
+    FinalizationContextFailureReason,
     LiveLLMAdapter,
     ModelAuthenticationError,
     ModelCapabilityError,
@@ -37,6 +38,7 @@ from agents.character_generation import (
     inspect_character_draft_payload,
 )
 from web.errors import map_generation_exception
+from web.mappers.character_generation import to_error_response
 
 
 def _payload(**overrides):
@@ -1017,9 +1019,23 @@ def test_termination_then_context_construction_failure_is_classified_without_fin
     assert mapped.code == "GENERATION_CONTEXT_FAILED"
     assert mapped.stage == "finalization_context"
     assert mapped.details["reason_code"] == "context_construction_failed"
+    assert mapped.context_failure_reason == FinalizationContextFailureReason.EMPTY_FACTUAL_PAYLOAD.value
+    assert to_error_response(mapped).error.context_failure_reason == "EMPTY_FACTUAL_PAYLOAD"
     assert mapped.details["model_invocation_count"] == 2
     assert mapped.details["provider"] == "openai"
     assert mapped.details["model"] == "test-model"
+
+
+def test_context_failure_reason_is_nullable_for_unexpected_malformed_response() -> None:
+    error = ModelMalformedResponseError("F9_SUPER_SECRET_VALUE")
+    error.phase = "finalization_context"
+    error.reason = "context_construction_failed"
+
+    mapped = map_generation_exception(error)
+
+    assert mapped.code == "GENERATION_CONTEXT_FAILED"
+    assert mapped.context_failure_reason is None
+    assert "F9_SUPER_SECRET_VALUE" not in mapped.message
 
 
 def test_live_budget_exhaustion_fails_closed_before_draft_grounding_validation():

@@ -11,6 +11,7 @@ from agents import (
     AgentExecutionError,
     CharacterDesignRequest,
     CharacterGenerationAgent,
+    FinalizationContextFailureReason,
     ModelMalformedResponseError,
     ModelTurn,
     ScriptedAgentModel,
@@ -801,7 +802,7 @@ def test_evidence_bundle_uses_observation_fact_not_resolver_fact() -> None:
 def test_unknown_retrieved_source_id_fails_closed() -> None:
     call = ToolCall("unknown", "get_faction", {"faction_id": "faction_unknown"})
 
-    with pytest.raises(ModelMalformedResponseError, match="known"):
+    with pytest.raises(ModelMalformedResponseError, match="known") as captured:
         _build(
             _request(),
             [
@@ -823,12 +824,13 @@ def test_unknown_retrieved_source_id_fails_closed() -> None:
             {"faction_unknown": "faction"},
             known_source_ids={"world_rules"},
         )
+    assert captured.value.context_failure_reason is FinalizationContextFailureReason.UNKNOWN_SOURCE
 
 
 def test_unknown_retrieved_source_type_fails_closed() -> None:
     call = ToolCall("unknown-type", "get_faction", {"faction_id": "faction_001"})
 
-    with pytest.raises(ModelMalformedResponseError, match="source type"):
+    with pytest.raises(ModelMalformedResponseError, match="source type") as captured:
         _build(
             _request(),
             [
@@ -850,12 +852,13 @@ def test_unknown_retrieved_source_type_fails_closed() -> None:
             {"faction_001": "unknown_type"},
             known_source_ids={"faction_001"},
         )
+    assert captured.value.context_failure_reason is FinalizationContextFailureReason.CANON_TYPE_MISMATCH
 
 
 def test_missing_observation_fact_fails_closed_without_generic_summary() -> None:
     call = ToolCall("missing-fact", "get_faction", {"faction_id": "faction_001"})
 
-    with pytest.raises(ModelMalformedResponseError, match="observation payload"):
+    with pytest.raises(ModelMalformedResponseError, match="observation payload") as captured:
         _build(
             _request(),
             [
@@ -876,12 +879,13 @@ def test_missing_observation_fact_fails_closed_without_generic_summary() -> None
             ],
             {"faction_001": "faction"},
         )
+    assert captured.value.context_failure_reason is FinalizationContextFailureReason.EMPTY_FACTUAL_PAYLOAD
 
 
 def test_restricted_lore_without_public_observation_fails_closed() -> None:
     call = ToolCall("restricted", "get_lore", {"lore_id": "lore_secret_001"})
 
-    with pytest.raises(ModelMalformedResponseError, match="restricted lore"):
+    with pytest.raises(ModelMalformedResponseError, match="restricted lore") as captured:
         _build(
             _request(),
             [
@@ -904,6 +908,80 @@ def test_restricted_lore_without_public_observation_fails_closed() -> None:
             {"lore_secret_001": "lore"},
             allow_restricted_lore=False,
         )
+    assert captured.value.context_failure_reason is FinalizationContextFailureReason.RESTRICTED_LORE
+
+
+def test_finalization_context_diagnostics_cover_pairing_audit_tool_observation_and_reconstruction() -> None:
+    call = ToolCall("pair", "get_faction", {"faction_id": "faction_001"})
+    request = _request()
+
+    messages = [
+        ConversationMessage("user", '{"brief":"original request"}'),
+        _assistant(call),
+        _tool("different", {"status": "ok", "result": {"source_id": "faction_001", "summary": "fact"}}),
+    ]
+    with pytest.raises(ModelMalformedResponseError) as pairing:
+        _build_finalization_context(
+            request,
+            messages=messages,
+            source_ids={"faction_001"},
+            source_types={"faction_001": "faction"},
+            audits=[_audit(1, call, ["faction_001"])],
+            known_source_ids={"faction_001"},
+        )
+    assert pairing.value.context_failure_reason is FinalizationContextFailureReason.HISTORY_PAIRING_MISMATCH
+
+    mismatched_audit = ToolAuditEntry(
+        1,
+        "get_faction",
+        {"faction_id": "different"},
+        "allowed",
+        allowed_lore_ids=("faction_001",),
+    )
+    with pytest.raises(ModelMalformedResponseError) as audit:
+        _build_finalization_context(
+            request,
+            messages=[
+                ConversationMessage("user", '{"brief":"original request"}'),
+                _assistant(call),
+                _tool("pair", {"status": "ok", "result": {"source_id": "faction_001", "summary": "fact"}}),
+            ],
+            source_ids={"faction_001"},
+            source_types={"faction_001": "faction"},
+            audits=[mismatched_audit],
+            known_source_ids={"faction_001"},
+        )
+    assert audit.value.context_failure_reason is FinalizationContextFailureReason.TOOL_AUDIT_MISMATCH
+
+    unknown = ToolCall("unknown-tool", "mystery_tool", {})
+    with pytest.raises(ModelMalformedResponseError) as unknown_tool:
+        _build(
+            request,
+            [(1, (unknown,), ({"status": "ok", "result": {}},), ())],
+            {},
+        )
+    assert unknown_tool.value.context_failure_reason is FinalizationContextFailureReason.UNKNOWN_TOOL
+    assert "mystery_tool" not in str(unknown_tool.value)
+
+    mismatch = ToolCall("mismatch", "get_faction", {"faction_id": "faction_001"})
+    with pytest.raises(ModelMalformedResponseError) as reconstruction:
+        _build(
+            request,
+            [(1, (mismatch,), ({"status": "ok", "result": {"source_id": "faction_002", "summary": "fact"}},), ("faction_001",))],
+            {"faction_001": "faction"},
+        )
+    assert reconstruction.value.context_failure_reason is FinalizationContextFailureReason.SOURCE_RECONSTRUCTION_FAILED
+
+
+def test_missing_observation_reason_is_finite() -> None:
+    call = ToolCall("missing", "get_faction", {"faction_id": "faction_001"})
+    with pytest.raises(ModelMalformedResponseError) as captured:
+        _build(
+            _request(),
+            [(1, (call,), ({"status": "ok", "result": {}},), ())],
+            {},
+        )
+    assert captured.value.context_failure_reason is FinalizationContextFailureReason.MISSING_OBSERVATION
 
 
 def test_retrieved_but_pruned_canon_id_is_rejected_by_grounding() -> None:

@@ -92,6 +92,7 @@ class ErrorBodyDTO(WebModel):
     message: str
     stage: str | None = None
     retryable: bool
+    context_failure_reason: str | None = None
     details: dict[str, Any] = Field(default_factory=dict)
     audit: ErrorAuditDTO | None = None
 

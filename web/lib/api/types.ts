@@ -753,6 +753,7 @@ export interface ApiErrorBody {
   message: string;
   stage: string | null;
   retryable: boolean;
+  context_failure_reason?: string | null;
   details: Record<string, unknown>;
   audit: ApiAudit | null;
 }

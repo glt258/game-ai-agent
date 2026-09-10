@@ -101,6 +101,21 @@ after shutdown returns `LIVE_EXECUTION_SHUTDOWN`. This slice covers provider,
 Hybrid, Character generation and Skill Playground live contexts plus safe Web
 projections; public Character async routes and usage aggregation remain S1D–E.
 
+## W5-S1E-F9 update — safe finalization context failure diagnostics
+
+When the finalization context builder rejects a deterministic history, audit,
+source or evidence invariant, the generation error carries a finite
+`FinalizationContextFailureReason`. Web mapping preserves the existing
+`GENERATION_CONTEXT_FAILED` code and `finalization_context` stage while exposing
+the nullable `context_failure_reason` field through the LiveJob error DTO. The
+Agent Inspector renders that field only when present. Reason values are
+repository-owned, content-free codes; they never contain tool names, source
+identifiers, Canon text, prompts, model output, exception text, credentials or
+headers. Unexpected malformed-response failures keep the nullable field empty.
+This diagnostic metadata is ephemeral and does not change the context builder's
+fail-closed rules, finalization response mapping, persistence schema or usage
+accounting.
+
 ## B. Baseline and evidence precedence
 
 | Item | Evidence |

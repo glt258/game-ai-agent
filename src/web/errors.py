@@ -13,6 +13,7 @@ from agents.errors import (
     ModelConfigurationError,
     ModelContextLimitError,
     ModelDeadlineExceededError,
+    FinalizationContextFailureReason,
     ModelMalformedResponseError,
     ModelProviderError,
     ModelRateLimitError,
@@ -44,6 +45,7 @@ class WebApplicationError(Exception):
         retryable: bool,
         details: dict[str, Any] | None = None,
         model_invocations: Sequence[ModelInvocationAudit] = (),
+        context_failure_reason: str | None = None,
     ) -> None:
         super().__init__()
         self.code = code
@@ -53,6 +55,7 @@ class WebApplicationError(Exception):
         self.retryable = retryable
         self.details = dict(details or {})
         self.model_invocations = tuple(model_invocations)
+        self.context_failure_reason = context_failure_reason
 
 
 def model_invocations_from_error(error: BaseException) -> tuple[ModelInvocationAudit, ...]:
@@ -243,6 +246,14 @@ def map_generation_exception(error: BaseException) -> WebApplicationError:
             retryable=False,
             details=failure_details,
             model_invocations=audits,
+            context_failure_reason=(
+                error.context_failure_reason.value
+                if isinstance(
+                    getattr(error, "context_failure_reason", None),
+                    FinalizationContextFailureReason,
+                )
+                else None
+            ),
         )
     if isinstance(error, ModelMalformedResponseError):
         failure_details = dict(details)

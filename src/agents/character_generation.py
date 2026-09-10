@@ -34,6 +34,8 @@ from .errors import (
     AgentError,
     AgentExecutionError,
     AgentToolError,
+    FinalizationContextError,
+    FinalizationContextFailureReason,
     ModelAuthenticationError,
     ModelCapabilityError,
     ModelConfigurationError,
@@ -1315,6 +1317,13 @@ def _classify_generation_failure(
     error.reason = reason
 
 
+def _finalization_context_error(
+    reason: FinalizationContextFailureReason,
+    message: str,
+) -> FinalizationContextError:
+    return FinalizationContextError(reason, message)
+
+
 def _attach_finalization_schema_diagnostics(
     error: ModelMalformedResponseError,
     payload: Any,
@@ -1554,20 +1563,23 @@ def _finalization_safe_payload(
     allow_restricted_lore: bool = True,
 ) -> dict[str, Any]:
     if source_type not in _FINALIZATION_ALLOWED_SOURCE_TYPES:
-        raise ModelMalformedResponseError(
-            "Finalization context contains an unknown Canon source type"
+        raise _finalization_context_error(
+            FinalizationContextFailureReason.CANON_TYPE_MISMATCH,
+            "Finalization context contains an unknown Canon source type",
         )
     if not isinstance(observation_payload, Mapping):
-        raise ModelMalformedResponseError(
-            "Finalization source has no verifiable observation payload"
+        raise _finalization_context_error(
+            FinalizationContextFailureReason.MISSING_OBSERVATION,
+            "Finalization source has no verifiable observation payload",
         )
     if (
         source_type == "lore"
         and not allow_restricted_lore
         and observation_payload.get("sensitivity") != "public"
     ):
-        raise ModelMalformedResponseError(
-            "Finalization context cannot verify restricted lore access"
+        raise _finalization_context_error(
+            FinalizationContextFailureReason.RESTRICTED_LORE,
+            "Finalization context cannot verify restricted lore access",
         )
     payload: dict[str, Any] = {
         "source_id": source_id,
@@ -1581,8 +1593,9 @@ def _finalization_safe_payload(
         payload[key] = safe_value
         factual_value_found = factual_value_found or _finalization_has_factual_value(safe_value)
     if not factual_value_found:
-        raise ModelMalformedResponseError(
-            "Finalization source has no verifiable observation payload"
+        raise _finalization_context_error(
+            FinalizationContextFailureReason.EMPTY_FACTUAL_PAYLOAD,
+            "Finalization source has no verifiable observation payload",
         )
     return payload
 
@@ -1616,8 +1629,9 @@ def _finalization_summary(payload: Mapping[str, Any], source_id: str, source_typ
         value = payload.get(key)
         if _finalization_has_factual_value(value):
             return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-    raise ModelMalformedResponseError(
-        "Finalization source has no factual summary derived from its observation"
+    raise _finalization_context_error(
+        FinalizationContextFailureReason.EMPTY_FACTUAL_PAYLOAD,
+        "Finalization source has no factual summary derived from its observation",
     )
 
 
@@ -1717,28 +1731,33 @@ def _build_finalization_context(
     retrieved_ids = set(source_ids)
     typed_retrieved_ids = retrieved_ids & set(source_types)
     if typed_retrieved_ids != retrieved_ids:
-        raise ModelMalformedResponseError(
-            "Finalization context has a source without a source type"
+        raise _finalization_context_error(
+            FinalizationContextFailureReason.UNKNOWN_SOURCE,
+            "Finalization context has a source without a source type",
         )
     if known_source_ids is not None:
         unknown_source_ids = retrieved_ids - set(known_source_ids)
         if unknown_source_ids:
-            raise ModelMalformedResponseError(
-                "Finalization context contains a source outside known Canon IDs"
+            raise _finalization_context_error(
+                FinalizationContextFailureReason.UNKNOWN_SOURCE,
+                "Finalization context contains a source outside known Canon IDs",
             )
     for source_id in retrieved_ids:
         source_type = source_types.get(source_id)
         if not isinstance(source_type, str) or source_type not in _FINALIZATION_ALLOWED_SOURCE_TYPES:
-            raise ModelMalformedResponseError(
-                "Finalization context contains an unknown Canon source type"
+            raise _finalization_context_error(
+                FinalizationContextFailureReason.CANON_TYPE_MISMATCH,
+                "Finalization context contains an unknown Canon source type",
             )
         if known_source_types is not None and known_source_types.get(source_id) != source_type:
-            raise ModelMalformedResponseError(
-                "Finalization context source type does not match known Canon type"
+            raise _finalization_context_error(
+                FinalizationContextFailureReason.CANON_TYPE_MISMATCH,
+                "Finalization context source type does not match known Canon type",
             )
     if not messages or messages[0].role != "user":
-        raise ModelMalformedResponseError(
-            "Finalization context must begin with the original user message"
+        raise _finalization_context_error(
+            FinalizationContextFailureReason.HISTORY_PAIRING_MISMATCH,
+            "Finalization context must begin with the original user message",
         )
 
     successful_audits = tuple(
@@ -1750,20 +1769,23 @@ def _build_finalization_context(
     while message_index < len(messages):
         assistant = messages[message_index]
         if assistant.role != "assistant" or not isinstance(assistant.content, Mapping):
-            raise ModelMalformedResponseError(
-                "Finalization context contains an invalid assistant tool-call message"
+            raise _finalization_context_error(
+                FinalizationContextFailureReason.HISTORY_PAIRING_MISMATCH,
+                "Finalization context contains an invalid assistant tool-call message",
             )
         raw_calls = assistant.content.get("tool_calls")
         if isinstance(raw_calls, (str, bytes)) or not isinstance(raw_calls, Sequence) or not raw_calls:
-            raise ModelMalformedResponseError(
-                "Finalization context contains an invalid tool-call group"
+            raise _finalization_context_error(
+                FinalizationContextFailureReason.HISTORY_PAIRING_MISMATCH,
+                "Finalization context contains an invalid tool-call group",
             )
         message_index += 1
         records: list[_FinalizationCallRecord] = []
         for call_index, raw_call in enumerate(raw_calls):
             if not isinstance(raw_call, Mapping):
-                raise ModelMalformedResponseError(
-                    "Finalization context contains an invalid tool call"
+                raise _finalization_context_error(
+                    FinalizationContextFailureReason.HISTORY_PAIRING_MISMATCH,
+                    "Finalization context contains an invalid tool call",
                 )
             call_id = raw_call.get("id")
             tool_name = raw_call.get("name")
@@ -1775,44 +1797,53 @@ def _build_finalization_context(
                 or not tool_name
                 or not isinstance(arguments, Mapping)
             ):
-                raise ModelMalformedResponseError(
-                    "Finalization context contains malformed tool-call metadata"
+                raise _finalization_context_error(
+                    FinalizationContextFailureReason.HISTORY_PAIRING_MISMATCH,
+                    "Finalization context contains malformed tool-call metadata",
                 )
             if message_index >= len(messages) or messages[message_index].role != "tool":
-                raise ModelMalformedResponseError(
-                    "Finalization context contains an orphan assistant tool call"
+                raise _finalization_context_error(
+                    FinalizationContextFailureReason.HISTORY_PAIRING_MISMATCH,
+                    "Finalization context contains an orphan assistant tool call",
                 )
             tool_message = messages[message_index]
             if not isinstance(tool_message.content, Mapping):
-                raise ModelMalformedResponseError(
-                    "Finalization context contains an invalid tool observation"
+                raise _finalization_context_error(
+                    FinalizationContextFailureReason.HISTORY_PAIRING_MISMATCH,
+                    "Finalization context contains an invalid tool observation",
                 )
             if tool_message.content.get("tool_call_id") != call_id:
-                raise ModelMalformedResponseError(
-                    "Finalization context contains an orphan tool observation"
+                raise _finalization_context_error(
+                    FinalizationContextFailureReason.HISTORY_PAIRING_MISMATCH,
+                    "Finalization context contains an orphan tool observation",
                 )
             if audit_index >= len(successful_audits):
-                raise ModelMalformedResponseError(
-                    "Finalization context is missing a successful tool audit"
+                raise _finalization_context_error(
+                    FinalizationContextFailureReason.TOOL_AUDIT_MISMATCH,
+                    "Finalization context is missing a successful tool audit",
                 )
             audit = successful_audits[audit_index]
             audit_index += 1
             if audit.tool_name != tool_name or dict(audit.arguments) != dict(arguments):
-                raise ModelMalformedResponseError(
-                    "Finalization context tool audit does not match the history"
+                raise _finalization_context_error(
+                    FinalizationContextFailureReason.TOOL_AUDIT_MISMATCH,
+                    "Finalization context tool audit does not match the history",
                 )
             call_source_ids = frozenset(audit.allowed_lore_ids)
             if not call_source_ids <= retrieved_ids:
-                raise ModelMalformedResponseError(
-                    "Finalization context audit references an unretrieved source"
+                raise _finalization_context_error(
+                    FinalizationContextFailureReason.UNKNOWN_SOURCE,
+                    "Finalization context audit references an unretrieved source",
                 )
             if any(item not in source_types for item in call_source_ids):
-                raise ModelMalformedResponseError(
-                    "Finalization context has an untyped tool observation"
+                raise _finalization_context_error(
+                    FinalizationContextFailureReason.CANON_TYPE_MISMATCH,
+                    "Finalization context has an untyped tool observation",
                 )
             if tool_name.startswith("get_") and not call_source_ids:
-                raise ModelMalformedResponseError(
-                    "Successful direct retrieval has no grounded source"
+                raise _finalization_context_error(
+                    FinalizationContextFailureReason.MISSING_OBSERVATION,
+                    "Successful direct retrieval has no grounded source",
                 )
             records.append(
                 _FinalizationCallRecord(
@@ -1828,8 +1859,9 @@ def _build_finalization_context(
             message_index += 1
         groups.append((assistant, tuple(records)))
     if audit_index != len(successful_audits):
-        raise ModelMalformedResponseError(
-            "Finalization context has a successful tool audit without a history pair"
+        raise _finalization_context_error(
+            FinalizationContextFailureReason.TOOL_AUDIT_MISMATCH,
+            "Finalization context has a successful tool audit without a history pair",
         )
 
     direct_source_ids = {
@@ -1846,19 +1878,22 @@ def _build_finalization_context(
                 continue
             raw_result = record.observation.get("result")
             if not isinstance(raw_result, Mapping) or len(record.source_ids) != 1:
-                raise ModelMalformedResponseError(
-                    "Finalization direct retrieval has no verifiable observation payload"
+                raise _finalization_context_error(
+                    FinalizationContextFailureReason.MISSING_OBSERVATION,
+                    "Finalization direct retrieval has no verifiable observation payload",
                 )
             direct_source_id = next(iter(record.source_ids))
             observed_source_id = raw_result.get("source_id") or raw_result.get("id")
             if observed_source_id != direct_source_id:
-                raise ModelMalformedResponseError(
-                    "Finalization direct retrieval observation does not identify its source"
+                raise _finalization_context_error(
+                    FinalizationContextFailureReason.SOURCE_RECONSTRUCTION_FAILED,
+                    "Finalization direct retrieval observation does not identify its source",
                 )
             observed_source_type = raw_result.get("source_type")
             if observed_source_type is not None and observed_source_type != source_types[direct_source_id]:
-                raise ModelMalformedResponseError(
-                    "Finalization direct retrieval observation has an invalid source type"
+                raise _finalization_context_error(
+                    FinalizationContextFailureReason.CANON_TYPE_MISMATCH,
+                    "Finalization direct retrieval observation has an invalid source type",
                 )
             observation_payload_by_source[direct_source_id] = raw_result
     explicit_source_ids = _request_canon_source_ids(
@@ -1878,13 +1913,15 @@ def _build_finalization_context(
                 continue
             results = record.observation.get("results")
             if isinstance(results, (str, bytes)) or not isinstance(results, Sequence):
-                raise ModelMalformedResponseError(
-                    "Search observation does not contain a valid results array"
+                raise _finalization_context_error(
+                    FinalizationContextFailureReason.MISSING_OBSERVATION,
+                    "Search observation does not contain a valid results array",
                 )
             for result_index, result in enumerate(results):
                 if not isinstance(result, Mapping):
-                    raise ModelMalformedResponseError(
-                        "Search observation contains an invalid result"
+                    raise _finalization_context_error(
+                        FinalizationContextFailureReason.MISSING_OBSERVATION,
+                        "Search observation contains an invalid result",
                     )
                 candidate_id = result.get("source_id") or result.get("id")
                 if not isinstance(candidate_id, str) or candidate_id not in record.source_ids:
@@ -1894,8 +1931,9 @@ def _build_finalization_context(
                     continue
                 observed_source_type = result.get("source_type")
                 if observed_source_type is not None and observed_source_type != source_type:
-                    raise ModelMalformedResponseError(
-                        "Finalization search observation has an invalid source type"
+                    raise _finalization_context_error(
+                        FinalizationContextFailureReason.CANON_TYPE_MISMATCH,
+                        "Finalization search observation has an invalid source type",
                     )
                 candidate = _FinalizationSearchCandidate(
                     candidate_id,
@@ -1917,8 +1955,9 @@ def _build_finalization_context(
         candidates_by_source_id
     )
     if missing_explicit_sources:
-        raise ModelMalformedResponseError(
-            "An explicitly requested Canon source cannot be reconstructed from its observation"
+        raise _finalization_context_error(
+            FinalizationContextFailureReason.SOURCE_RECONSTRUCTION_FAILED,
+            "An explicitly requested Canon source cannot be reconstructed from its observation",
         )
 
     selected_search: dict[str, _FinalizationSearchCandidate] = {}
@@ -1956,8 +1995,9 @@ def _build_finalization_context(
         for record in records:
             tool_name = record.call["name"]
             if not tool_name.startswith("get_") and tool_name not in _FINALIZATION_SEARCH_TO_SOURCE_TYPE:
-                raise ModelMalformedResponseError(
-                    "Finalization context contains an unknown retrieval tool"
+                raise _finalization_context_error(
+                    FinalizationContextFailureReason.UNKNOWN_TOOL,
+                    "Finalization context contains an unknown retrieval tool",
                 )
 
     final_source_ids = tuple(sorted(selected_source_ids))

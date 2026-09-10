@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any
 
 from .models import ModelInvocationAudit
@@ -80,6 +81,32 @@ class ModelMalformedResponseError(ModelError):
         # Shape-only metadata populated by the finalization parser.  It never
         # contains response values, raw JSON, or arbitrary model-generated keys.
         self.finalization_diagnostics = finalization_diagnostics
+
+
+class FinalizationContextFailureReason(str, Enum):
+    """Finite, content-free reasons for finalization-context rejection."""
+
+    HISTORY_PAIRING_MISMATCH = "HISTORY_PAIRING_MISMATCH"
+    TOOL_AUDIT_MISMATCH = "TOOL_AUDIT_MISMATCH"
+    UNKNOWN_TOOL = "UNKNOWN_TOOL"
+    UNKNOWN_SOURCE = "UNKNOWN_SOURCE"
+    MISSING_OBSERVATION = "MISSING_OBSERVATION"
+    CANON_TYPE_MISMATCH = "CANON_TYPE_MISMATCH"
+    RESTRICTED_LORE = "RESTRICTED_LORE"
+    EMPTY_FACTUAL_PAYLOAD = "EMPTY_FACTUAL_PAYLOAD"
+    SOURCE_RECONSTRUCTION_FAILED = "SOURCE_RECONSTRUCTION_FAILED"
+
+
+class FinalizationContextError(ModelMalformedResponseError):
+    """Raised when finalization evidence fails a deterministic invariant."""
+
+    def __init__(
+        self,
+        reason: FinalizationContextFailureReason,
+        message: str,
+    ) -> None:
+        super().__init__(message)
+        self.context_failure_reason = reason
 
 
 class ModelUnavailableError(ModelError):
