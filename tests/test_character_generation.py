@@ -31,7 +31,12 @@ from agents import (
     ToolAuditEntry,
     ToolCall,
 )
-from agents.character_generation import CHARACTER_SYSTEM_CONTRACT, AuthoringToolExecution
+from agents.character_generation import (
+    CHARACTER_SYSTEM_CONTRACT,
+    AuthoringToolExecution,
+    inspect_character_draft_payload,
+)
+from web.errors import map_generation_exception
 
 
 def _payload(**overrides):
@@ -522,6 +527,93 @@ def test_live_malformed_structured_output_records_failure_audit():
     assert error.model_invocations[-1] == error.audit
 
 
+@pytest.mark.parametrize(
+    ("label", "final_text", "reason"),
+    [
+        ("empty", "", "FINALIZATION_EMPTY"),
+        ("null", None, "FINALIZATION_EMPTY"),
+        ("invalid_json", "not valid json", "FINALIZATION_INVALID_JSON"),
+        ("array", "[]", "FINALIZATION_WRONG_TOP_LEVEL"),
+        ("scalar", '"string"', "FINALIZATION_WRONG_TOP_LEVEL"),
+    ],
+)
+def test_live_finalization_failures_expose_safe_shape_diagnostics(
+    label, final_text, reason
+):
+    agent, client = live_agent(
+        [ProviderCompletion(text="FINALIZE"), ProviderCompletion(text=final_text)]
+    )
+
+    with pytest.raises(ModelMalformedResponseError) as captured:
+        agent.generate("设计一个角色")
+
+    error = captured.value
+    diagnostics = getattr(error, "finalization_diagnostics", None)
+    assert diagnostics is not None, label
+    assert diagnostics["contract_reason"] == reason
+    assert diagnostics["content_present"] is bool(final_text)
+    assert diagnostics["content_length"] == len(final_text or "")
+    assert diagnostics["top_level_type"] == (
+        "empty" if not final_text else ("array" if final_text == "[]" else diagnostics["top_level_type"])
+    )
+    assert diagnostics["json_parse_success"] is bool(final_text and reason == "FINALIZATION_WRONG_TOP_LEVEL")
+    assert "finalization" in str(map_generation_exception(error).details)
+    assert getattr(error, "phase", None) == "finalization_response"
+    assert client.call_count == 2
+
+
+def test_live_finalization_schema_diagnostics_allowlist_shape_and_hide_values():
+    secret = "F7_SUPER_SECRET_VALUE"
+    malformed = _payload()
+    malformed["age"] = secret
+    malformed[secret] = "untrusted"
+    agent, _ = live_agent(
+        [ProviderCompletion(text="FINALIZE"), ProviderCompletion(text=json.dumps(malformed))]
+    )
+
+    with pytest.raises(ModelMalformedResponseError) as captured:
+        agent.generate("设计一个角色")
+
+    error = captured.value
+    diagnostics = error.finalization_diagnostics
+    assert diagnostics["contract_reason"] == "FINALIZATION_SCHEMA_MISMATCH"
+    assert diagnostics["known_keys"] == tuple(sorted(_payload()))
+    assert diagnostics["unknown_key_count"] == 1
+    assert diagnostics["missing_required_keys"] == ()
+    assert secret not in str(error)
+    assert secret not in json.dumps(diagnostics, ensure_ascii=False)
+    inspection = inspect_character_draft_payload(malformed)
+    assert secret not in json.dumps(inspection.to_dict(), ensure_ascii=False)
+    mapped = map_generation_exception(error)
+    assert secret not in json.dumps(mapped.details, ensure_ascii=False)
+
+
+@pytest.mark.parametrize(
+    ("mutate", "reason"),
+    [
+        (lambda payload: payload.update(age="wrong"), "FINALIZATION_INVALID_FIELD_TYPE"),
+        (
+            lambda payload: (payload.pop("canon_basis"), payload.update(age="wrong")),
+            "FINALIZATION_SCHEMA_MISMATCH",
+        ),
+    ],
+)
+def test_live_finalization_schema_reason_matrix(mutate, reason):
+    payload = _payload()
+    mutate(payload)
+    agent, _ = live_agent(
+        [ProviderCompletion(text="FINALIZE"), ProviderCompletion(text=json.dumps(payload))]
+    )
+
+    with pytest.raises(ModelMalformedResponseError) as captured:
+        agent.generate("设计一个角色")
+
+    diagnostics = captured.value.finalization_diagnostics
+    assert diagnostics["contract_reason"] == reason
+    assert diagnostics["json_parse_success"] is True
+    assert diagnostics["top_level_type"] == "object"
+
+
 def test_live_character_draft_request_uses_structured_json_mode():
     agent, client = live_agent(
         [
@@ -540,6 +632,14 @@ def test_live_character_draft_request_uses_structured_json_mode():
     assert client.requests[0]["response_contract"]["mode"] == "text"
     assert client.requests[1]["response_contract"]["mode"] == "text"
     assert client.requests[2]["response_contract"]["mode"] == "json_object"
+    final_request = client.requests[2]
+    assert [message["role"] for message in final_request["messages"]] == [
+        "system",
+        "user",
+    ]
+    assert final_request["tools"] == []
+    for omitted in ("tool_choice", "thinking", "max_tokens", "max_completion_tokens"):
+        assert omitted not in final_request
 
 
 def test_live_character_initial_action_requires_tool_choice_for_canon_dependency():

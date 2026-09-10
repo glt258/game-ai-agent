@@ -31,6 +31,8 @@ nodes:
         locator: "live generation invocation context"
       - path: "src/agents/character_generation.py"
         locator: "initial Canon-dependent action tool requirement"
+      - path: "src/agents/character_generation.py"
+        locator: "finalization response phase and strict CharacterDraft contract diagnostics"
 
   - id: "contract.character_draft"
     type: "contract"
@@ -296,6 +298,8 @@ nodes:
         locator: "InvocationContext provider_session_id parent-operation affinity"
       - path: "src/agents/provider_protocol.py"
         locator: "optional tool_choice and thinking transport fields"
+      - path: "src/agents/live_llm.py"
+        locator: "shape-only finalization response diagnostics"
 
   - id: "component.live_llm_settings"
     type: "component"
@@ -358,6 +362,8 @@ nodes:
         locator: "W5-S1E Live Web Contract: Character async job, shared polling, restart and safe projection"
       - path: "src/web/errors.py"
         locator: "PROVIDER_FAILURE safe upstream metadata technical details"
+      - path: "src/web/errors.py"
+        locator: "MODEL_RESPONSE_INVALID safe finalization shape projection"
 
   - id: "component.runtime_path_resolution"
     type: "component"

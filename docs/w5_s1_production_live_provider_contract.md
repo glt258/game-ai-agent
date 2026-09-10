@@ -62,6 +62,26 @@ rate-limit and unavailable failures are retryable; authentication, malformed
 provider envelopes, context-limit and refusal failures fail fast. Failure audits
 contain sanitized metadata only.
 
+## W5-S1E-F7 update — finalization response diagnostics
+
+Character finalization continues to request `response_format={"type":"json_object"}`
+with no tools, `tool_choice`, thinking override or speculative output limit. JSON
+Object mode guarantees transport syntax only; the root `CharacterDraft` schema and
+`CharacterDraft.from_mapping()` remain authoritative for required fields, types,
+nullability and extra-field policy. The prompt and runtime schema are generated
+from the same repository-owned contract and its complete root example validates.
+
+Malformed finalization responses remain fail-closed as `MODEL_RESPONSE_INVALID`,
+with the response stage recorded as `finalization_response`. Safe diagnostics may
+report content presence/length, JSON parse success, top-level shape, allowlisted
+known keys, missing required keys, unknown-key count and a finite contract reason
+(`FINALIZATION_EMPTY`, `FINALIZATION_INVALID_JSON`,
+`FINALIZATION_WRONG_TOP_LEVEL`, `FINALIZATION_MISSING_REQUIRED`,
+`FINALIZATION_INVALID_FIELD_TYPE` or `FINALIZATION_SCHEMA_MISMATCH`). They never
+store raw response text, field values, arbitrary generated key names, prompts,
+reasoning, tool arguments or credentials. Parser strictness, recovery boundaries,
+retry/deadline policy, routing and provider thinking policy are unchanged.
+
 `LiveJobRegistry` separates logical state from physical worker settlement. A
 timed-out or cancelled job stops publishing results immediately, but its worker
 continues cooperatively until the provider returns or its shared deadline

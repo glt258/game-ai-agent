@@ -58,6 +58,7 @@ from .reliability import (
 )
 from .response_contracts import (
     CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL,
+    CHARACTER_DRAFT_JSON_SCHEMA,
     has_terminal_authoring_finalize_signal,
     response_contract_for,
 )
@@ -327,6 +328,11 @@ class LiveLLMAdapter:
         )
         text = response.text if isinstance(response.text, str) else None
         if not calls and (text is None or not text.strip()):
+            if (
+                prompt.response_format == "character_draft"
+                and prompt.invocation_purpose == "generation"
+            ):
+                raise self._finalization_error(text or "", "FINALIZATION_EMPTY")
             raise ModelMalformedResponseError(
                 "Provider returned neither tool calls nor assistant text"
             )
@@ -361,7 +367,9 @@ class LiveLLMAdapter:
             segments = ()
             rendered_text = CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL
         elif prompt.response_format == "character_draft":
-            structured_output = self._parse_structured_object(text or "")
+            structured_output = self._parse_structured_object(
+                text or "", diagnostics=prompt.invocation_purpose == "generation"
+            )
             segments = ()
             rendered_text = text
         elif prompt.response_format == "character_skill_kit":
@@ -639,19 +647,80 @@ class LiveLLMAdapter:
             )
         return tuple(segments)
 
-    @staticmethod
-    def _parse_structured_object(text: str) -> Mapping[str, Any]:
+    @classmethod
+    def _parse_structured_object(
+        cls, text: str, *, diagnostics: bool = False
+    ) -> Mapping[str, Any]:
         try:
             document = json.loads(text)
         except json.JSONDecodeError:
+            if diagnostics:
+                raise cls._finalization_error(text, "FINALIZATION_INVALID_JSON") from None
             raise ModelMalformedResponseError(
                 "Provider final response is not valid CharacterDraft JSON"
             ) from None
         if not isinstance(document, Mapping):
+            if diagnostics:
+                raise cls._finalization_error(text, "FINALIZATION_WRONG_TOP_LEVEL", document)
             raise ModelMalformedResponseError(
                 "CharacterDraft response must be a JSON object"
             )
         return dict(document)
+
+    @staticmethod
+    def _finalization_error(
+        text: str,
+        reason: str,
+        document: Any = None,
+    ) -> ModelMalformedResponseError:
+        content = text if isinstance(text, str) else ""
+        top_level_type = "empty" if reason == "FINALIZATION_EMPTY" else "unknown"
+        key_count = None
+        known_keys: tuple[str, ...] = ()
+        missing_required_keys: tuple[str, ...] = ()
+        unknown_key_count = None
+        if reason != "FINALIZATION_EMPTY":
+            if isinstance(document, Mapping):
+                top_level_type = "object"
+                keys = {key for key in document if isinstance(key, str)}
+                schema_keys = set(CHARACTER_DRAFT_JSON_SCHEMA["properties"])
+                required = set(CHARACTER_DRAFT_JSON_SCHEMA["required"])
+                key_count = len(document)
+                known_keys = tuple(sorted(keys & schema_keys))
+                missing_required_keys = tuple(sorted(required - keys))
+                unknown_key_count = len(keys - schema_keys)
+            elif document is None:
+                top_level_type = "null"
+            elif isinstance(document, list):
+                top_level_type = "array"
+            elif isinstance(document, str):
+                top_level_type = "string"
+            elif isinstance(document, bool):
+                top_level_type = "boolean"
+            elif isinstance(document, (int, float)):
+                top_level_type = "number"
+        diagnostics = {
+            "content_present": bool(content.strip()),
+            "content_length": len(content),
+            "json_parse_success": reason not in {
+                "FINALIZATION_EMPTY",
+                "FINALIZATION_INVALID_JSON",
+            },
+            "top_level_type": top_level_type,
+            "key_count": key_count,
+            "known_keys": known_keys,
+            "missing_required_keys": missing_required_keys,
+            "unknown_key_count": unknown_key_count,
+            "contract_reason": reason,
+        }
+        message = {
+            "FINALIZATION_EMPTY": "Provider returned neither tool calls nor assistant text",
+            "FINALIZATION_INVALID_JSON": "Provider final response is not valid CharacterDraft JSON",
+            "FINALIZATION_WRONG_TOP_LEVEL": "CharacterDraft response must be a JSON object",
+        }[reason]
+        return ModelMalformedResponseError(
+            message, finalization_diagnostics=diagnostics
+        )
 
     @staticmethod
     def _parse_skill_kit_object(text: str) -> Mapping[str, Any]:

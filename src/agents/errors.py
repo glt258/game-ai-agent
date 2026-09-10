@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from .models import ModelInvocationAudit
 
 
@@ -67,6 +69,17 @@ class ModelProviderError(ModelError):
 
 class ModelMalformedResponseError(ModelError):
     """Raised when a provider response cannot become a safe ModelTurn."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        finalization_diagnostics: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message)
+        # Shape-only metadata populated by the finalization parser.  It never
+        # contains response values, raw JSON, or arbitrary model-generated keys.
+        self.finalization_diagnostics = finalization_diagnostics
 
 
 class ModelUnavailableError(ModelError):

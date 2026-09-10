@@ -1298,6 +1298,9 @@ _SAFE_GROUNDING_CANON_ID = re.compile(
 )
 _ACTION_TERMINATION_PHASE = "action_termination"
 _FINALIZATION_CONTEXT_PHASE = "finalization_context"
+_SAFE_UNKNOWN_FIELD_LABELS = frozenset(
+    {"character_draft", "draft", "result", "data", "response", "payload"}
+)
 
 
 def _classify_generation_failure(
@@ -1310,6 +1313,57 @@ def _classify_generation_failure(
 
     error.phase = phase
     error.reason = reason
+
+
+def _attach_finalization_schema_diagnostics(
+    error: ModelMalformedResponseError,
+    payload: Any,
+) -> None:
+    """Attach allowlisted shape metadata without copying model values."""
+
+    if not isinstance(payload, Mapping):
+        error.finalization_diagnostics = {
+            "content_present": True,
+            "content_length": None,
+            "json_parse_success": True,
+            "top_level_type": type(payload).__name__,
+            "key_count": None,
+            "known_keys": (),
+            "missing_required_keys": (),
+            "unknown_key_count": None,
+            "contract_reason": "FINALIZATION_WRONG_TOP_LEVEL",
+        }
+        return
+    inspection = inspect_character_draft_payload(payload)
+    schema_keys = set(CHARACTER_DRAFT_JSON_SCHEMA["properties"])
+    known_keys = tuple(
+        sorted(key for key in payload if key in schema_keys)
+    )
+    missing_required = tuple(inspection.missing_required)
+    unknown_key_count = sum(
+        1 for key in payload if key not in schema_keys
+    )
+    if inspection.unknown_fields or (
+        inspection.invalid_fields and inspection.missing_required
+    ):
+        reason = "FINALIZATION_SCHEMA_MISMATCH"
+    elif inspection.invalid_fields:
+        reason = "FINALIZATION_INVALID_FIELD_TYPE"
+    elif inspection.missing_required:
+        reason = "FINALIZATION_MISSING_REQUIRED"
+    else:
+        reason = "FINALIZATION_SCHEMA_MISMATCH"
+    error.finalization_diagnostics = {
+        "content_present": True,
+        "content_length": None,
+        "json_parse_success": True,
+        "top_level_type": "object",
+        "key_count": len(payload),
+        "known_keys": known_keys,
+        "missing_required_keys": missing_required,
+        "unknown_key_count": unknown_key_count,
+        "contract_reason": reason,
+    }
 
 
 def _safe_grounding_canon_id(value: Any) -> str | None:
@@ -2180,7 +2234,18 @@ class CharacterGenerationAgent:
                 response_format="character_draft",
                 authoring_payload=finalization_payload,
             )
-            final_turn = self.model.generate(final_prompt)
+            try:
+                final_turn = self.model.generate(final_prompt)
+            except ModelMalformedResponseError as error:
+                diagnostics = getattr(error, "finalization_diagnostics", {}) or {}
+                _classify_generation_failure(
+                    error,
+                    phase="finalization_response",
+                    reason=diagnostics.get(
+                        "contract_reason", "FINALIZATION_RESPONSE_INVALID"
+                    ),
+                )
+                raise
             if final_turn.invocation is not None:
                 invocations.append(final_turn.invocation)
             if final_turn.tool_calls:
@@ -2196,19 +2261,32 @@ class CharacterGenerationAgent:
                 except json.JSONDecodeError:
                     raise ModelMalformedResponseError("CharacterDraft response is not valid JSON") from None
             payload, normalized_fields = _normalize_character_draft_payload(payload)
-            payload, recovery_audit = self._recover_character_draft_payload(
-                payload,
-                request=request,
-                authoring=authoring,
-                runtime=runtime,
-                messages=finalization_context.messages,
-                evidence=finalization_context.evidence,
-                evidence_bundle=finalization_context.evidence_bundle,
-                turn_number=finalization_round,
-                invocations=invocations,
-                source_ids=final_source_ids,
-                source_types=final_source_types,
-            )
+            try:
+                payload, recovery_audit = self._recover_character_draft_payload(
+                    payload,
+                    request=request,
+                    authoring=authoring,
+                    runtime=runtime,
+                    messages=finalization_context.messages,
+                    evidence=finalization_context.evidence,
+                    evidence_bundle=finalization_context.evidence_bundle,
+                    turn_number=finalization_round,
+                    invocations=invocations,
+                    source_ids=final_source_ids,
+                    source_types=final_source_types,
+                )
+            except ModelMalformedResponseError as error:
+                if getattr(error, "finalization_diagnostics", None) is None:
+                    _attach_finalization_schema_diagnostics(error, payload)
+                diagnostics = error.finalization_diagnostics or {}
+                _classify_generation_failure(
+                    error,
+                    phase="finalization_response",
+                    reason=diagnostics.get(
+                        "contract_reason", "FINALIZATION_SCHEMA_MISMATCH"
+                    ),
+                )
+                raise
             draft = CharacterDraft.from_mapping(payload)
             self._validate_draft(
                 draft,
@@ -2851,9 +2929,15 @@ class CharacterGenerationAgent:
         prefix: str,
         inspection: CharacterDraftContractInspection,
     ) -> str:
+        safe_unknown = sorted(
+            field
+            for field in inspection.unknown_fields
+            if field in _SAFE_UNKNOWN_FIELD_LABELS
+        )
         return (
             f"{prefix}: missing_required={list(inspection.missing_required)}, "
-            f"unknown fields={list(inspection.unknown_fields)}, "
+            f"unknown fields={safe_unknown}, "
+            f"unknown_field_count={len(inspection.unknown_fields)}, "
             f"invalid fields={list(inspection.invalid_fields)}"
         )
 
@@ -3251,7 +3335,11 @@ class CharacterDraftContractInspection:
     def to_dict(self) -> dict[str, list[str]]:
         return {
             "missing_required": list(self.missing_required),
-            "unknown_fields": list(self.unknown_fields),
+            "unknown_fields": [
+                field
+                for field in self.unknown_fields
+                if field in _SAFE_UNKNOWN_FIELD_LABELS
+            ],
             "invalid_fields": list(self.invalid_fields),
         }
 

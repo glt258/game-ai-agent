@@ -101,6 +101,28 @@ def _provider_failure_details(
     return details
 
 
+def _finalization_details(error: BaseException) -> dict[str, Any]:
+    diagnostic = getattr(error, "finalization_diagnostics", None)
+    if not isinstance(diagnostic, dict):
+        return {}
+    allowed = {
+        "content_present",
+        "content_length",
+        "json_parse_success",
+        "top_level_type",
+        "key_count",
+        "known_keys",
+        "missing_required_keys",
+        "unknown_key_count",
+        "contract_reason",
+    }
+    result = {key: diagnostic[key] for key in allowed if key in diagnostic}
+    for key in ("known_keys", "missing_required_keys"):
+        if isinstance(result.get(key), tuple):
+            result[key] = list(result[key])
+    return result
+
+
 def map_generation_exception(error: BaseException) -> WebApplicationError:
     """Map domain/provider failures without copying exception text."""
 
@@ -207,13 +229,17 @@ def map_generation_exception(error: BaseException) -> WebApplicationError:
             model_invocations=audits,
         )
     if isinstance(error, ModelMalformedResponseError):
+        failure_details = dict(details)
+        finalization = _finalization_details(error)
+        if finalization:
+            failure_details["finalization"] = finalization
         return WebApplicationError(
             "MODEL_RESPONSE_INVALID",
             "The model returned a response that did not satisfy the runtime contract.",
             status_code=502,
             stage=getattr(error, "phase", "generation"),
             retryable=False,
-            details=details,
+            details=failure_details,
             model_invocations=audits,
         )
     if isinstance(error, ModelProviderError):
