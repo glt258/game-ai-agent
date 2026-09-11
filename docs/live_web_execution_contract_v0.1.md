@@ -18,6 +18,32 @@ alignment pipeline or the canonical SkillDesignArtifact transport.
 | OpenAI-compatible client | Provider timeout propagated to SDK request | SDK retries remain disabled; normalized failures include timeout, rate limit, authentication, and connection failure. |
 | Remote provider | Governed by the client timeout | The remote service is not treated as an unbounded wait. |
 
+### Budget hierarchy
+
+The live Character and Skill job registry owns one bounded `90s` monotonic
+budget. It starts when `LiveJobRegistry.submit()` registers the job, so queued
+time and worker execution share the same deadline. The registry starts both its
+timeout timer and the `OperationDeadline` from that instant; the timer creates
+`BACKEND_REQUEST_TIMEOUT` and cooperatively cancels the shared token. The
+worker is not force-killed, and in-flight capacity is retained until physical
+settlement. A late success or error cannot replace the frozen timeout result.
+
+Each provider attempt is capped by the remaining operation budget and the
+provider's configured request timeout (`NPC_LLM_TIMEOUT_SECONDS`, default
+`30s`). Retries use the same absolute deadline and bounded backoff; they do not
+reset it. Character action rounds use the same deadline. `turn` in provider
+diagnostics is the one-based `AgentPrompt.turn_number`, which is the action
+round index for Character authoring (for example, `turn=6` means action round
+6). Browser polling is a client horizon of `120s` with a minimum `1000ms`
+interval, deliberately longer than the backend's `90s` job budget so the
+backend terminal state is observed first.
+
+Timeout errors expose only an ephemeral, content-free progress snapshot:
+`timeout_source`, `execution_phase`, `action_phase`, `action_round_index`,
+semantic and wire tool-choice values, completed logical invocations and
+provider attempts, `provider_call_in_flight`, and `last_completed_stage`.
+The snapshot is frozen at timeout and is never persisted.
+
 The original synchronous smoke was run with an explicit `60s/0 retry` provider
 configuration. Character Studio reached FastAPI, but the long-held Next
 connection ended with `socket hang up` while FastAPI remained healthy. This

@@ -17,6 +17,7 @@ from agents import (
     ProviderClientError,
     ProviderCompletion,
     InvocationPolicy,
+    LiveExecutionProgress,
     current_invocation_context,
     default_invocation_context,
     invocation_context,
@@ -167,6 +168,65 @@ def test_late_failure_cannot_replace_timeout_and_shutdown_rejects_new_work() -> 
     with pytest.raises(WebApplicationError) as closed:
         registry.submit(kind="skill_playground", provider="openai", model="m", work=lambda: None)
     assert closed.value.code == "LIVE_EXECUTION_SHUTDOWN"
+
+
+def test_timeout_progress_snapshot_freezes_and_suppresses_late_updates() -> None:
+    progress = LiveExecutionProgress()
+    progress.mark_action_round(round_index=6, tool_invocation="optional", tool_count=9)
+    progress.provider_call_started()
+
+    frozen = progress.freeze(timeout_source="LIVE_EXECUTION_BUDGET")
+    progress.provider_attempt_completed()
+    progress.logical_invocation_completed()
+
+    assert frozen.to_dict() == {
+        "timeout_source": "LIVE_EXECUTION_BUDGET",
+        "execution_phase": "ACTION_LOOP",
+        "action_phase": "LATER_ACTION",
+        "action_round_index": 6,
+        "semantic_tool_choice": "OPTIONAL",
+        "wire_tool_choice": None,
+        "logical_invocations_completed": 0,
+        "provider_attempts_completed": 0,
+        "provider_call_in_flight": True,
+        "last_completed_stage": "ACTION_RECEIVED",
+    }
+    assert progress.snapshot() == frozen
+
+
+def test_registry_timeout_exposes_safe_progress_and_keeps_terminal_state() -> None:
+    registry = LiveJobRegistry(max_workers=1, max_in_flight=1, timeout_seconds=10, ttl_seconds=1)
+    started = threading.Event()
+    release = threading.Event()
+    settled = threading.Event()
+
+    def work() -> str:
+        progress = current_invocation_context().progress
+        progress.mark_action_round(round_index=1, tool_invocation="required", tool_count=9)
+        progress.provider_call_started()
+        started.set()
+        release.wait(1)
+        progress.provider_attempt_completed()
+        settled.set()
+        return "late-success"
+
+    first = registry.submit(kind="character_generation", provider="openai", model="m", work=work)
+    assert started.wait(1)
+    registry._mark_timeout(first.job_id)  # noqa: SLF001 - deterministic timer seam
+    timed_out = registry.get(first.job_id)
+    assert timed_out.error is not None
+    assert timed_out.error.code == "BACKEND_REQUEST_TIMEOUT"
+    assert timed_out.error.details["timeout_source"] == "LIVE_EXECUTION_BUDGET"
+    assert timed_out.error.details["execution_phase"] == "ACTION_LOOP"
+    assert timed_out.error.details["action_phase"] == "INITIAL_CANON_REQUIRED"
+    assert timed_out.error.details["action_round_index"] == 1
+    assert timed_out.error.details["provider_call_in_flight"] is True
+    release.set()
+    assert settled.wait(1)
+    final = registry.get(first.job_id)
+    assert final.error is not None and final.error.code == "BACKEND_REQUEST_TIMEOUT"
+    assert final.error.details["provider_call_in_flight"] is True
+    registry.shutdown()
 
 
 def _prompt():

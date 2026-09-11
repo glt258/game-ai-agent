@@ -23,7 +23,7 @@ from agents.model_factory import character_model_from_environment
 from agents.model_factory import resolve_provider_route
 from agents.errors import ModelConfigurationError
 from agents.model_protocol import AgentModel
-from agents.reliability import default_invocation_context
+from agents.reliability import current_live_execution_progress, default_invocation_context
 from combat_semantics import CombatRoleProfile
 
 from ..errors import WebApplicationError, map_generation_exception
@@ -153,6 +153,9 @@ class CharacterGenerationApplication:
             generation = recorder.result
             if generation is None:
                 raise RuntimeError("generation workflow returned no result")
+            progress = current_live_execution_progress()
+            if progress is not None:
+                progress.mark_phase("EVALUATION")
             evaluation = self.evaluation_runner.run(
                 EvaluationSubject(
                     request=request,
@@ -161,6 +164,8 @@ class CharacterGenerationApplication:
                 ),
                 evaluation_id=f"evaluation:{request.request_id}",
             )
+            if progress is not None:
+                progress.mark_phase("EVALUATION", stage="EVALUATION_COMPLETED")
             return CharacterGenerationApplicationResult(
                 request,
                 generation,

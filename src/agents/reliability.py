@@ -40,6 +40,153 @@ class OperationDeadline:
             raise DeadlineExceededError()
 
 
+@dataclass(frozen=True)
+class LiveExecutionProgressSnapshot:
+    """Content-free progress captured when a live job reaches a terminal timeout."""
+
+    timeout_source: str | None
+    execution_phase: str
+    action_phase: str | None
+    action_round_index: int | None
+    semantic_tool_choice: str | None
+    wire_tool_choice: str | None
+    logical_invocations_completed: int
+    provider_attempts_completed: int
+    provider_call_in_flight: bool
+    last_completed_stage: str
+
+    def to_dict(self) -> dict[str, object | None]:
+        return {
+            "timeout_source": self.timeout_source,
+            "execution_phase": self.execution_phase,
+            "action_phase": self.action_phase,
+            "action_round_index": self.action_round_index,
+            "semantic_tool_choice": self.semantic_tool_choice,
+            "wire_tool_choice": self.wire_tool_choice,
+            "logical_invocations_completed": self.logical_invocations_completed,
+            "provider_attempts_completed": self.provider_attempts_completed,
+            "provider_call_in_flight": self.provider_call_in_flight,
+            "last_completed_stage": self.last_completed_stage,
+        }
+
+
+class LiveExecutionProgress:
+    """Thread-safe, ephemeral progress state for one live execution."""
+
+    _SEMANTIC_CHOICES = {"REQUIRED", "OPTIONAL", "DISABLED"}
+    _EXECUTION_PHASES = {
+        "ACTION_LOOP",
+        "TOOL_EXECUTION",
+        "FINALIZATION_CONTEXT",
+        "FINAL_PROVIDER",
+        "NORMALIZATION",
+        "EVALUATION",
+        "REPAIR",
+        "UNKNOWN",
+    }
+    _STAGES = {
+        "NONE",
+        "ACTION_RECEIVED",
+        "PROVIDER_COMPLETED",
+        "TOOLS_EXECUTED",
+        "FINALIZATION_CONTEXT_BUILT",
+        "FINAL_PROVIDER_COMPLETED",
+        "NORMALIZATION_COMPLETED",
+        "EVALUATION_COMPLETED",
+        "REPAIR_COMPLETED",
+    }
+
+    def __init__(self) -> None:
+        self._lock = threading.RLock()
+        self._timeout_source: str | None = None
+        self._execution_phase = "UNKNOWN"
+        self._action_phase: str | None = None
+        self._action_round_index: int | None = None
+        self._semantic_tool_choice: str | None = None
+        self._wire_tool_choice: str | None = None
+        self._logical_invocations_completed = 0
+        self._provider_attempts_completed = 0
+        self._provider_call_in_flight = False
+        self._last_completed_stage = "NONE"
+        self._frozen: LiveExecutionProgressSnapshot | None = None
+
+    def mark_action_round(self, *, round_index: int, tool_invocation: str, tool_count: int) -> None:
+        if isinstance(round_index, bool) or round_index < 1:
+            raise ValueError("action round index must be positive")
+        semantic = tool_invocation.strip().lower()
+        semantic_value = semantic.upper()
+        if semantic_value not in self._SEMANTIC_CHOICES:
+            raise ValueError("tool invocation must be required, optional, or disabled")
+        if isinstance(tool_count, bool) or tool_count < 0:
+            raise ValueError("tool count must be non-negative")
+        with self._lock:
+            if self._frozen is not None:
+                return
+            self._execution_phase = "ACTION_LOOP"
+            self._action_phase = (
+                "INITIAL_CANON_REQUIRED" if semantic == "required" else "LATER_ACTION"
+            )
+            self._action_round_index = round_index
+            self._semantic_tool_choice = semantic_value
+            self._wire_tool_choice = "required" if semantic == "required" else None
+            self._last_completed_stage = "ACTION_RECEIVED"
+
+    def mark_phase(self, phase: str, *, stage: str | None = None) -> None:
+        if phase not in self._EXECUTION_PHASES:
+            raise ValueError("execution phase must be finite")
+        if stage is not None and stage not in self._STAGES:
+            raise ValueError("progress stage must be finite")
+        with self._lock:
+            if self._frozen is None:
+                self._execution_phase = phase
+                if stage is not None:
+                    self._last_completed_stage = stage
+
+    def provider_call_started(self) -> None:
+        with self._lock:
+            if self._frozen is None:
+                self._provider_call_in_flight = True
+
+    def provider_attempt_completed(self) -> None:
+        with self._lock:
+            if self._frozen is None:
+                self._provider_attempts_completed += 1
+                self._provider_call_in_flight = False
+                self._last_completed_stage = "PROVIDER_COMPLETED"
+
+    def logical_invocation_completed(self) -> None:
+        with self._lock:
+            if self._frozen is None:
+                self._logical_invocations_completed += 1
+
+    def freeze(self, *, timeout_source: str) -> LiveExecutionProgressSnapshot:
+        if not timeout_source or not isinstance(timeout_source, str):
+            raise ValueError("timeout source must be a finite value")
+        with self._lock:
+            if self._frozen is None:
+                self._timeout_source = timeout_source
+                self._frozen = self._snapshot_locked()
+            return self._frozen
+
+    def snapshot(self) -> LiveExecutionProgressSnapshot:
+        with self._lock:
+            return self._frozen or self._snapshot_locked()
+
+    def _snapshot_locked(self) -> LiveExecutionProgressSnapshot:
+        return LiveExecutionProgressSnapshot(
+            timeout_source=self._timeout_source,
+            execution_phase=self._execution_phase,
+            action_phase=self._action_phase,
+            action_round_index=self._action_round_index,
+            semantic_tool_choice=self._semantic_tool_choice,
+            wire_tool_choice=self._wire_tool_choice,
+            logical_invocations_completed=self._logical_invocations_completed,
+            provider_attempts_completed=self._provider_attempts_completed,
+            provider_call_in_flight=self._provider_call_in_flight,
+            last_completed_stage=self._last_completed_stage,
+        )
+
+
 class CancellationToken:
     """Cooperative cancellation; it never force-kills a running Python thread."""
 
@@ -103,6 +250,7 @@ class InvocationContext:
     cancellation: CancellationToken
     policy: InvocationPolicy
     provider_session_id: str
+    progress: LiveExecutionProgress
 
 
 _CURRENT_CONTEXT: contextvars.ContextVar[InvocationContext | None] = contextvars.ContextVar(
@@ -114,14 +262,20 @@ def current_invocation_context() -> InvocationContext | None:
     return _CURRENT_CONTEXT.get()
 
 
+def current_live_execution_progress() -> LiveExecutionProgress | None:
+    context = current_invocation_context()
+    return context.progress if context is not None else None
+
+
 @contextmanager
 def invocation_context(
     *,
     deadline: OperationDeadline,
     cancellation: CancellationToken,
     policy: InvocationPolicy,
+    progress: LiveExecutionProgress | None = None,
 ) -> Iterator[InvocationContext]:
-    context = InvocationContext(deadline, cancellation, policy, uuid4().hex)
+    context = InvocationContext(deadline, cancellation, policy, uuid4().hex, progress or LiveExecutionProgress())
     token = _CURRENT_CONTEXT.set(context)
     try:
         yield context
@@ -170,8 +324,11 @@ __all__ = [
     "InvocationCancelledError",
     "InvocationContext",
     "InvocationPolicy",
+    "LiveExecutionProgress",
+    "LiveExecutionProgressSnapshot",
     "OperationDeadline",
     "current_invocation_context",
+    "current_live_execution_progress",
     "default_invocation_context",
     "invocation_context",
 ]

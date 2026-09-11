@@ -66,6 +66,7 @@ function FailureDiagnostics({error}: {error: ApiClientError}) {
   const body = error.payload.error;
   const action = body.details.action_termination;
   const actionDiagnostics = action && typeof action === "object" ? action as Record<string, unknown> : null;
+  const timeout = typeof body.details.timeout_source === "string" ? body.details : null;
   const invocations = body.audit?.model_invocations ?? [];
   const latest = invocations.length > 0 ? invocations[invocations.length - 1] : null;
   const attempts = latest ? latest.attempts.length || latest.retry_count + 1 : null;
@@ -86,6 +87,14 @@ function FailureDiagnostics({error}: {error: ApiClientError}) {
         {latest?.provider_request_id && <div className="audit-row"><span>Request ID</span><strong>{latest.provider_request_id}</strong></div>}
         <div className="audit-row"><span>Provider 可重试</span><strong>{latest?.provider_retryable === null || latest?.provider_retryable === undefined ? "未知" : latest.provider_retryable ? "是" : "否"}</strong></div>
         <div className="audit-row"><span>Token 用量</span><strong>{usage ? `${usage.input_tokens ?? "?"} in / ${usage.output_tokens ?? "?"} out / ${usage.total_tokens ?? "?"} total` : "未报告"}</strong></div>
+        {timeout && <>
+          <div className="audit-row"><span>Timeout source</span><strong>{String(timeout.timeout_source)}</strong></div>
+          <div className="audit-row"><span>Execution phase</span><strong>{String(timeout.execution_phase ?? "未知")}</strong></div>
+          <div className="audit-row"><span>Action phase / round</span><strong>{String(timeout.action_phase ?? "未知")} / {String(timeout.action_round_index ?? "未知")}</strong></div>
+          <div className="audit-row"><span>Provider in flight</span><strong>{timeout.provider_call_in_flight === true ? "是" : timeout.provider_call_in_flight === false ? "否" : "未知"}</strong></div>
+          <div className="audit-row"><span>Completed invocations / attempts</span><strong>{String(timeout.logical_invocations_completed ?? "未知")} / {String(timeout.provider_attempts_completed ?? "未知")}</strong></div>
+          <div className="audit-row"><span>Last completed stage</span><strong>{String(timeout.last_completed_stage ?? "未知")}</strong></div>
+        </>}
         {actionDiagnostics && <>
           <div className="audit-row"><span>Action phase</span><strong>{String(actionDiagnostics.action_phase ?? "未知")}</strong></div>
           <div className="audit-row"><span>Action round</span><strong>{String(actionDiagnostics.action_round_index ?? "未知")}</strong></div>

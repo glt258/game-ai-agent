@@ -13,6 +13,7 @@ from ..errors import WebApplicationError
 from agents.reliability import (
     CancellationToken,
     InvocationPolicy,
+    LiveExecutionProgress,
     OperationDeadline,
     invocation_context,
 )
@@ -51,6 +52,7 @@ class _LiveJob:
     deadline: OperationDeadline | None = None
     future: Future[Any] | None = None
     worker_settled: bool = False
+    progress: LiveExecutionProgress | None = None
 
 
 class LiveJobRegistry:
@@ -137,6 +139,7 @@ class LiveJobRegistry:
             )
             job.cancellation = CancellationToken()
             job.deadline = OperationDeadline(self.timeout_seconds, monotonic=self._clock)
+            job.progress = LiveExecutionProgress()
             self._jobs[job.job_id] = job
             job.future = self._executor.submit(self._execute, job.job_id, work)
             timer = threading.Timer(
@@ -217,6 +220,7 @@ class LiveJobRegistry:
                     attempt_timeout_cap=self.timeout_seconds,
                     operation_deadline_seconds=self.timeout_seconds,
                 ),
+                progress=job.progress,
             ):
                 result = work()
         except WebApplicationError as error:
@@ -269,6 +273,7 @@ class LiveJobRegistry:
                 return
             if job.cancellation is not None:
                 job.cancellation.cancel()
+            progress = job.progress.freeze(timeout_source="LIVE_EXECUTION_BUDGET") if job.progress is not None else None
             job.status = "FAILED"
             job.error = WebApplicationError(
                 "BACKEND_REQUEST_TIMEOUT",
@@ -276,7 +281,10 @@ class LiveJobRegistry:
                 status_code=504,
                 stage="live_execution",
                 retryable=True,
-                details={"timeout_seconds": self.timeout_seconds},
+                details={
+                    "timeout_seconds": self.timeout_seconds,
+                    **(progress.to_dict() if progress is not None else {}),
+                },
             )
             job.finished_at = self._clock()
 

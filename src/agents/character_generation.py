@@ -46,6 +46,7 @@ from .errors import (
     ModelTimeoutError,
 )
 from .model_protocol import AgentModel
+from .reliability import current_live_execution_progress
 from .models import (
     ActionTerminationReason,
     AgentPrompt,
@@ -2191,6 +2192,13 @@ class CharacterGenerationAgent:
                     ),
                 )
                 last_action_prompt = prompt
+                progress = current_live_execution_progress()
+                if progress is not None:
+                    progress.mark_action_round(
+                        round_index=round_number,
+                        tool_invocation=prompt.tool_invocation,
+                        tool_count=len(prompt.available_tools),
+                    )
                 try:
                     turn = self.model.generate(prompt)
                 except ModelMalformedResponseError as error:
@@ -2209,6 +2217,8 @@ class CharacterGenerationAgent:
                 if turn.invocation is not None:
                     invocations.append(turn.invocation)
                 if turn.tool_calls:
+                    if progress is not None:
+                        progress.mark_phase("TOOL_EXECUTION")
                     self._execute_tool_calls(
                         turn.tool_calls,
                         round_number=round_number,
@@ -2217,6 +2227,8 @@ class CharacterGenerationAgent:
                         source_types=source_types,
                         audits=audits,
                     )
+                    if progress is not None:
+                        progress.mark_phase("ACTION_LOOP", stage="TOOLS_EXECUTED")
                     continue
                 if not has_terminal_authoring_finalize_signal(turn.text or ""):
                     error = ModelMalformedResponseError(
@@ -2264,6 +2276,9 @@ class CharacterGenerationAgent:
                 )
                 raise error
 
+            progress = current_live_execution_progress()
+            if progress is not None:
+                progress.mark_phase("FINALIZATION_CONTEXT")
             try:
                 finalization_context = _build_finalization_context(
                     request,
@@ -2283,6 +2298,8 @@ class CharacterGenerationAgent:
                     reason="context_construction_failed",
                 )
                 raise
+            if progress is not None:
+                progress.mark_phase("FINALIZATION_CONTEXT", stage="FINALIZATION_CONTEXT_BUILT")
             final_source_ids = set(finalization_context.source_ids)
             final_source_types = dict(finalization_context.source_types)
             finalization_payload = {
@@ -2309,6 +2326,8 @@ class CharacterGenerationAgent:
                 response_format="character_draft",
                 authoring_payload=finalization_payload,
             )
+            if progress is not None:
+                progress.mark_phase("FINAL_PROVIDER")
             try:
                 final_turn = self.model.generate(final_prompt)
             except ModelMalformedResponseError as error:
@@ -2321,6 +2340,8 @@ class CharacterGenerationAgent:
                     ),
                 )
                 raise
+            if progress is not None:
+                progress.mark_phase("NORMALIZATION")
             if final_turn.invocation is not None:
                 invocations.append(final_turn.invocation)
             if final_turn.tool_calls:

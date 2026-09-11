@@ -57,6 +57,7 @@ from .reliability import (
     InvocationPolicy,
     OperationDeadline,
     current_invocation_context,
+    current_live_execution_progress,
     invocation_context,
 )
 from .response_contracts import (
@@ -231,9 +232,16 @@ class LiveLLMAdapter:
                     is ThinkingModeBehavior.DISABLED
                 ):
                     request["thinking"] = "disabled"
-                response = self._client.complete(
-                    **request,
-                )
+                progress = current_live_execution_progress()
+                if progress is not None:
+                    progress.provider_call_started()
+                try:
+                    response = self._client.complete(
+                        **request,
+                    )
+                finally:
+                    if progress is not None:
+                        progress.provider_attempt_completed()
                 attempts.append(
                     ModelAttemptAudit(
                         len(attempts) + 1,
@@ -249,6 +257,8 @@ class LiveLLMAdapter:
                 turn = self._normalize(response, prompt, started, retry_count, attempts)
                 cancellation.raise_if_cancelled()
                 deadline.raise_if_expired()
+                if progress is not None:
+                    progress.logical_invocation_completed()
                 self._log_audit(turn.invocation)
                 return turn
             except ProviderClientError as error:

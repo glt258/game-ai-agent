@@ -18,6 +18,13 @@ core runtime and Doctor; the Next.js Studio remains outside the wheel.
 
 `src/knowledge/` is game runtime knowledge and knowledge-access code. Top-level `knowledge/` is the repository-local Engineering Knowledge Layer.
 
+Live Web executions use a single process-local 90-second monotonic deadline
+owned by `LiveJobRegistry`; the deadline starts at job registration and is
+shared by queued work, provider retries, action rounds, finalization, and
+evaluation. Timeout terminals freeze only finite progress metadata and retain
+physical worker accounting until settlement. Browser polling remains a 120
+second client horizon and is distinct from provider attempts.
+
 ## Source Precedence
 
 When facts conflict, use this order:
