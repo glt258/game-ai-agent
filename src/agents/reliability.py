@@ -32,6 +32,12 @@ class OperationDeadline:
     def remaining_seconds(self) -> float:
         return max(0.0, self.expires_at - self._monotonic())
 
+    def elapsed_ms(self) -> float:
+        return max(0.0, (self._monotonic() - self.started_at) * 1000.0)
+
+    def remaining_ms(self) -> float:
+        return self.remaining_seconds() * 1000.0
+
     def expired(self) -> bool:
         return self.remaining_seconds() <= 0
 
@@ -54,6 +60,18 @@ class LiveExecutionProgressSnapshot:
     provider_attempts_completed: int
     provider_call_in_flight: bool
     last_completed_stage: str
+    queue_wait_ms: float = 0.0
+    action_loop_ms: float = 0.0
+    finalization_context_ms: float = 0.0
+    final_provider_ms: float = 0.0
+    final_provider_start_offset_ms: float | None = None
+    final_provider_remaining_budget_ms: float | None = None
+    logical_invocation_index: int | None = None
+    logical_invocation_started_offset_ms: float | None = None
+    logical_invocation_remaining_budget_ms: float | None = None
+    current_provider_attempt_index: int | None = None
+    provider_attempts_started: int = 0
+    logical_invocations_started: int = 0
 
     def to_dict(self) -> dict[str, object | None]:
         return {
@@ -67,6 +85,18 @@ class LiveExecutionProgressSnapshot:
             "provider_attempts_completed": self.provider_attempts_completed,
             "provider_call_in_flight": self.provider_call_in_flight,
             "last_completed_stage": self.last_completed_stage,
+            "queue_wait_ms": self.queue_wait_ms,
+            "action_loop_ms": self.action_loop_ms,
+            "finalization_context_ms": self.finalization_context_ms,
+            "final_provider_ms": self.final_provider_ms,
+            "final_provider_start_offset_ms": self.final_provider_start_offset_ms,
+            "final_provider_remaining_budget_ms": self.final_provider_remaining_budget_ms,
+            "logical_invocation_index": self.logical_invocation_index,
+            "logical_invocation_started_offset_ms": self.logical_invocation_started_offset_ms,
+            "logical_invocation_remaining_budget_ms": self.logical_invocation_remaining_budget_ms,
+            "current_provider_attempt_index": self.current_provider_attempt_index,
+            "provider_attempts_started": self.provider_attempts_started,
+            "logical_invocations_started": self.logical_invocations_started,
         }
 
 
@@ -96,8 +126,11 @@ class LiveExecutionProgress:
         "REPAIR_COMPLETED",
     }
 
-    def __init__(self) -> None:
+    def __init__(self, *, deadline: OperationDeadline | None = None) -> None:
         self._lock = threading.RLock()
+        self._deadline = deadline
+        self._origin = deadline.started_at if deadline is not None else time.monotonic()
+        self._clock = deadline._monotonic if deadline is not None else time.monotonic
         self._timeout_source: str | None = None
         self._execution_phase = "UNKNOWN"
         self._action_phase: str | None = None
@@ -107,6 +140,17 @@ class LiveExecutionProgress:
         self._logical_invocations_completed = 0
         self._provider_attempts_completed = 0
         self._provider_call_in_flight = False
+        self._provider_attempts_started = 0
+        self._logical_invocations_started = 0
+        self._logical_invocation_index: int | None = None
+        self._logical_invocation_started_offset_ms: float | None = None
+        self._logical_invocation_remaining_budget_ms: float | None = None
+        self._current_provider_attempt_index: int | None = None
+        self._queue_wait_ms = 0.0
+        self._phase_started_at: dict[str, float] = {}
+        self._phase_durations_ms: dict[str, float] = {}
+        self._final_provider_start_offset_ms: float | None = None
+        self._final_provider_remaining_budget_ms: float | None = None
         self._last_completed_stage = "NONE"
         self._frozen: LiveExecutionProgressSnapshot | None = None
 
@@ -123,6 +167,7 @@ class LiveExecutionProgress:
             if self._frozen is not None:
                 return
             self._execution_phase = "ACTION_LOOP"
+            self._phase_started_at.setdefault("ACTION_LOOP", self._clock())
             self._action_phase = (
                 "INITIAL_CANON_REQUIRED" if semantic == "required" else "LATER_ACTION"
             )
@@ -138,16 +183,26 @@ class LiveExecutionProgress:
             raise ValueError("progress stage must be finite")
         with self._lock:
             if self._frozen is None:
+                self._close_phase_locked(self._clock())
                 self._execution_phase = phase
+                self._phase_started_at[phase] = self._clock()
                 if stage is not None:
                     self._last_completed_stage = stage
 
     def provider_call_started(self) -> None:
+        self.provider_attempt_started()
+
+    def provider_attempt_started(self, *, effective_attempt_timeout_ms: float | None = None) -> None:
         with self._lock:
             if self._frozen is None:
                 self._provider_call_in_flight = True
+                self._provider_attempts_started += 1
+                self._current_provider_attempt_index = self._provider_attempts_started
+                if self._execution_phase == "FINAL_PROVIDER":
+                    self._final_provider_start_offset_ms = self._offset_ms(self._clock())
+                    self._final_provider_remaining_budget_ms = self._remaining_ms()
 
-    def provider_attempt_completed(self) -> None:
+    def provider_attempt_completed(self, *, outcome: str = "SUCCESS", retry_reason: str | None = None) -> None:
         with self._lock:
             if self._frozen is None:
                 self._provider_attempts_completed += 1
@@ -159,11 +214,38 @@ class LiveExecutionProgress:
             if self._frozen is None:
                 self._logical_invocations_completed += 1
 
+    def logical_invocation_started(self) -> None:
+        with self._lock:
+            if self._frozen is None:
+                self._logical_invocations_started += 1
+                self._logical_invocation_index = self._logical_invocations_started
+                now = self._clock()
+                self._logical_invocation_started_offset_ms = self._offset_ms(now)
+                self._logical_invocation_remaining_budget_ms = self._remaining_ms()
+
+    def set_queue_wait_ms(self, value: float) -> None:
+        with self._lock:
+            if self._frozen is None and math.isfinite(value) and value >= 0:
+                self._queue_wait_ms = value
+
+    def _offset_ms(self, now: float) -> float:
+        return max(0.0, (now - self._origin) * 1000.0)
+
+    def _remaining_ms(self) -> float | None:
+        return self._deadline.remaining_ms() if self._deadline is not None else None
+
+    def _close_phase_locked(self, now: float) -> None:
+        phase = self._execution_phase
+        started = self._phase_started_at.get(phase)
+        if started is not None:
+            self._phase_durations_ms[phase] = max(0.0, (now - started) * 1000.0)
+
     def freeze(self, *, timeout_source: str) -> LiveExecutionProgressSnapshot:
         if not timeout_source or not isinstance(timeout_source, str):
             raise ValueError("timeout source must be a finite value")
         with self._lock:
             if self._frozen is None:
+                self._close_phase_locked(self._clock())
                 self._timeout_source = timeout_source
                 self._frozen = self._snapshot_locked()
             return self._frozen
@@ -184,6 +266,18 @@ class LiveExecutionProgress:
             provider_attempts_completed=self._provider_attempts_completed,
             provider_call_in_flight=self._provider_call_in_flight,
             last_completed_stage=self._last_completed_stage,
+            queue_wait_ms=self._queue_wait_ms,
+            action_loop_ms=self._phase_durations_ms.get("ACTION_LOOP", 0.0),
+            finalization_context_ms=self._phase_durations_ms.get("FINALIZATION_CONTEXT", 0.0),
+            final_provider_ms=self._phase_durations_ms.get("FINAL_PROVIDER", 0.0),
+            final_provider_start_offset_ms=self._final_provider_start_offset_ms,
+            final_provider_remaining_budget_ms=self._final_provider_remaining_budget_ms,
+            logical_invocation_index=self._logical_invocation_index,
+            logical_invocation_started_offset_ms=self._logical_invocation_started_offset_ms,
+            logical_invocation_remaining_budget_ms=self._logical_invocation_remaining_budget_ms,
+            current_provider_attempt_index=self._current_provider_attempt_index,
+            provider_attempts_started=self._provider_attempts_started,
+            logical_invocations_started=self._logical_invocations_started,
         )
 
 
@@ -275,7 +369,7 @@ def invocation_context(
     policy: InvocationPolicy,
     progress: LiveExecutionProgress | None = None,
 ) -> Iterator[InvocationContext]:
-    context = InvocationContext(deadline, cancellation, policy, uuid4().hex, progress or LiveExecutionProgress())
+    context = InvocationContext(deadline, cancellation, policy, uuid4().hex, progress or LiveExecutionProgress(deadline=deadline))
     token = _CURRENT_CONTEXT.set(context)
     try:
         yield context

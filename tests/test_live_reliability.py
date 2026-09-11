@@ -7,6 +7,8 @@ import pytest
 
 from agents import (
     CancellationToken,
+    InvocationPolicy,
+    LiveExecutionProgress,
     LiveLLMAdapter,
     ModelAuthenticationError,
     ModelCancelledError,
@@ -16,8 +18,6 @@ from agents import (
     OperationDeadline,
     ProviderClientError,
     ProviderCompletion,
-    InvocationPolicy,
-    LiveExecutionProgress,
     current_invocation_context,
     default_invocation_context,
     invocation_context,
@@ -190,6 +190,18 @@ def test_timeout_progress_snapshot_freezes_and_suppresses_late_updates() -> None
         "provider_attempts_completed": 0,
         "provider_call_in_flight": True,
         "last_completed_stage": "ACTION_RECEIVED",
+        "queue_wait_ms": 0.0,
+        "action_loop_ms": 0.0,
+        "finalization_context_ms": 0.0,
+        "final_provider_ms": 0.0,
+        "final_provider_start_offset_ms": None,
+        "final_provider_remaining_budget_ms": None,
+        "logical_invocation_index": None,
+        "logical_invocation_started_offset_ms": None,
+        "logical_invocation_remaining_budget_ms": None,
+        "current_provider_attempt_index": 1,
+        "provider_attempts_started": 1,
+        "logical_invocations_started": 0,
     }
     assert progress.snapshot() == frozen
 

@@ -78,6 +78,13 @@ class ModelAttemptAudit:
     provider_request_id: str | None = None
     finish_reason: str | None = None
     usage: ModelUsage | None = None
+    logical_invocation_index: int | None = None
+    provider_attempt_index: int | None = None
+    started_offset_ms: float | None = None
+    completed_offset_ms: float | None = None
+    remaining_budget_at_start_ms: float | None = None
+    effective_attempt_timeout_ms: float | None = None
+    retry_reason: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -250,6 +257,12 @@ class ModelInvocationAudit:
     upstream_error_type: str | None = None
     upstream_error_code: str | None = None
     upstream_error_param: str | None = None
+    logical_invocation_index: int | None = None
+    started_offset_ms: float | None = None
+    completed_offset_ms: float | None = None
+    remaining_budget_at_start_ms: float | None = None
+    attempts_started: int = 0
+    attempts_completed: int = 0
 
     def __post_init__(self) -> None:
         status_code = self.upstream_status

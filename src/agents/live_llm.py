@@ -203,6 +203,9 @@ class LiveLLMAdapter:
         cancellation = context.cancellation if context is not None else (
             self._cancellation or CancellationToken()
         )
+        progress = current_live_execution_progress()
+        if progress is not None:
+            progress.logical_invocation_started()
         retry_count = 0
         response: ProviderCompletion | None = None
         while True:
@@ -217,6 +220,8 @@ class LiveLLMAdapter:
                 if effective_timeout <= 0:
                     raise DeadlineExceededError()
                 attempt_started = self._monotonic()
+                attempt_started_offset_ms = deadline.elapsed_ms()
+                remaining_budget_at_start_ms = deadline.remaining_ms()
                 request = {
                     "model": self.model,
                     "messages": messages,
@@ -232,16 +237,28 @@ class LiveLLMAdapter:
                     is ThinkingModeBehavior.DISABLED
                 ):
                     request["thinking"] = "disabled"
-                progress = current_live_execution_progress()
                 if progress is not None:
-                    progress.provider_call_started()
+                    progress.provider_attempt_started(
+                        effective_attempt_timeout_ms=effective_timeout * 1000.0
+                    )
                 try:
                     response = self._client.complete(
                         **request,
                     )
-                finally:
+                except ProviderClientError as error:
                     if progress is not None:
-                        progress.provider_attempt_completed()
+                        progress.provider_attempt_completed(
+                            outcome=error.kind,
+                            retry_reason=error.kind if error.retryable else None,
+                        )
+                    raise
+                except Exception:
+                    if progress is not None:
+                        progress.provider_attempt_completed(outcome="OTHER_SAFE_FAILURE")
+                    raise
+                else:
+                    if progress is not None:
+                        progress.provider_attempt_completed(outcome="SUCCESS")
                 attempts.append(
                     ModelAttemptAudit(
                         len(attempts) + 1,
@@ -250,6 +267,16 @@ class LiveLLMAdapter:
                         provider_request_id=response.request_id,
                         finish_reason=response.finish_reason,
                         usage=response.usage,
+                        logical_invocation_index=(
+                            progress.snapshot().logical_invocation_index if progress is not None else None
+                        ),
+                        provider_attempt_index=(
+                            progress.snapshot().current_provider_attempt_index if progress is not None else None
+                        ),
+                        started_offset_ms=attempt_started_offset_ms,
+                        completed_offset_ms=deadline.elapsed_ms(),
+                        remaining_budget_at_start_ms=remaining_budget_at_start_ms,
+                        effective_attempt_timeout_ms=effective_timeout * 1000.0,
                     )
                 )
                 cancellation.raise_if_cancelled()
@@ -268,6 +295,17 @@ class LiveLLMAdapter:
                         error.kind,
                         (self._monotonic() - attempt_started) * 1000,
                         error_code=error.kind,
+                        logical_invocation_index=(
+                            progress.snapshot().logical_invocation_index if progress is not None else None
+                        ),
+                        provider_attempt_index=(
+                            progress.snapshot().current_provider_attempt_index if progress is not None else None
+                        ),
+                        completed_offset_ms=deadline.elapsed_ms(),
+                        started_offset_ms=attempt_started_offset_ms,
+                        remaining_budget_at_start_ms=remaining_budget_at_start_ms,
+                        effective_attempt_timeout_ms=effective_timeout * 1000.0,
+                        retry_reason=error.kind if error.retryable else None,
                     )
                 )
                 if (
@@ -371,6 +409,8 @@ class LiveLLMAdapter:
             )
             raise error
         latency_ms = (self._monotonic() - started) * 1000
+        progress = current_live_execution_progress()
+        progress_snapshot = progress.snapshot() if progress is not None else None
         invocation = ModelInvocationAudit(
             session_id=prompt.session_id,
             turn_number=prompt.turn_number,
@@ -387,6 +427,26 @@ class LiveLLMAdapter:
             response_contract=self._response_contract(prompt).mode.value,
             purpose=prompt.invocation_purpose,
             attempts=tuple(attempts),
+            logical_invocation_index=(
+                progress_snapshot.logical_invocation_index if progress_snapshot is not None else None
+            ),
+            started_offset_ms=(
+                progress_snapshot.logical_invocation_started_offset_ms
+                if progress_snapshot is not None
+                else None
+            ),
+            completed_offset_ms=(
+                progress_snapshot.logical_invocation_started_offset_ms + latency_ms
+                if progress_snapshot is not None and progress_snapshot.logical_invocation_started_offset_ms is not None
+                else None
+            ),
+            remaining_budget_at_start_ms=(
+                progress_snapshot.logical_invocation_remaining_budget_ms
+                if progress_snapshot is not None
+                else None
+            ),
+            attempts_started=(progress_snapshot.provider_attempts_started if progress_snapshot is not None else len(attempts)),
+            attempts_completed=(progress_snapshot.provider_attempts_completed if progress_snapshot is not None else len(attempts)),
         )
         if calls:
             segments = ()
@@ -958,6 +1018,8 @@ class LiveLLMAdapter:
             response_contract = self._response_contract(prompt).mode.value
         except ModelCapabilityError:
             response_contract = None
+        progress = current_live_execution_progress()
+        progress_snapshot = progress.snapshot() if progress is not None else None
         return ModelInvocationAudit(
             session_id=prompt.session_id,
             turn_number=prompt.turn_number,
@@ -982,4 +1044,35 @@ class LiveLLMAdapter:
             upstream_error_type=upstream_error_type,
             upstream_error_code=upstream_error_code,
             upstream_error_param=upstream_error_param,
+            logical_invocation_index=(
+                progress_snapshot.logical_invocation_index
+                if progress_snapshot is not None
+                else None
+            ),
+            started_offset_ms=(
+                progress_snapshot.logical_invocation_started_offset_ms
+                if progress_snapshot is not None
+                else None
+            ),
+            completed_offset_ms=(
+                progress_snapshot.logical_invocation_started_offset_ms + latency_ms
+                if progress_snapshot is not None
+                and progress_snapshot.logical_invocation_started_offset_ms is not None
+                else None
+            ),
+            remaining_budget_at_start_ms=(
+                progress_snapshot.logical_invocation_remaining_budget_ms
+                if progress_snapshot is not None
+                else None
+            ),
+            attempts_started=(
+                progress_snapshot.provider_attempts_started
+                if progress_snapshot is not None
+                else len(attempts)
+            ),
+            attempts_completed=(
+                progress_snapshot.provider_attempts_completed
+                if progress_snapshot is not None
+                else len(attempts)
+            ),
         )

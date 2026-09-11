@@ -30,6 +30,13 @@ evaluation. Timeout terminals freeze only finite progress metadata and retain
 physical worker accounting until settlement. Browser polling remains a 120
 second client horizon and is distinct from provider attempts.
 
+W5-S1E-F13 adds bounded latency attribution to the same ephemeral progress
+surface: queue wait, phase durations, logical invocation and provider-attempt
+starts, final-provider start offset, and remaining budget are measured with
+the operation's monotonic clock and frozen at terminal timeout. Historical F12
+fine-grained phase timing is unavailable; the confirmed blocker remains
+`FINAL_PROVIDER_COMPLETION_WITHIN_CANONICAL_DEADLINE`.
+
 ## Source Precedence
 
 When facts conflict, use this order:

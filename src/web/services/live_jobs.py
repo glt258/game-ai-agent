@@ -9,7 +9,6 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from ..errors import WebApplicationError
 from agents.reliability import (
     CancellationToken,
     InvocationPolicy,
@@ -17,6 +16,8 @@ from agents.reliability import (
     OperationDeadline,
     invocation_context,
 )
+
+from ..errors import WebApplicationError
 
 LiveJobStatus = Literal["PENDING", "RUNNING", "SUCCEEDED", "FAILED"]
 LiveJobKind = Literal["skill_playground", "character_skill_design", "character_generation"]
@@ -139,7 +140,7 @@ class LiveJobRegistry:
             )
             job.cancellation = CancellationToken()
             job.deadline = OperationDeadline(self.timeout_seconds, monotonic=self._clock)
-            job.progress = LiveExecutionProgress()
+            job.progress = LiveExecutionProgress(deadline=job.deadline)
             self._jobs[job.job_id] = job
             job.future = self._executor.submit(self._execute, job.job_id, work)
             timer = threading.Timer(
@@ -209,6 +210,8 @@ class LiveJobRegistry:
                 return
             job.status = "RUNNING"
             job.started_at = self._clock()
+            if job.progress is not None:
+                job.progress.set_queue_wait_ms(max(0.0, (job.started_at - job.created_at) * 1000.0))
         try:
             if job is None or job.deadline is None or job.cancellation is None:
                 return

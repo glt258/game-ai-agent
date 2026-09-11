@@ -78,6 +78,12 @@ def to_model_invocation(value: ModelInvocationAudit) -> ModelInvocationDTO:
         upstream_error_type=value.upstream_error_type,
         upstream_error_code=value.upstream_error_code,
         upstream_error_param=value.upstream_error_param,
+        logical_invocation_index=value.logical_invocation_index,
+        started_offset_ms=value.started_offset_ms,
+        completed_offset_ms=value.completed_offset_ms,
+        remaining_budget_at_start_ms=value.remaining_budget_at_start_ms,
+        attempts_started=value.attempts_started,
+        attempts_completed=value.attempts_completed,
         attempts=[
             ModelAttemptDTO(
                 attempt_number=item.attempt_number,
@@ -87,6 +93,13 @@ def to_model_invocation(value: ModelInvocationAudit) -> ModelInvocationDTO:
                 provider_request_id=item.provider_request_id,
                 finish_reason=item.finish_reason,
                 usage=_usage(item.usage),
+                logical_invocation_index=item.logical_invocation_index,
+                provider_attempt_index=item.provider_attempt_index,
+                started_offset_ms=item.started_offset_ms,
+                completed_offset_ms=item.completed_offset_ms,
+                remaining_budget_at_start_ms=item.remaining_budget_at_start_ms,
+                effective_attempt_timeout_ms=item.effective_attempt_timeout_ms,
+                retry_reason=item.retry_reason,
             )
             for item in value.attempts
         ],
