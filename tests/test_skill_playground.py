@@ -187,7 +187,7 @@ def test_evaluator_fail_can_use_one_bounded_repair():
 
     class SequenceProvider:
         def __init__(self):
-            self.model = "deepseek-v4-flash"
+            self.model = "deepseek-v4.1-flash"
             self.calls = 0
             self.transport_attempts = 0
             self.latency_ms = 0.0
@@ -205,7 +205,7 @@ def test_evaluator_fail_can_use_one_bounded_repair():
         "support",
         "passive",
         "Design a concise skill that helps the team survive.",
-        model="deepseek-v4-flash",
+        model="deepseek-v4.1-flash",
         repair_decider=lambda: True,
         repo_root=ROOT,
     )
@@ -216,8 +216,8 @@ def test_evaluator_fail_can_use_one_bounded_repair():
     assert result.final.evidence.evaluator_outcome == "PASS"
     assert result.repair is not None and result.repair.repair_attempts == 1
     assert provider.calls == 2
-    assert result.initial.evidence.identity.model == "deepseek-v4-flash"
-    assert result.final.evidence.identity.model == "deepseek-v4-flash"
+    assert result.initial.evidence.identity.model == "deepseek-v4.1-flash"
+    assert result.final.evidence.identity.model == "deepseek-v4.1-flash"
 
 
 def test_chinese_fake_e2e_localizes_presentation_but_keeps_protocol_values():
@@ -514,13 +514,13 @@ def test_cli_flash_model_is_passed_and_safe_debug_is_accurate(monkeypatch):
             "--prompt",
             "help the team",
             "--model",
-            "deepseek-v4-flash",
+            "deepseek-v4.1-flash",
             "--show-safe-debug",
         ],
         output=output,
     ) == 0
-    assert captured["model"] == "deepseek-v4-flash"
-    assert "Provider: opencode_go / deepseek-v4-flash" in output.getvalue()
+    assert captured["model"] == "deepseek-v4.1-flash"
+    assert "Provider: opencode_go / deepseek-v4.1-flash" in output.getvalue()
     assert "deepseek-v4-pro" not in output.getvalue()
 
 
@@ -531,7 +531,7 @@ def test_default_factory_forwards_model_to_existing_provider_config(monkeypatch)
         api_key = "test-only"
         base_url = None
         timeout_seconds = 60
-        model = "deepseek-v4-flash"
+        model = "deepseek-v4.1-flash"
         profile = SimpleNamespace(provider_options={})
 
         @classmethod
@@ -545,11 +545,11 @@ def test_default_factory_forwards_model_to_existing_provider_config(monkeypatch)
 
     monkeypatch.setattr("agents.model_factory.LiveLLMSettings", StubSettings)
     monkeypatch.setattr("agents.openai_provider.OpenAIChatClient", StubClient)
-    provider = hybrid_runner._default_hybrid_provider_factory(model="deepseek-v4-flash")
+    provider = hybrid_runner._default_hybrid_provider_factory(model="deepseek-v4.1-flash")
 
     assert captured["NPC_LLM_PROVIDER"] == "opencode_go"
-    assert captured["NPC_LLM_MODEL"] == "deepseek-v4-flash"
-    assert provider._model == "deepseek-v4-flash"
+    assert captured["NPC_LLM_MODEL"] == "deepseek-v4.1-flash"
+    assert provider._model == "deepseek-v4.1-flash"
     assert provider.calls == 0
     assert provider.transport_attempts == 0
 
@@ -571,7 +571,7 @@ def test_sync_hybrid_provider_reuses_session_affinity_across_retry_and_rotates_j
     first_client = CaptureClient()
     first_provider = hybrid_runner.OpenCodeGoHybridProvider(
         first_client,
-        model="deepseek-v4-flash",
+        model="deepseek-v4.1-flash",
         timeout_seconds=5,
         max_transport_retries=1,
     )
@@ -580,7 +580,7 @@ def test_sync_hybrid_provider_reuses_session_affinity_across_retry_and_rotates_j
     second_client = CaptureClient(fail_first=False)
     second_provider = hybrid_runner.OpenCodeGoHybridProvider(
         second_client,
-        model="deepseek-v4-flash",
+        model="deepseek-v4.1-flash",
         timeout_seconds=5,
         max_transport_retries=0,
     )

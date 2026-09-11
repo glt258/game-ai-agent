@@ -31,12 +31,13 @@ OpenAI SDK options and contain no provider/model conditionals.
 | --- | --- | --- | --- | --- |
 | `openai` | OpenAI SDK default | OpenAI Chat Completions | conservative JSON Object | none |
 | `deepseek` | `https://api.deepseek.com` | OpenAI Chat Completions | JSON Object | thinking disabled |
-| `opencode_go` | `https://opencode.ai/zen/go/v1` | per known model profile | JSON Object for verified Chat profiles | DeepSeek V4 tool turns explicitly disable thinking |
+| `opencode_go` | `https://opencode.ai/zen/go/v1` | per known model profile | JSON Object for verified Chat profiles | DeepSeek V4/V4.1 tool turns explicitly disable thinking |
 | `openai_compatible` | must be configured | OpenAI Chat Completions | conservative JSON Object | none |
 
 The direct DeepSeek `thinking={type: disabled}` option remains owned by the
-direct `deepseek` profile. Verified OpenCode Go `deepseek-v4-flash` and
-`deepseek-v4-pro` profiles separately declare the same thinking policy for
+direct `deepseek` profile. Verified OpenCode Go `deepseek-v4.1-flash`,
+`deepseek-v4-pro`, and historical `deepseek-v4-flash` profiles separately
+declare the same thinking policy for
 tool-bearing requests through the provider capability seam. The adapter sends
 `extra_body={"thinking":{"type":"disabled"}}` only while tools are present;
 no-tools finalization keeps its existing request shape. Other OpenCode Go
@@ -55,13 +56,13 @@ startup and normal tests never probe the network.
 The map currently records the official routing groups checked on 2026-08-15:
 
 - Chat Completions: `glm-5.3`, `glm-5.2`, `glm-5.1`, `kimi-k3`,
-  `kimi-k2.7-code`, `kimi-k2.6`, `deepseek-v4-pro`,
-  `deepseek-v4-flash`, `mimo-v2.5`, `mimo-v2.5-pro`, and `hy3`;
+  `kimi-k2.7-code`, `kimi-k2.6`, `deepseek-v4.1-flash`, `deepseek-v4-pro`,
+  `deepseek-v4-flash` (historical), `mimo-v2.5`, `mimo-v2.5-pro`, and `hy3`;
 - Responses: `grok-4.5` and `gpt-5.6-luna`;
 - Messages: `minimax-m3`, `minimax-m2.7`, `minimax-m2.5`, `qwen3.8-max`,
   `qwen3.7-max`, `qwen3.7-plus`, and `qwen3.6-plus`.
 
-Only the two DeepSeek Chat profiles have a built-in verified `json_object`
+The DeepSeek Chat profiles have a built-in verified `json_object`
 dialect. Other Chat entries declare their official transport and tools but fail
 closed for this repository's strict final responses until their wire-level JSON
 dialect is verified or explicitly configured. This keeps one shared Chat
@@ -173,7 +174,7 @@ OpenCode Go with its default URL:
 ```powershell
 $env:NPC_AGENT_MODEL = "live"
 $env:NPC_LLM_PROVIDER = "opencode_go"
-$env:NPC_LLM_MODEL = "deepseek-v4-flash"
+$env:NPC_LLM_MODEL = "deepseek-v4.1-flash"
 $env:NPC_LLM_API_KEY = "<secret>"
 py scripts\demo_character_generation_v0_1.py --model live
 ```

@@ -245,6 +245,10 @@ KNOWN_OPENCODE_GO_MODEL_PROFILES: Mapping[str, ProviderProfile] = MappingProxyTy
             TransportFamily.OPENAI_CHAT_COMPLETIONS,
             OPENCODE_DEEPSEEK_CAPABILITIES,
         ),
+        "deepseek-v4.1-flash": _opencode_go_profile(
+            TransportFamily.OPENAI_CHAT_COMPLETIONS,
+            OPENCODE_DEEPSEEK_CAPABILITIES,
+        ),
         "deepseek-v4-flash": _opencode_go_profile(
             TransportFamily.OPENAI_CHAT_COMPLETIONS,
             OPENCODE_DEEPSEEK_CAPABILITIES,

@@ -192,7 +192,7 @@ test("live Character Studio explains a typed provider failure without leaking de
         kind: "character_generation",
         status: "PENDING",
         provider: "opencode_go",
-        model: "deepseek-v4-flash",
+        model: "deepseek-v4.1-flash",
         poll_after_ms: 250,
       })});
       return;
@@ -203,7 +203,7 @@ test("live Character Studio explains a typed provider failure without leaking de
       kind: "character_generation",
       status: "FAILED",
       provider: "opencode_go",
-      model: "deepseek-v4-flash",
+      model: "deepseek-v4.1-flash",
       elapsed_ms: 2875,
       result: null,
       error: {
@@ -213,7 +213,7 @@ test("live Character Studio explains a typed provider failure without leaking de
         retryable: false,
         details: {
           provider: "opencode_go",
-          model: "deepseek-v4-flash",
+          model: "deepseek-v4.1-flash",
           provider_status_code: null,
           provider_retryable: null,
           attempt_count: 1,
@@ -223,7 +223,7 @@ test("live Character Studio explains a typed provider failure without leaking de
           stage: "generation_provider_invocation",
           model_invocations: [{
             provider: "opencode_go",
-            model: "deepseek-v4-flash",
+            model: "deepseek-v4.1-flash",
             turn_number: 1,
             outcome: "provider",
             latency_ms: 2875,
@@ -268,7 +268,7 @@ test("live Character Studio explains a typed provider failure without leaking de
   await diagnostics.locator("summary").click();
   await expect(diagnostics).toContainText("PROVIDER_FAILURE");
   await expect(diagnostics).toContainText("generation_provider_invocation");
-  await expect(diagnostics).toContainText("opencode_go / deepseek-v4-flash");
+  await expect(diagnostics).toContainText("opencode_go / deepseek-v4.1-flash");
   await expect(diagnostics).toContainText("1 / 0");
   await expect(diagnostics).toContainText("400");
   await expect(diagnostics).toContainText("invalid_request_error");

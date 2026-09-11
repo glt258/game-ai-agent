@@ -23,7 +23,7 @@ class ProviderFailureModel:
             session_id=prompt.session_id,
             turn_number=prompt.turn_number,
             provider="opencode_go",
-            model="deepseek-v4-flash",
+            model="deepseek-v4.1-flash",
             outcome="provider",
             latency_ms=2875.0,
             retry_count=0,
@@ -76,7 +76,7 @@ def test_model_provider_error_preserves_known_retryability() -> None:
         session_id="retryable-provider-failure",
         turn_number=1,
         provider="opencode_go",
-        model="deepseek-v4-flash",
+        model="deepseek-v4.1-flash",
         outcome="provider",
         latency_ms=5.0,
         retry_count=1,
@@ -95,7 +95,7 @@ def test_unknown_provider_retryability_stays_unknown_in_safe_details() -> None:
         session_id="unknown-provider-retryability",
         turn_number=1,
         provider="opencode_go",
-        model="deepseek-v4-flash",
+        model="deepseek-v4.1-flash",
         outcome="provider",
         latency_ms=5.0,
         retry_count=0,
@@ -110,7 +110,7 @@ def test_unknown_provider_retryability_stays_unknown_in_safe_details() -> None:
 
 def test_failed_character_job_preserves_safe_provider_diagnostics(monkeypatch) -> None:
     monkeypatch.setenv("NPC_LLM_PROVIDER", "opencode_go")
-    monkeypatch.setenv("NPC_LLM_MODEL", "deepseek-v4-flash")
+    monkeypatch.setenv("NPC_LLM_MODEL", "deepseek-v4.1-flash")
     checker = CanonChecker()
     registry = LiveJobRegistry(
         max_workers=1,
@@ -148,7 +148,7 @@ def test_failed_character_job_preserves_safe_provider_diagnostics(monkeypatch) -
         assert error["retryable"] is False
         assert error["details"] == {
             "provider": "opencode_go",
-            "model": "deepseek-v4-flash",
+            "model": "deepseek-v4.1-flash",
             "upstream_status": 400,
             "upstream_error_type": "invalid_request_error",
             "upstream_error_code": "unsupported_tool_schema",
@@ -161,7 +161,7 @@ def test_failed_character_job_preserves_safe_provider_diagnostics(monkeypatch) -
         }
         audit = error["audit"]["model_invocations"][0]
         assert audit["provider"] == "opencode_go"
-        assert audit["model"] == "deepseek-v4-flash"
+        assert audit["model"] == "deepseek-v4.1-flash"
         assert audit["outcome"] == "provider"
         assert audit["attempts"][0]["attempt_number"] == 1
         assert audit["attempts"][0]["outcome"] == "provider"

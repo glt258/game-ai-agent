@@ -224,7 +224,7 @@ def test_character_draft_contract_and_default_routing_remain_unchanged():
         (
             (
                 "glm-5.3", "glm-5.2", "glm-5.1", "kimi-k3", "kimi-k2.7-code",
-                "kimi-k2.6", "deepseek-v4-pro", "deepseek-v4-flash",
+                "kimi-k2.6", "deepseek-v4.1-flash", "deepseek-v4-pro", "deepseek-v4-flash",
                 "mimo-v2.5", "mimo-v2.5-pro", "hy3",
             ),
             TransportFamily.OPENAI_CHAT_COMPLETIONS,
@@ -248,7 +248,7 @@ def test_current_opencode_go_model_routing_is_centralized(models, transport):
 
 
 def test_opencode_deepseek_tool_profiles_disable_thinking_without_changing_other_profiles():
-    for model in ("deepseek-v4-flash", "deepseek-v4-pro"):
+    for model in ("deepseek-v4.1-flash", "deepseek-v4-pro", "deepseek-v4-flash"):
         profile = KNOWN_OPENCODE_GO_MODEL_PROFILES[model]
         assert profile.capabilities.thinking_mode_behavior is ThinkingModeBehavior.DISABLED
         assert profile.provider_options == {}

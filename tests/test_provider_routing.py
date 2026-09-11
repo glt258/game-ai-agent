@@ -30,6 +30,31 @@ def test_default_route_is_secret_free_and_provider_model_are_distinct() -> None:
     assert "test-only-key" not in repr(route)
 
 
+@pytest.mark.parametrize(
+    "operation",
+    [
+        "character_generation",
+        "character_structural_recovery",
+        "character_repair",
+        "skill_generation",
+        "skill_repair",
+    ],
+)
+def test_authoritative_v41_route_resolves_for_all_live_operations(operation: str) -> None:
+    route = resolve_provider_route(
+        operation,
+        environment=_environment(
+            NPC_LLM_PROVIDER="opencode_go",
+            NPC_LLM_MODEL="deepseek-v4.1-flash",
+        ),
+    )
+
+    assert (route.provider_id, route.model_id) == (
+        "opencode_go",
+        "deepseek-v4.1-flash",
+    )
+
+
 def test_operation_override_beats_default_without_prompt_input() -> None:
     route = resolve_provider_route(
         "skill_generation",

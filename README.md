@@ -171,6 +171,9 @@ benchmark or universal model-quality claim. See the [provider capability layer](
 
 ## Evidence / Verified Runs
 
+Current production route: provider `opencode_go`, model `deepseek-v4.1-flash`.
+The V4 Flash run below is retained as historical production evidence.
+
 One verified live Character Authoring E2E run used provider `opencode_go` with
 model `deepseek-v4-flash`. A Canon-dependent brief required membership in an
 existing organization; retrieval selected `faction_005`

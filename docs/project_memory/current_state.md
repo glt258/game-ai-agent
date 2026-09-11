@@ -10,6 +10,11 @@
 
 Stable/frozen systems include Character Generation, CanonChecker, the bounded repair loop, canonical combat-role semantics, Semantic Skill IR → compiler → canonical SkillKit, the provider boundary and the frozen Reference Corpus boundary.
 
+The current authoritative production route is `opencode_go` with model
+`deepseek-v4.1-flash` for Character and Skill operations. Earlier
+`deepseek-v4-flash` runs remain historical evidence and are not current live
+acceptance configuration.
+
 Web and W4 CharacterKit are experimental working-tree architecture. They are not represented as released v0.8 architecture.
 
 The W4-S5D unified CLI, runtime diagnostics and source-checkout Studio startup

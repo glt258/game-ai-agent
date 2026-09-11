@@ -32,6 +32,15 @@ resolver while retaining `OpenCodeGoHybridProvider`.
 S1B deliberately leaves retry/deadline policy, job cancellation/cleanup,
 usage aggregation, Character async jobs and the full error taxonomy to S1C–E.
 
+## W5-S1E-M1 production route update
+
+The authoritative OpenCode Go production model for current Character and Skill
+routes is `deepseek-v4.1-flash`. The provider remains `opencode_go`, with the
+existing Chat Completions transport, tool-choice semantics, DeepSeek tool-turn
+thinking policy, session header, timeout/deadline, diagnostics, usage, and
+schema contracts unchanged. `deepseek-v4-flash` remains historical production
+evidence only and is not a current live-acceptance route.
+
 ## W5-S1E-F4 update — OpenCode Go session affinity
 
 OpenCode Go Chat Completions requires the server-controlled
@@ -1164,7 +1173,7 @@ provider/model/timeout/retry/transport constants are indexed here:
 | Constant | Pinned value |
 | --- | --- |
 | `PROVIDER_NAME` | `opencode_go` |
-| `MODEL_REQUESTED` | `deepseek-v4-flash` |
+| `MODEL_REQUESTED` | `deepseek-v4.1-flash` |
 | `TRANSPORT` | `openai_chat_completions` |
 | `STRUCTURED_OUTPUT_MODE` | `json_object` |
 | `TIMEOUT_SECONDS` | `30` |

@@ -275,7 +275,7 @@ def test_fake_live_text_response_is_normalized_and_audited(story_setup):
 
 
 def test_deepseek_tool_turn_disables_thinking_but_finalization_stays_unmodified():
-    profile = KNOWN_OPENCODE_GO_MODEL_PROFILES["deepseek-v4-flash"]
+    profile = KNOWN_OPENCODE_GO_MODEL_PROFILES["deepseek-v4.1-flash"]
     client = FakeProviderClient(
         [
             ProviderCompletion(text="not a tool call"),
@@ -285,7 +285,7 @@ def test_deepseek_tool_turn_disables_thinking_but_finalization_stays_unmodified(
     adapter = LiveLLMAdapter(
         client,
         provider="opencode_go",
-        model="deepseek-v4-flash",
+        model="deepseek-v4.1-flash",
         profile=profile,
         sleep=lambda _: None,
     )
@@ -326,7 +326,7 @@ def test_deepseek_tool_turn_disables_thinking_but_finalization_stays_unmodified(
     later_adapter = LiveLLMAdapter(
         later_client,
         provider="opencode_go",
-        model="deepseek-v4-flash",
+        model="deepseek-v4.1-flash",
         profile=profile,
         sleep=lambda _: None,
     )

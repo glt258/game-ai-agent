@@ -64,7 +64,7 @@ def test_opencode_go_known_model_uses_gateway_default_and_logical_provider():
     settings = LiveLLMSettings.from_environment(
         live_environment(
             NPC_LLM_PROVIDER="opencode_go",
-            NPC_LLM_MODEL="deepseek-v4-flash",
+            NPC_LLM_MODEL="deepseek-v4.1-flash",
         )
     )
 
@@ -158,7 +158,7 @@ def test_opencode_go_does_not_inherit_direct_deepseek_request_options(monkeypatc
     model = model_factory_module.model_from_environment(
         live_environment(
             NPC_LLM_PROVIDER="opencode_go",
-            NPC_LLM_MODEL="deepseek-v4-flash",
+            NPC_LLM_MODEL="deepseek-v4.1-flash",
         )
     )
 

@@ -148,6 +148,9 @@ Agent API 与 provider 解耦。当前逻辑 profile 包括 `openai`、`deepseek
 
 ## 证据与已验证运行
 
+当前 production route：provider `opencode_go`，model
+`deepseek-v4.1-flash`。下方 V4 Flash 运行仅作为历史生产证据保留。
+
 一次经过验证的 live Character Authoring E2E 运行使用了 `opencode_go` provider 和
 `deepseek-v4-flash` 模型。该 Canon 依赖型 brief 要求角色属于既有组织；检索选择了
 `faction_005`（`临洲市公共安全联席体系`），并生成角色 `方宁舒`，职业为

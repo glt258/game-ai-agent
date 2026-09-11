@@ -24,7 +24,7 @@ CHARACTER_VALIDATE_CONTRACT_V0_1 = FROZEN
   "message": "Character generation did not complete safely.",
   "stage": "generation",
   "retryable": false,
-  "details": {"provider": "opencode_go", "model": "deepseek-v4-flash"}
+  "details": {"provider": "opencode_go", "model": "deepseek-v4.1-flash"}
 }
 ```
 
