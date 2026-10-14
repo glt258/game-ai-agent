@@ -12,6 +12,12 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Iterable, Mapping, Sequence
 
+from character_intelligence.field_authorization import (
+    FieldAuthorizationPolicy,
+    FieldAuthorizationState,
+)
+from character_intelligence.field_authorization_canon_adapter import CANON_FIELD_PATHS
+from character_intelligence.finalization_input import BoundedGenerationEvidenceV1
 from knowledge import KnowledgeResolver
 from story import StoryRepository, load_story_repository
 
@@ -39,6 +45,7 @@ class FindingSeverity(str, Enum):
 class CanonFindingCode(str, Enum):
     INVALID_CANON_REFERENCE = "INVALID_CANON_REFERENCE"
     UNSUPPORTED_CANON_CLAIM = "UNSUPPORTED_CANON_CLAIM"
+    NEW_DESIGN_DECLARATION_MISSING = "NEW_DESIGN_DECLARATION_MISSING"
     PROPOSAL_PRESENTED_AS_CANON = "PROPOSAL_PRESENTED_AS_CANON"
     CANON_PRESENTED_AS_PROPOSAL = "CANON_PRESENTED_AS_PROPOSAL"
     WORLD_RULE_VIOLATION = "WORLD_RULE_VIOLATION"
@@ -482,6 +489,8 @@ class CanonChecker:
         self,
         draft: CharacterDraft,
         request: CharacterDesignRequest | None,
+        *,
+        system_owned_exact_values: Mapping[str, Sequence[Any]] | None = None,
     ) -> Iterable[CanonFinding]:
         del request
         source_ids = {
@@ -495,10 +504,19 @@ class CanonChecker:
             *self.context.story_repository.canon,
         }
         for field_path, evidence_ids, reason in canon_field_grounding_violations(
-            draft, source_ids
+            draft,
+            source_ids,
+            system_owned_exact_values=system_owned_exact_values,
         ):
+            code = (
+                CanonFindingCode.NEW_DESIGN_DECLARATION_MISSING
+                if not evidence_ids
+                and reason
+                == "Narrative field must be backed by canon_basis or an explicit new_design field declaration."
+                else CanonFindingCode.UNSUPPORTED_CANON_CLAIM
+            )
             yield self._finding(
-                CanonFindingCode.UNSUPPORTED_CANON_CLAIM,
+                code,
                 FindingSeverity.ERROR,
                 field_path,
                 reason,
@@ -510,15 +528,84 @@ class CanonChecker:
         draft: CharacterDraft,
         *,
         request: CharacterDesignRequest | None = None,
+        field_authorization_policy: FieldAuthorizationPolicy | None = None,
+        bounded_canon_evidence: Sequence[BoundedGenerationEvidenceV1] = (),
     ) -> CanonCheckReport:
         if not isinstance(draft, CharacterDraft):
             raise TypeError("draft must be a CharacterDraft")
         if request is not None and not isinstance(request, CharacterDesignRequest):
             raise TypeError("request must be a CharacterDesignRequest or None")
+        if field_authorization_policy is not None and not isinstance(
+            field_authorization_policy, FieldAuthorizationPolicy
+        ):
+            raise TypeError(
+                "field_authorization_policy must be FieldAuthorizationPolicy or None"
+            )
+        if isinstance(bounded_canon_evidence, (str, bytes, Mapping)) or not isinstance(
+            bounded_canon_evidence, Sequence
+        ):
+            raise TypeError("bounded_canon_evidence must be a sequence")
+        evidence = tuple(bounded_canon_evidence)
+        if any(not isinstance(item, BoundedGenerationEvidenceV1) for item in evidence):
+            raise TypeError(
+                "bounded_canon_evidence must contain BoundedGenerationEvidenceV1 values"
+            )
+        if evidence and field_authorization_policy is None:
+            raise ValueError(
+                "bounded Canon evidence requires its B1A field authorization policy"
+            )
 
         findings: list[CanonFinding] = []
-        for rule in self._rules:
-            findings.extend(rule(draft, request))
+        additional_source_ids: tuple[str, ...] = ()
+        if field_authorization_policy is None:
+            for rule in self._rules:
+                findings.extend(rule(draft, request))
+        else:
+            structured_sources = self._structured_canon_field_sources(
+                draft,
+                field_authorization_policy,
+                evidence,
+            )
+            additional_source_ids = tuple(
+                source_id
+                for source_ids in structured_sources.values()
+                for source_id in source_ids
+            )
+            system_owned_exact_values = {
+                field_name: tuple(
+                    value
+                    for item in evidence
+                    if item.source_id in source_ids
+                    for field_value, values in item.field_values.items()
+                    if field_value.value == field_name
+                    for value in values
+                )
+                for field_name, source_ids in structured_sources.items()
+            }
+            findings.extend(self._check_references(draft, request))
+            findings.extend(
+                self._check_field_grounding(
+                    draft,
+                    request,
+                    system_owned_exact_values=system_owned_exact_values,
+                )
+            )
+            findings.extend(
+                self._check_structured_canon_field_claims(
+                    draft,
+                    field_authorization_policy,
+                    structured_sources,
+                )
+            )
+            findings.extend(
+                self._check_canon_support(
+                    draft,
+                    request,
+                    structured_canon_field_sources=structured_sources,
+                )
+            )
+            for rule in self._rules[3:]:
+                findings.extend(rule(draft, request))
         ordered = self._deduplicate_and_sort(findings)
         summary = CanonCheckSummary(
             errors=sum(item.severity == FindingSeverity.ERROR for item in ordered),
@@ -538,9 +625,76 @@ class CanonChecker:
             draft.draft_id,
             status,
             ordered,
-            self._checked_source_ids(draft),
+            self._checked_source_ids(draft, additional_source_ids),
             summary,
         )
+
+    def _structured_canon_field_sources(
+        self,
+        draft: CharacterDraft,
+        policy: FieldAuthorizationPolicy,
+        evidence: Sequence[BoundedGenerationEvidenceV1],
+    ) -> dict[str, tuple[str, ...]]:
+        """Resolve only exact field edges supported by B1A, B1B, and Project Canon."""
+
+        supported: dict[str, tuple[str, ...]] = {}
+        for field, path in CANON_FIELD_PATHS.items():
+            authorization = policy.for_field(field)
+            if authorization.state is not FieldAuthorizationState.CANON_GROUNDED_ONLY:
+                continue
+
+            evidence_by_source: dict[str, list[BoundedGenerationEvidenceV1]] = {}
+            for item in evidence:
+                if item.source_id in authorization.authorized_source_ids:
+                    evidence_by_source.setdefault(item.source_id, []).append(item)
+
+            field_sources: list[str] = []
+            for source_id in authorization.authorized_source_ids:
+                record = self.context.resolver.characters.get(source_id)
+                if not isinstance(record, Mapping) or record.get("id") != source_id:
+                    continue
+                source_value: Any = record
+                for path_part in path:
+                    if not isinstance(source_value, Mapping) or path_part not in source_value:
+                        source_value = None
+                        break
+                    source_value = source_value[path_part]
+                if not isinstance(source_value, str):
+                    continue
+                if source_value != getattr(draft, field.value):
+                    continue
+                if source_value not in authorization.allowed_exact_values:
+                    continue
+                has_matching_evidence = any(
+                    item.source_type == "project_canon_character"
+                    and source_value in item.field_values.get(field, ())
+                    for item in evidence_by_source.get(source_id, ())
+                )
+                if has_matching_evidence:
+                    field_sources.append(source_id)
+            if field_sources:
+                supported[field.value] = tuple(field_sources)
+        return supported
+
+    def _check_structured_canon_field_claims(
+        self,
+        draft: CharacterDraft,
+        policy: FieldAuthorizationPolicy,
+        structured_sources: Mapping[str, tuple[str, ...]],
+    ) -> Iterable[CanonFinding]:
+        for field in CANON_FIELD_PATHS:
+            authorization = policy.for_field(field)
+            if authorization.state is not FieldAuthorizationState.CANON_GROUNDED_ONLY:
+                continue
+            if structured_sources.get(field.value):
+                continue
+            yield self._finding(
+                CanonFindingCode.UNSUPPORTED_CANON_CLAIM,
+                FindingSeverity.ERROR,
+                field.value,
+                "Draft field does not exactly match an authorized structured Project Canon value.",
+                authorization.authorized_source_ids,
+            )
 
     def _check_references(
         self,
@@ -601,6 +755,8 @@ class CanonChecker:
         self,
         draft: CharacterDraft,
         request: CharacterDesignRequest | None,
+        *,
+        structured_canon_field_sources: Mapping[str, tuple[str, ...]] | None = None,
     ) -> Iterable[CanonFinding]:
         del request
         for index, entry in enumerate(draft.canon_basis):
@@ -610,6 +766,19 @@ class CanonChecker:
             evidence_text = self._source_text(entry.source_id)
             generic = _GENERIC_SUPPORTS.get(source_type, frozenset())
             for support_index, support in enumerate(entry.supports):
+                if source_type == "character" and support == "occupation":
+                    if entry.source_id in (structured_canon_field_sources or {}).get(
+                        "occupation", ()
+                    ):
+                        continue
+                    yield self._finding(
+                        CanonFindingCode.UNSUPPORTED_CANON_CLAIM,
+                        FindingSeverity.ERROR,
+                        f"canon_basis[{index}].supports[{support_index}]",
+                        f"Character source {entry.source_id!r} has no authorized exact occupation claim.",
+                        (entry.source_id,),
+                    )
+                    continue
                 if support in generic:
                     continue
                 if GroundingValidator.extractively_supported(support, evidence_text):
@@ -1075,11 +1244,16 @@ class CanonChecker:
             for item in value:
                 yield from cls._string_values(item)
 
-    def _checked_source_ids(self, draft: CharacterDraft) -> tuple[str, ...]:
+    def _checked_source_ids(
+        self,
+        draft: CharacterDraft,
+        additional_source_ids: Iterable[str] = (),
+    ) -> tuple[str, ...]:
         candidates = {"world_rules"}
         if draft.faction_id:
             candidates.add(draft.faction_id)
         candidates.update(item.source_id for item in draft.canon_basis)
+        candidates.update(additional_source_ids)
         if draft.story_link:
             candidates.add(draft.story_link.target_id)
         candidates.update(

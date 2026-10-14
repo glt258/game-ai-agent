@@ -237,9 +237,10 @@ flowchart LR
 | Area | Status |
 | --- | --- |
 | Public release | `v0.8` — Skill Design v1 and Manual Skill Playground release |
-| Character Authoring | Frozen runtime baseline with bounded retrieval, validation, Canon checking, and repair |
+| Character Authoring | Character Generation V2 is the default production pipeline: concept search and selection, planning, frozen Spec, generation, Canon validation, repair, and evaluation |
 | Runtime Baseline | `runtime-v0.6.6` — frozen Character Authoring runtime baseline |
-| Character Intelligence | `CI-B1.5` canonical combat-role boundary; intent/plan and pattern-query infrastructure present |
+| Character Intelligence | `CI-B1.5` canonical combat-role boundary; V2 concept search, selection, Planner, and frozen Spec are in production |
+| Legacy Generation | Research and historical-regression baseline only; not used by production entrypoints |
 | Character Skill | `CS-S1.1` — frozen skill interface-design milestone |
 | Skill Design | `CS-S2` / Skill Design v1 feature-frozen semantic coverage |
 | Reference Corpus | `reference-corpus-v0.5`, frozen expanded baseline |
@@ -286,11 +287,15 @@ py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"
 game-ai-agent doctor
-python -m agents.official_character_authoring --scenario valid --model offline
+python -m agents.character_generation_cli --scenario valid --model offline
 ```
 
 The installed authoring entry point is also available as
-`along-street-character-author`.
+`along-street-character-author`. Both commands use the same V2 application.
+The historical `agents.official_character_authoring` module command forwards to
+V2; its legacy demo classes remain available for research and regression tests.
+Naming Shadow, Independent Naming Selector, and experimental Naming Search are
+not enabled in production.
 
 ### Local Studio
 
@@ -308,6 +313,8 @@ Open <http://localhost:3000>. The launcher starts the FastAPI backend on
 `http://127.0.0.1:8000` and the production Next.js frontend on port 3000. Saved
 workspaces default to the platform app-data directory; use
 `GAME_AI_AGENT_DB_PATH` for an explicit SQLite path.
+Studio character generation uses `/api/characters/generate` and the same V2
+application as the CLI and Web API.
 
 ### Testing
 

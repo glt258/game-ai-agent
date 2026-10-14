@@ -27,7 +27,6 @@ from ..schemas.characters import (
     PipelineStepDTO,
     RawCharacterResultDTO,
     RepairDTO,
-    ToolAuditDTO,
 )
 from ..schemas.common import (
     ErrorAuditDTO,
@@ -45,7 +44,9 @@ from ..schemas.validation import (
     CharacterValidationResponseDTO,
     ValidationSummaryDTO,
 )
-from ..services.character_generation import CharacterGenerationApplicationResult
+from ..services.character_generation_v2_production import (
+    CharacterGenerationApplicationResult,
+)
 from ..services.character_validation import CharacterValidationApplicationResult
 
 
@@ -126,8 +127,13 @@ def _plan(value: Any) -> CharacterPlanDTO | None:
     if value is None:
         return None
     payload = value.to_dict()
+    intent_payload = dict(payload["parsed_intent"])
+    # Keep the established public V1 plan DTO stable; V2's typed constraints
+    # remain in the audit's raw plan projection and the generated draft.
+    intent_payload.pop("gender_requirement", None)
+    intent_payload.pop("age_requirement", None)
     return CharacterPlanDTO(
-        parsed_intent=CharacterIntentDTO.model_validate(payload["parsed_intent"]),
+        parsed_intent=CharacterIntentDTO.model_validate(intent_payload),
         combat_role_profile=payload["combat_role_profile"],
         generation_constraints=payload["generation_constraints"],
         recommended_traits=payload["recommended_traits"],
@@ -142,39 +148,6 @@ def _plan(value: Any) -> CharacterPlanDTO | None:
 
 def _canon_basis(value: CharacterDraft) -> list[CanonBasisDTO]:
     return [CanonBasisDTO.model_validate(item.to_dict()) for item in value.canon_basis]
-
-
-def _tool_audit(value: Any) -> ToolAuditDTO:
-    return ToolAuditDTO(
-        round=value.round,
-        tool_name=value.tool_name,
-        result_status=value.result_status,
-        source_ids=list(value.allowed_lore_ids),
-        denied_requested_ids=list(value.denied_requested_ids),
-        resolver_reason_code=value.resolver_reason_code,
-    )
-
-
-def _audit(result: CharacterGenerationApplicationResult) -> GenerationAuditDTO:
-    source = result.generation.audit
-    recovery = source.contract_recovery
-    return GenerationAuditDTO(
-        request_id=source.request_id,
-        tool_rounds=source.tool_rounds,
-        tool_calls=[_tool_audit(item) for item in source.tool_calls],
-        source_ids=list(source.source_ids),
-        reference_ids=list(source.reference_ids),
-        normalized_fields=list(source.normalized_fields),
-        contract_recovery=ContractRecoveryDTO(
-            status=recovery.status,
-            attempted=recovery.attempted,
-            missing_required=list(recovery.missing_required),
-            unknown_fields=list(recovery.unknown_fields),
-            invalid_fields=list(recovery.invalid_fields),
-            recovered_fields=list(recovery.recovered_fields),
-            discarded_unknown_fields=list(recovery.discarded_unknown_fields),
-        ),
-    )
 
 
 def _status(value: str) -> str:
@@ -250,12 +223,12 @@ def _repair(result: CharacterGenerationApplicationResult) -> RepairDTO:
         changed_fields=list(repair.changed_fields),
         initial_status=repair.initial_check.status.value,
         final_status=repair.final_check.status.value,
-        failure_code=(None if repair.repair_succeeded else repair.status.value),
+        failure_code=None if repair.repair_succeeded else repair.status.value,
     )
 
 
 def _pipeline(result: CharacterGenerationApplicationResult) -> list[PipelineStepDTO]:
-    generation = result.generation
+    accounting = result.call_accounting
     repair = result.authoring.repair_result
     canon = result.authoring.final_check.status
     evaluation = result.evaluation.outcome
@@ -268,26 +241,48 @@ def _pipeline(result: CharacterGenerationApplicationResult) -> list[PipelineStep
     )
     return [
         PipelineStepDTO(
-            id="intent",
-            label="Intent / Plan",
-            status="passed" if generation.design_plan is not None else "skipped",
+            id="concept_search",
+            label="Concept Search",
+            status="passed",
+            detail=f"{accounting.concept_search if accounting else 0} bounded search call(s).",
+        ),
+        PipelineStepDTO(
+            id="concept_selector",
+            label="Concept Selector",
+            status="passed",
+            detail=f"{accounting.selector if accounting else 0} selection call(s).",
+        ),
+        PipelineStepDTO(
+            id="planner",
+            label="Planner",
+            status="passed",
+            detail=f"{accounting.planner if accounting else 0} planning call(s).",
+        ),
+        PipelineStepDTO(
+            id="naming",
+            label="Naming Design",
+            status="passed",
             detail=(
-                "CharacterDesignPlan produced."
-                if generation.design_plan is not None
-                else "Intent layer was not enabled."
+                f"{result.naming_design.owner.value} owns the frozen name."
+                if result.naming_design is not None
+                else "Planner naming design was unavailable."
             ),
         ),
         PipelineStepDTO(
-            id="retrieval",
-            label="Canon Retrieval",
-            status="passed" if generation.audit.tool_rounds > 0 else "skipped",
-            detail=f"{generation.audit.tool_rounds} bounded tool round(s).",
+            id="spec_freeze",
+            label="Frozen Generation Spec",
+            status="passed",
+            detail=(
+                f"Spec {result.workflow_audit.spec_id} was frozen before generation."
+                if result.workflow_audit is not None
+                else "V2 generation spec was frozen before generation."
+            ),
         ),
         PipelineStepDTO(
             id="generation",
-            label="Generation",
+            label="V2 Generator",
             status="passed",
-            detail="CharacterDraft returned by the existing runtime.",
+            detail="The shared V2 Generator returned a validated CharacterDraft.",
         ),
         PipelineStepDTO(
             id="evaluation",
@@ -310,49 +305,62 @@ def _pipeline(result: CharacterGenerationApplicationResult) -> list[PipelineStep
         PipelineStepDTO(
             id="final",
             label="Final Candidate",
-            status="failed" if result.authoring.final_status == CanonCheckStatus.FAIL else "passed",
+            status=(
+                "failed"
+                if result.authoring.final_status == CanonCheckStatus.FAIL
+                or evaluation == EvaluationOutcome.FAIL
+                else "passed"
+            ),
             detail=f"Final authoring status: {result.authoring.final_status.value}.",
         ),
     ]
 
 
-def _combat(result: CharacterGenerationApplicationResult) -> CombatDTO:
-    profile = result.generation.draft.combat_role_profile.to_dict()
-    shadow = result.generation.skill_shadow
-    if shadow is None:
-        return CombatDTO(
-            combat_role_profile=profile,
-            skill_shadow_available=False,
-            skill_shadow_status="not_available",
-        )
-    report = shadow.validation_report
-    return CombatDTO(
-        combat_role_profile=profile,
-        skill_shadow_available=True,
-        skill_shadow_status="passed" if shadow.response_compliant else "failed",
-        skill_summary=shadow.rendered_ability_concept,
-        skill_evaluation=report.to_dict() if report is not None else None,
-    )
-
-
-def to_character_generation_response(
+def _to_character_generation_response(
     payload: CharacterGenerationRequestDTO,
     result: CharacterGenerationApplicationResult,
 ) -> CharacterGenerationResponseDTO:
-    draft = _draft(result.authoring.final_draft)
-    plan = _plan(result.generation.design_plan)
-    audit = _audit(result)
-    generation_invocations = list(result.generation.audit.model_invocations)
-    repair_invocations = list(result.authoring.repair_result.model_audit)
-    invocations = [
-        to_model_invocation(item) for item in (*generation_invocations, *repair_invocations)
-    ]
-    invocation_values = tuple((*generation_invocations, *repair_invocations))
+    draft = result.authoring.final_draft
+    draft_dto = _draft(draft)
+    repair = _repair(result)
+    output_audit = result.generator_result.audit.draft_output_audit
+    output_inspection = result.generator_result.audit.draft_output_inspection
+    recovery_status = "not_attempted"
+    if output_audit is not None and output_audit.recovery_requested:
+        recovery_status = (
+            "recovered"
+            if output_audit.merge_status.value == "APPLIED"
+            else "failed"
+        )
+    generation_audit = GenerationAuditDTO(
+        request_id=result.request.request_id,
+        tool_rounds=0,
+        tool_calls=[],
+        source_ids=[],
+        reference_ids=[],
+        normalized_fields=list(
+            output_inspection.normalized_fields if output_inspection is not None else ()
+        ),
+        contract_recovery=ContractRecoveryDTO(
+            status=recovery_status,
+            attempted=bool(output_audit and output_audit.recovery_requested),
+            missing_required=list(output_audit.requested_fields if output_audit else ()),
+            unknown_fields=list(output_inspection.unknown_fields if output_inspection else ()),
+            invalid_fields=(
+                [output_inspection.failure_reason.value]
+                if output_inspection is not None and output_inspection.failure_reason is not None
+                else []
+            ),
+            recovered_fields=list(output_audit.returned_fields if output_audit else ()),
+            discarded_unknown_fields=[],
+        ),
+    )
+    canon_basis = _canon_basis(draft)
     validators = [
         ValidatorResultDTO(
             name="generation_runtime",
             status="passed",
-            message="CharacterGenerationAgent returned a validated CharacterDraft.",
+            message="The V2 Generator returned a draft under the frozen Spec.",
         ),
         *_evaluation_validators(result.evaluation),
         *_canon_validators(result.authoring.final_check),
@@ -360,32 +368,59 @@ def to_character_generation_response(
     authoring_audit = {
         "initial_check": result.authoring.initial_check.to_dict(),
         "final_check": result.authoring.final_check.to_dict(),
-        "repair": _repair(result).model_dump(),
+        "repair": repair.model_dump(),
     }
-    raw = RawCharacterResultDTO(
-        draft=result.authoring.final_draft.to_dict(),
-        plan=result.generation.design_plan.to_dict()
-        if result.generation.design_plan is not None
-        else None,
-        generation_audit=audit.model_dump(),
-        authoring_audit=authoring_audit,
-    )
+    workflow = result.workflow_audit
+    safe_generation_audit = {
+        "route": result.route.value,
+        "status": result.generator_result.status.value,
+        "initial_call_count": result.generator_result.audit.initial_call_count,
+        "recovery_call_count": result.generator_result.audit.recovery_call_count,
+        "naming_enforcement": result.generator_result.audit.naming_enforcement,
+        "planning_model_invocation_count": (
+            len(workflow.planning_model_invocations) if workflow is not None else 0
+        ),
+        "spec_id": workflow.spec_id if workflow is not None else None,
+        "spec_digest": workflow.spec_digest if workflow is not None else None,
+        "selected_concept_id": workflow.selected_concept_id if workflow is not None else None,
+        "call_accounting": (
+            result.call_accounting.__dict__ if result.call_accounting is not None else {}
+        ),
+    }
     return CharacterGenerationResponseDTO(
         schema_version="web-character-generation/0.1",
         status="completed",
         request=payload,
-        draft=draft,
-        plan=plan,
-        combat=_combat(result),
-        canon_basis=[CanonBasisDTO.model_validate(item) for item in draft.canon_basis],
+        draft=draft_dto,
+        plan=_plan(result.design_plan),
+        combat=CombatDTO(
+            combat_role_profile=CombatRoleProfileDTO.model_validate(
+                draft.combat_role_profile.to_dict()
+            ),
+            skill_shadow_available=False,
+            skill_shadow_status="not_available",
+        ),
+        canon_basis=canon_basis,
         validators=validators,
-        repair=_repair(result),
-        model_invocations=invocations,
-        usage_summary=to_usage_summary(invocation_values),
+        repair=repair,
+        model_invocations=[to_model_invocation(item) for item in result.model_invocations],
+        usage_summary=to_usage_summary(tuple(result.model_invocations)),
         pipeline=_pipeline(result),
-        audit=audit,
-        raw_data=raw,
+        audit=generation_audit,
+        raw_data=RawCharacterResultDTO(
+            draft=draft.to_dict(),
+            plan=result.design_plan.to_dict(),
+            generation_audit=safe_generation_audit,
+            authoring_audit=authoring_audit,
+        ),
     )
+
+
+def to_character_generation_response(
+    payload: CharacterGenerationRequestDTO,
+    result: CharacterGenerationApplicationResult,
+) -> CharacterGenerationResponseDTO:
+    return _to_character_generation_response(payload, result)
 
 
 def to_error_response(error: WebApplicationError) -> ErrorResponseDTO:

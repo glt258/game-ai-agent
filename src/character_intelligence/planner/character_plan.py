@@ -110,6 +110,20 @@ class CharacterDesignPlan:
     combat_role_profile: CombatRoleProfile | None = None
     expected_affiliation_id: str | None = None
     affiliation_context: CharacterAffiliationContext | None = None
+    gameplay_identity: str = ""
+    interaction_direction: str = ""
+    field_time: str = ""
+    resource_model: tuple[str, ...] = ()
+    state_model: tuple[str, ...] = ()
+    core_loop: tuple[str, ...] = ()
+    payoff: tuple[str, ...] = ()
+    team_handoff: str = ""
+    selected_patterns: tuple[str, ...] = ()
+    contrast_patterns: tuple[str, ...] = ()
+    reference_provenance: tuple[Mapping[str, Any], ...] = ()
+    novelty_basis: str = ""
+    low_coverage_axes: tuple[str, ...] = ()
+    coverage_notes: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.parsed_intent, CharacterDesignIntent):
@@ -136,6 +150,47 @@ class CharacterDesignPlan:
             if not all(isinstance(item, str) and item.strip() for item in value):
                 raise ValueError(f"{field_name} must contain non-empty strings")
             object.__setattr__(self, field_name, _unique(tuple(item.strip() for item in value)))
+        for field_name in (
+            "resource_model",
+            "state_model",
+            "core_loop",
+            "payoff",
+            "selected_patterns",
+            "contrast_patterns",
+            "low_coverage_axes",
+            "coverage_notes",
+        ):
+            value = getattr(self, field_name)
+            if isinstance(value, (str, bytes)):
+                raise TypeError(f"{field_name} must be a sequence of strings")
+            if not all(isinstance(item, str) and item.strip() for item in value):
+                raise ValueError(f"{field_name} must contain non-empty strings")
+            object.__setattr__(self, field_name, _unique(tuple(item.strip() for item in value)))
+        for field_name in (
+            "gameplay_identity",
+            "interaction_direction",
+            "field_time",
+            "team_handoff",
+            "novelty_basis",
+        ):
+            value = getattr(self, field_name)
+            if not isinstance(value, str):
+                raise TypeError(f"{field_name} must be a string")
+            object.__setattr__(self, field_name, value.strip())
+        provenance: list[Mapping[str, Any]] = []
+        for item in self.reference_provenance:
+            if not isinstance(item, Mapping):
+                raise TypeError("reference_provenance must contain mappings")
+            normalized = dict(item)
+            if not isinstance(normalized.get("pattern"), str) or not normalized["pattern"].strip():
+                raise ValueError("reference_provenance items require a non-empty pattern")
+            if not any(
+                isinstance(normalized.get(key), str) and normalized[key].strip()
+                for key in ("source", "source_reference_id")
+            ):
+                raise ValueError("reference_provenance items require a source")
+            provenance.append(normalized)
+        object.__setattr__(self, "reference_provenance", tuple(provenance))
 
     @classmethod
     def from_intent(
@@ -187,6 +242,20 @@ class CharacterDesignPlan:
                 if self.affiliation_context is not None
                 else None
             ),
+            "gameplay_identity": self.gameplay_identity,
+            "interaction_direction": self.interaction_direction,
+            "field_time": self.field_time,
+            "resource_model": list(self.resource_model),
+            "state_model": list(self.state_model),
+            "core_loop": list(self.core_loop),
+            "payoff": list(self.payoff),
+            "team_handoff": self.team_handoff,
+            "selected_patterns": list(self.selected_patterns),
+            "contrast_patterns": list(self.contrast_patterns),
+            "reference_provenance": [dict(item) for item in self.reference_provenance],
+            "novelty_basis": self.novelty_basis,
+            "low_coverage_axes": list(self.low_coverage_axes),
+            "coverage_notes": list(self.coverage_notes),
         }
 
     @classmethod
@@ -208,6 +277,20 @@ class CharacterDesignPlan:
                 if payload.get("affiliation_context") is not None
                 else None
             ),
+            gameplay_identity=payload.get("gameplay_identity", ""),
+            interaction_direction=payload.get("interaction_direction", ""),
+            field_time=payload.get("field_time", ""),
+            resource_model=payload.get("resource_model", ()),
+            state_model=payload.get("state_model", ()),
+            core_loop=payload.get("core_loop", ()),
+            payoff=payload.get("payoff", ()),
+            team_handoff=payload.get("team_handoff", ""),
+            selected_patterns=payload.get("selected_patterns", ()),
+            contrast_patterns=payload.get("contrast_patterns", ()),
+            reference_provenance=payload.get("reference_provenance", ()),
+            novelty_basis=payload.get("novelty_basis", ""),
+            low_coverage_axes=payload.get("low_coverage_axes", ()),
+            coverage_notes=payload.get("coverage_notes", ()),
         )
 
 

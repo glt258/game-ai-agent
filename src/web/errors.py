@@ -22,6 +22,7 @@ from agents.errors import (
     ModelUnavailableError,
 )
 from agents.models import ModelInvocationAudit
+from character_intelligence.draft_errors import CharacterDraftMappingError
 from persistence.errors import (
     CharacterRevisionConflictError,
     CharacterSkillPersistenceConflictError,
@@ -357,7 +358,7 @@ def map_generation_exception(error: BaseException) -> WebApplicationError:
 def map_validation_exception(error: BaseException) -> WebApplicationError:
     """Map edited-draft parsing/context failures without copying exception text."""
 
-    if isinstance(error, ModelMalformedResponseError):
+    if isinstance(error, (ModelMalformedResponseError, CharacterDraftMappingError)):
         return WebApplicationError(
             "DRAFT_CONTRACT_INVALID",
             "The edited draft does not satisfy the CharacterDraft contract.",

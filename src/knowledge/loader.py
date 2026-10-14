@@ -54,9 +54,7 @@ def load_canon(data_dir: Resource | str | None = None) -> dict[str, Any]:
         ),
         "lore": _records(load_yaml(join_resource(root, "lore", "lore.yaml")), "lore"),
         # Keep the complete policy document: resolver validation needs its vocabulary.
-        "knowledge_rules": load_yaml(
-            join_resource(root, "knowledge", "knowledge_rules.yaml")
-        ),
+        "knowledge_rules": load_yaml(join_resource(root, "knowledge", "knowledge_rules.yaml")),
         "condition_scopes": load_yaml(join_resource(root, "knowledge", "condition_scopes.yaml"))
         if join_resource(root, "knowledge", "condition_scopes.yaml").is_file()
         else {"bindings": []},
@@ -75,9 +73,7 @@ def load_canon(data_dir: Resource | str | None = None) -> dict[str, Any]:
         "story_canon": load_yaml(join_resource(root, "stories", "story_canon.yaml"))
         if join_resource(root, "stories", "story_canon.yaml").is_file()
         else {"version": "0.1", "stories": []},
-        "story_definitions": load_yaml(
-            join_resource(root, "stories", "story_definitions.yaml")
-        )
+        "story_definitions": load_yaml(join_resource(root, "stories", "story_definitions.yaml"))
         if join_resource(root, "stories", "story_definitions.yaml").is_file()
         else {"version": "0.1", "story_definitions": []},
         "factions": _records(

@@ -32,7 +32,7 @@ from ..schemas.saved_characters import (
     SavedCharacterSaveResponseDTO,
     SavedCharacterSummaryDTO,
 )
-from .character_generation import CharacterGenerationApplication
+from .character_generation_v2_production import CharacterGenerationApplication
 
 
 @dataclass(frozen=True)

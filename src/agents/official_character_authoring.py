@@ -8,7 +8,6 @@ rendering the resulting audit for a planner.
 
 from __future__ import annotations
 
-import argparse
 import json
 import os
 import re
@@ -859,70 +858,11 @@ def request_from_inputs(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Official Character Authoring Demo v0.2")
-    inputs = parser.add_mutually_exclusive_group()
-    inputs.add_argument("--scenario", choices=("valid", "conflict"))
-    inputs.add_argument("--brief", help="planner brief text to send through the real pipeline")
-    inputs.add_argument("--brief-file", help="UTF-8 file containing the planner brief")
-    parser.add_argument("--model", choices=("offline", "live"), default="offline")
-    parser.add_argument(
-        "--provider",
-        help="live provider override; otherwise NPC_LLM_PROVIDER (default: openai)",
-    )
-    parser.add_argument(
-        "--model-name",
-        help="live model override; otherwise NPC_LLM_MODEL",
-    )
-    parser.add_argument("--json", action="store_true", dest="as_json")
-    args = parser.parse_args(argv)
-    if args.scenario is None and args.brief is None and args.brief_file is None:
-        parser.print_help(sys.stderr)
-        return 2
-    try:
-        request, presentation_scenario, generation_scenario = request_from_inputs(
-            scenario=args.scenario,
-            brief=args.brief,
-            brief_file=args.brief_file,
-        )
-    except ValueError as exc:
-        parser.error(str(exc))
-    try:
-        demo = make_demo(
-            mode=args.model,
-            scenario=generation_scenario,
-            brief=request.brief,
-            provider=args.provider,
-            model_name=args.model_name,
-        )
-        run = demo.run(request)
-    except Exception as exc:
-        if args.model == "live":
-            print(
-                render_live_failure(
-                    exc,
-                    provider=args.provider,
-                    model_name=args.model_name,
-                ),
-                file=sys.stderr,
-            )
-            return 2
-        raise
-    if args.as_json:
-        payload = run.to_dict()
-        payload["demo"] = {
-            "scenario": presentation_scenario,
-            "model_mode": args.model,
-            "offline_notice": (
-                "Deterministic pipeline fixture; use --model live for open-ended generation."
-                if args.model == "offline"
-                else None
-            ),
-        }
-        print(json.dumps(payload, ensure_ascii=False, indent=2, default=str))
-    else:
-        print(render(run, scenario=presentation_scenario, model_mode=args.model))
-    return 0 if run.authoring.final_status != CanonCheckStatus.FAIL else 2
+    """Preserve the historical module command as a V2 production adapter."""
 
+    from .character_generation_cli import main as production_main
+
+    return production_main(argv)
 
 if __name__ == "__main__":
     sys.exit(main())

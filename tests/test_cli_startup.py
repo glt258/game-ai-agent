@@ -129,5 +129,5 @@ def test_pyproject_registers_legacy_and_unified_production_clis() -> None:
 
     assert project["project"]["scripts"] == {
         "game-ai-agent": "game_ai_agent:main",
-        "along-street-character-author": "agents.official_character_authoring:main",
+        "along-street-character-author": "agents.character_generation_cli:main",
     }

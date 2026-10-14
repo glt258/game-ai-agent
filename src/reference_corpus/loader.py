@@ -211,17 +211,13 @@ def load_corpus_manifest(path: Resource | str) -> CorpusManifest:
     try:
         return CorpusManifest.model_validate(raw)
     except ValidationError as exc:
-        raise CorpusManifestError(
-            f"corpus manifest validation failed for {path}: {exc}"
-        ) from exc
+        raise CorpusManifestError(f"corpus manifest validation failed for {path}: {exc}") from exc
 
 
 def load_fixture_plan(path: Resource | str) -> FixturePlan:
     path = normalize_resource(path)
     plan = _model(path, FixturePlan)
-    _require_schema_version(
-        plan.corpus_version, "character-reference-corpus/0.1", path
-    )
+    _require_schema_version(plan.corpus_version, "character-reference-corpus/0.1", path)
     return plan
 
 

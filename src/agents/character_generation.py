@@ -15,6 +15,16 @@ from types import MappingProxyType
 from typing import Any, Mapping, Sequence
 
 from along_street_resources import data_resource
+from character_intelligence.character_draft import (
+    CHARACTER_DRAFT_CORE_FIELDS,
+    CanonBasisEntry,
+    CharacterDraft,
+    StoryLink,
+)
+from character_intelligence.character_draft import (
+    CHARACTER_DRAFT_JSON_SCHEMA as CHARACTER_DRAFT_JSON_SCHEMA,
+)
+from character_intelligence.draft_errors import CharacterDraftMappingError
 from character_intelligence.planner import CharacterAffiliationContext, CharacterDesignPlan
 from character_skill import (
     ProtocolSkillKitCandidate,
@@ -25,7 +35,7 @@ from character_skill import (
     render_ability_concept,
 )
 from character_skill.errors import SkillKitShapeDiagnostic, build_shape_diagnostic
-from combat_semantics import CombatRoleProfile, resolve_legacy_combat_role_profile
+from combat_semantics import CombatRoleProfile
 from knowledge import KnowledgeResolver
 from story import StoryRepository, load_story_repository
 
@@ -46,7 +56,6 @@ from .errors import (
     ModelTimeoutError,
 )
 from .model_protocol import AgentModel
-from .reliability import current_live_execution_progress
 from .models import (
     ActionTerminationReason,
     AgentPrompt,
@@ -65,14 +74,22 @@ from .models import (
     action_termination_reason_for_text,
     build_action_termination_diagnostic,
 )
+from .reliability import current_live_execution_progress
 from .response_contracts import (
     CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL,
-    CHARACTER_DRAFT_CORE_FIELDS,
-    CHARACTER_DRAFT_JSON_SCHEMA,
     character_draft_prompt_contract,
     character_skill_kit_prompt_contract,
     has_terminal_authoring_finalize_signal,
 )
+
+
+def _legacy_character_draft_from_mapping(payload: Mapping[str, Any]) -> CharacterDraft:
+    """Translate domain mapping failures at the legacy Agent boundary."""
+
+    try:
+        return CharacterDraft.from_mapping(payload)
+    except CharacterDraftMappingError as error:
+        raise ModelMalformedResponseError(str(error)) from error
 
 
 @dataclass(frozen=True)
@@ -132,305 +149,21 @@ class CharacterDesignRequest:
 
 
 @dataclass(frozen=True)
-class CanonBasisEntry:
+class CanonGroundedFieldChoice:
+    """Internal request-scoped choice projected from exact Canon evidence."""
+
+    field: str
     source_id: str
-    supports: tuple[str, ...] = ()
-    source_type: str | None = None
-
-    def __getitem__(self, key: str) -> Any:
-        if key == "source_id":
-            return self.source_id
-        if key == "supports":
-            return self.supports
-        if key == "source_type":
-            return self.source_type
-        raise KeyError(key)
-
-    def to_dict(self) -> dict[str, Any]:
-        result: dict[str, Any] = {
-            "source_id": self.source_id,
-            "supports": list(self.supports),
-        }
-        if self.source_type is not None:
-            result["source_type"] = self.source_type
-        return result
+    canonical_value: Any
 
 
 @dataclass(frozen=True)
-class StoryLink:
-    target_id: str
-    relation: str = "related_context"
-    status: str = "canon_backed"
+class CanonFieldValueChoice:
+    """Immutable request-local mapping from an exact field value to its source."""
 
-    def __getitem__(self, key: str) -> str:
-        if key == "target_id":
-            return self.target_id
-        if key == "relation":
-            return self.relation
-        if key == "status":
-            return self.status
-        raise KeyError(key)
-
-    def to_dict(self) -> dict[str, str]:
-        return {
-            "target_id": self.target_id,
-            "relation": self.relation,
-            "status": self.status,
-        }
-
-
-@dataclass(frozen=True)
-class CharacterDraft:
-    """Strict, approval-independent candidate character representation.
-
-    ``age`` and ``age_range`` are nullable design facts.  They are not an
-    appearance estimator, a legal-status classifier, or a required proxy for
-    social position.  Age presentation and life-stage nuance remain authored
-    in the existing narrative fields until the project has a demonstrated
-    need for a separate structured representation.
-    """
-
-    draft_id: str
-    status: str
-    name: str
-    canonical_character_id: str | None = None
-    age: int | None = None
-    age_range: str | None = None
-    gender: str | None = None
-    faction_id: str | None = None
-    occupation: str = ""
-    social_role: str = ""
-    combat_role_profile: CombatRoleProfile | None = None
-    design_pitch: str = ""
-    personality: tuple[str, ...] = ()
-    background: str = ""
-    story_hook: str = ""
-    relationships: tuple[Mapping[str, Any], ...] = ()
-    ability_concept: str = ""
-    knowledge_scope: str = ""
-    canon_basis: tuple[CanonBasisEntry, ...] = ()
-    new_design_elements: tuple[str, ...] = ()
-    open_questions: tuple[str, ...] = ()
-    constraint_notes: tuple[str, ...] = ()
-    story_link: StoryLink | None = None
-    proposed_new_content: tuple[str, ...] = ()
-
-    _KNOWN_FIELDS = frozenset(CHARACTER_DRAFT_JSON_SCHEMA["properties"])
-    # Accepted only at the deserialization boundary; never part of the
-    # canonical provider schema or serialized Draft representation.
-    _LEGACY_INPUT_FIELDS = frozenset({"combat_role"})
-    _ACCEPTED_INPUT_FIELDS = _KNOWN_FIELDS | _LEGACY_INPUT_FIELDS
-
-    def __post_init__(self) -> None:
-        profile = self.combat_role_profile
-        if profile is None:
-            profile = CombatRoleProfile()
-        elif not isinstance(profile, CombatRoleProfile):
-            raise TypeError("combat_role_profile must be a CombatRoleProfile")
-        object.__setattr__(self, "combat_role_profile", profile)
-
-    @classmethod
-    def from_mapping(cls, payload: Mapping[str, Any]) -> "CharacterDraft":
-        if not isinstance(payload, Mapping):
-            raise ModelMalformedResponseError("CharacterDraft must be a JSON object")
-        unknown = set(payload) - cls._ACCEPTED_INPUT_FIELDS
-        if unknown:
-            raise ModelMalformedResponseError(
-                f"CharacterDraft has unknown field(s): {sorted(unknown)}"
-            )
-        required = set(CHARACTER_DRAFT_CORE_FIELDS)
-        missing = required - set(payload)
-        if missing:
-            raise ModelMalformedResponseError(
-                f"CharacterDraft is missing field(s): {sorted(missing)}"
-            )
-
-        def string(name: str, *, optional: bool = False) -> str | None:
-            value = payload.get(name)
-            if value is None and optional:
-                return None
-            if not isinstance(value, str) or not value.strip():
-                raise ModelMalformedResponseError(f"CharacterDraft.{name} must be a non-empty string")
-            return value.strip()
-
-        draft_id = string("draft_id")
-        status = string("status")
-        name = string("name")
-        assert draft_id is not None and status is not None and name is not None
-        if status != "draft":
-            raise ModelMalformedResponseError("CharacterDraft.status must be 'draft'")
-        if not re.fullmatch(r"draft_[A-Za-z0-9][A-Za-z0-9_.-]*", draft_id):
-            raise ModelMalformedResponseError("draft_id must use the draft_ namespace")
-
-        age = payload.get("age")
-        if age is not None and (isinstance(age, bool) or not isinstance(age, int) or age < 0):
-            raise ModelMalformedResponseError("CharacterDraft.age must be a non-negative integer or null")
-        age_range = string("age_range", optional=True) if "age_range" in payload else None
-        gender = string("gender", optional=True) if "gender" in payload else None
-        faction_id = string("faction_id", optional=True) if "faction_id" in payload else None
-        canonical_id = payload.get("canonical_character_id")
-        if canonical_id is not None:
-            if not isinstance(canonical_id, str) or not re.fullmatch(
-                r"[A-Za-z][A-Za-z0-9_.:-]*", canonical_id
-            ):
-                raise ModelMalformedResponseError(
-                    "canonical_character_id must be a strict string ID or null"
-                )
-            raise ModelMalformedResponseError(
-                "v0.1 drafts must not claim a canonical character ID"
-            )
-
-        def strings(name: str) -> tuple[str, ...]:
-            value = payload.get(name, [])
-            if isinstance(value, (str, bytes)) or not isinstance(value, list):
-                raise ModelMalformedResponseError(f"CharacterDraft.{name} must be an array of strings")
-            if not all(isinstance(item, str) and item.strip() for item in value):
-                raise ModelMalformedResponseError(f"CharacterDraft.{name} contains an invalid string")
-            return tuple(item.strip() for item in value)
-
-        def text(name: str) -> str:
-            value = payload.get(name, "")
-            if not isinstance(value, str):
-                raise ModelMalformedResponseError(f"CharacterDraft.{name} must be a string")
-            return value.strip()
-
-        canon_raw = payload.get("canon_basis")
-        if not isinstance(canon_raw, list):
-            raise ModelMalformedResponseError("CharacterDraft.canon_basis must be an array")
-        basis: list[CanonBasisEntry] = []
-        seen_sources: set[str] = set()
-        for item in canon_raw:
-            if isinstance(item, str):
-                item = {"source_id": item, "supports": []}
-            if not isinstance(item, Mapping):
-                raise ModelMalformedResponseError("canon_basis entries must be objects")
-            if set(item) - {"source_id", "supports", "source_type"}:
-                raise ModelMalformedResponseError("canon_basis entry has unknown fields")
-            source_id = item.get("source_id")
-            supports = item.get("supports", [])
-            source_type = item.get("source_type")
-            if not isinstance(source_id, str) or not re.fullmatch(
-                r"[A-Za-z][A-Za-z0-9_.:-]*", source_id
-            ):
-                raise ModelMalformedResponseError("canon_basis source_id must be a strict string ID")
-            if isinstance(supports, (str, bytes)) or not isinstance(supports, list) or not all(
-                isinstance(value, str) and value.strip() for value in supports
-            ):
-                raise ModelMalformedResponseError("canon_basis supports must be an array of strings")
-            if source_type is not None and (not isinstance(source_type, str) or not source_type.strip()):
-                raise ModelMalformedResponseError("canon_basis source_type must be a string")
-            if source_id in seen_sources:
-                continue
-            seen_sources.add(source_id)
-            basis.append(CanonBasisEntry(source_id, tuple(s.strip() for s in supports), source_type))
-
-        relationships_raw = payload.get("relationships", [])
-        if not isinstance(relationships_raw, list):
-            raise ModelMalformedResponseError("CharacterDraft.relationships must be an array")
-        relationships: list[Mapping[str, Any]] = []
-        for item in relationships_raw:
-            if not isinstance(item, Mapping):
-                raise ModelMalformedResponseError("relationship entries must be objects")
-            if set(item) - {"target_id", "description", "status", "type"}:
-                raise ModelMalformedResponseError("relationship entry has unknown fields")
-            target_id = item.get("target_id")
-            if target_id is not None and (
-                not isinstance(target_id, str)
-                or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_.:-]*", target_id)
-            ):
-                raise ModelMalformedResponseError("relationship target_id must be a strict string ID")
-            clean = {key: value for key, value in item.items()}
-            relationships.append(MappingProxyType(clean))
-
-        story_raw = payload.get("story_link")
-        story_link = None
-        if story_raw is not None:
-            if not isinstance(story_raw, Mapping) or set(story_raw) - {"target_id", "relation", "status"}:
-                raise ModelMalformedResponseError("story_link has an invalid shape")
-            target = story_raw.get("target_id")
-            if not isinstance(target, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_.:-]*", target):
-                raise ModelMalformedResponseError("story_link.target_id must be a strict string ID")
-            relation = story_raw.get("relation", "related_context")
-            link_status = story_raw.get("status", "canon_backed")
-            if not isinstance(relation, str) or not relation.strip() or not isinstance(link_status, str):
-                raise ModelMalformedResponseError("story_link fields are malformed")
-            story_link = StoryLink(target, relation.strip(), link_status.strip())
-
-        legacy_raw = payload.get("combat_role")
-        profile_raw = payload.get("combat_role_profile")
-        try:
-            profile = resolve_legacy_combat_role_profile(profile_raw, legacy_raw)
-        except (TypeError, ValueError) as error:
-            raise ModelMalformedResponseError(
-                f"CharacterDraft.combat_role compatibility input is invalid: {error}"
-            ) from error
-        try:
-            return cls(
-                draft_id=draft_id,
-                status=status,
-                name=name,
-                canonical_character_id=None,
-                age=age,
-                age_range=age_range,
-                gender=gender,
-                faction_id=faction_id,
-                occupation=text("occupation"),
-                social_role=text("social_role"),
-                combat_role_profile=profile,
-                design_pitch=text("design_pitch"),
-                personality=strings("personality"),
-                background=text("background"),
-                story_hook=text("story_hook"),
-                relationships=tuple(relationships),
-                ability_concept=text("ability_concept"),
-                knowledge_scope=text("knowledge_scope"),
-                canon_basis=tuple(basis),
-                new_design_elements=strings("new_design_elements"),
-                open_questions=strings("open_questions"),
-                constraint_notes=strings("constraint_notes"),
-                story_link=story_link,
-                proposed_new_content=strings("proposed_new_content"),
-            )
-        except (TypeError, ValueError) as error:
-            raise ModelMalformedResponseError(str(error)) from error
-
-    @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "CharacterDraft":
-        return cls.from_mapping(payload)
-
-    def to_dict(self) -> dict[str, Any]:
-        # Do not use dataclasses.asdict here: it deep-copies every field and
-        # cannot copy the MappingProxyType used to make relationships
-        # immutable.  Build the current JSON contract explicitly instead.
-        return {
-            "draft_id": self.draft_id,
-            "status": self.status,
-            "name": self.name,
-            "canonical_character_id": self.canonical_character_id,
-            "age": self.age,
-            "age_range": self.age_range,
-            "gender": self.gender,
-            "faction_id": self.faction_id,
-            "occupation": self.occupation,
-            "social_role": self.social_role,
-            "combat_role_profile": self.combat_role_profile.to_dict(),
-            "design_pitch": self.design_pitch,
-            "personality": list(self.personality),
-            "background": self.background,
-            "story_hook": self.story_hook,
-            "relationships": [
-                {key: _json_safe_relationship_value(value) for key, value in relationship.items()}
-                for relationship in self.relationships
-            ],
-            "ability_concept": self.ability_concept,
-            "knowledge_scope": self.knowledge_scope,
-            "canon_basis": [entry.to_dict() for entry in self.canon_basis],
-            "new_design_elements": list(self.new_design_elements),
-            "open_questions": list(self.open_questions),
-            "constraint_notes": list(self.constraint_notes),
-            "story_link": self.story_link.to_dict() if self.story_link else None,
-            "proposed_new_content": list(self.proposed_new_content),
-        }
+    field: str
+    canonical_value: Any
+    source_id: str
 
 
 CANON_GROUNDING_TEXT_FIELDS = (
@@ -573,12 +306,47 @@ def _is_negated_canon_id_reference(text: str, start: int, end: int) -> bool:
     return bool(_NEGATED_CANON_ID_CLAIM_PATTERN.search(after))
 
 
+def explicit_canon_references(
+    text: str,
+    source_ids: set[str] | frozenset[str],
+    known_source_aliases: Mapping[str, Sequence[str]] | None = None,
+) -> tuple[str, ...]:
+    """Return exact positive Canon IDs named in one field, without inference."""
+
+    references = (
+        *_canon_id_references(text, source_ids),
+        *_canon_alias_references(text, known_source_aliases),
+    )
+    return tuple(
+        dict.fromkeys(
+            source_id
+            for source_id, start, end in references
+            if not _is_negated_canon_id_reference(text, start, end)
+        )
+    )
+
+
+def _phase5_exact_value_matches(value: Any, canonical_value: Any) -> bool:
+    """Compare selected Canon values exactly using the JSON contract shape."""
+
+    def encode(item: Any) -> str:
+        return json.dumps(
+            _finalization_json_safe(item),
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+
+    return encode(value) == encode(canonical_value)
+
+
 def canon_field_grounding_violations(
     draft: CharacterDraft,
     source_ids: set[str] | frozenset[str],
     *,
     available_source_ids: set[str] | frozenset[str] | None = None,
     known_source_aliases: Mapping[str, Sequence[str]] | None = None,
+    system_owned_exact_values: Mapping[str, Sequence[Any]] | None = None,
     reject_unknown_organizations: bool = False,
 ) -> tuple[tuple[str, tuple[str, ...], str], ...]:
     """Find narrative fields lacking an explicit Canon/design classification.
@@ -597,6 +365,7 @@ def canon_field_grounding_violations(
                 basis_by_field.setdefault(support, set()).add(entry.source_id)
 
     declared = declared_new_design_fields(draft)
+    exact_values = system_owned_exact_values or {}
     violations: list[tuple[str, tuple[str, ...], str]] = []
     for field in CANON_GROUNDING_TEXT_FIELDS:  # noqa: F402 - domain field vocabulary
         value = getattr(draft, field)
@@ -604,15 +373,19 @@ def canon_field_grounding_violations(
         if not text.strip():
             continue
 
-        referenced_ids = tuple(
-            dict.fromkeys(
-                source_id
-                for source_id, start, end in (
-                    *_canon_id_references(text, source_ids),
-                    *_canon_alias_references(text, known_source_aliases),
-                )
-                if not _is_negated_canon_id_reference(text, start, end)
-            )
+        # INVARIANT: an exact system-selected Canon value owns this field edge.
+        # Do not reinterpret an alias inside that authorized value as a second
+        # provider claim requiring another canon_basis entry.
+        if any(
+            _phase5_exact_value_matches(value, candidate)
+            for candidate in exact_values.get(field, ())
+        ):
+            continue
+
+        referenced_ids = explicit_canon_references(
+            text,
+            source_ids,
+            known_source_aliases,
         )
         if referenced_ids:
             unsupported: list[str] = []
@@ -2383,7 +2156,7 @@ class CharacterGenerationAgent:
                     ),
                 )
                 raise
-            draft = CharacterDraft.from_mapping(payload)
+            draft = _legacy_character_draft_from_mapping(payload)
             self._validate_draft(
                 draft,
                 request,
@@ -3015,7 +2788,7 @@ class CharacterGenerationAgent:
                         merged_inspection,
                     )
                 )
-            CharacterDraft.from_mapping(merged)
+            _legacy_character_draft_from_mapping(merged)
             return merged, CharacterDraftRecoveryAudit(
                 status="applied",
                 attempted=True,
@@ -3477,7 +3250,7 @@ def inspect_character_draft_payload(payload: Any) -> CharacterDraftContractInspe
         probe.setdefault("open_questions", [])
         try:
             CharacterDraft.from_mapping(probe)
-        except ModelMalformedResponseError as error:
+        except CharacterDraftMappingError as error:
             fields = tuple(sorted(set(re.findall(r"CharacterDraft\.([A-Za-z_][A-Za-z0-9_]*)", str(error)))))
             if fields:
                 return CharacterDraftContractInspection(
@@ -3488,7 +3261,7 @@ def inspect_character_draft_payload(payload: Any) -> CharacterDraftContractInspe
         return CharacterDraftContractInspection(missing_required=missing, unknown_fields=unknown)
     try:
         CharacterDraft.from_mapping(known_payload)
-    except ModelMalformedResponseError as error:
+    except CharacterDraftMappingError as error:
         fields = tuple(sorted(set(re.findall(r"CharacterDraft\.([A-Za-z_][A-Za-z0-9_]*)", str(error)))))
         return CharacterDraftContractInspection(
             unknown_fields=unknown,

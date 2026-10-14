@@ -13,6 +13,7 @@
       "validators",
       "repair",
       "model_invocations",
+      "usage_summary",
       "pipeline",
       "audit",
       "raw_data"
@@ -23,8 +24,11 @@
       "canon_checker"
     ],
     "pipeline_ids": [
-      "intent",
-      "retrieval",
+      "concept_search",
+      "concept_selector",
+      "planner",
+      "naming",
+      "spec_freeze",
       "generation",
       "evaluation",
       "canon",

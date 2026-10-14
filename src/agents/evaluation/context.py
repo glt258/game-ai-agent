@@ -7,6 +7,8 @@ from types import MappingProxyType
 from typing import Any, Mapping
 
 from character_intelligence import CharacterDesignIntent
+from character_intelligence.field_authorization import FieldAuthorizationPolicy
+from character_intelligence.planner.character_plan import CharacterDesignPlan
 from character_skill import ProtocolSkillKitCandidate, SkillValidationContext, SkillValidationReport
 from combat_semantics import CombatRoleProfile
 
@@ -18,10 +20,10 @@ from ..character_repair import CharacterAuthoringResult
 class EvaluationSubject:
     """Read-only subject presented to one or more evaluation validators.
 
-    ``generation_result`` is required as a field but may be ``None`` when a
-    caller is preserving a failed generation attempt through ``generation_error``.
-    The evaluator does not invoke generation, Canon checking, repair, or a
-    model; it only observes the supplied subject.
+    ``generation_result`` may be ``None`` when a generation route supplies a
+    shared draft and plan directly. The evaluator only observes the supplied
+    values. V2 field authority scopes representation checks without granting
+    authority from generated content.
     """
 
     request: CharacterDesignRequest
@@ -30,6 +32,9 @@ class EvaluationSubject:
     generation_error: BaseException | None = None
     case_metadata: Mapping[str, Any] | None = None
     skill_validation_context: SkillValidationContext | Mapping[str, Any] | None = None
+    draft: CharacterDraft | None = None
+    design_plan: CharacterDesignPlan | None = None
+    field_authorization_policy: FieldAuthorizationPolicy | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.request, CharacterDesignRequest):
@@ -38,6 +43,16 @@ class EvaluationSubject:
             self.generation_result, CharacterGenerationResult
         ):
             raise TypeError("generation_result must be a CharacterGenerationResult or None")
+        if self.draft is not None and not isinstance(self.draft, CharacterDraft):
+            raise TypeError("draft must be a CharacterDraft or None")
+        if self.design_plan is not None and not isinstance(self.design_plan, CharacterDesignPlan):
+            raise TypeError("design_plan must be a CharacterDesignPlan or None")
+        if self.field_authorization_policy is not None and not isinstance(
+            self.field_authorization_policy, FieldAuthorizationPolicy
+        ):
+            raise TypeError(
+                "field_authorization_policy must be a FieldAuthorizationPolicy or None"
+            )
         if self.authoring_result is not None and not isinstance(
             self.authoring_result, CharacterAuthoringResult
         ):
@@ -76,6 +91,7 @@ class EvaluationContext:
     skill_candidate: ProtocolSkillKitCandidate | None = None
     skill_validation_report: SkillValidationReport | None = None
     expected_affiliation_id: str | None = None
+    design_plan: CharacterDesignPlan | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.subject, EvaluationSubject):
@@ -84,8 +100,18 @@ class EvaluationContext:
             raise TypeError("intent must be a CharacterDesignIntent")
         if self.draft is not None and not isinstance(self.draft, CharacterDraft):
             raise TypeError("draft must be a CharacterDraft or None")
-        if self.draft is None and self.subject.generation_result is not None:
-            object.__setattr__(self, "draft", self.subject.generation_result.draft)
+        if self.design_plan is not None and not isinstance(self.design_plan, CharacterDesignPlan):
+            raise TypeError("design_plan must be a CharacterDesignPlan or None")
+        if self.draft is None:
+            draft = self.subject.draft
+            if draft is None and self.subject.generation_result is not None:
+                draft = self.subject.generation_result.draft
+            object.__setattr__(self, "draft", draft)
+        plan = self.design_plan or self.subject.design_plan
+        if plan is None and self.subject.generation_result is not None:
+            plan = self.subject.generation_result.design_plan
+        if self.design_plan is None:
+            object.__setattr__(self, "design_plan", plan)
         if self.skill_validation_context is None:
             object.__setattr__(
                 self,
@@ -119,8 +145,9 @@ class EvaluationContext:
             self.draft.combat_role_profile, CombatRoleProfile
         ):
             raise TypeError("draft.combat_role_profile must be canonical")
-        plan = self.subject.generation_result.design_plan if self.subject.generation_result is not None else None
-        plan_expected = getattr(plan, "expected_affiliation_id", None)
+        plan_expected = (
+            self.design_plan.expected_affiliation_id if self.design_plan is not None else None
+        )
         intent_expected = self.intent.requested_affiliation_id if self.intent is not None else None
         resolved_expected = plan_expected if plan_expected is not None else intent_expected
         if self.expected_affiliation_id is not None and self.expected_affiliation_id != resolved_expected:
@@ -134,21 +161,24 @@ class EvaluationContext:
         if not isinstance(subject, EvaluationSubject):
             raise TypeError("subject must be an EvaluationSubject")
         generation_result = subject.generation_result
-        if generation_result is not None and generation_result.design_plan is not None:
-            intent = generation_result.design_plan.parsed_intent
-        else:
-            intent = None
-        draft = generation_result.draft if generation_result is not None else None
+        design_plan = subject.design_plan or (
+            generation_result.design_plan if generation_result is not None else None
+        )
+        intent = design_plan.parsed_intent if design_plan is not None else None
+        draft = subject.draft or (
+            generation_result.draft if generation_result is not None else None
+        )
         return cls(
             subject=subject,
             intent=intent,
             draft=draft,
             skill_validation_context=subject.skill_validation_context,
             expected_affiliation_id=(
-                generation_result.design_plan.expected_affiliation_id
-                if generation_result is not None and generation_result.design_plan is not None
+                design_plan.expected_affiliation_id
+                if design_plan is not None
                 else None
             ),
+            design_plan=design_plan,
         )
 
     @property

@@ -211,9 +211,10 @@ flowchart LR
 | 领域 | 状态 |
 | --- | --- |
 | Public release | `v0.8`，Skill Design v1 与 Manual Skill Playground 发布版本 |
-| Character Authoring | 已冻结运行时基线，包含有界检索、校验、Canon 检查和修复 |
+| Character Authoring | Character Generation V2 是默认生产流程：Concept Search、Selector、Planner、冻结 Spec、Generator、Canon 校验、Repair 和 Evaluation |
 | Runtime Baseline | `runtime-v0.6.6`，冻结的 Character Authoring runtime 基线 |
-| Character Intelligence | `CI-B1.5` canonical combat-role 边界；意图、计划和模式查询基础设施存在 |
+| Character Intelligence | `CI-B1.5` canonical combat-role 边界；V2 Concept Search、Selector、Planner 和冻结 Spec 已进入生产 |
+| Legacy Generation | 仅作为研究和历史回归基线；生产入口不调用旧版生成器 |
 | Character Skill | `CS-S1.1`，冻结的技能接口设计里程碑 |
 | Skill Design | `CS-S2` / Skill Design v1 语义覆盖已冻结 |
 | Reference Corpus | `reference-corpus-v0.5`，冻结的扩展基线 |
@@ -261,10 +262,13 @@ py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"
 game-ai-agent doctor
-python -m agents.official_character_authoring --scenario valid --model offline
+python -m agents.character_generation_cli --scenario valid --model offline
 ```
 
-安装后的 authoring entry point 也可以使用 `along-street-character-author`。
+安装后的 `along-street-character-author` 使用同一个 V2 application。
+历史 `agents.official_character_authoring` 模块命令也会转发到 V2；其旧版
+demo 类继续保留给研究和历史回归测试使用。生产环境未启用 Naming Shadow、
+Independent Naming Selector 或实验性 Naming Search。
 
 ### 本地 Studio
 
@@ -281,6 +285,7 @@ game-ai-agent studio --no-browser
 打开 <http://localhost:3000>。启动器会运行 FastAPI backend
 `http://127.0.0.1:8000` 和生产模式 Next.js frontend。已保存工作区默认使用平台
 应用数据目录；可用 `GAME_AI_AGENT_DB_PATH` 指定 SQLite 路径。
+Studio 角色生成通过 `/api/characters/generate` 进入与 CLI、Web API 相同的 V2 application。
 
 ### 测试
 

@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 
+from character_intelligence.field_authorization import (
+    CharacterGenerationField,
+    FieldAuthorizationState,
+)
+
 from ...character_generation import CharacterDraft
 from ..context import EvaluationContext
 from ..models import EvaluationFinding
@@ -15,12 +20,34 @@ class RepresentationCompletenessValidator:
     validator_id = "representation_completeness"
     dimension = "representation"
 
-    _FIELDS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
-        ("design_pitch", "MISSING_CHARACTER_DESCRIPTION", ("design_pitch",)),
-        ("personality", "MISSING_PERSONALITY", ("personality",)),
-        ("background", "MISSING_BACKGROUND", ("background",)),
-        ("combat_role_profile", "MISSING_COMBAT_ROLE", ("combat_role_profile",)),
-        ("ability_concept", "MISSING_ABILITIES", ("ability_concept",)),
+    _FIELDS: tuple[
+        tuple[str, str, tuple[str, ...], CharacterGenerationField | None], ...
+    ] = (
+        (
+            "design_pitch",
+            "MISSING_CHARACTER_DESCRIPTION",
+            ("design_pitch",),
+            CharacterGenerationField.DESIGN_PITCH,
+        ),
+        (
+            "personality",
+            "MISSING_PERSONALITY",
+            ("personality",),
+            CharacterGenerationField.PERSONALITY,
+        ),
+        (
+            "background",
+            "MISSING_BACKGROUND",
+            ("background",),
+            CharacterGenerationField.BACKGROUND,
+        ),
+        ("combat_role_profile", "MISSING_COMBAT_ROLE", ("combat_role_profile",), None),
+        (
+            "ability_concept",
+            "MISSING_ABILITIES",
+            ("ability_concept",),
+            CharacterGenerationField.ABILITY_CONCEPT,
+        ),
     )
 
     def validate(self, context: EvaluationContext) -> Iterable[EvaluationFinding]:
@@ -30,7 +57,15 @@ class RepresentationCompletenessValidator:
             return ()
 
         findings: list[EvaluationFinding] = []
-        for field_path, code, candidates in self._FIELDS:
+        policy = context.subject.field_authorization_policy
+        for field_path, code, candidates, governed_field in self._FIELDS:
+            if (
+                policy is not None
+                and governed_field is not None
+                and policy.for_field(governed_field).state
+                is FieldAuthorizationState.UNAUTHORIZED
+            ):
+                continue
             if self._present(context.draft, candidates):
                 continue
             findings.append(

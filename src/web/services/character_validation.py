@@ -17,7 +17,7 @@ from character_intelligence import CharacterDesignIntent, CharacterDesignPlan
 from ..errors import WebApplicationError, map_validation_exception
 from ..schemas.characters import CharacterGenerationRequestDTO
 from ..schemas.validation import CharacterValidationRequestDTO
-from .character_generation import CharacterGenerationApplication
+from .character_generation_v2_production import CharacterGenerationApplication
 
 
 @dataclass(frozen=True)

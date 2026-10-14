@@ -17,7 +17,7 @@ from ..schemas.character_skill import (
 from ..schemas.characters import CharacterGenerationRequestDTO, CharacterGenerationResponseDTO
 from ..schemas.common import ErrorResponseDTO
 from ..schemas.live_jobs import LiveJobAcceptedDTO, LiveJobStatusDTO
-from ..services.character_generation import CharacterGenerationApplication
+from ..services.character_generation_v2_production import CharacterGenerationApplication
 from ..services.character_kit_evaluation import CharacterKitRoleCoverageApplication
 from ..services.character_skill_design import CharacterSkillDesignApplication
 from ..services.live_jobs import LiveJobRegistry, LiveJobSnapshot
@@ -94,7 +94,11 @@ def generate(
     "/generate/jobs",
     response_model=LiveJobAcceptedDTO,
     status_code=202,
-    responses={422: {"model": ErrorResponseDTO}, 429: {"model": ErrorResponseDTO}, 503: {"model": ErrorResponseDTO}},
+    responses={
+        422: {"model": ErrorResponseDTO},
+        429: {"model": ErrorResponseDTO},
+        503: {"model": ErrorResponseDTO},
+    },
 )
 def submit_generation_job(
     payload: CharacterGenerationRequestDTO,

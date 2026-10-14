@@ -21,7 +21,10 @@ from .routes.system import router as system_router
 from .routes.validation import router as validation_router
 from .schemas.common import ErrorBodyDTO, ErrorResponseDTO
 from .services.canon import CanonReadApplication
-from .services.character_generation import CharacterGenerationApplication
+from .services.character_generation_v2_production import (
+    CharacterGenerationApplication,
+    build_character_generation_v2_application,
+)
 from .services.character_kit_evaluation import CharacterKitRoleCoverageApplication
 from .services.character_skill_design import CharacterSkillDesignApplication
 from .services.character_validation import CharacterValidationApplication
@@ -74,9 +77,16 @@ def create_app(
 ) -> FastAPI:
     """Build an isolated Web app without import-time provider calls."""
 
-    service = generation_service or CharacterGenerationApplication(
-        generation_mode=generation_mode,
-    )
+    if generation_service is None:
+        service = build_character_generation_v2_application(
+            generation_mode=generation_mode,
+        )
+    elif isinstance(generation_service, CharacterGenerationApplication):
+        service = generation_service
+    else:
+        raise TypeError(
+            "generation_service must use the Character Generation V2 application"
+        )
     validation = validation_service or CharacterValidationApplication(
         checker=service.checker,
         evaluation_runner=service.evaluation_runner,
@@ -93,7 +103,7 @@ def create_app(
     app = FastAPI(
         title="Game AI Agent Studio Web API",
         version="0.1.0",
-        description="Thin HTTP adapter over the existing character authoring runtime.",
+        description="HTTP adapter over the Character Generation V2 production pipeline.",
     )
     app.state.character_generation = service
     app.state.character_validation = validation

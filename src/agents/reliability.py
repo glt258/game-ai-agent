@@ -6,7 +6,7 @@ import threading
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Callable, Iterator
+from typing import Callable, Iterator, Protocol
 from uuid import uuid4
 
 from .errors import ModelConfigurationError
@@ -347,9 +347,38 @@ class InvocationContext:
     progress: LiveExecutionProgress
 
 
+class ProviderAttemptObserver(Protocol):
+    """Receives content-free events around each transport attempt."""
+
+    def record_attempt_started(
+        self,
+        *,
+        attempt_index: int,
+        effective_attempt_timeout_ms: float,
+    ) -> None: ...
+
+    def record_attempt_completed(
+        self,
+        *,
+        attempt_index: int,
+        elapsed_ms: float,
+        outcome: str,
+        error_category: str | None,
+        http_status: int | None,
+        responses_status: str | None,
+        finish_reason: str | None,
+        incomplete_reason: str | None,
+        usage: object | None,
+        retry_reason: str | None,
+    ) -> None: ...
+
+
 _CURRENT_CONTEXT: contextvars.ContextVar[InvocationContext | None] = contextvars.ContextVar(
     "live_invocation_context", default=None
 )
+_CURRENT_PROVIDER_ATTEMPT_OBSERVER: contextvars.ContextVar[
+    ProviderAttemptObserver | None
+] = contextvars.ContextVar("provider_attempt_observer", default=None)
 
 
 def current_invocation_context() -> InvocationContext | None:
@@ -359,6 +388,25 @@ def current_invocation_context() -> InvocationContext | None:
 def current_live_execution_progress() -> LiveExecutionProgress | None:
     context = current_invocation_context()
     return context.progress if context is not None else None
+
+
+def current_provider_attempt_observer() -> ProviderAttemptObserver | None:
+    """Return the task-local audit sink for the current transport attempt."""
+
+    return _CURRENT_PROVIDER_ATTEMPT_OBSERVER.get()
+
+
+@contextmanager
+def provider_attempt_observer(
+    observer: ProviderAttemptObserver,
+) -> Iterator[ProviderAttemptObserver]:
+    """Scope transport-attempt persistence to one model invocation."""
+
+    token = _CURRENT_PROVIDER_ATTEMPT_OBSERVER.set(observer)
+    try:
+        yield observer
+    finally:
+        _CURRENT_PROVIDER_ATTEMPT_OBSERVER.reset(token)
 
 
 @contextmanager

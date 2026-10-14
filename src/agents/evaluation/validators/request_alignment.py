@@ -80,6 +80,20 @@ class RequestAlignmentValidator:
             self._append_skill_findings(findings, skill_context, candidate)
             return findings
 
+        gender_requirement = intent.gender_requirement
+        if gender_requirement is not None and not gender_requirement.satisfied_by(draft.gender):
+            findings.append(
+                EvaluationFinding(
+                    validator_id=self.validator_id,
+                    code="REQUEST_GENDER_MISMATCH",
+                    severity="ERROR",
+                    blocking=True,
+                    stage="request_alignment",
+                    field_path="gender",
+                    message="Generated draft gender does not satisfy the explicit user requirement.",
+                )
+            )
+
         requested = context.intent_role_profile
         generated = context.draft_role_profile
         assert requested is not None and generated is not None

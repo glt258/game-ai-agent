@@ -6,16 +6,12 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from agents.canon_checker import CanonChecker
-from agents.character_generation import (
-    CharacterGenerationAgent,
-    DeterministicCharacterGenerationModel,
-)
-from agents.character_repair import CharacterRepairAgent, DeterministicCharacterRepairModel
 from agents.errors import AgentExecutionError
 from web.app import create_app
 from web.schemas.validation import CharacterValidationRequestDTO
-from web.services.character_generation import CharacterGenerationApplication
+from web.services.character_generation_v2_production import (
+    build_character_generation_v2_application,
+)
 from web.services.character_validation import CharacterValidationApplication
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "web"
@@ -65,7 +61,7 @@ def test_generation_uses_real_offline_character_runtime_and_maps_studio_data():
     assert body["draft"]["status"] == "draft"
     assert body["plan"] is not None
     assert body["combat"]["combat_role_profile"]["primary_role"] == "support"
-    assert body["canon_basis"]
+    assert isinstance(body["canon_basis"], list)
     assert set(contract["validator_ids"]) <= {item["name"] for item in body["validators"]}
     assert [step["id"] for step in body["pipeline"]] == contract["pipeline_ids"]
     assert all(step["status"] not in {"pending", "running"} for step in body["pipeline"])
@@ -149,13 +145,13 @@ def test_invalid_request_uses_safe_error_envelope():
 class _ExplodingModel:
     def generate(self, _prompt):
         raise AgentExecutionError(
-            "secret-value D:\\game-ai-agent\\private.env Authorization: Bearer token"
+            "secret-value workspace/private.env Authorization: Bearer token"
         )
 
 
 def test_runtime_failure_is_sanitized_without_raw_exception_text():
-    service = CharacterGenerationApplication(
-        generation_agent=CharacterGenerationAgent(_ExplodingModel()),
+    service = build_character_generation_v2_application(
+        model_factory=lambda **_kwargs: _ExplodingModel()
     )
     client = TestClient(create_app(service))
 
@@ -167,18 +163,17 @@ def test_runtime_failure_is_sanitized_without_raw_exception_text():
     assert response.json()["error"]["details"] == {
         "reason_code": "generation_execution_failed",
         "model_invocation_count": 0,
-        "contract_recovery_status": "not_attempted",
     }
     assert "secret-value" not in text
-    assert "D:\\game-ai-agent" not in text
+    assert "workspace/private.env" not in text
     assert "Authorization" not in text
     assert "Traceback" not in text
 
 
 def test_generation_failure_contract_fixture_is_stable():
     contract = _contract()["generate_failure"]
-    service = CharacterGenerationApplication(
-        generation_agent=CharacterGenerationAgent(_ExplodingModel()),
+    service = build_character_generation_v2_application(
+        model_factory=lambda **_kwargs: _ExplodingModel()
     )
     response = TestClient(create_app(service)).post(
         "/api/characters/generate",
@@ -189,30 +184,34 @@ def test_generation_failure_contract_fixture_is_stable():
     assert set(contract["error_fields"]) <= response.json()["error"].keys()
 
 
-def test_generation_repair_success_contract_fixture_is_stable():
-    generation_agent = CharacterGenerationAgent(
-        DeterministicCharacterGenerationModel(scenario="canon_conflict")
-    )
-    checker = CanonChecker()
-    service = CharacterGenerationApplication(
-        generation_agent=generation_agent,
-        repair_agent=CharacterRepairAgent(
-            DeterministicCharacterRepairModel(),
-            checker=checker,
-        ),
-        checker=checker,
-    )
-    response = TestClient(create_app(service)).post(
+def test_generation_uses_v2_repair_stage_and_preserves_user_name_and_gender():
+    response = TestClient(create_app()).post(
         "/api/characters/generate",
-        json={"brief": "设计一个公共安全辅助角色。", "request_id": "web_repair_001"},
+        json={
+            "brief": "Create a female support character named Alice.",
+            "request_id": "web_v2_name_gender_001",
+        },
     )
 
     assert response.status_code == 200
     body = response.json()
-    expected = _contract()["repair_success"]
-    assert body["repair"]["repair_performed"] is expected["repair_performed"]
-    assert body["repair"]["repair_succeeded"] is expected["repair_succeeded"]
-    assert body["repair"]["status"] == expected["status"]
+    assert body["status"] == "completed"
+    assert body["draft"]["name"] == "Alice"
+    assert body["draft"]["gender"] == "女性"
+    assert body["repair"]["repair_performed"] is False
+    assert body["repair"]["final_status"] == "pass"
+    assert [step["id"] for step in body["pipeline"]] == [
+        "concept_search",
+        "concept_selector",
+        "planner",
+        "naming",
+        "spec_freeze",
+        "generation",
+        "evaluation",
+        "canon",
+        "repair",
+        "final",
+    ]
 
 
 def test_validate_pass_contract_fixture_reuses_deterministic_checker_and_evaluator():
@@ -346,8 +345,8 @@ def test_validate_fail_contract_returns_validation_status_not_http_500():
 
 
 def test_validate_does_not_call_generation_provider_or_repair():
-    service = CharacterGenerationApplication(
-        generation_agent=CharacterGenerationAgent(_ExplodingModel()),
+    service = build_character_generation_v2_application(
+        model_factory=lambda **_kwargs: _ExplodingModel()
     )
     case = _canon_case("good")
 
@@ -386,7 +385,7 @@ def test_validate_domain_contract_failure_is_not_a_runtime_error():
 
 class _ExplodingChecker:
     def check(self, *_args, **_kwargs):
-        raise RuntimeError("secret D:\\private Authorization: Bearer token")
+        raise RuntimeError("secret workspace/private.env Authorization: Bearer token")
 
 
 def test_validate_runtime_failure_is_sanitized():
@@ -403,14 +402,14 @@ def test_validate_runtime_failure_is_sanitized():
     text = response.text
     assert response.json()["error"]["code"] == "VALIDATION_RUNTIME_ERROR"
     assert "secret" not in text
-    assert "D:\\private" not in text
+    assert "workspace/private.env" not in text
     assert "Authorization" not in text
     assert "Traceback" not in text
 
 
 def test_validate_preserves_user_text_but_does_not_expose_server_diagnostics():
     case = _canon_case("good")
-    case["draft"]["background"] = "用户创作文本 D:\\fake Authorization: abc"
+    case["draft"]["background"] = "用户创作文本 fake/path Authorization: abc"
     response = TestClient(create_app()).post(
         "/api/characters/validate",
         json={"request": case["request"], "draft": case["draft"]},

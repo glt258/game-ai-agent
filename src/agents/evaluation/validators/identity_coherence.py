@@ -23,10 +23,11 @@ class IdentityCoherenceValidator:
             or context.draft.faction_id != context.expected_affiliation_id
         ):
             return ()
-        affiliation = context.generation_result.design_plan.affiliation_context if (
-            context.generation_result is not None
-            and context.generation_result.design_plan is not None
-        ) else None
+        affiliation = (
+            context.design_plan.affiliation_context
+            if context.design_plan is not None
+            else None
+        )
         if affiliation is None or not affiliation.semantic_terms:
             return ()
 

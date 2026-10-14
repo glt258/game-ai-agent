@@ -61,6 +61,10 @@ class ModelTimeoutError(ModelError):
     """Raised after bounded retries for a provider timeout."""
 
 
+class ModelOutputTruncatedError(ModelError):
+    """Raised when a provider stops at the bounded output-token limit."""
+
+
 class ModelRateLimitError(ModelError):
     """Raised after bounded retries for provider rate limiting."""
 

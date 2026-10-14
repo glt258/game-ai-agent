@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any, Mapping
 
-from combat_semantics import CANONICAL_COMBAT_ROLES
+from character_intelligence.character_draft import (
+    CHARACTER_DRAFT_CORE_FIELDS,
+    CHARACTER_DRAFT_JSON_SCHEMA,
+)
 
 
 @dataclass(frozen=True)
@@ -31,6 +35,93 @@ CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL = "FINALIZE"
 CHARACTER_AUTHORING_ACTION_RESPONSE_CONTRACT = ResponseContract(
     "character_authoring_action", strict=False
 )
+CHARACTER_DESIGN_PLAN_RESPONSE_CONTRACT = ResponseContract(
+    "character_design_plan", strict=True
+)
+CHARACTER_PLANNER_PROPOSAL_RESPONSE_CONTRACT = ResponseContract(
+    "character_planner_proposal", strict=True
+)
+
+CHARACTER_CONCEPT_SEED_JSON_SCHEMA: Mapping[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "concept_id": {"type": "string", "minLength": 1},
+        "one_line_identity": {"type": "string", "minLength": 1},
+        "dramatic_axis": {"type": "string", "minLength": 1},
+        "character_contradiction": {"type": "string", "minLength": 1},
+        "player_hook": {"type": "string", "minLength": 1},
+        "relationship_axis": {"type": "string", "minLength": 1},
+        "gameplay_fantasy": {"type": "string", "minLength": 1},
+        "visual_anchor": {"type": "string", "minLength": 1},
+        "differentiation_basis": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "minLength": 1},
+        },
+        "major_risk": {"type": "string", "minLength": 1},
+    },
+    "required": [
+        "concept_id",
+        "one_line_identity",
+        "dramatic_axis",
+        "character_contradiction",
+        "player_hook",
+        "relationship_axis",
+        "gameplay_fantasy",
+        "visual_anchor",
+        "differentiation_basis",
+        "major_risk",
+    ],
+}
+CHARACTER_CONCEPT_SEARCH_JSON_SCHEMA: Mapping[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "concepts": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": CHARACTER_CONCEPT_SEED_JSON_SCHEMA,
+        }
+    },
+    "required": ["concepts"],
+}
+CHARACTER_CONCEPT_SELECTION_JSON_SCHEMA: Mapping[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "selected_concept_id": {"type": "string", "minLength": 1},
+        "selection_reasons": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "minLength": 1},
+        },
+        "tradeoffs": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+        },
+        "preserve_elements": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+        },
+        "rejected_reasons": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+        },
+    },
+    "required": ["selected_concept_id", "selection_reasons"],
+}
+CHARACTER_CONCEPT_SEARCH_RESPONSE_CONTRACT = ResponseContract(
+    "character_concept_search",
+    strict=True,
+    json_schema=CHARACTER_CONCEPT_SEARCH_JSON_SCHEMA,
+)
+CHARACTER_CONCEPT_SELECTION_RESPONSE_CONTRACT = ResponseContract(
+    "character_concept_selection",
+    strict=True,
+    json_schema=CHARACTER_CONCEPT_SELECTION_JSON_SCHEMA,
+)
 
 
 def has_terminal_authoring_finalize_signal(text: str) -> bool:
@@ -41,109 +132,120 @@ def has_terminal_authoring_finalize_signal(text: str) -> bool:
     return text.strip() == CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL
 
 
-CHARACTER_DRAFT_JSON_SCHEMA: Mapping[str, Any] = MappingProxyType(
-    {
-        "type": "object",
-        "additionalProperties": False,
-        "properties": {
-            "draft_id": {"type": "string", "pattern": "^draft_[A-Za-z0-9][A-Za-z0-9_.-]*$"},
-            "status": {"type": "string", "enum": ["draft"]},
-            "name": {"type": "string", "minLength": 1},
-            "canonical_character_id": {"type": ["string", "null"]},
-            "age": {"type": ["integer", "null"], "minimum": 0},
-            "age_range": {"type": ["string", "null"]},
-            "gender": {"type": ["string", "null"]},
-            "faction_id": {"type": ["string", "null"]},
-            "occupation": {"type": "string"},
-            "social_role": {"type": "string"},
-            "combat_role_profile": {
-                "type": "object",
-                "additionalProperties": False,
-                "properties": {
-                    "primary_role": {
-                        "type": ["string", "null"],
-                        "enum": [*CANONICAL_COMBAT_ROLES, None],
-                    },
-                    "secondary_roles": {
-                        "type": "array",
-                        "items": {"type": "string", "enum": list(CANONICAL_COMBAT_ROLES)},
-                    },
-                },
-                "required": ["primary_role", "secondary_roles"],
-            },
-            "design_pitch": {"type": "string"},
-            "personality": {"type": "array", "items": {"type": "string"}},
-            "background": {"type": "string"},
-            "story_hook": {"type": "string"},
-            "relationships": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "properties": {
-                        "target_id": {"type": ["string", "null"]},
-                        "description": {"type": ["string", "null"]},
-                        "status": {"type": ["string", "null"]},
-                        "type": {"type": ["string", "null"]},
-                    },
-                    "required": ["target_id", "description", "status", "type"],
-                },
-            },
-            "ability_concept": {"type": "string"},
-            "knowledge_scope": {"type": "string"},
-            "canon_basis": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "properties": {
-                        "source_id": {"type": "string"},
-                        "supports": {"type": "array", "items": {"type": "string"}},
-                        "source_type": {"type": ["string", "null"]},
-                    },
-                    "required": ["source_id", "supports", "source_type"],
-                },
-            },
-            "new_design_elements": {"type": "array", "items": {"type": "string"}},
-            "open_questions": {"type": "array", "items": {"type": "string"}},
-            "constraint_notes": {"type": "array", "items": {"type": "string"}},
-            "story_link": {
-                "anyOf": [
-                    {
-                        "type": "object",
-                        "additionalProperties": False,
-                        "properties": {
-                            "target_id": {"type": "string"},
-                            "relation": {"type": "string"},
-                            "status": {"type": "string"},
-                        },
-                        "required": ["target_id", "relation", "status"],
-                    },
-                    {"type": "null"},
+def _character_draft_source_ids(source_ids: Sequence[str]) -> tuple[str, ...]:
+    if isinstance(source_ids, (str, bytes)) or not isinstance(source_ids, Sequence):
+        raise ValueError("source_ids must be a sequence of exact IDs")
+    normalized = tuple(source_ids)
+    if any(
+        not isinstance(source_id, str)
+        or not source_id
+        or source_id != source_id.strip()
+        or "\n" in source_id
+        or "\r" in source_id
+        for source_id in normalized
+    ):
+        raise ValueError("source_ids must contain non-empty exact IDs")
+    if len(set(normalized)) != len(normalized):
+        raise ValueError("source_ids must be unique")
+    return normalized
+
+
+def character_draft_schema_for_source_ids(
+    source_ids: Sequence[str],
+    *,
+    field_value_enums: Mapping[str, Sequence[Any]] | None = None,
+) -> dict[str, Any]:
+    """Build an isolated CharacterDraft schema for one grounding scope.
+
+    ``field_value_enums`` is request-local data derived from the finalization
+    evidence.  It is applied only to the deep-copied transport schema; the
+    public ``CHARACTER_DRAFT_JSON_SCHEMA`` remains unconstrained so ordinary
+    authoring and legacy callers keep their existing contract.
+    """
+
+    allowed_source_ids = _character_draft_source_ids(source_ids)
+    schema = deepcopy(dict(CHARACTER_DRAFT_JSON_SCHEMA))
+    canon_basis = schema["properties"]["canon_basis"]
+    source_id_schema = canon_basis["items"]["properties"]["source_id"]
+    if allowed_source_ids:
+        source_id_schema["enum"] = list(allowed_source_ids)
+    else:
+        canon_basis["maxItems"] = 0
+    if field_value_enums is not None:
+        if not isinstance(field_value_enums, Mapping):
+            raise ValueError("field_value_enums must be a mapping")
+        for field_name, raw_values in field_value_enums.items():
+            if field_name not in schema["properties"]:
+                raise ValueError("field_value_enums contains an unknown field")
+            if isinstance(raw_values, (str, bytes)) or not isinstance(
+                raw_values, Sequence
+            ):
+                raise ValueError("field_value_enums values must be sequences")
+            values = deepcopy(list(raw_values))
+            try:
+                encoded_values = [
+                    json.dumps(value, ensure_ascii=False, sort_keys=True)
+                    for value in values
                 ]
-            },
-            "proposed_new_content": {"type": "array", "items": {"type": "string"}},
-        },
-        # Strict provider schemas require every property to be declared as
-        # required; nullable values represent optional domain values.
-        "required": [
-            "draft_id", "status", "name", "canonical_character_id", "age",
-            "age_range", "gender", "faction_id", "occupation", "social_role",
-            "combat_role_profile", "design_pitch", "personality", "background",
-            "story_hook", "relationships", "ability_concept", "knowledge_scope",
-            "canon_basis", "new_design_elements", "open_questions",
-            "constraint_notes", "story_link", "proposed_new_content",
-        ],
-    }
-)
+            except (TypeError, ValueError):
+                raise ValueError("field_value_enums must contain JSON values") from None
+            if len(set(encoded_values)) != len(encoded_values):
+                raise ValueError("field_value_enums must not contain duplicates")
+            schema["properties"][field_name]["enum"] = values
+    return schema
 
-# These fields are required by the runtime CharacterDraft parser even though
-# the provider schema declares every property required for strict transport.
-# They are the only fields eligible for bounded structural recovery.
-CHARACTER_DRAFT_CORE_FIELDS = frozenset(
-    {"draft_id", "status", "name", "canon_basis", "new_design_elements", "open_questions"}
-)
 
+def character_draft_grounding_prompt(
+    source_ids: Sequence[str],
+    *,
+    system_provenance_fields: Sequence[str] = (),
+) -> str:
+    """Describe request-scoped Canon source and provenance ownership.
+
+    System-owned fields still use the public ``canon_basis`` shape for the
+    final Draft, but the provider is not an authority for their provenance.
+    This instruction complements the finalization projection, which is the
+    fail-closed enforcement boundary for providers that ignore the guidance.
+    """
+
+    allowed_source_ids = _character_draft_source_ids(source_ids)
+    if isinstance(system_provenance_fields, (str, bytes)) or not isinstance(
+        system_provenance_fields, Sequence
+    ):
+        raise ValueError("system_provenance_fields must be a sequence")
+    normalized_system_fields = tuple(system_provenance_fields)
+    if any(
+        not isinstance(field_name, str) or not field_name
+        for field_name in normalized_system_fields
+    ) or len(set(normalized_system_fields)) != len(normalized_system_fields):
+        raise ValueError("system_provenance_fields must contain unique field names")
+    if not allowed_source_ids:
+        lines = [
+            "Request-scoped Canon source allowlist: (none).\n"
+            "For canon_basis: emit an empty array; do not cite unavailable Canon "
+            "as evidence."
+        ]
+    else:
+        lines = [
+            "Request-scoped Canon source allowlist (exact IDs):",
+            *(f"- {source_id}" for source_id in allowed_source_ids),
+            "For canon_basis.source_id:",
+            "- use only an exact ID from the list above;",
+            "- never invent, rename, abbreviate, normalize, or transform an ID;",
+            "- if no supplied source supports a claim, omit that canon_basis entry;",
+            "- do not cite unavailable Canon as evidence.",
+        ]
+    if normalized_system_fields:
+        lines.extend(
+            [
+                "Request-scoped system-owned Canon provenance fields:",
+                *(f"- {field_name}" for field_name in normalized_system_fields),
+                "- choose only the exact field value supplied by the request-scoped enum;",
+                "- do not include these exact field names in canon_basis.supports;",
+                "- the system materializes their primary and dependency provenance after selection.",
+            ]
+        )
+    return "\n".join(lines)
 
 _SKILL_KIT_ID_SEGMENT = r"[a-z0-9]+(?:_[a-z0-9]+)*"
 _SKILL_KIT_REF_KINDS = ("protocol", "effect", "resource", "state", "summon")
@@ -504,9 +606,6 @@ CHARACTER_DRAFT_RESPONSE_CONTRACT = ResponseContract(
 CHARACTER_SKILL_KIT_RESPONSE_CONTRACT = ResponseContract(
     "character_skill_kit", strict=True, json_schema=CHARACTER_SKILL_KIT_JSON_SCHEMA
 )
-HYBRID_SEMANTIC_IR_RESPONSE_CONTRACT = ResponseContract(
-    "hybrid_semantic_ir", strict=True
-)
 GROUNDED_RESPONSE_CONTRACT = ResponseContract(
     "grounded_response", strict=True, json_schema=GROUNDED_RESPONSE_JSON_SCHEMA
 )
@@ -515,10 +614,16 @@ GROUNDED_RESPONSE_CONTRACT = ResponseContract(
 def response_contract_for(response_format: str) -> ResponseContract:
     if response_format == "character_draft":
         return CHARACTER_DRAFT_RESPONSE_CONTRACT
+    if response_format == "character_design_plan":
+        return CHARACTER_DESIGN_PLAN_RESPONSE_CONTRACT
+    if response_format == "character_planner_proposal":
+        return CHARACTER_PLANNER_PROPOSAL_RESPONSE_CONTRACT
+    if response_format == "character_concept_search":
+        return CHARACTER_CONCEPT_SEARCH_RESPONSE_CONTRACT
+    if response_format == "character_concept_selection":
+        return CHARACTER_CONCEPT_SELECTION_RESPONSE_CONTRACT
     if response_format == "character_skill_kit":
         return CHARACTER_SKILL_KIT_RESPONSE_CONTRACT
-    if response_format == "hybrid_semantic_ir":
-        return HYBRID_SEMANTIC_IR_RESPONSE_CONTRACT
     if response_format == "character_authoring_action":
         return CHARACTER_AUTHORING_ACTION_RESPONSE_CONTRACT
     if response_format == "grounded_response":
@@ -581,8 +686,16 @@ __all__ = [
     "CHARACTER_SKILL_KIT_JSON_SCHEMA",
     "CHARACTER_DRAFT_CORE_FIELDS",
     "CHARACTER_DRAFT_RESPONSE_CONTRACT",
+    "character_draft_grounding_prompt",
+    "character_draft_schema_for_source_ids",
+    "CHARACTER_DESIGN_PLAN_RESPONSE_CONTRACT",
+    "CHARACTER_PLANNER_PROPOSAL_RESPONSE_CONTRACT",
+    "CHARACTER_CONCEPT_SEED_JSON_SCHEMA",
+    "CHARACTER_CONCEPT_SEARCH_JSON_SCHEMA",
+    "CHARACTER_CONCEPT_SELECTION_JSON_SCHEMA",
+    "CHARACTER_CONCEPT_SEARCH_RESPONSE_CONTRACT",
+    "CHARACTER_CONCEPT_SELECTION_RESPONSE_CONTRACT",
     "CHARACTER_SKILL_KIT_RESPONSE_CONTRACT",
-    "HYBRID_SEMANTIC_IR_RESPONSE_CONTRACT",
     "CHARACTER_AUTHORING_ACTION_FINALIZE_SIGNAL",
     "CHARACTER_AUTHORING_ACTION_RESPONSE_CONTRACT",
     "GROUNDED_RESPONSE_CONTRACT",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections.abc import Iterable
 from functools import lru_cache
 from typing import Any, Mapping
@@ -12,7 +13,11 @@ from combat_semantics import CombatRoleProfile
 from knowledge.resolver import KnowledgeResolver
 from reference_corpus.loader import load_combat_vocabulary
 
-from .schema import CharacterDesignIntent
+from .schema import (
+    CharacterDesignIntent,
+    ExplicitAgeRequirement,
+    ExplicitGenderRequirement,
+)
 
 
 def _append_once(values: list[str], value: str) -> None:
@@ -101,6 +106,245 @@ _PERSONALITY_PATTERNS = (
     (r"幽默|humorous|funny", "幽默"),
     (r"忠诚|loyal", "忠诚"),
 )
+
+_GENDER_UNSPECIFIED_PATTERNS = (
+    r"(?:角色|人物|主角)?(?:的)?性别\s*(?:(?:必须|应当|应该|要)\s*)?(?:保持|维持)?\s*(?:未指定|未定|未知|不明|不确定|不明确)",
+    r"(?:性别|gender)\s*(?:must\s+remain|should\s+remain|remains?|is|must\s+be|should\s+be)?\s*(?:unspecified|undetermined|unknown|not\s+specified|unassigned)",
+    r"(?:leave|keep|maintain)\s+(?:the\s+)?(?:character['’]s\s+)?gender\s+(?:as\s+)?(?:unspecified|undetermined|unknown)",
+    r"character\s+of\s+(?:unspecified|undetermined|unknown)\s+gender",
+)
+
+_GENDER_NEGATION_PATTERNS = (
+    re.compile(
+        r"(?:不要|禁止|不得|避免|不能|不可|不应|不可以)\s*(?:(?:把|将)\s*)?"
+        r"(?:(?:角色|人物|主角)(?:的)?(?:性别)?\s*)?(?:(?:设定|塑造|设计)\s*)?"
+        r"(?:为|成|是)?\s*(?P<value>女性|男性)(?:角色|人物)?"
+    ),
+    re.compile(
+        r"(?:角色|人物|主角)(?:的)?(?:性别)?\s*(?:不是|并非|不能|不得|不应|不可)\s*"
+        r"(?:设定为|为|是)?\s*(?P<value>女性|男性)"
+    ),
+    re.compile(
+        r"(?:do\s+not|don't|must\s+not|should\s+not|avoid|never)\s+"
+        r"(?:(?:make\s+)?(?:the\s+)?character\s+(?:a\s+)?)?"
+        r"(?P<value>female|male|woman|man)(?:\s+(?:playable\s+)?character)?\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\bcharacter(?:['’]s)?\s+gender\s+(?:must\s+not\s+be|should\s+not\s+be|"
+        r"is\s+not|mustn't\s+be|shouldn't\s+be)\s*(?P<value>female|male|woman|man)\b",
+        re.IGNORECASE,
+    ),
+)
+
+_GENDER_POSITIVE_PATTERNS = (
+    re.compile(r"(?P<value>女性|男性)(?:可抽|可玩|游戏)?(?:角色|人物|主角)"),
+    re.compile(
+        r"(?:角色|人物|主角)(?:的)?性别\s*(?:(?:必须|应当|应该|要)\s*)?"
+        r"(?:设定为|为|是|[:：])\s*(?P<value>女性|男性)"
+    ),
+    re.compile(r"性别\s*(?:(?:必须|应当|应该|要)\s*)?(?:设定为|为|是|[:：])\s*(?P<value>女性|男性)"),
+    re.compile(
+        r"(?:角色|人物|主角)(?:的)?\s*(?:必须|应当|应该|要)\s*"
+        r"(?:设定为|是|为)?\s*(?P<value>女性|男性)"
+    ),
+    re.compile(
+        r"\b(?:(?:the|this|that)\s+)?(?:character|protagonist|hero|unit)\s+"
+        r"(?:must|should)\s+be\s+(?:a\s+)?(?P<value>female|male|woman|man)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(?P<value>female|male)\s+(?:(?:playable|game)\s+)?"
+        r"(?:character|protagonist|hero|unit)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?P<value>female|male)(?:\s+[a-z][a-z-]*){1,3}\s+"
+        r"(?:character|protagonist|hero|unit)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(?P<value>woman|man)\s+(?:character|protagonist|hero)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:a|an)\s+(?P<value>woman|man)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:the\s+)?character(?:['’]s)?\s+gender\s+"
+        r"(?:must\s+be|should\s+be|is|=|:|set\s+to)\s*"
+        r"(?P<value>[A-Za-z][A-Za-z-]{0,23})\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\bgender\s*(?:must\s+be|should\s+be|is|=|:|set\s+to)\s*"
+        r"(?P<value>[A-Za-z][A-Za-z-]{0,23})\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"(?P<value>非二元(?:性别)?|性别流动|无性别)(?:的)?(?:角色|人物|主角)"),
+    re.compile(
+        r"(?P<value>non[- ]?binary|agender|gender[- ]?fluid|intersex)\s+"
+        r"(?:character|protagonist|hero)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(?:而是|而为|but\s+(?:rather\s+)?(?:is\s+)?)\s*"
+        r"(?P<value>女性|男性|female|male|woman|man)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"(?m)^\s*[-*•]\s*(?P<value>女性|男性|female|male)\s*$", re.IGNORECASE),
+)
+
+_GENDER_ALIASES = {
+    "女": "女性",
+    "女性": "女性",
+    "女人": "女性",
+    "女生": "女性",
+    "female": "女性",
+    "woman": "女性",
+    "women": "女性",
+    "girl": "女性",
+    "girls": "女性",
+    "男": "男性",
+    "男性": "男性",
+    "男人": "男性",
+    "男生": "男性",
+    "male": "男性",
+    "man": "男性",
+    "men": "男性",
+    "boy": "男性",
+    "boys": "男性",
+}
+
+_APPROXIMATE_AGE_PATTERNS = (
+    re.compile(r"(?P<age>\d{1,3})\s*岁\s*(?:左右|上下|附近|前后)"),
+    re.compile(
+        r"(?:about|around|approximately|roughly)\s*(?P<age>\d{1,3})"
+        r"\s*(?:years?\s*old|yo)?",
+        re.IGNORECASE,
+    ),
+)
+_EXACT_AGE_PATTERNS = (
+    re.compile(r"(?:年龄|年纪)\s*(?:是|为|[:：])?\s*(?P<age>\d{1,3})\s*岁?"),
+    re.compile(r"(?P<age>\d{1,3})\s*岁(?!\s*(?:左右|上下|附近|前后))"),
+    re.compile(r"age\s*(?:is|=|:)\s*(?P<age>\d{1,3})", re.IGNORECASE),
+)
+
+
+def parse_explicit_age_requirement(text: str) -> ExplicitAgeRequirement | None:
+    """Parse one exact or approximate age request without inventing an age."""
+
+    if not isinstance(text, str):
+        raise TypeError("text must be a string")
+    normalized = unicodedata.normalize("NFKC", text)
+    matches: list[tuple[int, int, bool]] = []
+    for pattern in _APPROXIMATE_AGE_PATTERNS:
+        matches.extend((int(item.group("age")), 2, True) for item in pattern.finditer(normalized))
+    for pattern in _EXACT_AGE_PATTERNS:
+        matches.extend((int(item.group("age")), 0, False) for item in pattern.finditer(normalized))
+    if not matches:
+        return None
+    requested_ages = {age for age, _tolerance, _approximate in matches}
+    if len(requested_ages) != 1:
+        raise ValueError("request contains conflicting explicit character ages")
+    preferred_age = next(iter(requested_ages))
+    approximate = any(item[2] for item in matches)
+    tolerance = 2 if approximate else 0
+    return ExplicitAgeRequirement(
+        preferred_age=preferred_age,
+        minimum_age=max(0, preferred_age - tolerance),
+        maximum_age=min(150, preferred_age + tolerance),
+        approximate=approximate,
+    )
+
+
+def _canonical_gender_value(value: str) -> str:
+    cleaned = unicodedata.normalize("NFKC", value).strip().strip("\"'“”‘’「」『』")
+    compact = re.sub(r"[\s_-]+", "", cleaned).casefold()
+    return _GENDER_ALIASES.get(compact, cleaned)
+
+
+def parse_explicit_gender_requirement(text: str) -> ExplicitGenderRequirement | None:
+    """Extract only direct gender requirements about the character being designed.
+
+    This parser is intentionally separate from the advisory legacy Intent
+    parser. V2 opts into the result at its request-to-context boundary, so
+    adding this constraint does not alter Legacy prompt payloads.
+    """
+
+    if not isinstance(text, str):
+        raise TypeError("gender requirement text must be a string")
+    normalized = unicodedata.normalize("NFKC", text).strip()
+    if not normalized:
+        return None
+
+    if any(re.search(pattern, normalized, flags=re.IGNORECASE) for pattern in _GENDER_UNSPECIFIED_PATTERNS):
+        has_other_mention = any(
+            match
+            for pattern in (*_GENDER_NEGATION_PATTERNS, *_GENDER_POSITIVE_PATTERNS)
+            for match in pattern.finditer(normalized)
+        )
+        has_conflicting_requirement = bool(
+            re.search(
+                r"(?:性别未定|性别未指定|gender\s+(?:remains?\s+)?unspecified)"
+                r".{0,32}(?:但|但是|but)\s*(?:必须|应当|应该|must|should)\s*"
+                r"(?:是|为|be)?\s*(?:女性|男性|female|male)",
+                normalized,
+                flags=re.IGNORECASE,
+            )
+        )
+        if has_other_mention or has_conflicting_requirement:
+            return None
+        return ExplicitGenderRequirement(remain_unspecified=True)
+
+    # Mentions in a negated span must not be reinterpreted by a positive pattern.
+    negative_matches = [
+        match
+        for pattern in _GENDER_NEGATION_PATTERNS
+        for match in pattern.finditer(normalized)
+    ]
+    forbidden = {
+        _canonical_gender_value(match.group("value")) for match in negative_matches
+    }
+    positive: set[str] = set()
+    for pattern in _GENDER_POSITIVE_PATTERNS:
+        for match in pattern.finditer(normalized):
+            if any(
+                match.start() < negative.end() and negative.start() < match.end()
+                for negative in negative_matches
+            ):
+                continue
+            positive.add(_canonical_gender_value(match.group("value")))
+
+    # A list of alternatives, modal wording, or conflicting statements does not
+    # establish one reliable hard value.
+    if re.search(
+        r"女性\s*(?:或|或者|和)\s*男性|男性\s*(?:或|或者|和)\s*女性|"
+        r"\b(?:female\s+or\s+male|male\s+or\s+female|either\s+female\s+or\s+male)\b|"
+        r"(?:可能|或许|也许)\s*(?:是|为)?\s*(?:女性|男性)|"
+        r"\b(?:may|might|could|possibly)\s+be\s+(?:female|male)\b|"
+        r"女性向|偏女性气质|female-coded|gender\s+is\s+open|性别不限|不限性别",
+        normalized,
+        flags=re.IGNORECASE,
+    ):
+        return None
+
+    if len(positive) > 1:
+        remaining_positive = positive - forbidden
+        if len(remaining_positive) != 1:
+            return None
+        positive = remaining_positive
+    if positive & forbidden:
+        return None
+    if not positive and not forbidden:
+        return None
+
+    required_value = next(iter(positive)) if positive else None
+    return ExplicitGenderRequirement(
+        required_value=required_value,
+        forbidden_values=tuple(sorted(forbidden)),
+    )
 
 
 class DeterministicCharacterDesignIntentParser:
@@ -247,6 +491,7 @@ class DeterministicCharacterDesignIntentParser:
             _append_once(design_goals, "beginner_friendly")
 
         forbidden = self._parse_forbidden_patterns(text)
+        age_requirement = parse_explicit_age_requirement(text)
         return CharacterDesignIntent(
             role_type=role_type,
             rarity=rarity,
@@ -256,6 +501,7 @@ class DeterministicCharacterDesignIntentParser:
             forbidden_patterns=forbidden,
             element=element,
             raw_request=text,
+            age_requirement=age_requirement,
             combat_role_profile=profile,
             requested_affiliation_id=requested_affiliation_id,
         )

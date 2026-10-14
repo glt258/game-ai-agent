@@ -50,7 +50,7 @@ from ..schemas.character_skill import (
 )
 from ..schemas.characters import CharacterPlanDTO
 from ..schemas.skills import SkillPlaygroundRequestDTO
-from .character_generation import CharacterGenerationApplication
+from .character_generation_v2_production import CharacterGenerationApplication
 from .live_jobs import LiveJobRegistry, LiveJobSnapshot
 from .skill_playground import SkillPlaygroundApplication
 

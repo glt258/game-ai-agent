@@ -5,14 +5,13 @@ import time
 
 from fastapi.testclient import TestClient
 
-from agents.canon_checker import CanonChecker
-from agents.character_generation import CharacterGenerationAgent
-from agents.character_repair import CharacterRepairAgent, DeterministicCharacterRepairModel
 from agents.errors import ModelProviderError
 from agents.models import ModelAttemptAudit, ModelInvocationAudit
 from web.app import create_app
 from web.errors import map_generation_exception
-from web.services.character_generation import CharacterGenerationApplication
+from web.services.character_generation_v2_production import (
+    build_character_generation_v2_application,
+)
 from web.services.live_jobs import LiveJobRegistry
 
 
@@ -111,7 +110,6 @@ def test_unknown_provider_retryability_stays_unknown_in_safe_details() -> None:
 def test_failed_character_job_preserves_safe_provider_diagnostics(monkeypatch) -> None:
     monkeypatch.setenv("NPC_LLM_PROVIDER", "opencode_go")
     monkeypatch.setenv("NPC_LLM_MODEL", "deepseek-v4.1-flash")
-    checker = CanonChecker()
     registry = LiveJobRegistry(
         max_workers=1,
         max_in_flight=1,
@@ -120,14 +118,9 @@ def test_failed_character_job_preserves_safe_provider_diagnostics(monkeypatch) -
     )
     client = TestClient(
         create_app(
-            generation_service=CharacterGenerationApplication(
+            generation_service=build_character_generation_v2_application(
                 generation_mode="live",
-                generation_agent=CharacterGenerationAgent(ProviderFailureModel()),
-                repair_agent=CharacterRepairAgent(
-                    DeterministicCharacterRepairModel(),
-                    checker=checker,
-                ),
-                checker=checker,
+                model_factory=lambda **_kwargs: ProviderFailureModel(),
             ),
             live_job_registry=registry,
         )

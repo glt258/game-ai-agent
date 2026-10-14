@@ -9,15 +9,14 @@ import pytest
 
 from agents import (
     CanonBasisEntry,
-    CanonCheckStatus,
     CanonChecker,
+    CanonCheckStatus,
     CanonFindingCode,
     CharacterDesignRequest,
     CharacterDraft,
     StoryLink,
 )
 from knowledge import KnowledgeResolver
-
 
 FIXTURES = Path(__file__).resolve().parents[1] / "evals" / "fixtures"
 
@@ -139,7 +138,7 @@ def test_unmarked_narrative_field_fails_closed():
     report = CanonChecker().check(changed, request=request)
 
     assert report.status == CanonCheckStatus.FAIL
-    assert CanonFindingCode.UNSUPPORTED_CANON_CLAIM in _codes(report)
+    assert CanonFindingCode.NEW_DESIGN_DECLARATION_MISSING in _codes(report)
 
 
 def test_fake_story_link_fails():

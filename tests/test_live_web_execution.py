@@ -6,16 +6,16 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from agents.errors import AgentExecutionError
 from character_intelligence.hybrid_ir.runner import (
     FakeProvider,
     HybridProviderInvocationError,
 )
-from agents.character_generation import CharacterGenerationAgent, DeterministicCharacterGenerationModel
-from agents.character_repair import CharacterRepairAgent, DeterministicCharacterRepairModel
-from agents.canon_checker import CanonChecker
-from agents.errors import AgentExecutionError
 from web.app import create_app
-from web.services.character_generation import CharacterGenerationApplication
+from web.services.character_generation_v2_production import (
+    OfflineCharacterGenerationV2Model,
+    build_character_generation_v2_application,
+)
 from web.services.live_jobs import LiveJobRegistry
 from web.services.skill_playground import SkillPlaygroundApplication
 
@@ -246,18 +246,10 @@ def test_character_skill_live_job_is_a_separate_transport_for_the_same_pipeline(
     raise AssertionError("character job did not reach a terminal state")
 
 
-def _character_client(*, scenario: str = "valid") -> TestClient:
-    checker = CanonChecker()
-    service = CharacterGenerationApplication(
+def _character_client() -> TestClient:
+    service = build_character_generation_v2_application(
         generation_mode="live",
-        generation_agent=CharacterGenerationAgent(
-            DeterministicCharacterGenerationModel(scenario=scenario),
-        ),
-        repair_agent=CharacterRepairAgent(
-            DeterministicCharacterRepairModel(),
-            checker=checker,
-        ),
-        checker=checker,
+        model_factory=lambda **_kwargs: OfflineCharacterGenerationV2Model(),
     )
     return TestClient(
         create_app(
@@ -302,14 +294,11 @@ def test_character_live_job_failure_is_safe_and_unknown_job_is_explicit(monkeypa
         def generate(self, _prompt):
             raise AgentExecutionError("S1E_SUPER_SECRET_TEST_VALUE Authorization: Bearer token")
 
-    checker = CanonChecker()
     client = TestClient(
         create_app(
-            generation_service=CharacterGenerationApplication(
+            generation_service=build_character_generation_v2_application(
                 generation_mode="live",
-                generation_agent=CharacterGenerationAgent(ExplodingModel()),
-                repair_agent=CharacterRepairAgent(DeterministicCharacterRepairModel(), checker=checker),
-                checker=checker,
+                model_factory=lambda **_kwargs: ExplodingModel(),
             ),
             live_job_registry=LiveJobRegistry(max_workers=1, max_in_flight=2, timeout_seconds=2, ttl_seconds=2),
         )
