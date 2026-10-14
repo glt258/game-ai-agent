@@ -38,6 +38,6 @@ repos:
           agents.official_character_authoring import main; raise
           SystemExit(main(['--scenario', 'valid', '--model', 'offline', '--json']))"
         language: python
-        additional_dependencies: ["PyYAML>=6.0", "openai>=1.0,<3"]
+        additional_dependencies: ["PyYAML>=6.0", "openai>=1.0,<3", "fastapi>=0.115,<1"]
         pass_filenames: false
         always_run: true
