@@ -4,8 +4,12 @@ from typing import Any
 
 import pytest
 
-from agents import CharacterDraft, ModelMalformedResponseError
+from agents import CharacterDraft
 from character_intelligence import CharacterDesignIntent
+from character_intelligence.draft_errors import (
+    CharacterDraftMappingError,
+    CharacterDraftMappingReason,
+)
 from character_intelligence.intent.parser import parse_character_design_intent
 from combat_semantics import CombatRoleProfile, resolve_legacy_combat_role_profile
 
@@ -168,9 +172,12 @@ def test_draft_uses_shared_seam_and_serializes_only_canonical_profile() -> None:
     }
 
 
-def test_draft_wraps_shared_seam_errors_as_model_malformed() -> None:
-    with pytest.raises(ModelMalformedResponseError, match="compatibility input"):
+def test_draft_maps_shared_seam_errors_to_bounded_domain_error() -> None:
+    with pytest.raises(CharacterDraftMappingError) as captured:
         CharacterDraft.from_mapping(_draft_payload(combat_role="on_field_dps"))
+    assert captured.value.reason is CharacterDraftMappingReason.INVALID_COMBAT_ROLE
+    assert captured.value.field_path == "combat_role_profile"
+    assert captured.value.detail == "CharacterDraft.combat_role compatibility input is invalid"
 
 
 def test_intent_uses_shared_seam_and_serializes_only_canonical_profile() -> None:

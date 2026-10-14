@@ -215,6 +215,10 @@ def test_character_skill_kit_schema_and_parser_reject_same_shape_mutations(mutat
 
 def test_character_draft_contract_and_default_routing_remain_unchanged():
     assert response_contract_for("character_draft") is CHARACTER_DRAFT_RESPONSE_CONTRACT
+    hybrid_contract = response_contract_for("hybrid_semantic_ir")
+    assert hybrid_contract.name == "hybrid_semantic_ir"
+    assert hybrid_contract.strict is True
+    assert hybrid_contract.json_schema is None
     assert response_contract_for("unknown-format").name == "text"
 
 

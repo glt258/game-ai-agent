@@ -23,6 +23,8 @@ from agents import (
     ModelTimeoutError,
 )
 import agents.official_character_authoring as official_module
+import agents.character_generation_cli as production_cli
+from web.errors import WebApplicationError
 from agents.official_character_authoring import (
     OfficialCharacterAuthoringDemo,
     _request_for_scenario,
@@ -467,22 +469,27 @@ def test_live_cli_invocation_failure_never_falls_back_to_offline(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     secret = "unit-test-api-key"
+    requested_modes: list[str] = []
 
-    class FailingDemo:
-        def run(self, _request):
-            error = ModelProviderError("Live LLM provider request failed")
-            error.audit = ModelInvocationAudit(
-                "live-session",
-                1,
-                "openai",
-                "live-model",
-                "provider",
-                1.0,
-                0,
+    class FailingApplication:
+        def generate(self, _request):
+            raise WebApplicationError(
+                "PROVIDER_FAILURE",
+                "The model provider request failed.",
+                status_code=502,
+                stage="provider",
+                retryable=False,
             )
-            raise error
 
-    monkeypatch.setattr(official_module, "make_demo", lambda **_: FailingDemo())
+    def build_application(**kwargs):
+        requested_modes.append(kwargs["generation_mode"])
+        return FailingApplication()
+
+    monkeypatch.setattr(
+        production_cli,
+        "build_character_generation_v2_application",
+        build_application,
+    )
     exit_code = official_module.main(
         [
             "--brief",
@@ -498,7 +505,24 @@ def test_live_cli_invocation_failure_never_falls_back_to_offline(
 
     captured = capsys.readouterr()
     assert exit_code == 2
-    assert "Invocation: FAILED" in captured.err
-    assert "Pipeline status: NOT_COMPLETED" in captured.err
-    assert "ACCEPTED" not in captured.err
+    assert requested_modes == ["live"]
+    assert "PROVIDER_FAILURE: The model provider request failed." in captured.err
     assert secret not in captured.err
+
+
+def test_live_cli_missing_configuration_is_safe_and_never_calls_a_provider(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.delenv("NPC_LLM_API_KEY", raising=False)
+    monkeypatch.setenv("NPC_LLM_PROVIDER", "openai")
+    monkeypatch.setenv("NPC_LLM_MODEL", "live-model")
+
+    exit_code = official_module.main(
+        ["--brief", "设计一个角色。", "--model", "live", "--provider", "openai"]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "MODEL_CONFIGURATION_INVALID" in captured.err
+    assert "Traceback" not in captured.err

@@ -9,7 +9,8 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from web.errors import WebApplicationError
+from agents.errors import ModelConfigurationError
+from web.errors import WebApplicationError, map_generation_exception
 from web.mappers.character_generation import to_character_generation_response, to_error_response
 from web.schemas.characters import CharacterGenerationRequestDTO
 from web.services.character_generation_v2_production import (
@@ -107,7 +108,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         result = application.generate(payload)
         response = to_character_generation_response(payload, result)
-    except WebApplicationError as error:
+    except (WebApplicationError, ModelConfigurationError) as caught:
+        error = (
+            caught
+            if isinstance(caught, WebApplicationError)
+            else map_generation_exception(caught)
+        )
         if args.as_json:
             print(
                 json.dumps(

@@ -108,6 +108,7 @@ def test_unknown_provider_retryability_stays_unknown_in_safe_details() -> None:
 
 
 def test_failed_character_job_preserves_safe_provider_diagnostics(monkeypatch) -> None:
+    monkeypatch.setenv("NPC_LLM_API_KEY", "test-only-placeholder")
     monkeypatch.setenv("NPC_LLM_PROVIDER", "opencode_go")
     monkeypatch.setenv("NPC_LLM_MODEL", "deepseek-v4.1-flash")
     registry = LiveJobRegistry(

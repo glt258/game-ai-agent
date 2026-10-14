@@ -11,11 +11,14 @@ from agents import (
     CharacterGenerationResult,
     CharacterGenerationAgent,
     DeterministicCharacterGenerationModel,
-    ModelMalformedResponseError,
 )
 from agents.evaluation import EvaluationOutcome, EvaluationRunner, EvaluationSubject
 from agents.response_contracts import CHARACTER_DRAFT_JSON_SCHEMA
 from character_intelligence import CharacterDesignIntent
+from character_intelligence.draft_errors import (
+    CharacterDraftMappingError,
+    CharacterDraftMappingReason,
+)
 from character_intelligence.planner import CharacterDesignPlan
 from combat_semantics import CombatRoleProfile
 
@@ -87,22 +90,28 @@ def test_draft_round_trip_preserves_multi_role_profile(profile: dict[str, Any]) 
 
 
 def test_draft_rejects_invalid_and_duplicate_roles() -> None:
-    with pytest.raises(ModelMalformedResponseError):
-        CharacterDraft.from_mapping(_payload(combat_role_profile={"primary_role": "assassin", "secondary_roles": []}))
-    with pytest.raises(ModelMalformedResponseError):
-        CharacterDraft.from_mapping(_payload(combat_role_profile={"primary_role": "support", "secondary_roles": ["support"]}))
-    with pytest.raises(ModelMalformedResponseError):
-        CharacterDraft.from_mapping(_payload(combat_role_profile={"primary_role": "main_dps", "secondary_roles": ["support", "support"]}))
+    invalid_profiles = (
+        {"primary_role": "assassin", "secondary_roles": []},
+        {"primary_role": "support", "secondary_roles": ["support"]},
+        {"primary_role": "main_dps", "secondary_roles": ["support", "support"]},
+    )
+    for profile in invalid_profiles:
+        with pytest.raises(CharacterDraftMappingError) as captured:
+            CharacterDraft.from_mapping(_payload(combat_role_profile=profile))
+        assert captured.value.reason is CharacterDraftMappingReason.INVALID_COMBAT_ROLE
+        assert captured.value.field_path == "combat_role_profile"
 
 
 def test_flat_legacy_role_is_adapted_but_cannot_contradict_profile() -> None:
     draft = CharacterDraft.from_mapping(_payload(combat_role_profile=None, combat_role="healer"))
     assert draft.combat_role_profile == CombatRoleProfile(primary_role="healer")
-    with pytest.raises(ModelMalformedResponseError):
+    with pytest.raises(CharacterDraftMappingError) as captured:
         CharacterDraft.from_mapping(_payload(
             combat_role_profile={"primary_role": "healer", "secondary_roles": []},
             combat_role="support",
         ))
+    assert captured.value.reason is CharacterDraftMappingReason.INVALID_COMBAT_ROLE
+    assert captured.value.field_path == "combat_role_profile"
 
 
 def test_provider_schema_uses_canonical_role_set_and_excludes_legacy_patterns() -> None:

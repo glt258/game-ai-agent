@@ -171,7 +171,8 @@ def test_late_failure_cannot_replace_timeout_and_shutdown_rejects_new_work() -> 
 
 
 def test_timeout_progress_snapshot_freezes_and_suppresses_late_updates() -> None:
-    progress = LiveExecutionProgress()
+    deadline = OperationDeadline(10.0, monotonic=lambda: 1.0)
+    progress = LiveExecutionProgress(deadline=deadline)
     progress.mark_action_round(round_index=6, tool_invocation="optional", tool_count=9)
     progress.provider_call_started()
 

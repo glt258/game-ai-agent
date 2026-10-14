@@ -272,6 +272,7 @@ def _wait_for_character_terminal(client: TestClient, job_id: str) -> dict[str, o
 
 
 def test_character_live_job_returns_quickly_and_preserves_planner_result(monkeypatch) -> None:
+    monkeypatch.setenv("NPC_LLM_API_KEY", "test-only-placeholder")
     monkeypatch.setenv("NPC_LLM_PROVIDER", "opencode_go")
     monkeypatch.setenv("NPC_LLM_MODEL", "deepseek-v4-pro")
     client = _character_client()
@@ -288,6 +289,7 @@ def test_character_live_job_returns_quickly_and_preserves_planner_result(monkeyp
 
 
 def test_character_live_job_failure_is_safe_and_unknown_job_is_explicit(monkeypatch) -> None:
+    monkeypatch.setenv("NPC_LLM_API_KEY", "test-only-placeholder")
     monkeypatch.setenv("NPC_LLM_PROVIDER", "opencode_go")
     monkeypatch.setenv("NPC_LLM_MODEL", "deepseek-v4-pro")
     class ExplodingModel:
@@ -304,7 +306,9 @@ def test_character_live_job_failure_is_safe_and_unknown_job_is_explicit(monkeypa
         )
     )
 
-    accepted = client.post("/api/characters/generate/jobs", json=_character_payload()).json()
+    response = client.post("/api/characters/generate/jobs", json=_character_payload())
+    assert response.status_code == 202
+    accepted = response.json()
     failed = _wait_for_character_terminal(client, accepted["job_id"])
     assert failed["status"] == "FAILED"
     assert failed["error"]["code"] in {"GENERATION_NOT_COMPLETED", "LIVE_EXECUTION_FAILED"}

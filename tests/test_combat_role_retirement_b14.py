@@ -12,10 +12,13 @@ from agents import (
     CharacterGenerationAudit,
     CharacterGenerationResult,
     DeterministicCharacterGenerationModel,
-    ModelMalformedResponseError,
 )
 from agents.evaluation import EvaluationOutcome, EvaluationRunner, EvaluationSubject, RequestAlignmentValidator
 from character_intelligence import CharacterDesignIntent, CharacterDesignIntentParser
+from character_intelligence.draft_errors import (
+    CharacterDraftMappingError,
+    CharacterDraftMappingReason,
+)
 from character_intelligence.planner import CharacterDesignPlan
 from combat_semantics import CombatRoleProfile
 
@@ -99,15 +102,19 @@ def test_draft_legacy_adapter_has_profile_precedence_and_rejects_contradictions(
     )
     assert compatible.combat_role_profile == CombatRoleProfile(primary_role="support")
 
-    with pytest.raises(ModelMalformedResponseError, match="contradict"):
+    with pytest.raises(CharacterDraftMappingError) as contradictory:
         CharacterDraft.from_mapping(
             _draft_payload(
                 profile={"primary_role": "support", "secondary_roles": []},
                 legacy="main_dps",
             )
         )
-    with pytest.raises(ModelMalformedResponseError, match="supported role"):
+    assert contradictory.value.reason is CharacterDraftMappingReason.INVALID_COMBAT_ROLE
+    assert contradictory.value.field_path == "combat_role_profile"
+    with pytest.raises(CharacterDraftMappingError) as unsupported:
         CharacterDraft.from_mapping(_draft_payload(legacy="assassin"))
+    assert unsupported.value.reason is CharacterDraftMappingReason.INVALID_COMBAT_ROLE
+    assert unsupported.value.field_path == "combat_role_profile"
 
 
 def test_intent_legacy_adapter_is_deserialization_only_and_profile_only_on_output() -> None:

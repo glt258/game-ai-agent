@@ -8,6 +8,7 @@ test("offline Studio save/open preserves Character Skill and Kit", async ({page}
 
   await page.getByRole("button", {name: "编辑"}).click();
   await page.locator("#draft-name").fill("编辑后的辅助角色");
+  await page.locator("#draft-occupation").fill("公共安全联席体系现场协调员");
   await page.getByRole("button", {name: "检查修改"}).click();
   await page.getByText("查看生成与检查明细").click();
   await expect(page.getByText("修改后的方案检查通过")).toBeVisible();
@@ -16,6 +17,7 @@ test("offline Studio save/open preserves Character Skill and Kit", async ({page}
   await expect(page.getByTestId("character-kit-summary")).toContainText("当前有 0 个技能关联");
   await page.getByRole("button", {name: "设计技能"}).click();
   await page.getByLabel("技能定位").selectOption("support");
+  await page.getByRole("region", {name: "技能设计需求"}).getByLabel("设计需求").fill("设计一个保护友方并帮助队友完成现场处置的辅助技能。");
   await page.getByLabel("技能设计需求").getByText("高级设置", {exact: true}).click();
   await page.getByLabel("离线示例").selectOption("character_support_skill_v1");
   await page.getByRole("region", {name: "技能设计需求"}).getByLabel("生成方式").selectOption("offline");
