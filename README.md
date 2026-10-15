@@ -1,14 +1,39 @@
 # Game AI Agent
 
-**Structured AI-assisted game content design and authoring**
+**An AI-Assisted Game Design & Development Framework**
+
+*From Character Creation to Game Systems — Exploring AI-Assisted Game Design.*
 
 **English** | [简体中文](README.zh-CN.md)
 
 [![CI](https://github.com/glt258/game-ai-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/glt258/game-ai-agent/actions/workflows/ci.yml)
 
-Game AI Agent is building a structured system for designing and authoring game content with AI. It is not a prompt wrapper or a complete AI-native game development platform. The current repository focuses on character and skill design, Canon-aware retrieval, deterministic validation, evaluation, and local Studio workflows.
+Game AI Agent explores how AI can support human designers across game content and systems
+design. It began with long-running NPC memory and behavior-consistency problems: retaining
+player histories, keeping identities and behavior coherent, and respecting world rules over
+time. That work expanded into character authoring, Canon and story context, skill design, and
+evaluation. The project is now also exploring combat simulation and balance through an
+independent offline prototype.
 
-Long-term, the project aims at broader game-content development; today, model output is a proposal, the authoring flow reads Canon without writing it, and human review remains authoritative.
+The goal is an AI-assisted framework that helps designers explore, validate, and iterate on
+proposals. Its evolving design direction is **Human Direction → AI Exploration → Structured
+Validation → Simulation & Evaluation → Human Decision**. Current tools implement parts of this
+loop, but it is not yet one integrated production workflow. Model output remains a proposal,
+Canon stays read-only to authoring, and human review remains authoritative. Game AI Agent is
+not a prompt wrapper or game engine, and it does not claim fully autonomous game development.
+
+## Project Evolution
+
+1. **NPC Memory & Consistency** — The original problem was keeping NPCs aware of players and
+   prior interactions while preserving character identity, behavior, and world rules over
+   long-running conversations.
+2. **Character Creation Agent** — The work grew into structured, Canon-grounded character authoring with deterministic validation and human review.
+3. **Game Design & Combat Systems** — Character and skill design broadened toward role and
+   combat concepts; simulation is being explored separately as an offline prototype.
+4. **AI Creativity & Evaluation** — The project is exploring how to assess generated designs
+   and support comparison and iteration across multiple candidates.
+
+This progression followed problems encountered during development; it was not a plan to build a large game-development platform from the start.
 
 ## Project Context
 
@@ -30,12 +55,17 @@ contracts.
 
 ## What it can do now
 
-- Turn a designer brief into a structured, reviewable `CharacterDraft`.
-- Ground character authoring in bounded, read-only Canon and story retrieval.
-- Project design intent and retrieve design precedents from the Reference Corpus.
-- Design skills through Semantic IR, deterministic compilation, canonical `SkillKit`, evaluation, diagnostics, and bounded semantic repair.
-- Run deterministic checks with auditable tool/model invocations.
-- Provide a local Next.js + FastAPI Studio with explicit SQLite-backed Saved Character workspaces.
+- **Implemented authoring workflows:** Turn a designer brief into a structured,
+  reviewable `CharacterDraft`; ground it in bounded, read-only Canon and story retrieval.
+- **Implemented design and validation:** Project design intent, retrieve Reference Corpus
+  precedents, design skills through Semantic IR and deterministic compilation, and evaluate
+  canonical `SkillKit` artifacts.
+- **Implemented developer tools:** Run deterministic checks with auditable tool/model
+  invocations and use the CLI. The local Next.js + FastAPI Studio and its SQLite-backed Saved
+  Character workspaces are implemented as an experimental workflow.
+- **Experimental and offline:** Explore combat roles, elements, and encounter outcomes in a
+  separate prototype; its results are not production balance validation.
+- **Planned or exploratory:** Broader story and relationship workflows, systematic creativity evaluation, and multi-candidate design iteration.
 
 ## Current Capabilities
 
@@ -58,6 +88,12 @@ structured projections of a brief. The deterministic reference selector finds
 relevant precedent and contrast candidates. These are design aids, not hidden
 chain-of-thought or a second character schema.
 
+### Narrative & Relationship Design
+
+Character drafts can carry story hooks, relationship data, and bounded links to story context.
+This is part of the character-authoring workflow; a standalone narrative-generation or
+relationship-simulation agent is not implemented.
+
 ### Skill Design
 
 Skill Design v1 (`CS-S2`) supports Main DPS, Sub-DPS, Support, Healer/Reaction,
@@ -79,6 +115,21 @@ natural-language requirements, role/mode, model and language selection, safe
 diagnostics, and one bounded repair opportunity. Human-readable playground text
 supports Simplified Chinese and English while machine-readable protocol fields
 remain authoritative English values.
+
+### Combat Simulation & Balancing (Experimental)
+
+A separate offline prototype explores six provisional role prototypes, six elements, and
+encounter outcomes. It is not integrated with the production character and skill workflows or
+the production combat-role contract. Its values are uncalibrated hypotheses, and its simulated
+decision policies do not represent real player behavior. Results can inform design review, but
+they do not establish that the roles or combat system are balanced.
+
+### Evaluation & Validation
+
+Current authoring workflows combine deterministic schema, Canon-grounding, request-alignment,
+representation, and skill checks with evaluation signals. Systematic assessment of creativity
+and design quality remains exploratory; the existing checks do not produce an objective,
+universal creativity score.
 
 ### Canon, Knowledge & Reference Corpus
 
@@ -246,6 +297,7 @@ flowchart LR
 | Reference Corpus | `reference-corpus-v0.5`, frozen expanded baseline |
 | Hybrid Semantic IR | `hybrid-semantic-ir-e2e-v0.1` — historical real-provider evaluator PASS baseline |
 | Studio | Local Web v0.1 implemented; experimental relative to the `v0.8` release architecture |
+| Combat Simulation | Independent offline prototype; provisional roles and uncalibrated values, outside production contracts |
 | Repository Knowledge | Engineering Knowledge Layer and Project Graph as supporting infrastructure |
 
 The public `v0.8` release is not retroactively redefined by the experimental Studio and W4 working-tree architecture. See [Versioning](docs/versioning.md) and the [v0.8 release notes](docs/release_notes_v0.8.md).
@@ -346,25 +398,33 @@ authoring beyond that single fictional setting.
 
 ### Current development focus
 
-1. Studio UX and productization.
-2. Deeper Character Design Intelligence.
-3. Deeper Skill and Combat Design Intelligence.
-4. Stronger evaluation and simulation.
-5. A governed data pipeline for future model training.
+1. Continue Studio UX and productization alongside Character Design Intelligence.
+2. Deepen skill and combat design while evaluating the independent offline simulator and its
+   provisional six-role, six-element model.
+3. Strengthen Canon and story context, request alignment, and character/skill evaluation.
+4. Explore human-reviewed iteration across multiple candidate designs.
 
 ### Longer-term direction — planned / exploratory
 
-- Specialized small-model fine-tuning.
-- Story and Canon generation workflows.
-- Multi-agent content design.
-- Broader worldbuilding workflows.
+- Validate the combat model and its assumptions; define extension points before adding elements
+  or roles beyond the current prototypes.
+- Design attribute, equipment, weapon, relic, and enemy-combat systems, then use simulation to
+  evaluate skills and team combinations.
+- Improve consistency across worldbuilding, Canon, story, and character relationships; explore
+  proposal workflows for story and Canon content.
+- Develop more systematic creativity evaluation and multi-candidate search and iteration.
+- Build a governed data pipeline for future model training, consider specialized small-model
+  fine-tuning, and explore multi-agent content design.
 
-These are planned or exploratory, not current capabilities; no dates or release promises are implied.
+These are directions, not claims of completed capabilities; no dates, release promises, or completed stages are implied.
 
 ## Known Boundaries
 
 - Not production-ready and not a completed game-development platform.
 - No claim of autonomous skill balancing or universal model quality.
+- Long-term NPC memory is the project's original motivation, not a currently shipped
+  persistent-memory system. Combat simulation remains a separate offline prototype and is not
+  part of the production authoring pipeline.
 - Canon is read-only to authoring; approval, publishing, and Canon mutation are not implemented.
 - The corpus is precedent and analysis, not authoritative lore or imitation data.
 - Multi-agent orchestration, Story Generation Agent, broad memory/planning, and specialized fine-tuning are not implemented claims.

@@ -1,17 +1,35 @@
 # Game AI Agent
 
-**结构化的 AI 辅助游戏内容设计与创作系统**
+**AI 辅助游戏设计与开发框架**
+
+*从角色创作到游戏系统设计，探索 AI 辅助游戏开发的新方式。*
 
 [English](README.md) | **简体中文**
 
 [![CI](https://github.com/glt258/game-ai-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/glt258/game-ai-agent/actions/workflows/ci.yml)
 
-Game AI Agent 正在构建一个面向游戏开发的结构化 AI 内容设计系统。它不是
-Prompt wrapper，也还不是完整的 AI 原生游戏开发平台。当前重点是角色与技能
-设计、基于 Canon 的检索、确定性校验、评估，以及本地 Studio 工作流。
+Game AI Agent 探索 AI 如何协助人类设计师参与游戏内容与系统设计。项目最初关注
+长期交互中的 NPC 记忆与行为一致性：保留玩家及互动历史、维持角色身份与行为连贯，
+并遵守世界规则。此后，工作扩展到角色创作、Canon 与 Story 上下文、技能设计和评估。
+目前也在通过一个独立的离线原型探索战斗模拟与数值平衡。
 
-项目长期方向是更广泛的游戏内容开发。当前模型输出是 proposal，创作流程对
-Canon 只读，最终审查权属于人类。
+项目希望构建一个帮助设计师探索、校验并迭代方案的 AI 辅助框架。其持续演进的设计
+方向是：**人类确定方向 → AI 探索 → 结构化校验 → 仿真与评估 → 人类决策**。现有
+工具只实现了其中一部分，尚未形成一条集成的生产工作流。模型输出仍是 proposal，
+创作流程对 Canon 只读，最终审查权属于人类。Game AI Agent 不是 Prompt wrapper 或
+游戏引擎，也不宣称能够自主完成整个游戏开发过程。
+
+## 项目演进
+
+1. **NPC 记忆与一致性**——项目最初要解决的是：让 NPC 在长期对话中记得玩家和过往
+   互动，同时保持身份、行为和世界规则的一致。
+2. **角色创作 Agent**——工作逐渐发展为结构化、基于 Canon 的角色创作，并加入确定性
+   校验和人工审查。
+3. **游戏设计与战斗系统**——从角色扩展到技能、职业与战斗概念；战斗模拟目前作为
+   独立离线原型探索。
+4. **AI 创造力与评估**——探索如何评估生成设计，并支持多个候选方案的比较和迭代。
+
+这一演进来自实际开发中遇到的问题，并非一开始就计划构建庞大的游戏开发平台。
 
 ## 项目语境
 
@@ -28,13 +46,14 @@ grounding、可审查的 proposal，同时不允许模型凭空创造世界事�
 
 ## 当前能做什么
 
-- 将设计师 brief 转换为结构化、可审查的 `CharacterDraft`。
-- 通过有界、只读的 Canon 与 Story 检索支撑角色创作。
-- 结构化设计意图，并从 Reference Corpus 检索设计先例。
-- 通过 Semantic IR、确定性编译、canonical `SkillKit`、评估、安全诊断和
-  有界语义修复进行技能设计。
-- 执行请求、表示、Canon、grounding 和 contract 检查，并审计工具与模型调用。
-- 使用本地 Next.js + FastAPI Studio，包括基于 SQLite 的已保存角色工作区。
+- **已实现的创作工作流：** 将设计师 brief 转换为结构化、可审查的 `CharacterDraft`，
+  并使用有界、只读的 Canon 与 Story 检索提供依据。
+- **已实现的设计与校验：** 结构化设计意图、检索 Reference Corpus 先例，通过
+  Semantic IR 和确定性编译设计技能，并评估 canonical `SkillKit`。
+- **已实现的开发工具：** 运行可审计工具与模型调用的确定性检查，并使用 CLI。本地
+  Next.js + FastAPI Studio 及其 SQLite 已保存角色工作区已实现，但仍属实验性工作流。
+- **实验性离线原型：** 独立探索战斗职业、元素与遭遇结果；其结果不是生产级平衡验证。
+- **计划或探索方向：** 更广泛的剧情与关系工作流、系统化创造力评估、多候选设计迭代。
 
 ## 当前能力
 
@@ -56,6 +75,11 @@ grounding、可审查的 proposal，同时不允许模型凭空创造世界事�
 投影为结构化设计信息。确定性的 reference selector 寻找相关先例与对比候选。
 它们是设计辅助，不是隐藏思维链，也不是第二套角色 schema。
 
+### 剧情与角色关系设计
+
+角色 draft 可以包含剧情钩子、关系数据，以及指向 Story 上下文的有界链接。这些能力
+属于角色创作工作流；当前尚未实现独立的剧情生成 Agent 或关系仿真系统。
+
 ### 技能设计
 
 Skill Design v1（`CS-S2`）支持 Main DPS、Sub-DPS、Support、Healer/Reaction、
@@ -73,6 +97,19 @@ Control、Defense 和 Basic Passive 七类语义：
 `v0.8` 版本还包含 Manual Skill Playground CLI：支持自然语言需求、角色/模式、
 模型与语言选择、安全诊断，以及一次有界修复机会。面向人的 playground 文本支持
 简体中文和英文；机器可读的协议字段仍以英文值为权威。
+
+### 战斗模拟与数值平衡（实验性）
+
+一个独立的离线原型探索六种暂定职业原型、六种元素与遭遇结果。它没有接入生产角色与
+技能工作流，也不属于生产 combat-role contract。参数是尚未校准的实验假设，模拟的
+决策策略也不代表真实玩家行为。结果可用于设计审查，但不能证明职业或战斗系统已经
+平衡。
+
+### 评估与校验
+
+当前创作工作流结合确定性的 schema、Canon grounding、需求对齐、表示完整性和技能检查，
+并提供评估信号。系统化评估创造力与设计质量仍处于探索阶段；现有检查不会产出客观、
+普适的创造力分数。
 
 ### Canon、知识与 Reference Corpus
 
@@ -220,6 +257,7 @@ flowchart LR
 | Reference Corpus | `reference-corpus-v0.5`，冻结的扩展基线 |
 | Hybrid Semantic IR | `hybrid-semantic-ir-e2e-v0.1`，历史 real-provider evaluator PASS 基线 |
 | Studio | 本地 Web v0.1 已实现；相对于 `v0.8` release architecture 仍属实验性 |
+| Combat Simulation | 独立离线原型；临时职业与未校准参数，不属于生产 contract |
 | Repository Knowledge | Engineering Knowledge Layer 与 Project Graph，作为辅助基础设施提供 |
 
 实验性的 Studio 与 W4 working-tree 架构不会反向改写公开 `v0.8` release 的含义。
@@ -317,25 +355,27 @@ Along the Street 当前用于仓库内置 Canon、测试世界和开发设定。
 
 ### 当前开发重点
 
-1. Studio UX 与产品化。
-2. 更深入的 Character Design Intelligence。
-3. 更深入的 Skill / Combat Design Intelligence。
-4. 更强的评估与模拟。
-5. 面向未来模型训练的受治理数据管线。
+1. 持续改进 Studio UX 与产品化，并深化 Character Design Intelligence。
+2. 深化技能与战斗设计，同时评估独立离线模拟器及其六职业、六元素暂定模型。
+3. 加强 Canon 与 Story 上下文、需求对齐，以及角色和技能评估。
+4. 探索由人类审查把关的多候选方案迭代。
 
 ### 更长期方向——计划 / 探索中
 
-- 专用小模型 fine-tuning。
-- Story 与 Canon 生成工作流。
-- Multi-Agent 内容设计。
-- 更广泛的 worldbuilding 工作流。
+- 验证战斗模型及其假设；在扩展到更多元素或职业前，设计明确的扩展接口。
+- 设计属性、装备、武器、圣遗物与敌方战斗机制，再通过仿真评估技能和队伍搭配。
+- 加强 worldbuilding、Canon、剧情与角色关系的一致性，并探索剧情和 Canon 的提案式工作流。
+- 建立更系统的创造力评估、多候选搜索与迭代机制。
+- 建设面向未来模型训练的受治理数据管线，考虑专用小模型 fine-tuning，并探索 Multi-Agent 内容设计。
 
-以上不是当前能力，不包含日期或版本承诺。
+以上均为方向，不代表功能已经完成，也不包含日期、版本承诺或阶段完成声明。
 
 ## 已知边界
 
 - 不是 production-ready 软件，也不是已经完成的游戏开发平台。
 - 不宣称能够自动平衡技能，也不保证模型质量；Skill Design v1 有意保持封闭范围。
+- 长期 NPC 记忆是项目最初的动机，不是当前已发布的持久记忆系统。战斗模拟仍是独立的
+  离线原型，尚未接入生产创作流程。
 - 创作流程对 Canon 只读；批准、发布和 Canon 修改尚未实现。
 - Reference Corpus 提供先例与分析，不是权威 lore 或商业模仿数据集。
 - Multi-Agent 编排、Story Generation Agent、广泛 memory/planning 和专用 fine-tuning
