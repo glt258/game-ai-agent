@@ -1,253 +1,55 @@
 version: "0.1"
-
-# This registry binds conditions to machine-readable scopes.  Empty values on
-# unresolved bindings are intentional: the current Canon has not defined
-# concrete canonical targets for those conditions.
-bindings:
-  - id: scope_knowledge_rule_003_relevant_professional_context
-    rule_id: knowledge_rule_003
-    lore_id: lore_003
-    condition: relevant_professional_context
-    evaluator: has_relevant_responsibility
-    status: resolved
-    scope: {type: responsibility, match: any, values: [mediation_case_coordination, professional_standards_governance]}
-  - id: scope_knowledge_rule_004_relevant_professional_context
-    rule_id: knowledge_rule_004
-    lore_id: lore_004
-    condition: relevant_professional_context
-    evaluator: has_relevant_responsibility
-    status: resolved
-    scope: {type: responsibility, match: any, values: [mediation_case_coordination]}
-  - id: scope_knowledge_rule_005_assigned_to_related_case
-    rule_id: knowledge_rule_005
-    lore_id: lore_005
-    condition: assigned_to_related_case
-    evaluator: case_assignment_match
-    status: unresolved
-    scope: {type: case, match: any, values: []}
-    unresolved_reason: The Story registry now contains the concrete post-show coordination Case, but there is no uniquely identifiable canonical Case for Lore 005's cross-industry ability-rating corpus because this ordinary accident follow-up is unrelated.
-  - id: scope_knowledge_rule_005_authorized_for_related_review
-    rule_id: knowledge_rule_005
-    lore_id: lore_005
-    condition: authorized_for_related_review
-    evaluator: explicit_authorization
-    status: unresolved
-    scope: {type: authorization, match: any, values: []}
-    unresolved_reason: Missing canonical authorization registry.
-  - id: scope_knowledge_rule_008_relevant_professional_context
-    rule_id: knowledge_rule_008
-    lore_id: lore_008
-    condition: relevant_professional_context
-    evaluator: has_relevant_responsibility
-    status: unresolved
-    scope: {type: responsibility, match: any, values: []}
-    unresolved_reason: Current faction Canon establishes the research conclusion but does not define a sufficiently specific institutional responsibility that can represent this professional context.
-  - id: scope_knowledge_rule_009_relevant_professional_context
-    rule_id: knowledge_rule_009
-    lore_id: lore_009
-    condition: relevant_professional_context
-    evaluator: has_relevant_responsibility
-    status: resolved
-    scope: {type: responsibility, match: any, values: [research_ethics_data_governance]}
-  - id: scope_knowledge_rule_010_relevant_project
-    rule_id: knowledge_rule_010
-    lore_id: lore_010
-    condition: relevant_project
-    evaluator: assignment_match
-    status: unresolved
-    scope: {type: project, match: any, values: []}
-    unresolved_reason: Current Canon does not define a unique canonical project ID for this related research scope.
-  - id: scope_knowledge_rule_010_authorized_for_dataset
-    rule_id: knowledge_rule_010
-    lore_id: lore_010
-    condition: authorized_for_dataset
-    evaluator: explicit_authorization
-    status: unresolved
-    scope: {type: authorization, match: any, values: []}
-    unresolved_reason: Missing canonical dataset registry.
-  - id: scope_knowledge_rule_011_assigned_to_related_project
-    rule_id: knowledge_rule_011
-    lore_id: lore_011
-    condition: assigned_to_related_project
-    evaluator: assignment_match
-    status: unresolved
-    scope: {type: project, match: any, values: []}
-    unresolved_reason: Current Canon does not define a unique canonical project ID for this related research scope.
-  - id: scope_knowledge_rule_011_authorized_for_dataset
-    rule_id: knowledge_rule_011
-    lore_id: lore_011
-    condition: authorized_for_dataset
-    evaluator: explicit_authorization
-    status: unresolved
-    scope: {type: authorization, match: any, values: []}
-    unresolved_reason: Missing canonical dataset registry.
-  - id: scope_knowledge_rule_014_relevant_professional_context
-    rule_id: knowledge_rule_014
-    lore_id: lore_014
-    condition: relevant_professional_context
-    evaluator: has_relevant_responsibility
-    status: resolved
-    scope: {type: responsibility, match: any, values: [risk_model_development_maintenance, model_governance_duty]}
-  - id: scope_knowledge_rule_015_relevant_professional_context
-    rule_id: knowledge_rule_015
-    lore_id: lore_015
-    condition: relevant_professional_context
-    evaluator: has_relevant_responsibility
-    status: unresolved
-    scope: {type: responsibility, match: any, values: []}
-    unresolved_reason: Current context model cannot express job- and case-related ordinary-employee data-handling boundaries; future scope requires institutional role mapping, case or assignment context, and data-access policy scope.
-  - id: scope_knowledge_rule_016_assigned_to_related_project
-    rule_id: knowledge_rule_016
-    lore_id: lore_016
-    condition: assigned_to_related_project
-    evaluator: assignment_match
-    status: unresolved
-    scope: {type: project, match: any, values: []}
-    unresolved_reason: Missing canonical project registry.
-  - id: scope_knowledge_rule_016_authorized_for_model_review
-    rule_id: knowledge_rule_016
-    lore_id: lore_016
-    condition: authorized_for_model_review
-    evaluator: explicit_authorization
-    status: unresolved
-    scope: {type: authorization, match: any, values: []}
-    unresolved_reason: Missing canonical authorization registry.
-  - id: scope_knowledge_rule_017_assigned_to_related_project
-    rule_id: knowledge_rule_017
-    lore_id: lore_017
-    condition: assigned_to_related_project
-    evaluator: assignment_match
-    status: resolved
-    scope: {type: assignment, match: any, values: [hengxin_explainability_pilot]}
-  - id: scope_knowledge_rule_017_authorized_for_pilot
-    rule_id: knowledge_rule_017
-    lore_id: lore_017
-    condition: authorized_for_pilot
-    evaluator: explicit_authorization
-    status: resolved
-    scope: {type: authorization, match: any, values: [auth_hengxin_explainability_pilot]}
-  - id: scope_knowledge_rule_020_relevant_professional_context
-    rule_id: knowledge_rule_020
-    lore_id: lore_020
-    condition: relevant_professional_context
-    evaluator: has_relevant_responsibility
-    status: resolved
-    scope: {type: responsibility, match: any, values: [artist_risk_management]}
-  - id: scope_knowledge_rule_021_relevant_professional_context
-    rule_id: knowledge_rule_021
-    lore_id: lore_021
-    condition: relevant_professional_context
-    evaluator: has_relevant_responsibility
-    status: unresolved
-    scope: {type: responsibility, match: any, values: []}
-    unresolved_reason: Current context model cannot express the project, contract, artist-team, and assignment boundaries required for ordinary artists and employees.
-  - id: scope_knowledge_rule_022_assigned_to_related_artist_team
-    rule_id: knowledge_rule_022
-    lore_id: lore_022
-    condition: assigned_to_related_artist_team
-    evaluator: artist_team_match
-    status: unresolved
-    scope: {type: artist_team, match: any, values: []}
-    unresolved_reason: Missing canonical artist team registry.
-  - id: scope_knowledge_rule_022_assigned_to_related_case
-    rule_id: knowledge_rule_022
-    lore_id: lore_022
-    condition: assigned_to_related_case
-    evaluator: case_assignment_match
-    status: unresolved
-    scope: {type: case, match: any, values: []}
-    unresolved_reason: The Story registry now contains a concrete Case, but there is no uniquely identifiable canonical Case for Lore 022's artist-tracking legal-work scope because the post-show accident matter is unrelated.
-  - id: scope_knowledge_rule_025_relevant_professional_context
-    rule_id: knowledge_rule_025
-    lore_id: lore_025
-    condition: relevant_professional_context
-    evaluator: has_relevant_responsibility
-    status: resolved
-    scope: {type: responsibility, match: any, values: [incident_professional_lead]}
-  - id: scope_knowledge_rule_026_relevant_professional_context
-    rule_id: knowledge_rule_026
-    lore_id: lore_026
-    condition: relevant_professional_context
-    evaluator: has_relevant_responsibility
-    status: resolved
-    scope: {type: responsibility, match: any, values: [department_training]}
-  - id: scope_knowledge_rule_027_assigned_to_incident_review
-    rule_id: knowledge_rule_027
-    lore_id: lore_027
-    condition: assigned_to_incident_review
-    evaluator: incident_assignment_match
-    status: unresolved
-    scope: {type: incident, match: any, values: []}
-    unresolved_reason: The Story registry now contains a concrete route-conflict Incident, but there is no uniquely identifiable canonical Incident for Lore 027's restricted risk-label internal-review scope because this event is unrelated.
-  - id: scope_knowledge_rule_027_authorized_for_related_review
-    rule_id: knowledge_rule_027
-    lore_id: lore_027
-    condition: authorized_for_related_review
-    evaluator: explicit_authorization
-    status: unresolved
-    scope: {type: authorization, match: any, values: []}
-    unresolved_reason: Missing canonical authorization registry.
-  - id: scope_knowledge_rule_027_assigned_to_related_incident
-    rule_id: knowledge_rule_027
-    lore_id: lore_027
-    condition: assigned_to_related_incident
-    evaluator: incident_assignment_match
-    status: unresolved
-    scope: {type: incident, match: any, values: []}
-    unresolved_reason: The Story registry now contains a concrete route-conflict Incident, but there is no uniquely identifiable canonical Incident for Lore 027's restricted risk-label findings or professional-lead scope because this event is unrelated.
-  - id: scope_knowledge_rule_030_relevant_member_context
-    rule_id: knowledge_rule_030
-    lore_id: lore_030
-    condition: relevant_member_context
-    evaluator: has_relevant_responsibility
-    status: unresolved
-    scope: {type: responsibility, match: any, values: []}
-    unresolved_reason: Existing responsibility vocabulary does not contain a canonical ID for this community-member context.
-  - id: scope_knowledge_rule_031_relevant_member_context
-    rule_id: knowledge_rule_031
-    lore_id: lore_031
-    condition: relevant_member_context
-    evaluator: has_relevant_responsibility
-    status: unresolved
-    scope: {type: responsibility, match: any, values: []}
-    unresolved_reason: Existing responsibility vocabulary does not contain a canonical ID for this community-member context.
-  - id: scope_knowledge_rule_032_assigned_to_related_project
-    rule_id: knowledge_rule_032
-    lore_id: lore_032
-    condition: assigned_to_related_project
-    evaluator: assignment_match
-    status: unresolved
-    scope: {type: project, match: any, values: []}
-    unresolved_reason: Missing canonical project registry.
-  - id: scope_knowledge_rule_032_current_rotation
-    rule_id: knowledge_rule_032
-    lore_id: lore_032
-    condition: current_rotation
-    evaluator: active_role_assignment
-    status: unresolved
-    scope: {type: role_assignment, match: any, values: []}
-    unresolved_reason: Missing canonical role-assignment registry.
-  - id: scope_knowledge_rule_032_assigned_to_related_case
-    rule_id: knowledge_rule_032
-    lore_id: lore_032
-    condition: assigned_to_related_case
-    evaluator: case_assignment_match
-    status: unresolved
-    scope: {type: case, match: any, values: []}
-    unresolved_reason: The Story registry now contains a concrete post-show coordination Case, but there is no uniquely identifiable canonical Case for Lore 032's ability-rating dispute collection or appeal-standard initiative because this matter is unrelated.
-  - id: scope_knowledge_rule_secret_001_assigned_to_related_project
-    rule_id: knowledge_rule_secret_001
-    lore_id: lore_secret_001
-    condition: assigned_to_related_project
-    evaluator: assignment_match
-    status: unresolved
-    scope: {type: project, match: any, values: []}
-    unresolved_reason: Missing canonical project registry.
-  - id: scope_knowledge_rule_secret_001_authorized_for_related_project
-    rule_id: knowledge_rule_secret_001
-    lore_id: lore_secret_001
-    condition: authorized_for_related_project
-    evaluator: explicit_authorization
-    status: unresolved
-    scope: {type: authorization, match: any, values: []}
-    unresolved_reason: Missing canonical authorization registry.
+schema_version: "0.1"
+entity: character
+description: Generic synthetic data for the public demo.
+required: [id, name, basic_profile]
+fields:
+  id: {type: string}
+  name: {type: string}
+  basic_profile: {type: object}
+characters:
+  - id: demo_character_001
+    name: Mira
+    basic_profile: {occupation: Archive assistant}
+    geography: {current_city_id: demo_city_001}
+    identity: {faction_id: demo_faction_001}
+    character_hook: A methodical archivist who turns ambiguous requests into checkable records.
+    tags: [synthetic, demo]
+lore:
+  - id: demo_lore_001
+    title: Public Archive Procedure
+    summary: Synthetic guidance for organizing and verifying records.
+    content: Records should be traceable, uncertainty should remain explicit, and unverified claims should not be promoted to fact.
+    visibility: public
+factions:
+  - id: demo_faction_001
+    name: Demo Archive Team
+    description: A synthetic group that maintains a small public information archive.
+cases:
+  - id: demo_case_001
+    title: Verify an archive entry
+    summary: Synthetic case for bounded retrieval and evidence review.
+incidents: []
+projects:
+  - id: demo_project_001
+    name: Public Archive Demo
+    description: Synthetic project record for software demonstration.
+cities:
+  - id: demo_city_001
+    name: Demo City
+    description: A fictional, non-specific city used only for testing.
+authorizations: []
+bindings: []
+expectations: []
+stories: []
+story_definitions: []
+rules: []
+principles:
+  default_policy: deny
+  public_lore_access: allow
+  relationship_does_not_imply_access: true
+  faction_membership_does_not_imply_full_access: true
+  knowledge_does_not_imply_belief: true
+vocabulary:
+  subject_types: [everyone, faction, role, responsibility, assignment, explicit_grant]
+  condition_types: {}

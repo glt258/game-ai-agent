@@ -1,4 +1,4 @@
-"""Packaged runtime data for Along the Street."""
+"""Packaged synthetic runtime data for the public demo."""
 
 try:
     from importlib.resources.abc import Traversable  # type: ignore[import-not-found]
@@ -9,13 +9,11 @@ from importlib.resources import files
 
 def data_root() -> Traversable:
     """Return the packaged data directory as a traversable resource tree."""
-
     return files(__package__).joinpath("data")
 
 
 def data_resource(*parts: str) -> Traversable:
     """Return one packaged data resource without materializing it to a Path."""
-
     resource = data_root()
     for part in parts:
         resource = resource.joinpath(part)

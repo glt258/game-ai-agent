@@ -3,31 +3,19 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "along-street-knowledge-resolver"
+name = "game-ai-agent-public-demo"
 version = "0.8.0"
-description = "Default-deny NPC knowledge boundary resolver for Along the Street"
+description = "AI-assisted game design and development framework with synthetic demo data"
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.10"
 dependencies = ["PyYAML>=6.0", "openai>=1.0,<3", "fastapi>=0.115,<1"]
 
 [project.optional-dependencies]
-dev = [
-    "pytest>=8.3,<9",
-    "httpx>=0.27,<1",
-    "pytest-cov>=6,<8",
-    "coverage[toml]>=7.6,<8",
-    "ruff>=0.16.1,<0.17",
-    "mypy>=1.13,<2",
-    "pre-commit>=4,<5",
-    "build>=1.2,<2",
-    "twine>=6,<7",
-    "tomli>=2; python_version < '3.11'",
-    "uvicorn>=0.30,<1",
-]
+dev = ["pytest>=8.3,<9", "httpx>=0.27,<1", "pytest-cov>=6,<8", "coverage[toml]>=7.6,<8", "ruff>=0.16.1,<0.17", "mypy>=1.13,<2", "pre-commit>=4,<5", "build>=1.2,<2", "twine>=6,<7", "tomli>=2; python_version < '3.11'", "uvicorn>=0.30,<1"]
 
 [project.scripts]
 game-ai-agent = "game_ai_agent:main"
-along-street-character-author = "agents.character_generation_cli:main"
+game-ai-agent-character-author = "agents.character_generation_cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -46,46 +34,3 @@ along_street_resources = ["data/**/*.yaml", "data/**/*.yml", "data/**/*.md"]
 [tool.ruff]
 target-version = "py310"
 line-length = 100
-include = [
-    "src/along_street_resources/**/*.py",
-    "src/agents/official_character_authoring.py",
-    "src/knowledge/loader.py",
-    "src/persistence/**/*.py",
-    "src/runtime_paths/**/*.py",
-    "src/reference_corpus/loader.py",
-    "src/web/**/*.py",
-    "scripts/ci/**/*.py",
-    "tests/test_ci_quality.py",
-    "tests/test_cli_startup.py",
-    "tests/test_game_ai_agent_cli.py",
-    "tests/test_persistence_foundation.py",
-    "tests/test_runtime_paths.py",
-    "tests/test_web_api.py",
-]
-
-[tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "I"]
-
-[tool.mypy]
-python_version = "3.10"
-check_untyped_defs = true
-mypy_path = "src"
-follow_imports = "skip"
-no_implicit_optional = true
-show_error_codes = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-
-[tool.coverage.run]
-branch = true
-source = [
-    "along_street_resources",
-    "knowledge",
-    "reference_corpus",
-    "story",
-]
-
-[tool.coverage.report]
-fail_under = 81
-precision = 2
-show_missing = true

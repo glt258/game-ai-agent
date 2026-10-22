@@ -1,9 +1,55 @@
 version: "0.1"
-
-incidents:
-  - id: incident_nanzhan_postshow_route_conflict_001
-    name: 南栈演出散场与撤场动线冲突事故
-    faction_ids: [faction_005, faction_006]
-    lore_refs: [lore_023]
-    story_refs: [story_after_the_show_001]
-    related_case_ids: [case_nanzhan_postshow_coordination_001]
+schema_version: "0.1"
+entity: character
+description: Generic synthetic data for the public demo.
+required: [id, name, basic_profile]
+fields:
+  id: {type: string}
+  name: {type: string}
+  basic_profile: {type: object}
+characters:
+  - id: demo_character_001
+    name: Mira
+    basic_profile: {occupation: Archive assistant}
+    geography: {current_city_id: demo_city_001}
+    identity: {faction_id: demo_faction_001}
+    character_hook: A methodical archivist who turns ambiguous requests into checkable records.
+    tags: [synthetic, demo]
+lore:
+  - id: demo_lore_001
+    title: Public Archive Procedure
+    summary: Synthetic guidance for organizing and verifying records.
+    content: Records should be traceable, uncertainty should remain explicit, and unverified claims should not be promoted to fact.
+    visibility: public
+factions:
+  - id: demo_faction_001
+    name: Demo Archive Team
+    description: A synthetic group that maintains a small public information archive.
+cases:
+  - id: demo_case_001
+    title: Verify an archive entry
+    summary: Synthetic case for bounded retrieval and evidence review.
+incidents: []
+projects:
+  - id: demo_project_001
+    name: Public Archive Demo
+    description: Synthetic project record for software demonstration.
+cities:
+  - id: demo_city_001
+    name: Demo City
+    description: A fictional, non-specific city used only for testing.
+authorizations: []
+bindings: []
+expectations: []
+stories: []
+story_definitions: []
+rules: []
+principles:
+  default_policy: deny
+  public_lore_access: allow
+  relationship_does_not_imply_access: true
+  faction_membership_does_not_imply_full_access: true
+  knowledge_does_not_imply_belief: true
+vocabulary:
+  subject_types: [everyone, faction, role, responsibility, assignment, explicit_grant]
+  condition_types: {}
