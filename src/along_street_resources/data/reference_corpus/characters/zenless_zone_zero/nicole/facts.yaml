@@ -1,0 +1,104 @@
+schema_version: "character-facts/0.3"
+reference_id: "zenless-zone-zero:nicole"
+identity:
+  game_id: zenless-zone-zero
+  native_character_id: null
+  names:
+    canonical: "Nicole Demara"
+    localized:
+      en-US: "Nicole Demara"
+      zh-CN: "妮可·德玛拉"
+      ja-JP: "ニコ・デマラ"
+      ko-KR: "니콜 데마라"
+  release:
+    version: null
+    date: null
+  rarity:
+    native_value: "A"
+    normalized_tier: null
+combat:
+  native_taxonomy:
+    labels:
+      attribute: "Ether"
+      specialty: "Support"
+      rank: "A"
+      faction: "Cunning Hares"
+  abilities:
+    - ability_id: basic_attack
+      native_name: "狡兔连打"
+      native_category: "Basic Attack"
+      normalized_category: null
+      description_summary: "Performs up to three consecutive strikes dealing Physical DMG (zh-CN skill name: 狡兔连打). After unleashing Special Attack, EX Special Attack, Chain Attack, or Ultimate, Nicole reloads and strengthens her Normal Attack and Dash Attack, increasing bullet damage; this reload effect can trigger up to eight times (zh-CN: 为所欲为)."
+    - ability_id: dodge
+      native_name: "脱兔"
+      native_category: "Dodge"
+      normalized_category: null
+      description_summary: "A quick dash with invincibility during the move (zh-CN: 脱兔). Dash Attack (惊喜开箱) dashes in the held direction and strikes nearby enemies for Physical DMG, or evades backwards and fires a ranged Physical attack when no direction is held. A Perfect Dodge unlocks the Dodge Counter (牵制炮击): an invincible backward evade that fires a ranged Ether attack. Dash Attack and Dodge Counter reload and strengthen the Normal and Dash Attacks (up to eight triggers)."
+    - ability_id: assist
+      native_name: null
+      native_category: "Assist"
+      normalized_category: null
+      description_summary: "Assist moves activated from the assist button: Quick Assist (救急炮击) — when the on-field character is knocked airborne, Nicole evades backwards and fires a ranged Ether attack; Defensive Assist (狡兔出手!) — parries the enemy's incoming attack while invincible, accumulating substantial Daze; Assist Follow-Up (趁虚而入) — after Defensive Assist, darts forward and fires a cannon at the enemy, dealing Ether DMG. Each Assist move afterwards reloads and strengthens the Normal and Dash Attacks (up to eight triggers)."
+    - ability_id: special_attack
+      native_name: "糖衣炮弹"
+      native_category: "Special Attack"
+      normalized_category: null
+      description_summary: "Fires a ranged Ether attack at enemies ahead (zh-CN: 糖衣炮弹) with increased interruption resistance during the move; afterwards reloads and strengthens the Normal and Dash Attacks (up to eight triggers)."
+    - ability_id: ex_special_attack
+      native_name: "夹心糖衣炮弹"
+      native_category: "EX Special Attack"
+      normalized_category: null
+      description_summary: "When sufficient Energy is available, fires a powerful ranged Ether attack and creates an energy field at the target location that continuously pulls enemies toward it and deals Ether DMG (zh-CN: 夹心糖衣炮弹). Holding the button charges the shot, forming a small energy field at the muzzle that continuously consumes Energy and deals extra damage to nearby enemies. The move grants invincibility, triggers the game's Quick Assist when it hits an enemy, and afterwards reloads and strengthens the Normal and Dash Attacks."
+    - ability_id: chain_attack
+      native_name: "高价以太爆弹"
+      native_category: "Chain Attack"
+      normalized_category: null
+      description_summary: "Fires a powerful ranged Ether attack at enemies in a small area in front (zh-CN: 高价以太爆弹) and creates an energy field at the target location that continuously pulls surrounding enemies toward it and deals Ether DMG. The move grants invincibility, triggers the game's Quick Assist when it hits, and afterwards reloads and strengthens the Normal and Dash Attacks."
+    - ability_id: ultimate
+      native_name: "特制以太榴弹"
+      native_category: "Ultimate"
+      normalized_category: null
+      description_summary: "Unleashed when the Decibel level reaches Extreme, this powerful ranged Ether attack (zh-CN: 特制以太榴弹) also creates an energy field at the target location that continuously pulls surrounding enemies and deals Ether DMG. Other squad members recover 10 Energy, and the next character to be swapped in recovers an additional 20 Energy. The move grants invincibility, triggers the game's Quick Assist when it hits, and afterwards reloads and strengthens the Normal and Dash Attacks."
+    - ability_id: core_passive
+      native_name: "机关箱"
+      native_category: "Core Passive"
+      normalized_category: null
+      description_summary: "Nicole's Core Passive (zh-CN: 机关箱) applies a debuff when its condition is met. The consulted sources do not specify the debuff's exact effect, magnitude, duration, or affected targets, so those parameters are not recorded."
+  mechanics:
+    resources: []
+    states: []
+    transformations: []
+    summons: []
+    mobility_mechanics: []
+    targeting_mechanics: []
+  team_mechanics:
+    buffs: []
+    debuffs:
+      - "Core Passive (机关箱): applies a debuff when its condition is met; the debuff's exact effect and parameters are not confirmed by the consulted sources."
+    healing: []
+    shielding: []
+    grouping:
+      - "EX Special Attack, Chain Attack, and Ultimate each create an energy field at the target location that continuously pulls surrounding enemies toward it and deals Ether DMG while it lasts."
+    off_field_effects: []
+    interactions:
+      - interaction_id: ultimate-energy-replenishment
+        native_name: null
+        description_summary: "When Nicole unleashes her Ultimate, the other squad members recover 10 Energy, and the next character to be swapped in recovers an additional 20 Energy."
+  relations:
+    - relation_id: ultimate-triggers-energy-replenishment
+      source:
+        kind: ability
+        id: ultimate
+      relation_type: triggers
+      target:
+        kind: team_interaction
+        id: ultimate-energy-replenishment
+      description_summary: "Nicole's Ultimate grants 10 Energy to other squad members and an additional 20 Energy to the next character swapped in."
+narrative:
+  faction: "Cunning Hares"
+  occupation: "Leader of the odd-job agency Cunning Hares"
+  affiliations: []
+  public_identity: null
+presentation:
+  official_visual_tags: []
+  official_character_keywords: []

@@ -1,0 +1,47 @@
+schema_version: "character-analysis/0.1"
+reference_id: "neverness-to-everness:fadia"
+analysis_metadata:
+  analyzer: "same10-backfill"
+  model: null
+  prompt_version: "reference-corpus-v0.4.1e-backfill"
+  analyzed_at: "2026-08-18T00:00:00Z"
+combat_design:
+  primary_loop:
+    summary: null
+    steps: []
+character_design:
+  authoring_features:
+    personality: [playful, confrontational]
+    gameplay_fantasy: [direct_frontline_pressure, battlefield_control]
+    life_social_identity: [organization_member]
+    life_stage: []
+    authority: [operational_responsibility]
+    hook:
+      surface_traits: [organization_member_identity]
+      contrast_traits: []
+      behavioral_patterns: [public_performance]
+    visual_behavioral_motifs: []
+    evidence:
+      personality:
+        - {kind: source_fact, source_id: official-nte-character-page}
+        - {kind: analyst_derivation, note: "Playful means predatory/teasing deliberate play-with-prey behavior, not generic cheerful or mischievous play; confrontational reflects fearsome enforcement behavior."}
+      gameplay_fantasy:
+        - {kind: source_fact, source_id: official-nte-v1-2-patch-notes, fact_path: combat}
+        - {kind: analyst_derivation, note: "Damage redirection, marked-target sharing, and the Lilith empowered state support the smallest fact-grounded set of direct pressure plus battlefield control."}
+      life_social_identity:
+        - {kind: source_fact, source_id: official-nte-character-page, fact_path: narrative}
+        - {kind: analyst_derivation, note: "The BAC affiliation supports organization_member only; exact rank/title is unknown, so formal professional and formal leadership are not inferred."}
+      authority:
+        - {kind: source_fact, source_id: official-nte-v1-2-patch-notes, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Operational responsibility is partial: field operative/ETD deployment role is supported, but exact command scope is unstated."}
+      hook.surface_traits:
+        - {kind: source_fact, source_id: official-nte-character-page, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Organization-member identity is the honest surface token; no contrast token is forced."}
+      hook.behavioral_patterns:
+        - {kind: source_fact, source_id: official-nte-v1-2-patch-notes, fact_path: combat}
+        - {kind: analyst_derivation, note: "Public performance preserves predatory play and fearsome enforcement behavior without turning it into a generic personality synonym."}
+product_design: {}
+differentiation: {}
+design_patterns: {}
+similarity_features: {}
+confidence: {}

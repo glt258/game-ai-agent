@@ -1,55 +1,66 @@
 version: "0.1"
-schema_version: "0.1"
-entity: character
-description: Generic synthetic data for the public demo.
-required: [id, name, basic_profile]
-fields:
-  id: {type: string}
-  name: {type: string}
-  basic_profile: {type: object}
-characters:
-  - id: demo_character_001
-    name: Mira
-    basic_profile: {occupation: Archive assistant}
-    geography: {current_city_id: demo_city_001}
-    identity: {faction_id: demo_faction_001}
-    character_hook: A methodical archivist who turns ambiguous requests into checkable records.
-    tags: [synthetic, demo]
-lore:
-  - id: demo_lore_001
-    title: Public Archive Procedure
-    summary: Synthetic guidance for organizing and verifying records.
-    content: Records should be traceable, uncertainty should remain explicit, and unverified claims should not be promoted to fact.
-    visibility: public
-factions:
-  - id: demo_faction_001
-    name: Demo Archive Team
-    description: A synthetic group that maintains a small public information archive.
-cases:
-  - id: demo_case_001
-    title: Verify an archive entry
-    summary: Synthetic case for bounded retrieval and evidence review.
-incidents: []
-projects:
-  - id: demo_project_001
-    name: Public Archive Demo
-    description: Synthetic project record for software demonstration.
-cities:
-  - id: demo_city_001
-    name: Demo City
-    description: A fictional, non-specific city used only for testing.
-authorizations: []
-bindings: []
-expectations: []
-stories: []
-story_definitions: []
-rules: []
-principles:
-  default_policy: deny
-  public_lore_access: allow
-  relationship_does_not_imply_access: true
-  faction_membership_does_not_imply_full_access: true
-  knowledge_does_not_imply_belief: true
-vocabulary:
-  subject_types: [everyone, faction, role, responsibility, assignment, explicit_grant]
-  condition_types: {}
+
+story_definitions:
+  - story_id: story_after_the_show_001
+    initial_node_id: node_pre_close
+    nodes:
+      - id: node_pre_close
+        summary: 演出进行并进入散场前准备。
+      - id: node_route_conflict
+        summary: 观众离场与撤场动线冲突，具体 Incident 发生。
+      - id: node_incident_handling
+        summary: 公共安全完成正式记录、轻伤现场处置与交接。
+      - id: node_case_opened
+        summary: 后续协调 Case 经协理体系登记转介并建立。
+      - id: node_joint_fact_check
+        summary: 多方核对时间线、现场安排、费用与整改事项。
+      - id: node_slice_complete
+        summary: 形成共同事实清单和后续议程，Vertical Slice 结束。
+        terminal: true
+    transitions:
+      - id: transition_start_route_conflict
+        from_node_id: node_pre_close
+        to_node_id: node_route_conflict
+        effects:
+          - type: activate_incident
+            incident_id: incident_nanzhan_postshow_route_conflict_001
+          - type: assign_character_to_incident
+            character_id: char_launch_007
+            incident_id: incident_nanzhan_postshow_route_conflict_001
+          - type: complete_node
+            node_id: node_pre_close
+      - id: transition_record_incident
+        from_node_id: node_route_conflict
+        to_node_id: node_incident_handling
+        effects:
+          - type: complete_node
+            node_id: node_route_conflict
+      - id: transition_open_case
+        from_node_id: node_incident_handling
+        to_node_id: node_case_opened
+        effects:
+          - type: activate_case
+            case_id: case_nanzhan_postshow_coordination_001
+          - type: assign_character_to_case
+            character_id: char_launch_001
+            case_id: case_nanzhan_postshow_coordination_001
+          - type: complete_node
+            node_id: node_incident_handling
+      - id: transition_begin_joint_fact_check
+        from_node_id: node_case_opened
+        to_node_id: node_joint_fact_check
+        effects:
+          - type: complete_node
+            node_id: node_case_opened
+      - id: transition_complete_vertical_slice
+        from_node_id: node_joint_fact_check
+        to_node_id: node_slice_complete
+        effects:
+          - type: set_story_flag
+            flag: joint_facts_confirmed
+            value: true
+          - type: set_story_flag
+            flag: vertical_slice_complete
+            value: true
+          - type: complete_node
+            node_id: node_joint_fact_check

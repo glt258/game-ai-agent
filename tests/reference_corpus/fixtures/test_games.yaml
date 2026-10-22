@@ -1,0 +1,17 @@
+schema_version: "game-catalog/0.1"
+games:
+  test-game-alpha:
+    display_name: "Synthetic Game Alpha"
+    developer: "Synthetic Studio"
+    aliases:
+      - alpha
+    taxonomy:
+      weapon_system: true
+      attribute_system: true
+  test-game-beta:
+    display_name: "Synthetic Game Beta"
+    developer: null
+    aliases: []
+    taxonomy:
+      weapon_system: false
+      attribute_system: true

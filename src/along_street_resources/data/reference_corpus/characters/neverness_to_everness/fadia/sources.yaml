@@ -1,0 +1,91 @@
+schema_version: "character-sources/0.2"
+reference_id: "neverness-to-everness:fadia"
+sources:
+  - source_id: official-nte-v1-2-patch-notes
+    source_type: official
+    publisher: "Hotta Studio / NTE Official Website"
+    title: "Version 1.2 \"999 Nights\" Patch Notes"
+    url: "https://nte.perfectworld.com/en/article/news/gamenews/20260706/263029.html"
+    language: en-US
+    retrieved_at: "2026-08-16T23:55:00Z"
+    published_at: 2026-07-06
+    version_context: "1.2"
+    content_hash: "sha256:4a3944c7834cc2e0dcd3e9e2c07493c2d81d0bc4744560db468251929382ba44"
+    reliability: primary
+  - source_id: official-nte-character-page
+    source_type: official
+    publisher: "Hotta Studio / NTE Official Website"
+    title: "NTE Official Website character roster — Fadia official presence and story (EN)"
+    url: "https://nte.perfectworld.com/en/main.html?nav=2"
+    language: en-US
+    retrieved_at: "2026-08-16T23:55:00Z"
+    published_at: null
+    version_context: "current official site character roster"
+    content_hash: "sha256:9b03080e08e6812a44c6b3fb973355448e9494018608a4c778a6e6d72ed339be"
+    reliability: primary
+  - source_id: official-nte-launch-news
+    source_type: official
+    publisher: "Hotta Studio / NTE Official Website"
+    title: "NTE Officially Launched — official news listing (April 29, 2026)"
+    url: "https://nte.perfectworld.com/en/article/news/gamenews/index.html"
+    language: en-US
+    retrieved_at: "2026-08-16T23:55:00Z"
+    published_at: null
+    version_context: "NTE official launch (April 29, 2026)"
+    content_hash: "sha256:01dd33adb306fd989cd9b124e8ae9dfbeee45e7d948620ac11e947c3d0b9e4c1"
+    reliability: primary
+  - source_id: secondary-ntebuild-fadia
+    source_type: database
+    publisher: "NTEBUILD.COM"
+    title: "Fadia Build Guide | Best Arc, Modules & Teams — NTE"
+    url: "https://www.ntebuild.com/characters/fadia"
+    language: en
+    retrieved_at: "2026-08-16T23:55:00Z"
+    published_at: null
+    version_context: "Version 1.2 era; page carries an 'ALL NTE LEAKS' site label — release status cross-checked against official Version 1.2 patch-notes roster"
+    content_hash: "sha256:550537a21ead7f7a2d2ccbcf89d987b2d17a66ce5ed04cff5585b534a8d19176"
+    reliability: secondary
+  - source_id: secondary-moegirl-nte
+    source_type: wiki
+    publisher: "Moegirlpedia (萌娘百科)"
+    title: "异环"
+    url: "https://zh.moegirl.org.cn/%E5%BC%82%E7%8E%AF"
+    language: zh-CN
+    retrieved_at: "2026-08-16T23:55:00Z"
+    published_at: null
+    version_context: "post-launch wiki page; NTE character roster listing"
+    content_hash: "sha256:99b086b209e4226bde71c16af80bacc95991b4eefc049cb6b19f4065144c8014"
+    reliability: secondary
+source_relations: []
+field_evidence:
+  identity.game_id: [official-nte-v1-2-patch-notes, official-nte-character-page]
+  identity.names.canonical: [official-nte-character-page, official-nte-v1-2-patch-notes]
+  identity.names.localized: [secondary-moegirl-nte]
+  identity.rarity: [official-nte-v1-2-patch-notes, secondary-ntebuild-fadia]
+  combat.native_taxonomy: [official-nte-v1-2-patch-notes, secondary-ntebuild-fadia]
+  combat.native_taxonomy.labels.rank: [official-nte-v1-2-patch-notes, secondary-ntebuild-fadia]
+  combat.native_taxonomy.labels.esper_type: [secondary-ntebuild-fadia]
+  combat.native_taxonomy.labels.arc_type: [secondary-ntebuild-fadia]
+  combat.abilities: [secondary-ntebuild-fadia]
+  combat.mechanics.states: [secondary-ntebuild-fadia]
+  combat.team_mechanics.buffs: [secondary-ntebuild-fadia]
+  combat.team_mechanics.debuffs: [secondary-ntebuild-fadia]
+  combat.team_mechanics.healing: [secondary-ntebuild-fadia]
+  combat.team_mechanics.interactions: [secondary-ntebuild-fadia]
+  combat.relations: [secondary-ntebuild-fadia]
+  narrative.faction: [official-nte-character-page, secondary-ntebuild-fadia]
+  narrative.affiliations: [official-nte-character-page, secondary-ntebuild-fadia]
+verification:
+  status: partially_verified
+  conflicts: []
+  notes:
+    - "Release gate PASSED: Fadia is officially released and legal to record. The official Version 1.2 '999 Nights' Patch Notes (2026-07-06) list Fadia as an S-Class Standard character (S-Class Standard Character Selection Box: Sakiri, Baicang, Hathor, Fadia, Daffodill, Jiuyuan); her presence on the official NTE website character roster provides primary identity support."
+    - "The official Version 1.2 material supports the S-Class rank and the faction context (Bureau of Anomaly Control / ETD); it establishes Fadia's presence in the S-Class Standard Character Selection Box, but acquisition-pool status is intentionally not stored in combat.native_taxonomy because it is distribution metadata rather than a combat taxonomy label. No official debut announcement stating Fadia's release version or date was located (the official news channels carry no Fadia banner post, consistent with her being a Standard-pool character), so identity.release is left null rather than inferred."
+    - "All kit detail (ability names and summaries, Lilith state, Destructive Experience, Furnace of Guilt, Denial and Plunder, Awakenings) is supported only by the consulted secondary database (NTEBUILD.COM), which transcribes in-game text; per the ingestion rule and the NTE norm (the Shinku golden record likewise uses a second-party guide for kit detail), talent-level sub-facts keep the record at partially_verified."
+    - "Damage-model distinctions are preserved as worded: All Eyes on Me REDIRECTS a portion of teammates' damage to Fadia while her HP is above 1, and SHARES incoming damage with surviving teammates (absorbing the remainder herself) once her HP reaches 1. No shield, invulnerability, or damage-reduction mechanic is attributed to Fadia; the 'before any shield mitigation' clause refers to the ordering of her redirect relative to shielding by other sources. HP == 1 is recorded only as a conditional branch in the mechanic: the facts state what changes when her HP reaches 1, and no HP floor, survival guarantee, or cannot-die property is asserted because no accepted source states one."
+    - "The Basic Passive is driven by external team events (teammates taking damage), which the schema cannot express as a MechanicRef source node; it is represented as TeamMechanics.interactions + a relation from the passive ability. This matches the Shorekeeper external-team-event pattern and is recorded as an external-team-event graph friction sample, not a fake node."
+    - "Destructive Experience is a named enemy-target state and is modeled as a StateFact with subject_scope target (a schema-supported scope); Lilith is modeled as a StateFact with subject_scope self. No party-scope state was needed: the team effects are represented in TeamMechanics (buffs / interactions)."
+    - "resources: [] — the kit has no character-specific named resource; HP and Energy are global combat stats (the Ultimate's Energy restoration and the lost-HP/Destructive Threshold condition reference global systems, not a Fadia-specific meter)."
+    - "Squad-number discrepancy: NTEBUILD.COM states 'Bureau of Anomaly Control, ETD-4' while Moegirlpedia's NTE roster lists 'E.T.D六队' (ETD Squad 6). The facts record only the confirmed organization name (Bureau of Anomaly Control / ETD) without a squad number; the discrepancy is left for human review."
+    - "zh-CN localized name '法帝娅' is taken from the Moegirlpedia NTE roster (secondary); no official CN source was reachable on this host."
+    - "No leaks, beta-only data, datamines, private-server data, Reddit or forum speculation, or search snippets were used; NTEBUILD.COM's 'ALL NTE LEAKS' site label was cross-checked by confirming Fadia's released status via official Version 1.2 patch-notes material."

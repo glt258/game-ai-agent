@@ -1,0 +1,42 @@
+schema_version: "character-analysis/0.1"
+reference_id: "zenless-zone-zero:piper-wheel"
+analysis_metadata:
+  analyzer: "wave-2-primary-ingestion"
+  model: null
+  prompt_version: "reference-corpus-expansion-wave2-v0.5.1"
+  analyzed_at: "2026-08-20T00:00:00Z"
+combat_design:
+  attack_range: "unknown"
+  mobility: "unknown"
+  primary_loop:
+    summary: null
+    steps: []
+  core_mechanics: []
+character_design:
+  authoring_features:
+    personality: []
+    gameplay_fantasy: []
+    life_social_identity: [ordinary_urban_worker, organization_member]
+    life_stage: []
+    authority: [ordinary_member]
+    authority_scope: null
+    hook:
+      surface_traits: [ordinary_work_identity]
+      contrast_traits: []
+      behavioral_patterns: []
+    visual_behavioral_motifs: []
+    evidence:
+      life_social_identity:
+        - {kind: source_fact, source_id: official-content-v2-piper-character-en, fact_path: narrative.occupation}
+        - {kind: source_fact, source_id: official-content-v2-piper-character-en, fact_path: narrative.affiliations}
+        - {kind: analyst_derivation, note: "ordinary_urban_worker is the current legal token mapped to the vehicle-oriented worker gap; the record supports vehicle expertise and driving, but does not claim a specific repair-shop occupation. organization_member is supported by the official Sons of Calydon relation."}
+      authority:
+        - {kind: analyst_derivation, note: "ordinary_member is a bounded structural precedent for competence without a stated leadership office; it is not a source fact, not a low-authority conclusion, and not inferred from Caesar's leadership or from combat competence."}
+      hook.surface_traits:
+        - {kind: source_fact, source_id: official-content-v2-piper-character-en, fact_path: narrative.occupation}
+        - {kind: analyst_derivation, note: "ordinary_work_identity is a bounded hook for the official vehicle-oriented public identity; it does not assert vehicle maintenance or a vehicle-parts weapon."}
+product_design: {}
+differentiation: {}
+design_patterns: {}
+similarity_features: {}
+confidence: {}

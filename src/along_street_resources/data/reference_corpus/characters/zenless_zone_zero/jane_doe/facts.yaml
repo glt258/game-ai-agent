@@ -1,0 +1,163 @@
+schema_version: "character-facts/0.3"
+reference_id: "zenless-zone-zero:jane-doe"
+identity:
+  game_id: zenless-zone-zero
+  native_character_id: null
+  names:
+    canonical: "Jane Doe"
+    localized:
+      en-US: "Jane Doe"
+      zh-CN: "简·杜"
+  release:
+    version: "1.1"
+    date: "2024-08-21"
+  rarity:
+    native_value: "S"
+    normalized_tier: null
+combat:
+  native_taxonomy:
+    labels:
+      attribute: "Physical"
+      specialty: "Anomaly"
+      rank: "S"
+      faction: "Public Security - Criminal Investigation Special Response Team"
+  abilities:
+    - ability_id: basic_attack
+      native_name: "Basic Attack"
+      native_category: "Basic Attack"
+      normalized_category: null
+      description_summary: "Jane's attacks accumulate Passion Stream; some Basic Attacks are enhanced while Passion is active."
+    - ability_id: dodge
+      native_name: "Dodge"
+      native_category: "Dodge"
+      normalized_category: null
+      description_summary: "Perfect Dodge can accumulate Passion Stream."
+    - ability_id: assist
+      native_name: "Assist"
+      native_category: "Assist"
+      normalized_category: null
+      description_summary: "Defensive Assist can accumulate Passion Stream."
+    - ability_id: special_attack
+      native_name: "Special Attack"
+      native_category: "Special Attack"
+      normalized_category: null
+      description_summary: "Damage-dealing moves can consume or restore Passion Stream while Passion is active."
+    - ability_id: chain_attack
+      native_name: "Chain Attack"
+      native_category: "Chain Attack"
+      normalized_category: null
+      description_summary: null
+    - ability_id: ultimate
+      native_name: "Ultimate"
+      native_category: "Ultimate"
+      normalized_category: null
+      description_summary: null
+    - ability_id: core_passive_insight
+      native_name: "Insight"
+      native_category: "Core Passive"
+      normalized_category: null
+      description_summary: "Jane's attacks apply Gnawed; Assault against a Gnawed enemy can trigger a critical hit, and an Assault that causes Flinch extends Flinch duration."
+    - ability_id: additional_ability_sore_spot
+      native_name: "Sore Spot"
+      native_category: "Additional Ability"
+      normalized_category: null
+      description_summary: "When another squad member is an Anomaly specialty or shares Jane's Faction, this ability increases Jane's Physical Anomaly Buildup Rate; it further increases buildup toward an enemy already suffering an Attribute Anomaly."
+  mechanics:
+    resources:
+      - resource_id: passion_stream
+        native_name: "Passion Stream"
+        description_summary: "Jane accumulates Passion Stream through qualifying moves. Reaching its maximum enters Passion; moves can consume or restore it while Passion is active."
+        cap: null
+    states:
+      - state_id: passion
+        native_name: "Passion"
+        subject_scope: self
+        description_summary: "When Passion Stream reaches its maximum, Jane enters Passion; her Anomaly Buildup Rate and ATK increase, and some moves are enhanced."
+      - state_id: gnawed
+        native_name: "Gnawed"
+        subject_scope: target
+        description_summary: "Jane's Core Passive applies Gnawed to enemies for 10 seconds; Assault against a Gnawed enemy can trigger a critical hit, and an Assault that causes Flinch extends Flinch duration by 5 seconds."
+    transformations: []
+    summons: []
+    mobility_mechanics: []
+    targeting_mechanics: []
+  team_mechanics:
+    buffs: []
+    debuffs: []
+    healing: []
+    shielding: []
+    grouping: []
+    off_field_effects: []
+    interactions: []
+  relations:
+    - relation_id: basic-attack-generates-passion-stream
+      source:
+        kind: ability
+        id: basic_attack
+      relation_type: generates
+      target:
+        kind: resource
+        id: passion_stream
+      description_summary: "Jane's attacks accumulate Passion Stream."
+    - relation_id: dodge-generates-passion-stream
+      source:
+        kind: ability
+        id: dodge
+      relation_type: generates
+      target:
+        kind: resource
+        id: passion_stream
+      description_summary: "A qualifying Perfect Dodge accumulates Passion Stream."
+    - relation_id: assist-generates-passion-stream
+      source:
+        kind: ability
+        id: assist
+      relation_type: generates
+      target:
+        kind: resource
+        id: passion_stream
+      description_summary: "A qualifying Defensive Assist accumulates Passion Stream."
+    - relation_id: passion-stream-enables-passion
+      source:
+        kind: resource
+        id: passion_stream
+      relation_type: enables
+      target:
+        kind: state
+        id: passion
+      description_summary: "Reaching the maximum Passion Stream enters Passion."
+    - relation_id: passion-modifies-basic-attack
+      source:
+        kind: state
+        id: passion
+      relation_type: modifies
+      target:
+        kind: ability
+        id: basic_attack
+      description_summary: "Passion enhances some of Jane's Basic Attacks."
+    - relation_id: passion-modifies-special-attack
+      source:
+        kind: state
+        id: passion
+      relation_type: modifies
+      target:
+        kind: ability
+        id: special_attack
+      description_summary: "Passion changes how damage-dealing moves consume or restore Passion Stream."
+    - relation_id: insight-applies-gnawed
+      source:
+        kind: ability
+        id: core_passive_insight
+      relation_type: applies
+      target:
+        kind: state
+        id: gnawed
+      description_summary: "Insight applies Gnawed to enemies hit by Jane's attacks."
+narrative:
+  faction: "Public Security - Criminal Investigation Special Response Team"
+  occupation: null
+  affiliations: []
+  public_identity: null
+presentation:
+  official_visual_tags: []
+  official_character_keywords: []

@@ -1,0 +1,44 @@
+schema_version: "character-analysis/0.1"
+reference_id: "zenless-zone-zero:qingyi"
+analysis_metadata:
+  analyzer: "wave-2-primary-ingestion"
+  model: null
+  prompt_version: "reference-corpus-expansion-wave2-v0.5.1"
+  analyzed_at: "2026-08-20T00:00:00Z"
+combat_design:
+  attack_range: "unknown"
+  mobility: "unknown"
+  primary_loop:
+    summary: null
+    steps: []
+  core_mechanics: []
+character_design:
+  authoring_features:
+    personality: []
+    gameplay_fantasy: []
+    life_social_identity: [formal_professional, investigator, organization_member]
+    life_stage: []
+    authority: [ordinary_member]
+    authority_scope: null
+    hook:
+      surface_traits: [formal_role_identity]
+      contrast_traits: []
+      behavioral_patterns: []
+    visual_behavioral_motifs: []
+    evidence:
+      life_social_identity:
+        - {kind: source_fact, source_id: official-content-v2-qingyi-character-en, fact_path: narrative.occupation}
+        - {kind: source_fact, source_id: official-content-v2-qingyi-faction-en, fact_path: narrative.faction}
+        - {kind: analyst_derivation, note: "The existing formal_professional and investigator tokens capture the explicit public institutional officer/investigation precedent; organization_member records team relation. This is not a claim that every officer is a formal investigator beyond the bounded team context."}
+      authority:
+        - {kind: analyst_derivation, note: "ordinary_member is a bounded structural interpretation of officer/team membership, not a leader claim. It does not infer low authority from Zhu Yuan's captaincy, and it does not equate competence with authority."}
+      hook.surface_traits:
+        - {kind: source_fact, source_id: official-content-v2-qingyi-faction-en, fact_path: narrative.faction}
+        - {kind: analyst_derivation, note: "formal_role_identity is the bounded hook for a public institutional officer role."}
+      hook.contrast_traits:
+        - {kind: analyst_derivation, note: "Qingyi is retained as a formal/public institutional investigator precedent, while Jane is a separate covert/undercover investigator precedent; this is authoring analysis only and is not a factual relationship between the characters."}
+product_design: {}
+differentiation: {}
+design_patterns: {}
+similarity_features: {}
+confidence: {}
