@@ -1,0 +1,528 @@
+from __future__ import annotations
+
+import json
+from dataclasses import replace
+from pathlib import Path
+
+import pytest
+
+from agents import (
+    AgentExecutionError,
+    CanonCheckStatus,
+    CanonChecker,
+    CharacterDesignRequest,
+    CharacterDraft,
+    CharacterGenerationAudit,
+    CharacterGenerationResult,
+    CharacterRepairAgent,
+    DeterministicCharacterRepairModel,
+    GroundingError,
+    ModelInvocationAudit,
+    ModelMalformedResponseError,
+    ModelProviderError,
+    ModelTimeoutError,
+)
+import agents.official_character_authoring as official_module
+import agents.character_generation_cli as production_cli
+from web.errors import WebApplicationError
+from agents.official_character_authoring import (
+    OfficialCharacterAuthoringDemo,
+    _request_for_scenario,
+    load_reference_grounding,
+    make_demo,
+    render,
+    render_live_failure,
+    request_from_inputs,
+)
+
+
+FIXTURES = Path(__file__).resolve().parents[1] / "evals" / "fixtures"
+
+
+def test_valid_brief_runs_real_pipeline_and_passes() -> None:
+    request = _request_for_scenario("valid")
+    demo = make_demo(mode="offline", scenario="valid", brief=request.brief)
+
+    run = demo.run(request)
+
+    assert run.authoring.final_status == CanonCheckStatus.PASS
+    assert run.authoring.initial_check.status == CanonCheckStatus.PASS
+    assert not run.authoring.repair_result.repair_attempted
+    assert run.references.total_records == 16
+    assert run.generation.audit.reference_ids == run.references.reference_ids
+    assert run.generation.audit.source_ids
+    assert demo.generation_agent.model.prompts[0].runtime.reference_context
+
+
+def test_conflicting_brief_hits_real_checker_and_repair_passes() -> None:
+    request = _request_for_scenario("conflict")
+    demo = make_demo(mode="offline", scenario="canon_conflict", brief=request.brief)
+
+    run = demo.run(request)
+
+    codes = {item.code.value for item in run.authoring.initial_check.findings}
+    assert run.authoring.initial_check.status == CanonCheckStatus.FAIL
+    assert "FORBIDDEN_PATTERN" in codes
+    assert "WORLD_RULE_VIOLATION" in codes
+    assert run.authoring.repair_result.repair_attempted
+    assert run.authoring.repair_result.repair_succeeded
+    assert run.authoring.final_check.status == CanonCheckStatus.PASS
+    assert demo.repair_agent.model.call_count == 1
+
+
+def test_demo_does_not_turn_a_failed_checker_result_into_pass() -> None:
+    payload = json.loads((FIXTURES / "canon_checker_bad.json").read_text(encoding="utf-8"))
+    draft = CharacterDraft.from_mapping(payload["draft"])
+    request = replace(
+        CharacterDesignRequest(**payload["request"]),
+        request_id="official_failure_001",
+    )
+
+    class StaticGenerationAgent:
+        def generate(self, _request):
+            return CharacterGenerationResult(
+                draft,
+                (),
+                CharacterGenerationAudit(draft.draft_id, 0, (), ()),
+            )
+
+    checker = CanonChecker()
+    demo = OfficialCharacterAuthoringDemo(
+        generation_agent=StaticGenerationAgent(),
+        repair_agent=CharacterRepairAgent(
+            DeterministicCharacterRepairModel(mode="regression"),
+            checker=checker,
+        ),
+        checker=checker,
+        reference_grounding=load_reference_grounding(request.brief),
+    )
+
+    run = demo.run(request)
+
+    assert run.authoring.initial_check.status == CanonCheckStatus.FAIL
+    assert run.authoring.final_check.status == CanonCheckStatus.FAIL
+    assert run.authoring.final_status == CanonCheckStatus.FAIL
+
+
+def test_scope_violation_is_not_presented_as_applied_or_accepted() -> None:
+    payload = json.loads((FIXTURES / "canon_checker_bad.json").read_text(encoding="utf-8"))
+    draft = CharacterDraft.from_mapping(payload["draft"])
+    request = replace(
+        CharacterDesignRequest(**payload["request"]),
+        request_id="official_scope_001",
+    )
+
+    class StaticGenerationAgent:
+        def generate(self, _request):
+            return CharacterGenerationResult(
+                draft,
+                (),
+                CharacterGenerationAudit(draft.draft_id, 0, (), ()),
+            )
+
+    checker = CanonChecker()
+    demo = OfficialCharacterAuthoringDemo(
+        generation_agent=StaticGenerationAgent(),
+        repair_agent=CharacterRepairAgent(
+            DeterministicCharacterRepairModel(mode="scope_violation"),
+            checker=checker,
+        ),
+        checker=checker,
+        reference_grounding=load_reference_grounding(request.brief),
+    )
+    run = demo.run(request)
+    output = render(run, scenario="scope-test", model_mode="offline")
+
+    assert run.authoring.repair_result.status.value == "REPAIR_SCOPE_VIOLATION"
+    assert "Status: NOT APPLIED" in output
+    assert "FINAL: NEEDS_REVIEW" in output
+    assert "Status: APPLIED" not in output
+    assert "Final status: ACCEPTED" not in output
+
+
+def test_accepted_always_implies_final_canon_pass() -> None:
+    for scenario, generation_scenario in (("valid", "valid"), ("conflict", "canon_conflict")):
+        request = _request_for_scenario(scenario)
+        run = make_demo(
+            mode="offline",
+            scenario=generation_scenario,
+            brief=request.brief,
+        ).run(request)
+        if run.authoring.final_status == CanonCheckStatus.PASS:
+            assert run.authoring.final_check.status == CanonCheckStatus.PASS
+
+
+def test_custom_brief_uses_the_same_authoring_pipeline() -> None:
+    brief = "设计一个与临洲大学有关的都市辅助角色。"
+    request, presentation_scenario, generation_scenario = request_from_inputs(brief=brief)
+    run = make_demo(
+        mode="offline",
+        scenario=generation_scenario,
+        brief=request.brief,
+    ).run(request)
+
+    assert presentation_scenario == "custom"
+    assert run.request.brief == brief
+    assert run.generation.draft.draft_id == "draft_official_custom_001"
+    assert run.generation.audit.source_ids
+
+
+def test_brief_file_content_enters_request(tmp_path: Path) -> None:
+    brief = "设计一个带有明显都市生活感的辅助角色。\n不要改变世界观。"
+    path = tmp_path / "brief.txt"
+    path.write_text(brief, encoding="utf-8")
+
+    request, presentation_scenario, _ = request_from_inputs(brief_file=str(path))
+
+    assert presentation_scenario == "custom"
+    assert request.brief == brief
+
+
+def test_cli_input_is_mutually_exclusive() -> None:
+    from agents.official_character_authoring import main
+
+    with pytest.raises(SystemExit):
+        main(["--scenario", "valid", "--brief", "另一个 brief"])
+
+
+def test_reference_labels_and_pass_summary_are_derived_from_real_data() -> None:
+    request = _request_for_scenario("valid")
+    run = make_demo(mode="offline", scenario="valid", brief=request.brief).run(request)
+    output = render(run, scenario="valid", model_mode="offline")
+
+    labels = dict(run.source_labels)
+    assert labels["world_rules"] == "World Rules (world_rules)"
+    assert any("(faction_" in value for value in labels.values())
+    assert "No forbidden world-pattern violations detected." in output
+    assert "Referenced faction resolved successfully." in output
+    assert "field-level causal attribution" in output
+
+
+def test_audit_summary_keeps_reference_and_canon_evidence() -> None:
+    request = _request_for_scenario("valid")
+    run = make_demo(mode="offline", scenario="valid", brief=request.brief).run(request)
+
+    payload = run.to_dict()
+
+    assert payload["references"]["total_records"] == 16
+    assert payload["generation"]["audit"]["reference_ids"]
+    assert payload["generation"]["audit"]["source_ids"]
+    assert "chain_of_thought" not in json.dumps(payload, ensure_ascii=False)
+
+
+def test_reference_grounding_exposes_manifest_identity_and_legacy_alias() -> None:
+    grounding = load_reference_grounding("ordinary urban support character")
+
+    assert grounding.corpus_baseline_id == "reference-corpus-v0.5"
+    assert grounding.manifest_schema_version == "character-reference-corpus-manifest/0.2"
+    assert grounding.corpus_version == grounding.corpus_baseline_id
+    payload = grounding.to_dict()
+    assert payload["corpus_baseline_id"] == "reference-corpus-v0.5"
+    assert payload["manifest_schema_version"] == "character-reference-corpus-manifest/0.2"
+
+
+def test_live_factory_path_keeps_custom_provider_and_model_in_the_existing_contract(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class MarkerModel:
+        pass
+
+    marker = MarkerModel()
+
+    def fake_factory(**kwargs):
+        captured.update(kwargs)
+        return marker
+
+    monkeypatch.setattr(official_module, "character_model_from_environment", fake_factory)
+    official_module.make_demo(
+        mode="live",
+        scenario="valid",
+        brief="一个新的都市辅助角色。",
+        provider="deepseek",
+        model_name="configured-live-model",
+    )
+
+    assert captured["mode_override"] == "live"
+    environment = captured["environment"]
+    assert environment["NPC_LLM_PROVIDER"] == "deepseek"
+    assert environment["NPC_LLM_MODEL"] == "configured-live-model"
+
+
+def test_live_failure_renderer_is_fail_closed_and_does_not_leak_secret() -> None:
+    secret = "unit-test-api-key"
+    error = ModelProviderError("Live LLM provider request failed")
+    error.audit = ModelInvocationAudit(
+        "live-session",
+        1,
+        "deepseek",
+        "deepseek-chat",
+        "provider",
+        12.0,
+        1,
+        error_message="Live LLM provider request failed",
+    )
+
+    output = render_live_failure(
+        error,
+        provider="deepseek",
+        model_name="deepseek-chat",
+    )
+
+    assert "Provider: deepseek" in output
+    assert "Model: deepseek-chat" in output
+    assert "Invocation count: 1" in output
+    assert "Provider invocation: FAILED" in output
+    assert "CharacterDraft validation: NOT_RUN" in output
+    assert "Pipeline status: NOT_COMPLETED" in output
+    assert "FINAL: ACCEPTED" not in output
+    assert secret not in output
+
+
+def test_live_renderer_distinguishes_provider_success_from_draft_validation_failure() -> None:
+    error = ModelMalformedResponseError(
+        "CharacterDraft is missing field(s): ['canon_basis', 'new_design_elements', 'open_questions']"
+    )
+    error.model_invocations = (
+        ModelInvocationAudit(
+            "live-session",
+            7,
+            "opencode_go",
+            "deepseek-v4.1-flash",
+            "success",
+            12.0,
+            0,
+        ),
+    )
+
+    output = render_live_failure(error)
+
+    assert "Provider invocation: SUCCESS" in output
+    assert "CharacterDraft validation: FAILED" in output
+    assert "Invocation: SUCCESS" in output
+    assert "Pipeline status: NOT_COMPLETED" in output
+
+
+@pytest.mark.parametrize(
+    ("error_type", "message", "expected_reason"),
+    [
+        (
+            ModelTimeoutError,
+            "provider timeout includes secret=unit-test-api-key",
+            "provider request timed out after bounded retries",
+        ),
+        (
+            AgentExecutionError,
+            "Character finalization model attempted a tool call",
+            "finalization model attempted a tool call",
+        ),
+        (
+            AgentExecutionError,
+            "Draft faction_id is not grounded: secret_model_output",
+            "draft grounding failed",
+        ),
+        (
+            AgentExecutionError,
+            "Draft age 99 violates hard constraint 20-25",
+            "draft violated a hard constraint",
+        ),
+        (
+            GroundingError,
+            "grounding detail contains secret=unit-test-api-key",
+            "draft grounding failed",
+        ),
+        (
+            ModelMalformedResponseError,
+            "CharacterDraft is missing field(s): ['canon_basis', 'new_design_elements']",
+            "missing required field(s): canon_basis, new_design_elements",
+        ),
+        (
+            RuntimeError,
+            "raw model output contains secret=unit-test-api-key",
+            "unexpected live authoring failure",
+        ),
+    ],
+)
+def test_live_failure_renderer_uses_safe_diagnostic_mapping(
+    error_type: type[BaseException], message: str, expected_reason: str
+) -> None:
+    error = error_type(message)
+
+    output = render_live_failure(error)
+
+    assert f"{error_type.__name__}:" in output
+    assert expected_reason in output
+    assert "Pipeline status: NOT_COMPLETED" in output
+    assert "No Character draft or Canon result was fabricated." in output
+    assert "unit-test-api-key" not in output
+    assert "raw model output" not in output
+
+
+def test_live_failure_renderer_reports_grounding_failure_without_model_content() -> None:
+    secret = "RESTRICTED_MODEL_OUTPUT_123"
+    error = AgentExecutionError(
+        f"Draft field 'background' is not canon-grounded (lore_999): {secret}"
+    )
+
+    output = render_live_failure(error)
+
+    assert "AgentExecutionError: draft grounding failed" in output
+    assert secret not in output
+    assert "lore_999" not in output
+
+
+def test_live_failure_renderer_reports_safe_grounding_check_and_canon_id() -> None:
+    error = AgentExecutionError("Draft faction_id is not grounded: faction_999")
+    error.grounding_failure = type(
+        "GroundingFailure", (), {"check": "faction_id", "canon_id": "faction_999"}
+    )()
+
+    output = render_live_failure(error)
+
+    assert "AgentExecutionError: draft grounding failed" in output
+    assert "Grounding check: faction_id" in output
+    assert "Rejected Canon ID: faction_999" in output
+    assert "Draft faction_id is not grounded" not in output
+
+
+def test_live_failure_renderer_reports_occupation_grounding_without_raw_reason() -> None:
+    secret = "RAW_OCCUPATION_MODEL_OUTPUT_123"
+    error = AgentExecutionError(
+        f"Draft field 'occupation' is not canon-grounded (faction_003): {secret}"
+    )
+    error.grounding_failure = type(
+        "GroundingFailure",
+        (),
+        {"check": "field:occupation", "canon_id": "faction_003"},
+    )()
+
+    output = render_live_failure(error)
+
+    assert "Grounding check: field:occupation" in output
+    assert "Rejected Canon ID: faction_003" in output
+    assert secret not in output
+    assert "Draft field 'occupation' is not canon-grounded" not in output
+
+
+def test_live_failure_renderer_hides_untrusted_grounding_id() -> None:
+    error = AgentExecutionError(
+        "Draft faction_id is not grounded: raw_model_output_with_secret"
+    )
+    error.grounding_failure = type(
+        "GroundingFailure",
+        (),
+        {"check": "faction_id", "canon_id": None},
+    )()
+
+    output = render_live_failure(error)
+
+    assert "Grounding check: faction_id" in output
+    assert "Rejected Canon ID:" not in output
+    assert "raw_model_output_with_secret" not in output
+
+
+def test_live_failure_renderer_keeps_success_invocation_audit_for_agent_failure() -> None:
+    error = AgentExecutionError("Character finalization model attempted a tool call")
+    error.model_invocations = (
+        ModelInvocationAudit(
+            "live-session",
+            2,
+            "opencode_go",
+            "deepseek-v4.1-flash",
+            "success",
+            12.0,
+            0,
+        ),
+    )
+
+    output = render_live_failure(error)
+
+    assert "Provider invocation: SUCCESS" in output
+    assert "Outcome: success" in output
+    assert "AgentExecutionError: finalization model attempted a tool call" in output
+    assert "Invocation: SUCCESS" in output
+    assert "Audit retained: provider/model and sanitized failure metadata." in output
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        ModelProviderError("provider raw response contains unit-test-api-key"),
+        ModelMalformedResponseError(
+            "provider raw response contains CharacterDraft and unit-test-api-key"
+        ),
+    ],
+)
+def test_live_failure_renderer_never_prints_provider_or_model_error_text(
+    error: BaseException,
+) -> None:
+    output = render_live_failure(error)
+
+    assert "unit-test-api-key" not in output
+    assert "provider raw response" not in output
+    assert "Pipeline status: NOT_COMPLETED" in output
+
+
+def test_live_cli_invocation_failure_never_falls_back_to_offline(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    secret = "unit-test-api-key"
+    requested_modes: list[str] = []
+
+    class FailingApplication:
+        def generate(self, _request):
+            raise WebApplicationError(
+                "PROVIDER_FAILURE",
+                "The model provider request failed.",
+                status_code=502,
+                stage="provider",
+                retryable=False,
+            )
+
+    def build_application(**kwargs):
+        requested_modes.append(kwargs["generation_mode"])
+        return FailingApplication()
+
+    monkeypatch.setattr(
+        production_cli,
+        "build_character_generation_v2_application",
+        build_application,
+    )
+    exit_code = official_module.main(
+        [
+            "--brief",
+            f"设计角色，密钥是 {secret}。",
+            "--model",
+            "live",
+            "--provider",
+            "openai",
+            "--model-name",
+            "live-model",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert requested_modes == ["live"]
+    assert "PROVIDER_FAILURE: The model provider request failed." in captured.err
+    assert secret not in captured.err
+
+
+def test_live_cli_missing_configuration_is_safe_and_never_calls_a_provider(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.delenv("NPC_LLM_API_KEY", raising=False)
+    monkeypatch.setenv("NPC_LLM_PROVIDER", "openai")
+    monkeypatch.setenv("NPC_LLM_MODEL", "live-model")
+
+    exit_code = official_module.main(
+        ["--brief", "设计一个角色。", "--model", "live", "--provider", "openai"]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "MODEL_CONFIGURATION_INVALID" in captured.err
+    assert "Traceback" not in captured.err

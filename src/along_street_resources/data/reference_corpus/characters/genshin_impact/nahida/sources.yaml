@@ -1,0 +1,120 @@
+schema_version: "character-sources/0.2"
+reference_id: "genshin-impact:nahida"
+sources:
+  - source_id: official-3-2-update-notes
+    source_type: official
+    publisher: "miHoYo / HoYoverse"
+    title: "《原神》3.2版本「虚空鼓动，劫火高扬」更新说明"
+    url: "https://ys.mihoyo.com/main/news/detail/117819"
+    language: zh-CN
+    published_at: 2022-11-02
+    version_context: "Genshin Impact Version 3.2"
+    retrieved_at: "2026-08-17T06:15:10Z"
+    content_hash: "sha256:43844018897eaef8a0468cd02422a15310f11d07b66169bd8e82e29bdc3eaf9d"
+    reliability: primary
+  - source_id: official-3-2-wish-announcement
+    source_type: official
+    publisher: "Genshin Impact / HoYoverse"
+    title: "《原神》「月草的赐慧」活动祈愿现已开启"
+    url: "https://ys.mihoyo.com/main/news/detail/117822"
+    language: zh-CN
+    published_at: 2022-11-02
+    version_context: "Genshin Impact Version 3.2"
+    retrieved_at: "2026-08-17T06:15:10Z"
+    content_hash: "sha256:bcc4259487ecb28de571bee98214149e60e1a4307377323420825ed69a34a6fc"
+    reliability: primary
+  - source_id: official-nahida-intro
+    source_type: official
+    publisher: "Genshin Impact / HoYoverse"
+    title: "「知识，与你分享。」——「白草净华」·纳西妲"
+    url: "https://ys.mihoyo.com/main/news/detail/117794"
+    language: zh-CN
+    published_at: 2022-10-27
+    version_context: "Genshin Impact Version 3.2"
+    retrieved_at: "2026-08-17T06:15:10Z"
+    content_hash: "sha256:264993c53552eec1beca144f0081a0b492bc5075e23a7caf4da660893835d6a3"
+    reliability: primary
+  - source_id: official-narrative-intro
+    source_type: official
+    publisher: "Genshin Impact / HoYoverse"
+    title: "白草净华，幽宫启蛰"
+    url: "https://ys.mihoyo.com/main/news/detail/117722"
+    language: zh-CN
+    published_at: 2022-10-27
+    version_context: "Genshin Impact Version 3.2"
+    retrieved_at: "2026-08-17T06:15:10Z"
+    content_hash: "sha256:3192f83272027ce567994b721700d945743962a5965c76f6c88672e08e2662ae"
+    reliability: primary
+  - source_id: official-character-page
+    source_type: official
+    publisher: "miHoYo / HoYoverse"
+    title: "纳西妲 角色介绍（须弥角色合集）"
+    url: "https://ys.mihoyo.com/main/m/character/sumeru"
+    language: zh-CN
+    published_at: 2022-10-27
+    version_context: "Genshin Impact Version 3.2"
+    retrieved_at: "2026-08-17T06:15:10Z"
+    content_hash: "sha256:06cdf7510f559182cbdebb80d12d08dfd924cb84b691aa2d8c7f7e11dd52db17"
+    reliability: primary
+  - source_id: official-collected-miscellany
+    source_type: video
+    publisher: "Genshin Impact / HoYoverse"
+    title: "《原神》拾枝杂谈-「纳西妲：遍解玄奥」"
+    url: "https://ys.mihoyo.com/main/news/detail/117824"
+    language: zh-CN
+    published_at: 2022-11-02
+    version_context: "Genshin Impact Version 3.2"
+    retrieved_at: "2026-08-17T06:15:10Z"
+    content_hash: "sha256:aa5be24099dead15320233c2ef507f2d0e07e78c1ee73d9bf5bddce26deafaba"
+    reliability: primary
+  - source_id: secondary-moegirl
+    source_type: wiki
+    publisher: "Moegirlpedia (萌娘百科)"
+    title: "纳西妲"
+    url: "https://zh.moegirl.org.cn/%E7%BA%B3%E8%A5%BF%E5%A6%B2"
+    language: zh-CN
+    retrieved_at: "2026-08-17T06:15:10Z"
+    content_hash: "sha256:f8be464a93804a5c1f1e6a9eaefdcad0fd817420928c66de30def25773f9c186"
+    reliability: secondary
+  - source_id: secondary-genshin-center
+    source_type: database
+    publisher: "Genshin Center"
+    title: "Nahida"
+    url: "https://genshin-center.com/characters/nahida"
+    language: en
+    retrieved_at: "2026-08-17T06:15:10Z"
+    content_hash: "sha256:1a097a3af03c1cea44874cbf21f74f84a4540b6127ee7c306b5932cf2dcefedd"
+    reliability: secondary
+source_relations: []
+field_evidence:
+  identity.game_id: [official-3-2-update-notes, official-character-page]
+  identity.names.canonical: [official-3-2-update-notes, official-nahida-intro, official-3-2-wish-announcement, secondary-genshin-center]
+  identity.names.localized: [official-3-2-update-notes, official-nahida-intro, secondary-moegirl]
+  identity.release: [official-3-2-update-notes, official-3-2-wish-announcement]
+  identity.rarity: [official-3-2-update-notes, official-3-2-wish-announcement, secondary-genshin-center]
+  combat.native_taxonomy: [official-3-2-update-notes, secondary-moegirl, secondary-genshin-center]
+  combat.native_taxonomy.labels.weapon_type: [official-3-2-update-notes, secondary-genshin-center]
+  combat.native_taxonomy.labels.element: [official-3-2-update-notes, official-3-2-wish-announcement, secondary-moegirl, secondary-genshin-center]
+  combat.native_taxonomy.labels.rarity: [official-3-2-update-notes, official-3-2-wish-announcement, secondary-genshin-center]
+  combat.abilities: [official-3-2-update-notes, secondary-moegirl, secondary-genshin-center]
+  combat.mechanics.states: [official-3-2-update-notes, secondary-moegirl, secondary-genshin-center]
+  combat.mechanics.targeting_mechanics: [secondary-moegirl, secondary-genshin-center]
+  combat.team_mechanics.buffs: [secondary-moegirl, secondary-genshin-center]
+  combat.team_mechanics.off_field_effects: [official-3-2-update-notes]
+  combat.team_mechanics.interactions: [official-3-2-update-notes, secondary-moegirl, secondary-genshin-center]
+  combat.relations: [official-3-2-update-notes, secondary-moegirl, secondary-genshin-center]
+  narrative.faction: [official-narrative-intro, secondary-genshin-center]
+  narrative.occupation: [official-narrative-intro]
+  narrative.public_identity: [official-narrative-intro]
+  narrative.affiliations: [official-narrative-intro, secondary-genshin-center]
+verification:
+  status: partially_verified
+  conflicts: []
+  notes:
+    - "Identity (Nahida, Dendro, Catalyst, 5-star, released in Version 3.2), the native taxonomy, and the core combat mechanics — Elemental Skill All Schemes to Know (Press/Hold, Seed of Skandha, linked opponents, Tri-Karma Purification triggered by Elemental Reactions or Dendro Core DMG) and Elemental Burst Illusory Heart (Shrine of Maya domain with Pyro/Electro/Hydro party-composition effects, enhanced at 2+ members, retained off-field) — are directly supported by the official Version 3.2 Update Notes (primary), which list Nahida as a new character of Version 3.2. The official wish announcement 「月草的赐慧」 (published 2022-11-02) directly establishes her availability: it states that the limited 5-star character 「白草净华·纳西妲(草)」 is featured in the event wish whose period opened on 2022-11-02; both sources jointly support identity.release (version 3.2, date 2022-11-02)."
+    - "Exact parameters beyond the patch-notes summaries — 8-mark cap and 25s Seed of Skandha duration, 2.5s Tri-Karma Purification trigger interval, 5s Aiming Mode, 15s base Shrine duration and per-element-type values, the 25%/250 Elemental Mastery share of Compassion Illuminated, and the 0.1%/0.03% (max 80%/24%) conversion of Awakening Elucidated — are supported only by two independent secondary transcriptions of the current in-game kit text (Moegirlpedia zh-CN and Genshin Center en); per the ingestion rules these secondary-only sub-facts keep the record at partially_verified."
+    - "Passive mapping (confirmed by human review): 净善摄受明论 = Compassion Illuminated (1st Ascension Passive, Shrine Elemental Mastery share of 25% of the highest-EM party member, cap 250); 慧明缘觉智论 = Awakening Elucidated (4th Ascension Passive, Elemental Mastery beyond 200 converts to 0.1% Tri-Karma Purification Bonus DMG and 0.03% CRIT Rate per point, caps 80%/24%); 诸相随念净行 = On All Things Meditated (Utility Passive, harvestable-item interaction). Both secondary transcriptions (Moegirlpedia zh-CN verbatim in-game text and Genshin Center en in-game text) carry the same behaviors; Genshin Center's EN name-to-description assignment matches this confirmed mapping."
+    - "Historical wording review: the official 3.2 patch-notes summary is intentionally less specific than the in-game kit ('一定范围内一定数量的敌人' and a trigger description without an interval, vs the kit's '至多8名敌人' and 2.5s detailed attribute). The same kit wording remains current in both secondary transcriptions, so this is a summary-vs-kit granularity difference, not a behavior change and not a later clarification; no source_relations were encoded (per the insufficient-evidence rule)."
+    - "Off-field: the patch notes explicitly state Nahida retains the Shrine's composition bonuses while in the back of the party ('纳西妲即使处于队伍后台，只要该队伍处于摩耶之殿当中，依旧能获得上述效果的提升'), encoded in team_mechanics.off_field_effects. No reachable official text explicitly states whether Tri-Karma Purification itself triggers while Nahida is off-field; the kit text carries no field-presence condition but this is not an explicit statement, so it is recorded as a CANDIDATE (human-review item) and not encoded."
+    - "The Collected Miscellany (拾枝杂谈) record is an official mechanics-oriented video whose content payload carries only the episode tagline and CV credits; the spoken/video content was not transcribed and supports no facts in this record. It is retained as a primary record because it is the official mechanics-education source for Nahida and a potential (unverified) source for the off-field Tri-Karma question."
+    - "The official character page record hashes the content_v2 API payload for the character-detail article (iInfoId 118912), whose body is image-based (sExt assets); the images were not transcribed. The official Character Demo (117813) and PV (117793) were fetched and verified as marketing videos (tagline + CV only) and are excluded from the source records because they carry no facts."

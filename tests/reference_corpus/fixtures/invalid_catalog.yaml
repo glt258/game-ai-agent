@@ -1,0 +1,6 @@
+schema_version: "game-catalog/0.1"
+games:
+  test-game-alpha:
+    display_name: Alpha
+    aliases: [same, same]
+    taxonomy: {}

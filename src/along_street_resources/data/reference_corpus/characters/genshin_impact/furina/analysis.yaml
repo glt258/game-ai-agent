@@ -1,0 +1,41 @@
+schema_version: "character-analysis/0.1"
+reference_id: "genshin-impact:furina"
+analysis_metadata:
+  analyzer: "same10-backfill"
+  model: null
+  prompt_version: "reference-corpus-v0.4.1e-backfill"
+  analyzed_at: "2026-08-18T00:00:00Z"
+combat_design:
+  primary_loop:
+    summary: null
+    steps: []
+character_design:
+  authoring_features:
+    personality: [expressive, guarded]
+    gameplay_fantasy: [setup_payoff, team_enabling]
+    life_social_identity: []
+    life_stage: []
+    authority: []
+    hook:
+      surface_traits: [public_performance]
+      contrast_traits: []
+      behavioral_patterns: [public_performance]
+    visual_behavioral_motifs: []
+    evidence:
+      personality:
+        - {kind: source_fact, source_id: official-furina-intro}
+        - {kind: analyst_derivation, note: "Expressive means theatrical/performative masking; guarded preserves the concealed identity layer and is not simple genuine extroversion."}
+      gameplay_fantasy:
+        - {kind: source_fact, source_id: official-4-2-update-notes, fact_path: combat}
+        - {kind: analyst_derivation, note: "Summons, alignment switching, HP-linked Fanfare, and party-wide effects support setup_payoff and team_enabling."}
+      hook.surface_traits:
+        - {kind: source_fact, source_id: official-furina-intro}
+        - {kind: analyst_derivation, note: "Public performance is the surface hook for performative identity masking and mortal performing godhood."}
+      hook.behavioral_patterns:
+        - {kind: source_fact, source_id: official-furina-intro}
+        - {kind: analyst_derivation, note: "Public performance describes the identity behavior; it does not add an unsupported cheerful/playful trait."}
+product_design: {}
+differentiation: {}
+design_patterns: {}
+similarity_features: {}
+confidence: {}

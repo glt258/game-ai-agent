@@ -1,0 +1,125 @@
+schema_version: "character-facts/0.3"
+reference_id: "genshin-impact:nahida"
+identity:
+  game_id: genshin-impact
+  native_character_id: null
+  names:
+    canonical: "Nahida"
+    localized:
+      en-US: "Nahida"
+      zh-CN: "纳西妲"
+      zh-TW: "纳西妲"
+  release:
+    version: "3.2"
+    date: 2022-11-02
+  rarity:
+    native_value: 5
+    normalized_tier: null
+combat:
+  native_taxonomy:
+    labels:
+      weapon_type: "Catalyst"
+      element: "Dendro"
+      rarity: "5-star"
+  abilities:
+    - ability_id: normal_attack
+      native_name: "Akara"
+      native_category: "Normal Attack"
+      normalized_category: null
+      description_summary: "Performs up to four consecutive attacks dealing Dendro DMG. The Charged Attack consumes Stamina and, after a short casting time, deals AoE Dendro DMG to opponents in front of her; the Plunging Attack deals AoE Dendro DMG upon impact with the ground."
+    - ability_id: elemental_skill
+      native_name: "All Schemes to Know"
+      native_category: "Elemental Skill"
+      normalized_category: null
+      description_summary: "Press deals AoE Dendro DMG around Nahida and applies the Seed of Skandha to up to 8 opponents hit. Hold enters an Aiming Mode lasting up to 5s that selects up to 8 opponents within a limited area while increasing Nahida's resistance to interruption; on release it deals Dendro DMG to the selected opponents and applies the Seed of Skandha to them. Opponents marked by the Seed of Skandha are linked to one another within a certain distance; when a marked opponent is affected by an Elemental Reaction or takes Dendro Core DMG (including Hyperbloom and Burgeon), Nahida unleashes Tri-Karma Purification on that opponent and all opponents linked to it, dealing Dendro DMG based on her ATK and Elemental Mastery, at most once every 2.5s. The Seed of Skandha lasts 25s; Press and Hold cooldowns are 5s and 6s respectively."
+    - ability_id: elemental_burst
+      native_name: "Illusory Heart"
+      native_category: "Elemental Burst"
+      normalized_category: null
+      description_summary: "Manifests the Court of Dreams and expands the Shrine of Maya domain (15s base duration). While Nahida remains within the Shrine, the domain grants effects based on the Elemental Types present in the party: Pyro party members increase the DMG dealt by Tri-Karma Purification, Electro party members decrease the interval between Tri-Karma Purification triggers, and Hydro party members extend the Shrine's duration; when at least 2 party members share one of these Elemental Types, the corresponding effect is further enhanced. Nahida retains these bonuses while off-field as long as the party remains within the Shrine."
+    - ability_id: passive_compassion_illuminated
+      native_name: "Compassion Illuminated"
+      native_category: "1st Ascension Passive"
+      normalized_category: null
+      description_summary: "When Illusory Heart is unleashed, the Shrine of Maya gains an additional effect: the Elemental Mastery of the active character within the field is increased by 25% of the Elemental Mastery of the party member with the highest Elemental Mastery, up to a maximum of 250 Elemental Mastery."
+    - ability_id: passive_awakening_elucidated
+      native_name: "Awakening Elucidated"
+      native_category: "4th Ascension Passive"
+      normalized_category: null
+      description_summary: "Each point of Nahida's Elemental Mastery beyond 200 increases the DMG dealt by Tri-Karma Purification by 0.1% and its CRIT Rate by 0.03%, up to a maximum of 80% Bonus DMG and 24% CRIT Rate."
+    - ability_id: passive_on_all_things_meditated
+      native_name: "On All Things Meditated"
+      native_category: "Utility Passive"
+      normalized_category: null
+      description_summary: "Nahida can use the Elemental Skill All Schemes to Know to interact with certain harvestable items within a certain range in the open world."
+  mechanics:
+    resources: []
+    states:
+      - state_id: seed-of-skandha
+        native_name: "Seed of Skandha"
+        subject_scope: target
+        description_summary: "A named mark applied to opponents by the Elemental Skill All Schemes to Know (up to 8 opponents at once, lasting 25s). Marked opponents are linked to one another within a certain distance; when a marked opponent is affected by an Elemental Reaction or takes Dendro Core DMG (including Hyperbloom and Burgeon), Nahida unleashes Tri-Karma Purification on that opponent and all opponents linked to it, dealing Dendro DMG based on her ATK and Elemental Mastery, at most once every 2.5s."
+    transformations: []
+    summons: []
+    mobility_mechanics: []
+    targeting_mechanics:
+      - "All Schemes to Know (Hold) enters an Aiming Mode that selects up to 8 opponents within a limited area, lasting up to 5s and increasing Nahida's resistance to interruption; on release, the selected opponents take Dendro DMG and are marked with the Seed of Skandha."
+  team_mechanics:
+    buffs:
+      - "Compassion Illuminated: while the Shrine of Maya is active, the Elemental Mastery of the active character within the field is increased by 25% of the Elemental Mastery of the party member with the highest Elemental Mastery (maximum 250 Elemental Mastery)."
+    debuffs: []
+    healing: []
+    shielding: []
+    grouping: []
+    off_field_effects:
+      - "The Shrine of Maya's Pyro/Electro/Hydro composition bonuses continue to apply to Nahida while she is off-field, so long as the party remains within the Shrine."
+    interactions:
+      - interaction_id: shrine-of-maya
+        native_name: "Shrine of Maya"
+        description_summary: "The domain manifested by the Elemental Burst Illusory Heart, lasting 15s by default. Based on the Elemental Types present in the party, it grants effects while Nahida remains within it: Pyro party members increase the DMG dealt by Tri-Karma Purification, Electro party members decrease the interval between Tri-Karma Purification triggers, and Hydro party members extend the Shrine's duration; when at least 2 party members share one of these Elemental Types, the corresponding effect is further enhanced. Nahida retains these bonuses while off-field as long as the party remains within the Shrine. Compassion Illuminated additionally grants the active character within the field Elemental Mastery equal to 25% of the Elemental Mastery of the party member with the highest Elemental Mastery (maximum 250)."
+  relations:
+    - relation_id: skill-applies-seed-of-skandha
+      source:
+        kind: ability
+        id: elemental_skill
+      relation_type: applies
+      target:
+        kind: state
+        id: seed-of-skandha
+      description_summary: "All Schemes to Know applies the Seed of Skandha mark to opponents hit by its Press AoE or selected by its Hold Aiming Mode (up to 8 opponents)."
+    - relation_id: burst-triggers-shrine-of-maya
+      source:
+        kind: ability
+        id: elemental_burst
+      relation_type: triggers
+      target:
+        kind: team_interaction
+        id: shrine-of-maya
+      description_summary: "Elemental Burst Illusory Heart manifests the Court of Dreams and expands the Shrine of Maya domain."
+    - relation_id: shrine-of-maya-modifies-elemental-skill
+      source:
+        kind: team_interaction
+        id: shrine-of-maya
+      relation_type: modifies
+      target:
+        kind: ability
+        id: elemental_skill
+      description_summary: "While Nahida remains within the Shrine of Maya, its Pyro and Electro composition effects alter the Elemental Skill's Tri-Karma Purification: Pyro party members increase its DMG and Electro party members decrease its trigger interval."
+    - relation_id: passive-compassion-illuminated-modifies-shrine-of-maya
+      source:
+        kind: ability
+        id: passive_compassion_illuminated
+      relation_type: modifies
+      target:
+        kind: team_interaction
+        id: shrine-of-maya
+      description_summary: "The 1st Ascension Passive Compassion Illuminated adds an effect to the Shrine of Maya: the Elemental Mastery of the active character within the field is increased by 25% of the Elemental Mastery of the party member with the highest Elemental Mastery (maximum 250)."
+narrative:
+  faction: "Sumeru"
+  occupation: "Dendro Archon of Sumeru"
+  affiliations:
+    - "Sumeru"
+  public_identity: "Lesser Lord Kusanali"
+presentation:
+  official_visual_tags: []
+  official_character_keywords: []

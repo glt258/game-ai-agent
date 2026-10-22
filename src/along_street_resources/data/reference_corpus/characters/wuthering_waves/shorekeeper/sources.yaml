@@ -1,0 +1,95 @@
+schema_version: "character-sources/0.2"
+reference_id: "wuthering-waves:shorekeeper"
+sources:
+  - source_id: official-1-3-patch-notes
+    source_type: official
+    publisher: "Wuthering Waves / Kuro Games"
+    title: "Version 1.3: To the Shore's End Patch Notes"
+    url: "https://wutheringwaves.kurogames.com/en/main/news/detail/1454"
+    language: en-US
+    published_at: 2024-09-29
+    version_context: "Wuthering Waves Version 1.3"
+    retrieved_at: "2026-08-16T16:07:10Z"
+    content_hash: "sha256:a7934298553a133bc4c2376414555599bfad44cea49b316c91147fefa8bf8a35"
+    reliability: primary
+  - source_id: official-profile-reveal
+    source_type: official
+    publisher: "Wuthering Waves / Kuro Games"
+    title: "Profile Reveal | Euphonic Chrysalis — The Shorekeeper"
+    url: "https://wutheringwaves.kurogames.com/en/main/news/detail/1419"
+    language: en-US
+    published_at: 2024-09-27
+    version_context: "Wuthering Waves Version 1.3"
+    retrieved_at: "2026-08-16T16:07:10Z"
+    content_hash: "sha256:e3c23d3e1fc39b0c19f3b460a49c5cd03308d355be530a8824d53611d7f961f8"
+    reliability: primary
+  - source_id: official-convene-notice
+    source_type: official
+    publisher: "Wuthering Waves / Kuro Games"
+    title: "[Till the Sea Turns Clear] Featured Resonator Convene: Boosted Drop Rate for Shorekeeper"
+    url: "https://wutheringwaves.kurogames.com/en/main/news/detail/1420"
+    language: en-US
+    published_at: 2024-09-27
+    version_context: "Wuthering Waves Version 1.3"
+    retrieved_at: "2026-08-16T16:07:10Z"
+    content_hash: "sha256:f7814c66b9728609231d10f3b1101b75dd5d25602997898cbf7dd320e9e5f4dc"
+    reliability: primary
+  - source_id: secondary-wuthering-wiki
+    source_type: wiki
+    publisher: "Wuthering Wiki"
+    title: "Shorekeeper (1505)"
+    url: "https://wuthering.wiki/character_1505.html"
+    language: en-US
+    published_at: null
+    version_context: null
+    retrieved_at: "2026-08-16T16:07:10Z"
+    content_hash: "sha256:f4a1a21095d8d1b5cf815a265f28be2c76d8119bf96870daa13920f749e53c57"
+    reliability: secondary
+  - source_id: secondary-moegirl
+    source_type: wiki
+    publisher: "Moegirlpedia (萌娘百科)"
+    title: "守岸人"
+    url: "https://zh.moegirl.org.cn/%E5%AE%88%E5%B2%B8%E4%BA%BA"
+    language: zh-CN
+    published_at: null
+    version_context: null
+    retrieved_at: "2026-08-16T16:07:10Z"
+    content_hash: "sha256:95c2911c88dca540115ac4a9e5dca6c5330011a4abe3435c48db4d27667cf27e"
+    reliability: secondary
+source_relations: []
+field_evidence:
+  identity.game_id: [official-1-3-patch-notes]
+  identity.names.canonical: [official-1-3-patch-notes, official-profile-reveal, secondary-wuthering-wiki, secondary-moegirl]
+  identity.names.localized: [secondary-moegirl]
+  identity.release: [official-1-3-patch-notes]
+  identity.rarity: [official-1-3-patch-notes, secondary-wuthering-wiki]
+  combat.native_taxonomy: [official-1-3-patch-notes, secondary-wuthering-wiki, secondary-moegirl]
+  combat.native_taxonomy.labels.attribute: [official-1-3-patch-notes, secondary-wuthering-wiki, secondary-moegirl]
+  combat.native_taxonomy.labels.weapon_type: [secondary-wuthering-wiki, secondary-moegirl]
+  combat.native_taxonomy.labels.rarity: [official-1-3-patch-notes, secondary-wuthering-wiki]
+  combat.native_taxonomy.labels.combat_roles: [official-1-3-patch-notes]
+  combat.abilities: [secondary-wuthering-wiki, secondary-moegirl]
+  combat.mechanics.resources: [secondary-wuthering-wiki, secondary-moegirl]
+  combat.mechanics.states: [secondary-wuthering-wiki, secondary-moegirl]
+  combat.mechanics.summons: [secondary-wuthering-wiki, secondary-moegirl]
+  combat.mechanics.mobility_mechanics: [secondary-wuthering-wiki]
+  combat.mechanics.targeting_mechanics: [secondary-wuthering-wiki, secondary-moegirl]
+  combat.team_mechanics.buffs: [secondary-wuthering-wiki, secondary-moegirl]
+  combat.team_mechanics.healing: [secondary-wuthering-wiki, secondary-moegirl]
+  combat.team_mechanics.grouping: [secondary-wuthering-wiki, secondary-moegirl]
+  combat.team_mechanics.off_field_effects: [secondary-wuthering-wiki, secondary-moegirl]
+  combat.team_mechanics.interactions: [secondary-wuthering-wiki, secondary-moegirl]
+  combat.relations: [secondary-wuthering-wiki, secondary-moegirl]
+  narrative.faction: [official-1-3-patch-notes, official-profile-reveal, secondary-moegirl]
+  narrative.occupation: [official-1-3-patch-notes, official-profile-reveal]
+  narrative.affiliations: [official-1-3-patch-notes, secondary-moegirl]
+  narrative.public_identity: [official-1-3-patch-notes, official-profile-reveal]
+verification:
+  status: partially_verified
+  conflicts: []
+  notes:
+    - "Identity core facts (Shorekeeper, Spectro, 5-star, released in Version 1.3 on 2024-09-29, guardian of the Black Shores) are directly supported by the official Version 1.3 'To the Shore's End' Patch Notes (primary); the Profile Reveal and the convene notice confirm the canonical name, the 5-star rating, and the Version 1.3 banner window. The official patch notes label her Combat Roles as 'Support and Healer, Traction, DMG Amplification'; as a native, game-published classification this tag is recorded in facts.yaml under combat.native_taxonomy.labels.combat_roles. Only the cross-game normalized role mapping (e.g. the NormalizedRole vocabulary of character-analysis/0.1) remains reserved for the future CharacterAnalysis."
+    - "The full live kit (ability names, Stellarealm stages, butterfly entities, Empirical/Deductive Data, Inherent Skills) is supplied by two independent secondary sources — Wuthering Wiki (full EN in-game kit text) and Moegirlpedia (full CN in-game kit text) — that agree on every mechanic and number; per ingestion policy these secondary-only sub-facts keep the record at partially_verified. The CN native names of the two Inherent Skills could not be cross-checked (the Moegirlpedia page omits the Inherent Skill section), so only the official EN names are recorded. Exact magnitudes (e.g. the 30s Stellarealm duration) come from the Wuthering Wiki attributes tables."
+    - "Stellarealm representation: the multi-stage zone (Outer → Inner → Supernal Stellarealm) has a party-scoped subject, so it is not a StateFact (subject_scope cannot honestly be self/target/unknown); it is modeled as a TeamInteractionFact + TeamMechanics buffs/healing, matching the Universal Revelry precedent. Stage evolution is triggered by any party member's Intro Skill used within the realm — a teammate action that cannot be expressed as a MechanicRef in Shorekeeper's own ability graph, so that evolution trigger edge is recorded as graph friction rather than a relation."
+    - "Butterfly entities: the CN in-game kit text assigns 召唤 (summon) to the five Dim Star Butterflies (Resonance Skill and Intro Skill) and to the Outro's orbiting pair, and 生成/演化为 to Flare Star Butterflies evolving from Collapsed Cores; all are persistent entity-style summons with source-stated auto-tracking attacks. This reproduces Furina's summon graph friction (the butterflies cannot be MechanicRef targets because summons is a list[str] field), recorded as repeated, non-blocking friction; no schema change is proposed."
+    - "Narrative wording: the official patch notes and Profile Reveal frame 'The Shorekeeper, guardian of the Black Shores' as her title, and 'Euphonic Chrysalis' appears as the official epithet in the Profile Reveal / Resonator Review titles. The in-game profile (carried by Moegirlpedia) additionally designates her as the 'Second Instance' (第二实例) in the Black Shores record. That internal designation is not a public identity and is deliberately excluded from facts; public_identity keeps the official guardian wording."

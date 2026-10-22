@@ -1,0 +1,48 @@
+schema_version: "character-facts/0.3"
+reference_id: "honkai-impact-3rd:songque"
+identity:
+  game_id: honkai-impact-3rd
+  native_character_id: "124932"
+  names:
+    canonical: "Songque"
+    localized:
+      en-US: "Songque"
+  release:
+    version: null
+    date: null
+  rarity:
+    native_value: null
+    normalized_tier: null
+combat:
+  native_taxonomy:
+    labels:
+      attribute: "Physical"
+      type: "Stardust"
+      weapon: "Trick Staff"
+      battlesuit: "Jovial Deception: Shadowdimmer"
+      resonance: "Wheel of Destiny"
+  abilities: []
+  mechanics:
+    resources: []
+    states: []
+    transformations: []
+    summons: []
+    mobility_mechanics: []
+    targeting_mechanics: []
+  team_mechanics:
+    buffs: []
+    debuffs: []
+    healing: []
+    shielding: []
+    grouping: []
+    off_field_effects: []
+    interactions: []
+  relations: []
+narrative:
+  faction: null
+  occupation: null
+  affiliations: []
+  public_identity: "A smiling figure who weaves lies with honeyed words to conceal the light of a star and spark hope in a land plagued by calamity, while promising to live up to the expectations of everyone in Langqiu."
+presentation:
+  official_visual_tags: []
+  official_character_keywords: []

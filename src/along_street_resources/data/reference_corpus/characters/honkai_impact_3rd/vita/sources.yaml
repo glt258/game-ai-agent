@@ -1,0 +1,42 @@
+schema_version: "character-sources/0.2"
+reference_id: "honkai-impact-3rd:vita"
+sources:
+  - source_id: official-content-v2-hi3-vita-roster-en
+    source_type: official
+    publisher: "Honkai Impact 3rd / HoYoverse"
+    title: "Vita — official content_v2 role roster record"
+    url: "https://sg-public-api-static.hoyoverse.com/content_v2_user/app/5fcd2aa439ca4aea/getContentList?iChanId=767&iPageSize=200&iPage=1&sLangKey=en-us"
+    language: en-US
+    retrieved_at: "2026-08-20T00:00:00Z"
+    published_at: null
+    version_context: >-
+      HI3 global content_v2 locator: iAppId=35, appSn=5fcd2aa439ca4aea;
+      GET channel iChanId=767 (character roster / roleDec), paginated with
+      iPage=1 and iPageSize=200, language sLangKey=en-us. Stable record
+      selector data.list[iInfoId=126475]. Stable sExt fields used:
+      roleDec, harmName, propertyName, weaponName, armorName, resonanceName.
+      The validated HI3 channel family also includes 520 (ROLES.VALKYRIES)
+      and 521 (ROLES.ROLE); no unsupported kit detail is promoted here.
+    content_hash: null
+    reliability: primary
+source_relations: []
+field_evidence:
+  identity.game_id: [official-content-v2-hi3-vita-roster-en]
+  identity.native_character_id: [official-content-v2-hi3-vita-roster-en]
+  identity.names.canonical: [official-content-v2-hi3-vita-roster-en]
+  combat.native_taxonomy: [official-content-v2-hi3-vita-roster-en]
+  combat.native_taxonomy.labels.attribute: [official-content-v2-hi3-vita-roster-en]
+  combat.native_taxonomy.labels.type: [official-content-v2-hi3-vita-roster-en]
+  combat.native_taxonomy.labels.weapon: [official-content-v2-hi3-vita-roster-en]
+  combat.native_taxonomy.labels.battlesuit: [official-content-v2-hi3-vita-roster-en]
+  combat.native_taxonomy.labels.resonance: [official-content-v2-hi3-vita-roster-en]
+  narrative.public_identity: [official-content-v2-hi3-vita-roster-en]
+verification:
+  status: verified
+  conflicts: []
+  notes:
+    - "All persisted Vita facts are limited to the official HI3 content_v2 roster record for iInfoId=126475."
+    - "The roleDec supports the lone-survivor and interplanetary-wandering identity; itinerant_traveler is an authoring interpretation, not a quoted source fact."
+    - "Lightning, Mecha, Drive Core, Lone Planetfarer, and Rite of Oblivion are preserved as native gameplay taxonomy from the same official record."
+    - "No organization, leadership title, occupation, age, or detailed kit mechanic is claimed."
+    - "No wiki, Moegirl, Fandom, third-party database, or secondary source was used for PRIMARY facts."

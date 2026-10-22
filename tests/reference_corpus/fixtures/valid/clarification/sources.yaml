@@ -1,0 +1,32 @@
+schema_version: "character-sources/0.2"
+reference_id: "test-game-alpha:test-character-a"
+sources:
+  - source_id: old-source
+    source_type: official
+    publisher: Synthetic Studio
+    title: Initial synthetic record
+    url: "https://example.com/synthetic/old"
+    published_at: "2024-01-01"
+    version_context: "1.0"
+    reliability: primary
+  - source_id: new-source
+    source_type: official
+    publisher: Synthetic Studio
+    title: Clarified synthetic record
+    url: "https://example.com/synthetic/new"
+    published_at: "2024-02-01"
+    version_context: "2.0"
+    reliability: primary
+source_relations:
+  - relation_id: new-clarifies-old
+    source_id: new-source
+    relation_type: clarifies
+    target_source_id: old-source
+    field_paths: [combat.native_taxonomy.labels.weapon_type]
+    description_summary: "The later official wording removes ambiguity without changing the fact."
+field_evidence:
+  combat.native_taxonomy.labels.weapon_type: [old-source, new-source]
+verification:
+  status: verified
+  conflicts: []
+  notes: []

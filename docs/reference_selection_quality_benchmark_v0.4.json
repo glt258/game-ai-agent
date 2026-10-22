@@ -1,0 +1,6219 @@
+{
+  "benchmark_path": {
+    "differences_from_production_path": [
+      "benchmark loads summaries once and calls the diagnostic ranking helper directly; production wraps it in load_reference_grounding",
+      "benchmark matrix cases are synthetic; exact historical briefs are unavailable"
+    ],
+    "entry_point": "agents.reference_selection_benchmark.main -> run_benchmark",
+    "feature_extraction": "same _tokens and rank_reference_summaries implementation",
+    "input_object": "case brief string plus repository summaries",
+    "same_effective_input_for_same_brief": true,
+    "same_selector_implementation": true,
+    "shared_production_function": true,
+    "top_k": 3
+  },
+  "benchmark_version": "reference-selection-quality-benchmark/0.4",
+  "cases": [
+    {
+      "brief": "An ordinary urban support character working in an appliance repair shop: maintenance, troubleshooting, practical community service.",
+      "brief_id": "case-a-urban-support",
+      "category": "A — ordinary urban support",
+      "component_scores": null,
+      "component_scores_available": false,
+      "dimensions": [
+        "occupation",
+        "support",
+        "ordinary-life identity"
+      ],
+      "full_ranking": [
+        {
+          "character_name": "Shinku",
+          "rank": 1,
+          "reference_id": "neverness-to-everness:shinku",
+          "score": 1,
+          "score_gap_from_previous": null,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Mortefi",
+          "rank": 2,
+          "reference_id": "wuthering-waves:mortefi",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Shorekeeper",
+          "rank": 3,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Nicole Demara",
+          "rank": 4,
+          "reference_id": "zenless-zone-zero:nicole",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Furina",
+          "rank": 5,
+          "reference_id": "genshin-impact:furina",
+          "score": 0,
+          "score_gap_from_previous": 1,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Keqing",
+          "rank": 6,
+          "reference_id": "genshin-impact:keqing",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Nahida",
+          "rank": 7,
+          "reference_id": "genshin-impact:nahida",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Fadia",
+          "rank": 8,
+          "reference_id": "neverness-to-everness:fadia",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Jinhsi",
+          "rank": 9,
+          "reference_id": "wuthering-waves:jinhsi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Jane Doe",
+          "rank": 10,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        }
+      ],
+      "score_gaps": [
+        null,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "selected_references": [
+        "neverness-to-everness:shinku",
+        "wuthering-waves:mortefi",
+        "wuthering-waves:shorekeeper"
+      ],
+      "selected_top_k": 3,
+      "stable_on_repeat": true,
+      "tie_groups": [
+        [
+          "neverness-to-everness:shinku",
+          "wuthering-waves:mortefi",
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole"
+        ],
+        [
+          "genshin-impact:furina",
+          "genshin-impact:keqing",
+          "genshin-impact:nahida",
+          "neverness-to-everness:fadia",
+          "wuthering-waves:jinhsi",
+          "zenless-zone-zero:jane-doe"
+        ]
+      ]
+    },
+    {
+      "brief": "A stage execution coordinator focused on spatial control, crowd routing, timing, and safe movement through a venue.",
+      "brief_id": "case-b-spatial-control",
+      "category": "B — control / spatial coordination",
+      "component_scores": null,
+      "component_scores_available": false,
+      "dimensions": [
+        "control",
+        "spatial coordination",
+        "occupation"
+      ],
+      "full_ranking": [
+        {
+          "character_name": "Shorekeeper",
+          "rank": 1,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "score": 1,
+          "score_gap_from_previous": null,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Nicole Demara",
+          "rank": 2,
+          "reference_id": "zenless-zone-zero:nicole",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Furina",
+          "rank": 3,
+          "reference_id": "genshin-impact:furina",
+          "score": 0,
+          "score_gap_from_previous": 1,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Keqing",
+          "rank": 4,
+          "reference_id": "genshin-impact:keqing",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Nahida",
+          "rank": 5,
+          "reference_id": "genshin-impact:nahida",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Fadia",
+          "rank": 6,
+          "reference_id": "neverness-to-everness:fadia",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Shinku",
+          "rank": 7,
+          "reference_id": "neverness-to-everness:shinku",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Jinhsi",
+          "rank": 8,
+          "reference_id": "wuthering-waves:jinhsi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Mortefi",
+          "rank": 9,
+          "reference_id": "wuthering-waves:mortefi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Jane Doe",
+          "rank": 10,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        }
+      ],
+      "score_gaps": [
+        null,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "selected_references": [
+        "wuthering-waves:shorekeeper",
+        "zenless-zone-zero:nicole",
+        "genshin-impact:furina"
+      ],
+      "selected_top_k": 3,
+      "stable_on_repeat": true,
+      "tie_groups": [
+        [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole"
+        ],
+        [
+          "genshin-impact:furina",
+          "genshin-impact:keqing",
+          "genshin-impact:nahida",
+          "neverness-to-everness:fadia",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi",
+          "wuthering-waves:mortefi",
+          "zenless-zone-zero:jane-doe"
+        ]
+      ]
+    },
+    {
+      "brief": "An aggressive frontline direct-combat character with an on_field_dps fantasy centered on attacks and damage.",
+      "brief_id": "case-c-aggressive-frontline",
+      "category": "C — aggressive frontline",
+      "component_scores": null,
+      "component_scores_available": false,
+      "dimensions": [
+        "combat role",
+        "direct combat",
+        "ability fantasy"
+      ],
+      "full_ranking": [
+        {
+          "character_name": "Keqing",
+          "rank": 1,
+          "reference_id": "genshin-impact:keqing",
+          "score": 1,
+          "score_gap_from_previous": null,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Shinku",
+          "rank": 2,
+          "reference_id": "neverness-to-everness:shinku",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Jinhsi",
+          "rank": 3,
+          "reference_id": "wuthering-waves:jinhsi",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Shorekeeper",
+          "rank": 4,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Jane Doe",
+          "rank": 5,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Furina",
+          "rank": 6,
+          "reference_id": "genshin-impact:furina",
+          "score": 0,
+          "score_gap_from_previous": 1,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Nahida",
+          "rank": 7,
+          "reference_id": "genshin-impact:nahida",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Fadia",
+          "rank": 8,
+          "reference_id": "neverness-to-everness:fadia",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Mortefi",
+          "rank": 9,
+          "reference_id": "wuthering-waves:mortefi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Nicole Demara",
+          "rank": 10,
+          "reference_id": "zenless-zone-zero:nicole",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        }
+      ],
+      "score_gaps": [
+        null,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "selected_references": [
+        "genshin-impact:keqing",
+        "neverness-to-everness:shinku",
+        "wuthering-waves:jinhsi"
+      ],
+      "selected_top_k": 3,
+      "stable_on_repeat": true,
+      "tie_groups": [
+        [
+          "genshin-impact:keqing",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi",
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:jane-doe"
+        ],
+        [
+          "genshin-impact:furina",
+          "genshin-impact:nahida",
+          "neverness-to-everness:fadia",
+          "wuthering-waves:mortefi",
+          "zenless-zone-zero:nicole"
+        ]
+      ]
+    },
+    {
+      "brief": "A defensive protective character focused on support, healing, shielding, and stabilization.",
+      "brief_id": "case-d-defensive-protective",
+      "category": "D — defensive / protective",
+      "component_scores": null,
+      "component_scores_available": false,
+      "dimensions": [
+        "support",
+        "protection",
+        "ability fantasy"
+      ],
+      "full_ranking": [
+        {
+          "character_name": "Shorekeeper",
+          "rank": 1,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "score": 2,
+          "score_gap_from_previous": null,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Nicole Demara",
+          "rank": 2,
+          "reference_id": "zenless-zone-zero:nicole",
+          "score": 2,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Shinku",
+          "rank": 3,
+          "reference_id": "neverness-to-everness:shinku",
+          "score": 1,
+          "score_gap_from_previous": 1,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Furina",
+          "rank": 4,
+          "reference_id": "genshin-impact:furina",
+          "score": 0,
+          "score_gap_from_previous": 1,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Keqing",
+          "rank": 5,
+          "reference_id": "genshin-impact:keqing",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Nahida",
+          "rank": 6,
+          "reference_id": "genshin-impact:nahida",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Fadia",
+          "rank": 7,
+          "reference_id": "neverness-to-everness:fadia",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Jinhsi",
+          "rank": 8,
+          "reference_id": "wuthering-waves:jinhsi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Mortefi",
+          "rank": 9,
+          "reference_id": "wuthering-waves:mortefi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Jane Doe",
+          "rank": 10,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        }
+      ],
+      "score_gaps": [
+        null,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "selected_references": [
+        "wuthering-waves:shorekeeper",
+        "zenless-zone-zero:nicole",
+        "neverness-to-everness:shinku"
+      ],
+      "selected_top_k": 3,
+      "stable_on_repeat": true,
+      "tie_groups": [
+        [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole"
+        ],
+        [
+          "genshin-impact:furina",
+          "genshin-impact:keqing",
+          "genshin-impact:nahida",
+          "neverness-to-everness:fadia",
+          "wuthering-waves:jinhsi",
+          "wuthering-waves:mortefi",
+          "zenless-zone-zero:jane-doe"
+        ]
+      ]
+    },
+    {
+      "brief": "A mobility-focused courier and route planner: an urban runner who repositions people through complicated streets.",
+      "brief_id": "case-e-mobility-repositioning",
+      "category": "E — mobility / repositioning",
+      "component_scores": null,
+      "component_scores_available": false,
+      "dimensions": [
+        "mobility",
+        "repositioning",
+        "occupation"
+      ],
+      "full_ranking": [
+        {
+          "character_name": "Shorekeeper",
+          "rank": 1,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "score": 1,
+          "score_gap_from_previous": null,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Nicole Demara",
+          "rank": 2,
+          "reference_id": "zenless-zone-zero:nicole",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Furina",
+          "rank": 3,
+          "reference_id": "genshin-impact:furina",
+          "score": 0,
+          "score_gap_from_previous": 1,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Keqing",
+          "rank": 4,
+          "reference_id": "genshin-impact:keqing",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Nahida",
+          "rank": 5,
+          "reference_id": "genshin-impact:nahida",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Fadia",
+          "rank": 6,
+          "reference_id": "neverness-to-everness:fadia",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Shinku",
+          "rank": 7,
+          "reference_id": "neverness-to-everness:shinku",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Jinhsi",
+          "rank": 8,
+          "reference_id": "wuthering-waves:jinhsi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Mortefi",
+          "rank": 9,
+          "reference_id": "wuthering-waves:mortefi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Jane Doe",
+          "rank": 10,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        }
+      ],
+      "score_gaps": [
+        null,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "selected_references": [
+        "wuthering-waves:shorekeeper",
+        "zenless-zone-zero:nicole",
+        "genshin-impact:furina"
+      ],
+      "selected_top_k": 3,
+      "stable_on_repeat": true,
+      "tie_groups": [
+        [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole"
+        ],
+        [
+          "genshin-impact:furina",
+          "genshin-impact:keqing",
+          "genshin-impact:nahida",
+          "neverness-to-everness:fadia",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi",
+          "wuthering-waves:mortefi",
+          "zenless-zone-zero:jane-doe"
+        ]
+      ]
+    },
+    {
+      "brief": "An archivist and fact checker who works as a field investigator for information gathering and criminal investigation.",
+      "brief_id": "case-f-information-investigation",
+      "category": "F — information / investigation",
+      "component_scores": null,
+      "component_scores_available": false,
+      "dimensions": [
+        "investigation",
+        "information",
+        "occupation"
+      ],
+      "full_ranking": [
+        {
+          "character_name": "Jane Doe",
+          "rank": 1,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "score": 2,
+          "score_gap_from_previous": null,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Shorekeeper",
+          "rank": 2,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "score": 1,
+          "score_gap_from_previous": 1,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Nicole Demara",
+          "rank": 3,
+          "reference_id": "zenless-zone-zero:nicole",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Furina",
+          "rank": 4,
+          "reference_id": "genshin-impact:furina",
+          "score": 0,
+          "score_gap_from_previous": 1,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Keqing",
+          "rank": 5,
+          "reference_id": "genshin-impact:keqing",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Nahida",
+          "rank": 6,
+          "reference_id": "genshin-impact:nahida",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Fadia",
+          "rank": 7,
+          "reference_id": "neverness-to-everness:fadia",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Shinku",
+          "rank": 8,
+          "reference_id": "neverness-to-everness:shinku",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Jinhsi",
+          "rank": 9,
+          "reference_id": "wuthering-waves:jinhsi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Mortefi",
+          "rank": 10,
+          "reference_id": "wuthering-waves:mortefi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        }
+      ],
+      "score_gaps": [
+        null,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "selected_references": [
+        "zenless-zone-zero:jane-doe",
+        "wuthering-waves:shorekeeper",
+        "zenless-zone-zero:nicole"
+      ],
+      "selected_top_k": 3,
+      "stable_on_repeat": true,
+      "tie_groups": [
+        [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole"
+        ],
+        [
+          "genshin-impact:furina",
+          "genshin-impact:keqing",
+          "genshin-impact:nahida",
+          "neverness-to-everness:fadia",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi",
+          "wuthering-waves:mortefi"
+        ]
+      ]
+    },
+    {
+      "brief": "A flamboyant performer with an expressive stage identity, high social presence, and a public-facing creative hook.",
+      "brief_id": "case-g-expressive-performer",
+      "category": "G — performer / expressive social identity",
+      "component_scores": null,
+      "component_scores_available": false,
+      "dimensions": [
+        "performer",
+        "expressive identity",
+        "personality"
+      ],
+      "full_ranking": [
+        {
+          "character_name": "Shorekeeper",
+          "rank": 1,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "score": 1,
+          "score_gap_from_previous": null,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Nicole Demara",
+          "rank": 2,
+          "reference_id": "zenless-zone-zero:nicole",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Furina",
+          "rank": 3,
+          "reference_id": "genshin-impact:furina",
+          "score": 0,
+          "score_gap_from_previous": 1,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Keqing",
+          "rank": 4,
+          "reference_id": "genshin-impact:keqing",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Nahida",
+          "rank": 5,
+          "reference_id": "genshin-impact:nahida",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Fadia",
+          "rank": 6,
+          "reference_id": "neverness-to-everness:fadia",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Shinku",
+          "rank": 7,
+          "reference_id": "neverness-to-everness:shinku",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Jinhsi",
+          "rank": 8,
+          "reference_id": "wuthering-waves:jinhsi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Mortefi",
+          "rank": 9,
+          "reference_id": "wuthering-waves:mortefi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Jane Doe",
+          "rank": 10,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        }
+      ],
+      "score_gaps": [
+        null,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "selected_references": [
+        "wuthering-waves:shorekeeper",
+        "zenless-zone-zero:nicole",
+        "genshin-impact:furina"
+      ],
+      "selected_top_k": 3,
+      "stable_on_repeat": true,
+      "tie_groups": [
+        [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole"
+        ],
+        [
+          "genshin-impact:furina",
+          "genshin-impact:keqing",
+          "genshin-impact:nahida",
+          "neverness-to-everness:fadia",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi",
+          "wuthering-waves:mortefi",
+          "zenless-zone-zero:jane-doe"
+        ]
+      ]
+    },
+    {
+      "brief": "A mature, active playable character: an experienced magistrate who remains hands-on in daily operations.",
+      "brief_id": "case-h-mature-active",
+      "category": "H — mature active playable character",
+      "component_scores": null,
+      "component_scores_available": false,
+      "dimensions": [
+        "life-stage",
+        "occupation",
+        "active playable identity"
+      ],
+      "full_ranking": [
+        {
+          "character_name": "Jinhsi",
+          "rank": 1,
+          "reference_id": "wuthering-waves:jinhsi",
+          "score": 1,
+          "score_gap_from_previous": null,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Mortefi",
+          "rank": 2,
+          "reference_id": "wuthering-waves:mortefi",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Nicole Demara",
+          "rank": 3,
+          "reference_id": "zenless-zone-zero:nicole",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Furina",
+          "rank": 4,
+          "reference_id": "genshin-impact:furina",
+          "score": 0,
+          "score_gap_from_previous": 1,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Keqing",
+          "rank": 5,
+          "reference_id": "genshin-impact:keqing",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Nahida",
+          "rank": 6,
+          "reference_id": "genshin-impact:nahida",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Fadia",
+          "rank": 7,
+          "reference_id": "neverness-to-everness:fadia",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Shinku",
+          "rank": 8,
+          "reference_id": "neverness-to-everness:shinku",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Shorekeeper",
+          "rank": 9,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Jane Doe",
+          "rank": 10,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        }
+      ],
+      "score_gaps": [
+        null,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "selected_references": [
+        "wuthering-waves:jinhsi",
+        "wuthering-waves:mortefi",
+        "zenless-zone-zero:nicole"
+      ],
+      "selected_top_k": 3,
+      "stable_on_repeat": true,
+      "tie_groups": [
+        [
+          "wuthering-waves:jinhsi",
+          "wuthering-waves:mortefi",
+          "zenless-zone-zero:nicole"
+        ],
+        [
+          "genshin-impact:furina",
+          "genshin-impact:keqing",
+          "genshin-impact:nahida",
+          "neverness-to-everness:fadia",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:jane-doe"
+        ]
+      ]
+    },
+    {
+      "brief": "A youthful but age-ambiguous independent character who works alone and is not defined by school or a formal office.",
+      "brief_id": "case-i-youthful-ambiguous",
+      "category": "I — youthful / age-ambiguous independent character",
+      "component_scores": null,
+      "component_scores_available": false,
+      "dimensions": [
+        "life-stage",
+        "age ambiguity",
+        "independence"
+      ],
+      "full_ranking": [
+        {
+          "character_name": "Shorekeeper",
+          "rank": 1,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "score": 1,
+          "score_gap_from_previous": null,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Nicole Demara",
+          "rank": 2,
+          "reference_id": "zenless-zone-zero:nicole",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Furina",
+          "rank": 3,
+          "reference_id": "genshin-impact:furina",
+          "score": 0,
+          "score_gap_from_previous": 1,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Keqing",
+          "rank": 4,
+          "reference_id": "genshin-impact:keqing",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Nahida",
+          "rank": 5,
+          "reference_id": "genshin-impact:nahida",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Fadia",
+          "rank": 6,
+          "reference_id": "neverness-to-everness:fadia",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Shinku",
+          "rank": 7,
+          "reference_id": "neverness-to-everness:shinku",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Jinhsi",
+          "rank": 8,
+          "reference_id": "wuthering-waves:jinhsi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Mortefi",
+          "rank": 9,
+          "reference_id": "wuthering-waves:mortefi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Jane Doe",
+          "rank": 10,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        }
+      ],
+      "score_gaps": [
+        null,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "selected_references": [
+        "wuthering-waves:shorekeeper",
+        "zenless-zone-zero:nicole",
+        "genshin-impact:furina"
+      ],
+      "selected_top_k": 3,
+      "stable_on_repeat": true,
+      "tie_groups": [
+        [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole"
+        ],
+        [
+          "genshin-impact:furina",
+          "genshin-impact:keqing",
+          "genshin-impact:nahida",
+          "neverness-to-everness:fadia",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi",
+          "wuthering-waves:mortefi",
+          "zenless-zone-zero:jane-doe"
+        ]
+      ]
+    },
+    {
+      "brief": "An ordinary non-professional neighbor with an informal community social role and no prestigious occupation.",
+      "brief_id": "case-j-informal-social-role",
+      "category": "J — ordinary non-professional / informal social role",
+      "component_scores": null,
+      "component_scores_available": false,
+      "dimensions": [
+        "ordinary-life identity",
+        "informal social role",
+        "occupation"
+      ],
+      "full_ranking": [
+        {
+          "character_name": "Shorekeeper",
+          "rank": 1,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "score": 2,
+          "score_gap_from_previous": null,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Furina",
+          "rank": 2,
+          "reference_id": "genshin-impact:furina",
+          "score": 1,
+          "score_gap_from_previous": 1,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Keqing",
+          "rank": 3,
+          "reference_id": "genshin-impact:keqing",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Nahida",
+          "rank": 4,
+          "reference_id": "genshin-impact:nahida",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Fadia",
+          "rank": 5,
+          "reference_id": "neverness-to-everness:fadia",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Shinku",
+          "rank": 6,
+          "reference_id": "neverness-to-everness:shinku",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Jinhsi",
+          "rank": 7,
+          "reference_id": "wuthering-waves:jinhsi",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Mortefi",
+          "rank": 8,
+          "reference_id": "wuthering-waves:mortefi",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Jane Doe",
+          "rank": 9,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Nicole Demara",
+          "rank": 10,
+          "reference_id": "zenless-zone-zero:nicole",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        }
+      ],
+      "score_gaps": [
+        null,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "selected_references": [
+        "wuthering-waves:shorekeeper",
+        "genshin-impact:furina",
+        "genshin-impact:keqing"
+      ],
+      "selected_top_k": 3,
+      "stable_on_repeat": true,
+      "tie_groups": [
+        [
+          "genshin-impact:furina",
+          "genshin-impact:keqing",
+          "genshin-impact:nahida",
+          "neverness-to-everness:fadia",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi",
+          "wuthering-waves:mortefi",
+          "zenless-zone-zero:jane-doe",
+          "zenless-zone-zero:nicole"
+        ]
+      ]
+    },
+    {
+      "brief": "A highly charismatic social connector with low formal authority: persuasive, warm, and influential without office.",
+      "brief_id": "case-k-charisma-low-authority",
+      "category": "K — high social charisma / low formal authority",
+      "component_scores": null,
+      "component_scores_available": false,
+      "dimensions": [
+        "personality",
+        "social identity",
+        "authority"
+      ],
+      "full_ranking": [
+        {
+          "character_name": "Shorekeeper",
+          "rank": 1,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "score": 1,
+          "score_gap_from_previous": null,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Nicole Demara",
+          "rank": 2,
+          "reference_id": "zenless-zone-zero:nicole",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Furina",
+          "rank": 3,
+          "reference_id": "genshin-impact:furina",
+          "score": 0,
+          "score_gap_from_previous": 1,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Keqing",
+          "rank": 4,
+          "reference_id": "genshin-impact:keqing",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Nahida",
+          "rank": 5,
+          "reference_id": "genshin-impact:nahida",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Fadia",
+          "rank": 6,
+          "reference_id": "neverness-to-everness:fadia",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Shinku",
+          "rank": 7,
+          "reference_id": "neverness-to-everness:shinku",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Jinhsi",
+          "rank": 8,
+          "reference_id": "wuthering-waves:jinhsi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Mortefi",
+          "rank": 9,
+          "reference_id": "wuthering-waves:mortefi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Jane Doe",
+          "rank": 10,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        }
+      ],
+      "score_gaps": [
+        null,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "selected_references": [
+        "wuthering-waves:shorekeeper",
+        "zenless-zone-zero:nicole",
+        "genshin-impact:furina"
+      ],
+      "selected_top_k": 3,
+      "stable_on_repeat": true,
+      "tie_groups": [
+        [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole"
+        ],
+        [
+          "genshin-impact:furina",
+          "genshin-impact:keqing",
+          "genshin-impact:nahida",
+          "neverness-to-everness:fadia",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi",
+          "wuthering-waves:mortefi",
+          "zenless-zone-zero:jane-doe"
+        ]
+      ]
+    },
+    {
+      "brief": "A quiet, practical character with a low-spectacle daily identity, patient problem solving, and no theatrical presentation.",
+      "brief_id": "case-l-quiet-practical",
+      "category": "L — quiet practical / low spectacle",
+      "component_scores": null,
+      "component_scores_available": false,
+      "dimensions": [
+        "personality",
+        "occupation",
+        "low spectacle"
+      ],
+      "full_ranking": [
+        {
+          "character_name": "Shorekeeper",
+          "rank": 1,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "score": 1,
+          "score_gap_from_previous": null,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Nicole Demara",
+          "rank": 2,
+          "reference_id": "zenless-zone-zero:nicole",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Furina",
+          "rank": 3,
+          "reference_id": "genshin-impact:furina",
+          "score": 0,
+          "score_gap_from_previous": 1,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Keqing",
+          "rank": 4,
+          "reference_id": "genshin-impact:keqing",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Nahida",
+          "rank": 5,
+          "reference_id": "genshin-impact:nahida",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Fadia",
+          "rank": 6,
+          "reference_id": "neverness-to-everness:fadia",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Shinku",
+          "rank": 7,
+          "reference_id": "neverness-to-everness:shinku",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Jinhsi",
+          "rank": 8,
+          "reference_id": "wuthering-waves:jinhsi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Mortefi",
+          "rank": 9,
+          "reference_id": "wuthering-waves:mortefi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Jane Doe",
+          "rank": 10,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        }
+      ],
+      "score_gaps": [
+        null,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "selected_references": [
+        "wuthering-waves:shorekeeper",
+        "zenless-zone-zero:nicole",
+        "genshin-impact:furina"
+      ],
+      "selected_top_k": 3,
+      "stable_on_repeat": true,
+      "tie_groups": [
+        [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole"
+        ],
+        [
+          "genshin-impact:furina",
+          "genshin-impact:keqing",
+          "genshin-impact:nahida",
+          "neverness-to-everness:fadia",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi",
+          "wuthering-waves:mortefi",
+          "zenless-zone-zero:jane-doe"
+        ]
+      ]
+    },
+    {
+      "brief": "A quiet practical researcher with an on_field_dps combat role.",
+      "brief_id": "contrast-occupation-role-onfield",
+      "category": "Contrast 1 before — same occupation, combat role changes",
+      "component_scores": null,
+      "component_scores_available": false,
+      "dimensions": [
+        "occupation",
+        "combat role"
+      ],
+      "full_ranking": [
+        {
+          "character_name": "Keqing",
+          "rank": 1,
+          "reference_id": "genshin-impact:keqing",
+          "score": 1,
+          "score_gap_from_previous": null,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Shinku",
+          "rank": 2,
+          "reference_id": "neverness-to-everness:shinku",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Jinhsi",
+          "rank": 3,
+          "reference_id": "wuthering-waves:jinhsi",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Mortefi",
+          "rank": 4,
+          "reference_id": "wuthering-waves:mortefi",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Jane Doe",
+          "rank": 5,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Nicole Demara",
+          "rank": 6,
+          "reference_id": "zenless-zone-zero:nicole",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Furina",
+          "rank": 7,
+          "reference_id": "genshin-impact:furina",
+          "score": 0,
+          "score_gap_from_previous": 1,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Nahida",
+          "rank": 8,
+          "reference_id": "genshin-impact:nahida",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Fadia",
+          "rank": 9,
+          "reference_id": "neverness-to-everness:fadia",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Shorekeeper",
+          "rank": 10,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        }
+      ],
+      "score_gaps": [
+        null,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "selected_references": [
+        "genshin-impact:keqing",
+        "neverness-to-everness:shinku",
+        "wuthering-waves:jinhsi"
+      ],
+      "selected_top_k": 3,
+      "stable_on_repeat": true,
+      "tie_groups": [
+        [
+          "genshin-impact:keqing",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi",
+          "wuthering-waves:mortefi",
+          "zenless-zone-zero:jane-doe",
+          "zenless-zone-zero:nicole"
+        ],
+        [
+          "genshin-impact:furina",
+          "genshin-impact:nahida",
+          "neverness-to-everness:fadia",
+          "wuthering-waves:shorekeeper"
+        ]
+      ]
+    },
+    {
+      "brief": "A quiet practical researcher with a support healer combat role.",
+      "brief_id": "contrast-occupation-role-support",
+      "category": "Contrast 1 after — same occupation, combat role changes",
+      "component_scores": null,
+      "component_scores_available": false,
+      "dimensions": [
+        "occupation",
+        "combat role"
+      ],
+      "full_ranking": [
+        {
+          "character_name": "Shorekeeper",
+          "rank": 1,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "score": 2,
+          "score_gap_from_previous": null,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Nicole Demara",
+          "rank": 2,
+          "reference_id": "zenless-zone-zero:nicole",
+          "score": 2,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Shinku",
+          "rank": 3,
+          "reference_id": "neverness-to-everness:shinku",
+          "score": 1,
+          "score_gap_from_previous": 1,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Mortefi",
+          "rank": 4,
+          "reference_id": "wuthering-waves:mortefi",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Furina",
+          "rank": 5,
+          "reference_id": "genshin-impact:furina",
+          "score": 0,
+          "score_gap_from_previous": 1,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Keqing",
+          "rank": 6,
+          "reference_id": "genshin-impact:keqing",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Nahida",
+          "rank": 7,
+          "reference_id": "genshin-impact:nahida",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Fadia",
+          "rank": 8,
+          "reference_id": "neverness-to-everness:fadia",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Jinhsi",
+          "rank": 9,
+          "reference_id": "wuthering-waves:jinhsi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Jane Doe",
+          "rank": 10,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        }
+      ],
+      "score_gaps": [
+        null,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "selected_references": [
+        "wuthering-waves:shorekeeper",
+        "zenless-zone-zero:nicole",
+        "neverness-to-everness:shinku"
+      ],
+      "selected_top_k": 3,
+      "stable_on_repeat": true,
+      "tie_groups": [
+        [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole"
+        ],
+        [
+          "neverness-to-everness:shinku",
+          "wuthering-waves:mortefi"
+        ],
+        [
+          "genshin-impact:furina",
+          "genshin-impact:keqing",
+          "genshin-impact:nahida",
+          "neverness-to-everness:fadia",
+          "wuthering-waves:jinhsi",
+          "zenless-zone-zero:jane-doe"
+        ]
+      ]
+    },
+    {
+      "brief": "An on_field_dps character with a quiet practical personality and restrained daily hook.",
+      "brief_id": "contrast-role-quiet",
+      "category": "Contrast 2 before — same combat role, personality / hook changes",
+      "component_scores": null,
+      "component_scores_available": false,
+      "dimensions": [
+        "combat role",
+        "personality",
+        "hook"
+      ],
+      "full_ranking": [
+        {
+          "character_name": "Keqing",
+          "rank": 1,
+          "reference_id": "genshin-impact:keqing",
+          "score": 1,
+          "score_gap_from_previous": null,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Shinku",
+          "rank": 2,
+          "reference_id": "neverness-to-everness:shinku",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Jinhsi",
+          "rank": 3,
+          "reference_id": "wuthering-waves:jinhsi",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Shorekeeper",
+          "rank": 4,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Jane Doe",
+          "rank": 5,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Nicole Demara",
+          "rank": 6,
+          "reference_id": "zenless-zone-zero:nicole",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Furina",
+          "rank": 7,
+          "reference_id": "genshin-impact:furina",
+          "score": 0,
+          "score_gap_from_previous": 1,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Nahida",
+          "rank": 8,
+          "reference_id": "genshin-impact:nahida",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Fadia",
+          "rank": 9,
+          "reference_id": "neverness-to-everness:fadia",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Mortefi",
+          "rank": 10,
+          "reference_id": "wuthering-waves:mortefi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        }
+      ],
+      "score_gaps": [
+        null,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "selected_references": [
+        "genshin-impact:keqing",
+        "neverness-to-everness:shinku",
+        "wuthering-waves:jinhsi"
+      ],
+      "selected_top_k": 3,
+      "stable_on_repeat": true,
+      "tie_groups": [
+        [
+          "genshin-impact:keqing",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi",
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:jane-doe",
+          "zenless-zone-zero:nicole"
+        ],
+        [
+          "genshin-impact:furina",
+          "genshin-impact:nahida",
+          "neverness-to-everness:fadia",
+          "wuthering-waves:mortefi"
+        ]
+      ]
+    },
+    {
+      "brief": "An on_field_dps character with a flamboyant expressive personality and stage performer hook.",
+      "brief_id": "contrast-role-flamboyant",
+      "category": "Contrast 2 after — same combat role, personality / hook changes",
+      "component_scores": null,
+      "component_scores_available": false,
+      "dimensions": [
+        "combat role",
+        "personality",
+        "hook"
+      ],
+      "full_ranking": [
+        {
+          "character_name": "Keqing",
+          "rank": 1,
+          "reference_id": "genshin-impact:keqing",
+          "score": 1,
+          "score_gap_from_previous": null,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Shinku",
+          "rank": 2,
+          "reference_id": "neverness-to-everness:shinku",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Jinhsi",
+          "rank": 3,
+          "reference_id": "wuthering-waves:jinhsi",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Shorekeeper",
+          "rank": 4,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Jane Doe",
+          "rank": 5,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Nicole Demara",
+          "rank": 6,
+          "reference_id": "zenless-zone-zero:nicole",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Furina",
+          "rank": 7,
+          "reference_id": "genshin-impact:furina",
+          "score": 0,
+          "score_gap_from_previous": 1,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Nahida",
+          "rank": 8,
+          "reference_id": "genshin-impact:nahida",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Fadia",
+          "rank": 9,
+          "reference_id": "neverness-to-everness:fadia",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Mortefi",
+          "rank": 10,
+          "reference_id": "wuthering-waves:mortefi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        }
+      ],
+      "score_gaps": [
+        null,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "selected_references": [
+        "genshin-impact:keqing",
+        "neverness-to-everness:shinku",
+        "wuthering-waves:jinhsi"
+      ],
+      "selected_top_k": 3,
+      "stable_on_repeat": true,
+      "tie_groups": [
+        [
+          "genshin-impact:keqing",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi",
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:jane-doe",
+          "zenless-zone-zero:nicole"
+        ],
+        [
+          "genshin-impact:furina",
+          "genshin-impact:nahida",
+          "neverness-to-everness:fadia",
+          "wuthering-waves:mortefi"
+        ]
+      ]
+    },
+    {
+      "brief": "A quiet practical researcher with a low-spectacle daily identity.",
+      "brief_id": "contrast-personality-researcher",
+      "category": "Contrast 3 before — same personality, occupation changes",
+      "component_scores": null,
+      "component_scores_available": false,
+      "dimensions": [
+        "personality",
+        "occupation"
+      ],
+      "full_ranking": [
+        {
+          "character_name": "Mortefi",
+          "rank": 1,
+          "reference_id": "wuthering-waves:mortefi",
+          "score": 1,
+          "score_gap_from_previous": null,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Nicole Demara",
+          "rank": 2,
+          "reference_id": "zenless-zone-zero:nicole",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Furina",
+          "rank": 3,
+          "reference_id": "genshin-impact:furina",
+          "score": 0,
+          "score_gap_from_previous": 1,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Keqing",
+          "rank": 4,
+          "reference_id": "genshin-impact:keqing",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Nahida",
+          "rank": 5,
+          "reference_id": "genshin-impact:nahida",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Fadia",
+          "rank": 6,
+          "reference_id": "neverness-to-everness:fadia",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Shinku",
+          "rank": 7,
+          "reference_id": "neverness-to-everness:shinku",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Jinhsi",
+          "rank": 8,
+          "reference_id": "wuthering-waves:jinhsi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Shorekeeper",
+          "rank": 9,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Jane Doe",
+          "rank": 10,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        }
+      ],
+      "score_gaps": [
+        null,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "selected_references": [
+        "wuthering-waves:mortefi",
+        "zenless-zone-zero:nicole",
+        "genshin-impact:furina"
+      ],
+      "selected_top_k": 3,
+      "stable_on_repeat": true,
+      "tie_groups": [
+        [
+          "wuthering-waves:mortefi",
+          "zenless-zone-zero:nicole"
+        ],
+        [
+          "genshin-impact:furina",
+          "genshin-impact:keqing",
+          "genshin-impact:nahida",
+          "neverness-to-everness:fadia",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi",
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:jane-doe"
+        ]
+      ]
+    },
+    {
+      "brief": "A quiet practical magistrate with a low-spectacle daily identity.",
+      "brief_id": "contrast-personality-magistrate",
+      "category": "Contrast 3 after — same personality, occupation changes",
+      "component_scores": null,
+      "component_scores_available": false,
+      "dimensions": [
+        "personality",
+        "occupation"
+      ],
+      "full_ranking": [
+        {
+          "character_name": "Jinhsi",
+          "rank": 1,
+          "reference_id": "wuthering-waves:jinhsi",
+          "score": 1,
+          "score_gap_from_previous": null,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Nicole Demara",
+          "rank": 2,
+          "reference_id": "zenless-zone-zero:nicole",
+          "score": 1,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        },
+        {
+          "character_name": "Furina",
+          "rank": 3,
+          "reference_id": "genshin-impact:furina",
+          "score": 0,
+          "score_gap_from_previous": 1,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Keqing",
+          "rank": 4,
+          "reference_id": "genshin-impact:keqing",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Nahida",
+          "rank": 5,
+          "reference_id": "genshin-impact:nahida",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "genshin-impact"
+        },
+        {
+          "character_name": "Fadia",
+          "rank": 6,
+          "reference_id": "neverness-to-everness:fadia",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Shinku",
+          "rank": 7,
+          "reference_id": "neverness-to-everness:shinku",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "neverness-to-everness"
+        },
+        {
+          "character_name": "Mortefi",
+          "rank": 8,
+          "reference_id": "wuthering-waves:mortefi",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Shorekeeper",
+          "rank": 9,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "wuthering-waves"
+        },
+        {
+          "character_name": "Jane Doe",
+          "rank": 10,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "score": 0,
+          "score_gap_from_previous": 0,
+          "source_game": "zenless-zone-zero"
+        }
+      ],
+      "score_gaps": [
+        null,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "selected_references": [
+        "wuthering-waves:jinhsi",
+        "zenless-zone-zero:nicole",
+        "genshin-impact:furina"
+      ],
+      "selected_top_k": 3,
+      "stable_on_repeat": true,
+      "tie_groups": [
+        [
+          "wuthering-waves:jinhsi",
+          "zenless-zone-zero:nicole"
+        ],
+        [
+          "genshin-impact:furina",
+          "genshin-impact:keqing",
+          "genshin-impact:nahida",
+          "neverness-to-everness:fadia",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:mortefi",
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:jane-doe"
+        ]
+      ]
+    }
+  ],
+  "classification": "LIMITED_SENSITIVITY",
+  "classification_reasons": [
+    "several requested semantic dimensions have no selector-visible corpus representation",
+    "at least one counterfactual changes scores or ranks"
+  ],
+  "contrast_pairs": [
+    {
+      "after": {
+        "brief": "A quiet practical researcher with a support healer combat role.",
+        "brief_id": "contrast-occupation-role-support",
+        "category": "Contrast 1 after — same occupation, combat role changes",
+        "component_scores": null,
+        "component_scores_available": false,
+        "dimensions": [
+          "occupation",
+          "combat role"
+        ],
+        "full_ranking": [
+          {
+            "character_name": "Shorekeeper",
+            "rank": 1,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score": 2,
+            "score_gap_from_previous": null,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Nicole Demara",
+            "rank": 2,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score": 2,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          },
+          {
+            "character_name": "Shinku",
+            "rank": 3,
+            "reference_id": "neverness-to-everness:shinku",
+            "score": 1,
+            "score_gap_from_previous": 1,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Mortefi",
+            "rank": 4,
+            "reference_id": "wuthering-waves:mortefi",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Furina",
+            "rank": 5,
+            "reference_id": "genshin-impact:furina",
+            "score": 0,
+            "score_gap_from_previous": 1,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Keqing",
+            "rank": 6,
+            "reference_id": "genshin-impact:keqing",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Nahida",
+            "rank": 7,
+            "reference_id": "genshin-impact:nahida",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Fadia",
+            "rank": 8,
+            "reference_id": "neverness-to-everness:fadia",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Jinhsi",
+            "rank": 9,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank": 10,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          }
+        ],
+        "score_gaps": [
+          null,
+          0,
+          1,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "selected_references": [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole",
+          "neverness-to-everness:shinku"
+        ],
+        "selected_top_k": 3,
+        "stable_on_repeat": true,
+        "tie_groups": [
+          [
+            "wuthering-waves:shorekeeper",
+            "zenless-zone-zero:nicole"
+          ],
+          [
+            "neverness-to-everness:shinku",
+            "wuthering-waves:mortefi"
+          ],
+          [
+            "genshin-impact:furina",
+            "genshin-impact:keqing",
+            "genshin-impact:nahida",
+            "neverness-to-everness:fadia",
+            "wuthering-waves:jinhsi",
+            "zenless-zone-zero:jane-doe"
+          ]
+        ]
+      },
+      "after_brief_id": "contrast-occupation-role-support",
+      "before": {
+        "brief": "A quiet practical researcher with an on_field_dps combat role.",
+        "brief_id": "contrast-occupation-role-onfield",
+        "category": "Contrast 1 before — same occupation, combat role changes",
+        "component_scores": null,
+        "component_scores_available": false,
+        "dimensions": [
+          "occupation",
+          "combat role"
+        ],
+        "full_ranking": [
+          {
+            "character_name": "Keqing",
+            "rank": 1,
+            "reference_id": "genshin-impact:keqing",
+            "score": 1,
+            "score_gap_from_previous": null,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Shinku",
+            "rank": 2,
+            "reference_id": "neverness-to-everness:shinku",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Jinhsi",
+            "rank": 3,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Mortefi",
+            "rank": 4,
+            "reference_id": "wuthering-waves:mortefi",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank": 5,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          },
+          {
+            "character_name": "Nicole Demara",
+            "rank": 6,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          },
+          {
+            "character_name": "Furina",
+            "rank": 7,
+            "reference_id": "genshin-impact:furina",
+            "score": 0,
+            "score_gap_from_previous": 1,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Nahida",
+            "rank": 8,
+            "reference_id": "genshin-impact:nahida",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Fadia",
+            "rank": 9,
+            "reference_id": "neverness-to-everness:fadia",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank": 10,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          }
+        ],
+        "score_gaps": [
+          null,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0
+        ],
+        "selected_references": [
+          "genshin-impact:keqing",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi"
+        ],
+        "selected_top_k": 3,
+        "stable_on_repeat": true,
+        "tie_groups": [
+          [
+            "genshin-impact:keqing",
+            "neverness-to-everness:shinku",
+            "wuthering-waves:jinhsi",
+            "wuthering-waves:mortefi",
+            "zenless-zone-zero:jane-doe",
+            "zenless-zone-zero:nicole"
+          ],
+          [
+            "genshin-impact:furina",
+            "genshin-impact:nahida",
+            "neverness-to-everness:fadia",
+            "wuthering-waves:shorekeeper"
+          ]
+        ]
+      },
+      "before_brief_id": "contrast-occupation-role-onfield",
+      "delta": {
+        "candidates": [
+          {
+            "character_name": "Furina",
+            "rank_after": 5,
+            "rank_before": 7,
+            "rank_delta": -2,
+            "reference_id": "genshin-impact:furina",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Keqing",
+            "rank_after": 6,
+            "rank_before": 1,
+            "rank_delta": 5,
+            "reference_id": "genshin-impact:keqing",
+            "score_after": 0,
+            "score_before": 1,
+            "score_delta": -1
+          },
+          {
+            "character_name": "Nahida",
+            "rank_after": 7,
+            "rank_before": 8,
+            "rank_delta": -1,
+            "reference_id": "genshin-impact:nahida",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Fadia",
+            "rank_after": 8,
+            "rank_before": 9,
+            "rank_delta": -1,
+            "reference_id": "neverness-to-everness:fadia",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Shinku",
+            "rank_after": 3,
+            "rank_before": 2,
+            "rank_delta": 1,
+            "reference_id": "neverness-to-everness:shinku",
+            "score_after": 1,
+            "score_before": 1,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Jinhsi",
+            "rank_after": 9,
+            "rank_before": 3,
+            "rank_delta": 6,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score_after": 0,
+            "score_before": 1,
+            "score_delta": -1
+          },
+          {
+            "character_name": "Mortefi",
+            "rank_after": 4,
+            "rank_before": 4,
+            "rank_delta": 0,
+            "reference_id": "wuthering-waves:mortefi",
+            "score_after": 1,
+            "score_before": 1,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank_after": 1,
+            "rank_before": 10,
+            "rank_delta": -9,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score_after": 2,
+            "score_before": 0,
+            "score_delta": 2
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank_after": 10,
+            "rank_before": 5,
+            "rank_delta": 5,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score_after": 0,
+            "score_before": 1,
+            "score_delta": -1
+          },
+          {
+            "character_name": "Nicole Demara",
+            "rank_after": 2,
+            "rank_before": 6,
+            "rank_delta": -4,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score_after": 2,
+            "score_before": 1,
+            "score_delta": 1
+          }
+        ],
+        "changed_candidate_count": 9,
+        "mean_absolute_rank_delta": 3.4,
+        "selected_overlap_jaccard": 0.2
+      },
+      "dimension": "combat role",
+      "pair_id": "pair-1-occupation-combat-role"
+    },
+    {
+      "after": {
+        "brief": "An on_field_dps character with a flamboyant expressive personality and stage performer hook.",
+        "brief_id": "contrast-role-flamboyant",
+        "category": "Contrast 2 after — same combat role, personality / hook changes",
+        "component_scores": null,
+        "component_scores_available": false,
+        "dimensions": [
+          "combat role",
+          "personality",
+          "hook"
+        ],
+        "full_ranking": [
+          {
+            "character_name": "Keqing",
+            "rank": 1,
+            "reference_id": "genshin-impact:keqing",
+            "score": 1,
+            "score_gap_from_previous": null,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Shinku",
+            "rank": 2,
+            "reference_id": "neverness-to-everness:shinku",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Jinhsi",
+            "rank": 3,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank": 4,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank": 5,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          },
+          {
+            "character_name": "Nicole Demara",
+            "rank": 6,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          },
+          {
+            "character_name": "Furina",
+            "rank": 7,
+            "reference_id": "genshin-impact:furina",
+            "score": 0,
+            "score_gap_from_previous": 1,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Nahida",
+            "rank": 8,
+            "reference_id": "genshin-impact:nahida",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Fadia",
+            "rank": 9,
+            "reference_id": "neverness-to-everness:fadia",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Mortefi",
+            "rank": 10,
+            "reference_id": "wuthering-waves:mortefi",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          }
+        ],
+        "score_gaps": [
+          null,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0
+        ],
+        "selected_references": [
+          "genshin-impact:keqing",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi"
+        ],
+        "selected_top_k": 3,
+        "stable_on_repeat": true,
+        "tie_groups": [
+          [
+            "genshin-impact:keqing",
+            "neverness-to-everness:shinku",
+            "wuthering-waves:jinhsi",
+            "wuthering-waves:shorekeeper",
+            "zenless-zone-zero:jane-doe",
+            "zenless-zone-zero:nicole"
+          ],
+          [
+            "genshin-impact:furina",
+            "genshin-impact:nahida",
+            "neverness-to-everness:fadia",
+            "wuthering-waves:mortefi"
+          ]
+        ]
+      },
+      "after_brief_id": "contrast-role-flamboyant",
+      "before": {
+        "brief": "An on_field_dps character with a quiet practical personality and restrained daily hook.",
+        "brief_id": "contrast-role-quiet",
+        "category": "Contrast 2 before — same combat role, personality / hook changes",
+        "component_scores": null,
+        "component_scores_available": false,
+        "dimensions": [
+          "combat role",
+          "personality",
+          "hook"
+        ],
+        "full_ranking": [
+          {
+            "character_name": "Keqing",
+            "rank": 1,
+            "reference_id": "genshin-impact:keqing",
+            "score": 1,
+            "score_gap_from_previous": null,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Shinku",
+            "rank": 2,
+            "reference_id": "neverness-to-everness:shinku",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Jinhsi",
+            "rank": 3,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank": 4,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank": 5,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          },
+          {
+            "character_name": "Nicole Demara",
+            "rank": 6,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          },
+          {
+            "character_name": "Furina",
+            "rank": 7,
+            "reference_id": "genshin-impact:furina",
+            "score": 0,
+            "score_gap_from_previous": 1,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Nahida",
+            "rank": 8,
+            "reference_id": "genshin-impact:nahida",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Fadia",
+            "rank": 9,
+            "reference_id": "neverness-to-everness:fadia",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Mortefi",
+            "rank": 10,
+            "reference_id": "wuthering-waves:mortefi",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          }
+        ],
+        "score_gaps": [
+          null,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0
+        ],
+        "selected_references": [
+          "genshin-impact:keqing",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi"
+        ],
+        "selected_top_k": 3,
+        "stable_on_repeat": true,
+        "tie_groups": [
+          [
+            "genshin-impact:keqing",
+            "neverness-to-everness:shinku",
+            "wuthering-waves:jinhsi",
+            "wuthering-waves:shorekeeper",
+            "zenless-zone-zero:jane-doe",
+            "zenless-zone-zero:nicole"
+          ],
+          [
+            "genshin-impact:furina",
+            "genshin-impact:nahida",
+            "neverness-to-everness:fadia",
+            "wuthering-waves:mortefi"
+          ]
+        ]
+      },
+      "before_brief_id": "contrast-role-quiet",
+      "delta": {
+        "candidates": [
+          {
+            "character_name": "Furina",
+            "rank_after": 7,
+            "rank_before": 7,
+            "rank_delta": 0,
+            "reference_id": "genshin-impact:furina",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Keqing",
+            "rank_after": 1,
+            "rank_before": 1,
+            "rank_delta": 0,
+            "reference_id": "genshin-impact:keqing",
+            "score_after": 1,
+            "score_before": 1,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Nahida",
+            "rank_after": 8,
+            "rank_before": 8,
+            "rank_delta": 0,
+            "reference_id": "genshin-impact:nahida",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Fadia",
+            "rank_after": 9,
+            "rank_before": 9,
+            "rank_delta": 0,
+            "reference_id": "neverness-to-everness:fadia",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Shinku",
+            "rank_after": 2,
+            "rank_before": 2,
+            "rank_delta": 0,
+            "reference_id": "neverness-to-everness:shinku",
+            "score_after": 1,
+            "score_before": 1,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Jinhsi",
+            "rank_after": 3,
+            "rank_before": 3,
+            "rank_delta": 0,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score_after": 1,
+            "score_before": 1,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Mortefi",
+            "rank_after": 10,
+            "rank_before": 10,
+            "rank_delta": 0,
+            "reference_id": "wuthering-waves:mortefi",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank_after": 4,
+            "rank_before": 4,
+            "rank_delta": 0,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score_after": 1,
+            "score_before": 1,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank_after": 5,
+            "rank_before": 5,
+            "rank_delta": 0,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score_after": 1,
+            "score_before": 1,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Nicole Demara",
+            "rank_after": 6,
+            "rank_before": 6,
+            "rank_delta": 0,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score_after": 1,
+            "score_before": 1,
+            "score_delta": 0
+          }
+        ],
+        "changed_candidate_count": 0,
+        "mean_absolute_rank_delta": 0.0,
+        "selected_overlap_jaccard": 1.0
+      },
+      "dimension": "personality / character hook",
+      "pair_id": "pair-2-combat-role-personality-hook"
+    },
+    {
+      "after": {
+        "brief": "A quiet practical magistrate with a low-spectacle daily identity.",
+        "brief_id": "contrast-personality-magistrate",
+        "category": "Contrast 3 after — same personality, occupation changes",
+        "component_scores": null,
+        "component_scores_available": false,
+        "dimensions": [
+          "personality",
+          "occupation"
+        ],
+        "full_ranking": [
+          {
+            "character_name": "Jinhsi",
+            "rank": 1,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score": 1,
+            "score_gap_from_previous": null,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Nicole Demara",
+            "rank": 2,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          },
+          {
+            "character_name": "Furina",
+            "rank": 3,
+            "reference_id": "genshin-impact:furina",
+            "score": 0,
+            "score_gap_from_previous": 1,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Keqing",
+            "rank": 4,
+            "reference_id": "genshin-impact:keqing",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Nahida",
+            "rank": 5,
+            "reference_id": "genshin-impact:nahida",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Fadia",
+            "rank": 6,
+            "reference_id": "neverness-to-everness:fadia",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Shinku",
+            "rank": 7,
+            "reference_id": "neverness-to-everness:shinku",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Mortefi",
+            "rank": 8,
+            "reference_id": "wuthering-waves:mortefi",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank": 9,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank": 10,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          }
+        ],
+        "score_gaps": [
+          null,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "selected_references": [
+          "wuthering-waves:jinhsi",
+          "zenless-zone-zero:nicole",
+          "genshin-impact:furina"
+        ],
+        "selected_top_k": 3,
+        "stable_on_repeat": true,
+        "tie_groups": [
+          [
+            "wuthering-waves:jinhsi",
+            "zenless-zone-zero:nicole"
+          ],
+          [
+            "genshin-impact:furina",
+            "genshin-impact:keqing",
+            "genshin-impact:nahida",
+            "neverness-to-everness:fadia",
+            "neverness-to-everness:shinku",
+            "wuthering-waves:mortefi",
+            "wuthering-waves:shorekeeper",
+            "zenless-zone-zero:jane-doe"
+          ]
+        ]
+      },
+      "after_brief_id": "contrast-personality-magistrate",
+      "before": {
+        "brief": "A quiet practical researcher with a low-spectacle daily identity.",
+        "brief_id": "contrast-personality-researcher",
+        "category": "Contrast 3 before — same personality, occupation changes",
+        "component_scores": null,
+        "component_scores_available": false,
+        "dimensions": [
+          "personality",
+          "occupation"
+        ],
+        "full_ranking": [
+          {
+            "character_name": "Mortefi",
+            "rank": 1,
+            "reference_id": "wuthering-waves:mortefi",
+            "score": 1,
+            "score_gap_from_previous": null,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Nicole Demara",
+            "rank": 2,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          },
+          {
+            "character_name": "Furina",
+            "rank": 3,
+            "reference_id": "genshin-impact:furina",
+            "score": 0,
+            "score_gap_from_previous": 1,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Keqing",
+            "rank": 4,
+            "reference_id": "genshin-impact:keqing",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Nahida",
+            "rank": 5,
+            "reference_id": "genshin-impact:nahida",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Fadia",
+            "rank": 6,
+            "reference_id": "neverness-to-everness:fadia",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Shinku",
+            "rank": 7,
+            "reference_id": "neverness-to-everness:shinku",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Jinhsi",
+            "rank": 8,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank": 9,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank": 10,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          }
+        ],
+        "score_gaps": [
+          null,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "selected_references": [
+          "wuthering-waves:mortefi",
+          "zenless-zone-zero:nicole",
+          "genshin-impact:furina"
+        ],
+        "selected_top_k": 3,
+        "stable_on_repeat": true,
+        "tie_groups": [
+          [
+            "wuthering-waves:mortefi",
+            "zenless-zone-zero:nicole"
+          ],
+          [
+            "genshin-impact:furina",
+            "genshin-impact:keqing",
+            "genshin-impact:nahida",
+            "neverness-to-everness:fadia",
+            "neverness-to-everness:shinku",
+            "wuthering-waves:jinhsi",
+            "wuthering-waves:shorekeeper",
+            "zenless-zone-zero:jane-doe"
+          ]
+        ]
+      },
+      "before_brief_id": "contrast-personality-researcher",
+      "delta": {
+        "candidates": [
+          {
+            "character_name": "Furina",
+            "rank_after": 3,
+            "rank_before": 3,
+            "rank_delta": 0,
+            "reference_id": "genshin-impact:furina",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Keqing",
+            "rank_after": 4,
+            "rank_before": 4,
+            "rank_delta": 0,
+            "reference_id": "genshin-impact:keqing",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Nahida",
+            "rank_after": 5,
+            "rank_before": 5,
+            "rank_delta": 0,
+            "reference_id": "genshin-impact:nahida",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Fadia",
+            "rank_after": 6,
+            "rank_before": 6,
+            "rank_delta": 0,
+            "reference_id": "neverness-to-everness:fadia",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Shinku",
+            "rank_after": 7,
+            "rank_before": 7,
+            "rank_delta": 0,
+            "reference_id": "neverness-to-everness:shinku",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Jinhsi",
+            "rank_after": 1,
+            "rank_before": 8,
+            "rank_delta": -7,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score_after": 1,
+            "score_before": 0,
+            "score_delta": 1
+          },
+          {
+            "character_name": "Mortefi",
+            "rank_after": 8,
+            "rank_before": 1,
+            "rank_delta": 7,
+            "reference_id": "wuthering-waves:mortefi",
+            "score_after": 0,
+            "score_before": 1,
+            "score_delta": -1
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank_after": 9,
+            "rank_before": 9,
+            "rank_delta": 0,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank_after": 10,
+            "rank_before": 10,
+            "rank_delta": 0,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Nicole Demara",
+            "rank_after": 2,
+            "rank_before": 2,
+            "rank_delta": 0,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score_after": 1,
+            "score_before": 1,
+            "score_delta": 0
+          }
+        ],
+        "changed_candidate_count": 2,
+        "mean_absolute_rank_delta": 1.4,
+        "selected_overlap_jaccard": 0.5
+      },
+      "dimension": "occupation",
+      "pair_id": "pair-3-personality-occupation"
+    }
+  ],
+  "corpus_audit": {
+    "component_score_fields": [],
+    "field_coverage_counts": {
+      "ability_categories": 10,
+      "occupation": 6,
+      "roles": 5,
+      "taxonomy": 10
+    },
+    "not_exposed_as_selector_metadata": [
+      "personality tags",
+      "life-stage / age",
+      "character hook",
+      "detail granularity"
+    ],
+    "records": [
+      {
+        "ability_category": [
+          "Normal Attack",
+          "Elemental Skill",
+          "Elemental Burst",
+          "1st Ascension Passive",
+          "4th Ascension Passive",
+          "Utility Passive"
+        ],
+        "character_name": "Furina",
+        "detail_granularity": null,
+        "missing_selector_visible_fields": [
+          "roles",
+          "occupation"
+        ],
+        "other_selector_visible_fields": {
+          "occupation": null,
+          "taxonomy": {
+            "element": "Hydro",
+            "rarity": "5-star",
+            "weapon_type": "Sword"
+          }
+        },
+        "personality_tags": null,
+        "primary_role_or_category": [],
+        "reference_id": "genshin-impact:furina",
+        "source_game": "genshin-impact"
+      },
+      {
+        "ability_category": [
+          "Normal Attack",
+          "Elemental Skill",
+          "Elemental Burst",
+          "1st Ascension Passive",
+          "4th Ascension Passive",
+          "Utility Passive"
+        ],
+        "character_name": "Keqing",
+        "detail_granularity": null,
+        "missing_selector_visible_fields": [],
+        "other_selector_visible_fields": {
+          "occupation": "Yuheng",
+          "taxonomy": {
+            "element": "Electro",
+            "rarity": "5-star",
+            "weapon_type": "Sword"
+          }
+        },
+        "personality_tags": null,
+        "primary_role_or_category": [
+          "on_field_dps"
+        ],
+        "reference_id": "genshin-impact:keqing",
+        "source_game": "genshin-impact"
+      },
+      {
+        "ability_category": [
+          "Normal Attack",
+          "Elemental Skill",
+          "Elemental Burst",
+          "1st Ascension Passive",
+          "4th Ascension Passive",
+          "Utility Passive"
+        ],
+        "character_name": "Nahida",
+        "detail_granularity": null,
+        "missing_selector_visible_fields": [
+          "roles"
+        ],
+        "other_selector_visible_fields": {
+          "occupation": "Dendro Archon of Sumeru",
+          "taxonomy": {
+            "element": "Dendro",
+            "rarity": "5-star",
+            "weapon_type": "Catalyst"
+          }
+        },
+        "personality_tags": null,
+        "primary_role_or_category": [],
+        "reference_id": "genshin-impact:nahida",
+        "source_game": "genshin-impact"
+      },
+      {
+        "ability_category": [
+          "Basic Attack",
+          "Basic Passive",
+          "Charged Basic",
+          "Dodge Counter Basic",
+          "Redirect Skill",
+          "Ultimate"
+        ],
+        "character_name": "Fadia",
+        "detail_granularity": null,
+        "missing_selector_visible_fields": [
+          "roles",
+          "occupation"
+        ],
+        "other_selector_visible_fields": {
+          "occupation": null,
+          "taxonomy": {
+            "arc_type": "Synthesis",
+            "esper_type": "Psyche",
+            "rank": "S-Class"
+          }
+        },
+        "personality_tags": null,
+        "primary_role_or_category": [],
+        "reference_id": "neverness-to-everness:fadia",
+        "source_game": "neverness-to-everness"
+      },
+      {
+        "ability_category": [
+          "Basic Attack",
+          "Redirect Skill",
+          "Ultimate",
+          "Support Skill",
+          "Passive",
+          "Special Trait"
+        ],
+        "character_name": "Shinku",
+        "detail_granularity": null,
+        "missing_selector_visible_fields": [
+          "occupation"
+        ],
+        "other_selector_visible_fields": {
+          "occupation": null,
+          "taxonomy": {
+            "arc_type": "Synthesis",
+            "esper_type": "Cosmos",
+            "rank": "S-Class",
+            "signature_arc": "Blushing Mirage"
+          }
+        },
+        "personality_tags": null,
+        "primary_role_or_category": [
+          "on_field_dps"
+        ],
+        "reference_id": "neverness-to-everness:shinku",
+        "source_game": "neverness-to-everness"
+      },
+      {
+        "ability_category": [
+          "Normal Attack",
+          "Resonance Skill",
+          "Resonance Skill",
+          "Resonance Liberation",
+          "Inherent Skill",
+          "Inherent Skill"
+        ],
+        "character_name": "Jinhsi",
+        "detail_granularity": null,
+        "missing_selector_visible_fields": [],
+        "other_selector_visible_fields": {
+          "occupation": "Magistrate of Jinzhou",
+          "taxonomy": {
+            "attribute": "Spectro",
+            "rarity": "5-star",
+            "weapon_type": "Broadblade"
+          }
+        },
+        "personality_tags": null,
+        "primary_role_or_category": [
+          "on_field_dps"
+        ],
+        "reference_id": "wuthering-waves:jinhsi",
+        "source_game": "wuthering-waves"
+      },
+      {
+        "ability_category": [
+          "Normal Attack",
+          "Resonance Skill",
+          "Resonance Liberation",
+          "Forte Circuit",
+          "Intro Skill",
+          "Inherent Skill"
+        ],
+        "character_name": "Mortefi",
+        "detail_granularity": null,
+        "missing_selector_visible_fields": [
+          "roles"
+        ],
+        "other_selector_visible_fields": {
+          "occupation": "Researcher — expert in Applied Tacetite Study",
+          "taxonomy": {
+            "attribute": "Fusion",
+            "rarity": "4-star",
+            "weapon_type": "Pistols"
+          }
+        },
+        "personality_tags": null,
+        "primary_role_or_category": [],
+        "reference_id": "wuthering-waves:mortefi",
+        "source_game": "wuthering-waves"
+      },
+      {
+        "ability_category": [
+          "Normal Attack",
+          "Resonance Skill",
+          "Resonance Liberation",
+          "Forte Circuit",
+          "Intro Skill",
+          "Outro Skill"
+        ],
+        "character_name": "Shorekeeper",
+        "detail_granularity": null,
+        "missing_selector_visible_fields": [],
+        "other_selector_visible_fields": {
+          "occupation": "Guardian of the Black Shores",
+          "taxonomy": {
+            "attribute": "Spectro",
+            "combat_roles": [
+              "Support and Healer",
+              "Traction",
+              "DMG Amplification"
+            ],
+            "rarity": "5-star",
+            "weapon_type": "Rectifier"
+          }
+        },
+        "personality_tags": null,
+        "primary_role_or_category": [
+          "['Support and Healer', 'Traction', 'DMG Amplification']"
+        ],
+        "reference_id": "wuthering-waves:shorekeeper",
+        "source_game": "wuthering-waves"
+      },
+      {
+        "ability_category": [
+          "Basic Attack",
+          "Dodge",
+          "Assist",
+          "Special Attack",
+          "Chain Attack",
+          "Ultimate"
+        ],
+        "character_name": "Jane Doe",
+        "detail_granularity": null,
+        "missing_selector_visible_fields": [
+          "occupation"
+        ],
+        "other_selector_visible_fields": {
+          "occupation": null,
+          "taxonomy": {
+            "attribute": "Physical",
+            "faction": "Public Security - Criminal Investigation Special Response Team",
+            "rank": "S",
+            "specialty": "Anomaly"
+          }
+        },
+        "personality_tags": null,
+        "primary_role_or_category": [
+          "on_field_dps"
+        ],
+        "reference_id": "zenless-zone-zero:jane-doe",
+        "source_game": "zenless-zone-zero"
+      },
+      {
+        "ability_category": [
+          "Basic Attack",
+          "Dodge",
+          "Assist",
+          "Special Attack",
+          "EX Special Attack",
+          "Chain Attack"
+        ],
+        "character_name": "Nicole Demara",
+        "detail_granularity": null,
+        "missing_selector_visible_fields": [
+          "roles"
+        ],
+        "other_selector_visible_fields": {
+          "occupation": "Leader of the odd-job agency Cunning Hares",
+          "taxonomy": {
+            "attribute": "Ether",
+            "faction": "Cunning Hares",
+            "rank": "A",
+            "specialty": "Support"
+          }
+        },
+        "personality_tags": null,
+        "primary_role_or_category": [],
+        "reference_id": "zenless-zone-zero:nicole",
+        "source_game": "zenless-zone-zero"
+      }
+    ],
+    "selector_visible_fields": [
+      "reference_id",
+      "display_name",
+      "game_id",
+      "roles (analysis or taxonomy role labels)",
+      "occupation",
+      "ability_categories",
+      "taxonomy"
+    ]
+  },
+  "corpus_coverage": {
+    "frontline_role": {
+      "matching_reference_ids": [
+        "genshin-impact:keqing",
+        "neverness-to-everness:shinku",
+        "wuthering-waves:jinhsi",
+        "zenless-zone-zero:jane-doe"
+      ],
+      "selector_visible_terms": [
+        "on_field_dps"
+      ],
+      "status": "PARTIAL"
+    },
+    "high_charisma": {
+      "matching_reference_ids": [],
+      "selector_visible_terms": [
+        "charisma"
+      ],
+      "status": "NOT REPRESENTED"
+    },
+    "investigator": {
+      "matching_reference_ids": [
+        "zenless-zone-zero:jane-doe"
+      ],
+      "selector_visible_terms": [
+        "investigation",
+        "investigator"
+      ],
+      "status": "COVERED"
+    },
+    "mature_character": {
+      "matching_reference_ids": [],
+      "selector_visible_terms": [
+        "mature",
+        "adult"
+      ],
+      "status": "NOT REPRESENTED"
+    },
+    "ordinary_worker": {
+      "matching_reference_ids": [],
+      "selector_visible_terms": [
+        "worker",
+        "repair",
+        "courier"
+      ],
+      "status": "NOT REPRESENTED"
+    },
+    "performer": {
+      "matching_reference_ids": [],
+      "selector_visible_terms": [
+        "performer",
+        "stage"
+      ],
+      "status": "NOT REPRESENTED"
+    },
+    "support": {
+      "matching_reference_ids": [
+        "neverness-to-everness:shinku",
+        "wuthering-waves:shorekeeper",
+        "zenless-zone-zero:nicole"
+      ],
+      "selector_visible_terms": [
+        "support",
+        "healer"
+      ],
+      "status": "COVERED"
+    },
+    "young_age_ambiguous": {
+      "matching_reference_ids": [],
+      "selector_visible_terms": [
+        "young",
+        "youth",
+        "age-ambiguous"
+      ],
+      "status": "NOT REPRESENTED"
+    }
+  },
+  "corpus_order_test": {
+    "baseline_full_ranking": [
+      "neverness-to-everness:shinku",
+      "wuthering-waves:mortefi",
+      "wuthering-waves:shorekeeper",
+      "zenless-zone-zero:nicole",
+      "genshin-impact:furina",
+      "genshin-impact:keqing",
+      "genshin-impact:nahida",
+      "neverness-to-everness:fadia",
+      "wuthering-waves:jinhsi",
+      "zenless-zone-zero:jane-doe"
+    ],
+    "baseline_selected": [
+      "neverness-to-everness:shinku",
+      "wuthering-waves:mortefi",
+      "wuthering-waves:shorekeeper"
+    ],
+    "brief": "An ordinary urban support character working in an appliance repair shop: maintenance, troubleshooting, practical community service.",
+    "impact": "none",
+    "result": "ORDER_INDEPENDENT",
+    "reversed_full_ranking": [
+      "neverness-to-everness:shinku",
+      "wuthering-waves:mortefi",
+      "wuthering-waves:shorekeeper",
+      "zenless-zone-zero:nicole",
+      "genshin-impact:furina",
+      "genshin-impact:keqing",
+      "genshin-impact:nahida",
+      "neverness-to-everness:fadia",
+      "wuthering-waves:jinhsi",
+      "zenless-zone-zero:jane-doe"
+    ],
+    "reversed_selected": [
+      "neverness-to-everness:shinku",
+      "wuthering-waves:mortefi",
+      "wuthering-waves:shorekeeper"
+    ],
+    "tie_breaking": "ascending reference_id after descending score"
+  },
+  "corpus_version": "character-reference-corpus/0.1",
+  "counterfactuals": [
+    {
+      "after": "An ordinary character with a control role.",
+      "after_result": {
+        "brief": "An ordinary character with a control role.",
+        "brief_id": "counterfactual-support-to-control-after",
+        "category": "role / ability fantasy",
+        "component_scores": null,
+        "component_scores_available": false,
+        "dimensions": [
+          "role / ability fantasy"
+        ],
+        "full_ranking": [
+          {
+            "character_name": "Nicole Demara",
+            "rank": 1,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score": 1,
+            "score_gap_from_previous": null,
+            "source_game": "zenless-zone-zero"
+          },
+          {
+            "character_name": "Furina",
+            "rank": 2,
+            "reference_id": "genshin-impact:furina",
+            "score": 0,
+            "score_gap_from_previous": 1,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Keqing",
+            "rank": 3,
+            "reference_id": "genshin-impact:keqing",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Nahida",
+            "rank": 4,
+            "reference_id": "genshin-impact:nahida",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Fadia",
+            "rank": 5,
+            "reference_id": "neverness-to-everness:fadia",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Shinku",
+            "rank": 6,
+            "reference_id": "neverness-to-everness:shinku",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Jinhsi",
+            "rank": 7,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Mortefi",
+            "rank": 8,
+            "reference_id": "wuthering-waves:mortefi",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank": 9,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank": 10,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          }
+        ],
+        "score_gaps": [
+          null,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "selected_references": [
+          "zenless-zone-zero:nicole",
+          "genshin-impact:furina",
+          "genshin-impact:keqing"
+        ],
+        "selected_top_k": 3,
+        "stable_on_repeat": true,
+        "tie_groups": [
+          [
+            "genshin-impact:furina",
+            "genshin-impact:keqing",
+            "genshin-impact:nahida",
+            "neverness-to-everness:fadia",
+            "neverness-to-everness:shinku",
+            "wuthering-waves:jinhsi",
+            "wuthering-waves:mortefi",
+            "wuthering-waves:shorekeeper",
+            "zenless-zone-zero:jane-doe"
+          ]
+        ]
+      },
+      "before": "An ordinary character with a support healer role.",
+      "before_result": {
+        "brief": "An ordinary character with a support healer role.",
+        "brief_id": "counterfactual-support-to-control-before",
+        "category": "role / ability fantasy",
+        "component_scores": null,
+        "component_scores_available": false,
+        "dimensions": [
+          "role / ability fantasy"
+        ],
+        "full_ranking": [
+          {
+            "character_name": "Shorekeeper",
+            "rank": 1,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score": 2,
+            "score_gap_from_previous": null,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Nicole Demara",
+            "rank": 2,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score": 2,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          },
+          {
+            "character_name": "Shinku",
+            "rank": 3,
+            "reference_id": "neverness-to-everness:shinku",
+            "score": 1,
+            "score_gap_from_previous": 1,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Furina",
+            "rank": 4,
+            "reference_id": "genshin-impact:furina",
+            "score": 0,
+            "score_gap_from_previous": 1,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Keqing",
+            "rank": 5,
+            "reference_id": "genshin-impact:keqing",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Nahida",
+            "rank": 6,
+            "reference_id": "genshin-impact:nahida",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Fadia",
+            "rank": 7,
+            "reference_id": "neverness-to-everness:fadia",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Jinhsi",
+            "rank": 8,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Mortefi",
+            "rank": 9,
+            "reference_id": "wuthering-waves:mortefi",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank": 10,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          }
+        ],
+        "score_gaps": [
+          null,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "selected_references": [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole",
+          "neverness-to-everness:shinku"
+        ],
+        "selected_top_k": 3,
+        "stable_on_repeat": true,
+        "tie_groups": [
+          [
+            "wuthering-waves:shorekeeper",
+            "zenless-zone-zero:nicole"
+          ],
+          [
+            "genshin-impact:furina",
+            "genshin-impact:keqing",
+            "genshin-impact:nahida",
+            "neverness-to-everness:fadia",
+            "wuthering-waves:jinhsi",
+            "wuthering-waves:mortefi",
+            "zenless-zone-zero:jane-doe"
+          ]
+        ]
+      },
+      "delta": {
+        "candidates": [
+          {
+            "character_name": "Furina",
+            "rank_after": 2,
+            "rank_before": 4,
+            "rank_delta": -2,
+            "reference_id": "genshin-impact:furina",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Keqing",
+            "rank_after": 3,
+            "rank_before": 5,
+            "rank_delta": -2,
+            "reference_id": "genshin-impact:keqing",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Nahida",
+            "rank_after": 4,
+            "rank_before": 6,
+            "rank_delta": -2,
+            "reference_id": "genshin-impact:nahida",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Fadia",
+            "rank_after": 5,
+            "rank_before": 7,
+            "rank_delta": -2,
+            "reference_id": "neverness-to-everness:fadia",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Shinku",
+            "rank_after": 6,
+            "rank_before": 3,
+            "rank_delta": 3,
+            "reference_id": "neverness-to-everness:shinku",
+            "score_after": 0,
+            "score_before": 1,
+            "score_delta": -1
+          },
+          {
+            "character_name": "Jinhsi",
+            "rank_after": 7,
+            "rank_before": 8,
+            "rank_delta": -1,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Mortefi",
+            "rank_after": 8,
+            "rank_before": 9,
+            "rank_delta": -1,
+            "reference_id": "wuthering-waves:mortefi",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank_after": 9,
+            "rank_before": 1,
+            "rank_delta": 8,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score_after": 0,
+            "score_before": 2,
+            "score_delta": -2
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank_after": 10,
+            "rank_before": 10,
+            "rank_delta": 0,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Nicole Demara",
+            "rank_after": 1,
+            "rank_before": 2,
+            "rank_delta": -1,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score_after": 1,
+            "score_before": 2,
+            "score_delta": -1
+          }
+        ],
+        "changed_candidate_count": 9,
+        "mean_absolute_rank_delta": 2.2,
+        "selected_overlap_jaccard": 0.2
+      },
+      "dimension": "role / ability fantasy",
+      "pair_id": "counterfactual-support-to-control"
+    },
+    {
+      "after": "A flamboyant expressive researcher.",
+      "after_result": {
+        "brief": "A flamboyant expressive researcher.",
+        "brief_id": "counterfactual-quiet-to-flamboyant-after",
+        "category": "personality",
+        "component_scores": null,
+        "component_scores_available": false,
+        "dimensions": [
+          "personality"
+        ],
+        "full_ranking": [
+          {
+            "character_name": "Mortefi",
+            "rank": 1,
+            "reference_id": "wuthering-waves:mortefi",
+            "score": 1,
+            "score_gap_from_previous": null,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Nicole Demara",
+            "rank": 2,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          },
+          {
+            "character_name": "Furina",
+            "rank": 3,
+            "reference_id": "genshin-impact:furina",
+            "score": 0,
+            "score_gap_from_previous": 1,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Keqing",
+            "rank": 4,
+            "reference_id": "genshin-impact:keqing",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Nahida",
+            "rank": 5,
+            "reference_id": "genshin-impact:nahida",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Fadia",
+            "rank": 6,
+            "reference_id": "neverness-to-everness:fadia",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Shinku",
+            "rank": 7,
+            "reference_id": "neverness-to-everness:shinku",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Jinhsi",
+            "rank": 8,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank": 9,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank": 10,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          }
+        ],
+        "score_gaps": [
+          null,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "selected_references": [
+          "wuthering-waves:mortefi",
+          "zenless-zone-zero:nicole",
+          "genshin-impact:furina"
+        ],
+        "selected_top_k": 3,
+        "stable_on_repeat": true,
+        "tie_groups": [
+          [
+            "wuthering-waves:mortefi",
+            "zenless-zone-zero:nicole"
+          ],
+          [
+            "genshin-impact:furina",
+            "genshin-impact:keqing",
+            "genshin-impact:nahida",
+            "neverness-to-everness:fadia",
+            "neverness-to-everness:shinku",
+            "wuthering-waves:jinhsi",
+            "wuthering-waves:shorekeeper",
+            "zenless-zone-zero:jane-doe"
+          ]
+        ]
+      },
+      "before": "A quiet practical researcher.",
+      "before_result": {
+        "brief": "A quiet practical researcher.",
+        "brief_id": "counterfactual-quiet-to-flamboyant-before",
+        "category": "personality",
+        "component_scores": null,
+        "component_scores_available": false,
+        "dimensions": [
+          "personality"
+        ],
+        "full_ranking": [
+          {
+            "character_name": "Mortefi",
+            "rank": 1,
+            "reference_id": "wuthering-waves:mortefi",
+            "score": 1,
+            "score_gap_from_previous": null,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Nicole Demara",
+            "rank": 2,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          },
+          {
+            "character_name": "Furina",
+            "rank": 3,
+            "reference_id": "genshin-impact:furina",
+            "score": 0,
+            "score_gap_from_previous": 1,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Keqing",
+            "rank": 4,
+            "reference_id": "genshin-impact:keqing",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Nahida",
+            "rank": 5,
+            "reference_id": "genshin-impact:nahida",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Fadia",
+            "rank": 6,
+            "reference_id": "neverness-to-everness:fadia",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Shinku",
+            "rank": 7,
+            "reference_id": "neverness-to-everness:shinku",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Jinhsi",
+            "rank": 8,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank": 9,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank": 10,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          }
+        ],
+        "score_gaps": [
+          null,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "selected_references": [
+          "wuthering-waves:mortefi",
+          "zenless-zone-zero:nicole",
+          "genshin-impact:furina"
+        ],
+        "selected_top_k": 3,
+        "stable_on_repeat": true,
+        "tie_groups": [
+          [
+            "wuthering-waves:mortefi",
+            "zenless-zone-zero:nicole"
+          ],
+          [
+            "genshin-impact:furina",
+            "genshin-impact:keqing",
+            "genshin-impact:nahida",
+            "neverness-to-everness:fadia",
+            "neverness-to-everness:shinku",
+            "wuthering-waves:jinhsi",
+            "wuthering-waves:shorekeeper",
+            "zenless-zone-zero:jane-doe"
+          ]
+        ]
+      },
+      "delta": {
+        "candidates": [
+          {
+            "character_name": "Furina",
+            "rank_after": 3,
+            "rank_before": 3,
+            "rank_delta": 0,
+            "reference_id": "genshin-impact:furina",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Keqing",
+            "rank_after": 4,
+            "rank_before": 4,
+            "rank_delta": 0,
+            "reference_id": "genshin-impact:keqing",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Nahida",
+            "rank_after": 5,
+            "rank_before": 5,
+            "rank_delta": 0,
+            "reference_id": "genshin-impact:nahida",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Fadia",
+            "rank_after": 6,
+            "rank_before": 6,
+            "rank_delta": 0,
+            "reference_id": "neverness-to-everness:fadia",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Shinku",
+            "rank_after": 7,
+            "rank_before": 7,
+            "rank_delta": 0,
+            "reference_id": "neverness-to-everness:shinku",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Jinhsi",
+            "rank_after": 8,
+            "rank_before": 8,
+            "rank_delta": 0,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Mortefi",
+            "rank_after": 1,
+            "rank_before": 1,
+            "rank_delta": 0,
+            "reference_id": "wuthering-waves:mortefi",
+            "score_after": 1,
+            "score_before": 1,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank_after": 9,
+            "rank_before": 9,
+            "rank_delta": 0,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank_after": 10,
+            "rank_before": 10,
+            "rank_delta": 0,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Nicole Demara",
+            "rank_after": 2,
+            "rank_before": 2,
+            "rank_delta": 0,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score_after": 1,
+            "score_before": 1,
+            "score_delta": 0
+          }
+        ],
+        "changed_candidate_count": 0,
+        "mean_absolute_rank_delta": 0.0,
+        "selected_overlap_jaccard": 1.0
+      },
+      "dimension": "personality",
+      "pair_id": "counterfactual-quiet-to-flamboyant"
+    },
+    {
+      "after": "A practical performer.",
+      "after_result": {
+        "brief": "A practical performer.",
+        "brief_id": "counterfactual-repair-to-performer-after",
+        "category": "occupation",
+        "component_scores": null,
+        "component_scores_available": false,
+        "dimensions": [
+          "occupation"
+        ],
+        "full_ranking": [
+          {
+            "character_name": "Nicole Demara",
+            "rank": 1,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score": 1,
+            "score_gap_from_previous": null,
+            "source_game": "zenless-zone-zero"
+          },
+          {
+            "character_name": "Furina",
+            "rank": 2,
+            "reference_id": "genshin-impact:furina",
+            "score": 0,
+            "score_gap_from_previous": 1,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Keqing",
+            "rank": 3,
+            "reference_id": "genshin-impact:keqing",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Nahida",
+            "rank": 4,
+            "reference_id": "genshin-impact:nahida",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Fadia",
+            "rank": 5,
+            "reference_id": "neverness-to-everness:fadia",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Shinku",
+            "rank": 6,
+            "reference_id": "neverness-to-everness:shinku",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Jinhsi",
+            "rank": 7,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Mortefi",
+            "rank": 8,
+            "reference_id": "wuthering-waves:mortefi",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank": 9,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank": 10,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          }
+        ],
+        "score_gaps": [
+          null,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "selected_references": [
+          "zenless-zone-zero:nicole",
+          "genshin-impact:furina",
+          "genshin-impact:keqing"
+        ],
+        "selected_top_k": 3,
+        "stable_on_repeat": true,
+        "tie_groups": [
+          [
+            "genshin-impact:furina",
+            "genshin-impact:keqing",
+            "genshin-impact:nahida",
+            "neverness-to-everness:fadia",
+            "neverness-to-everness:shinku",
+            "wuthering-waves:jinhsi",
+            "wuthering-waves:mortefi",
+            "wuthering-waves:shorekeeper",
+            "zenless-zone-zero:jane-doe"
+          ]
+        ]
+      },
+      "before": "A practical repair worker.",
+      "before_result": {
+        "brief": "A practical repair worker.",
+        "brief_id": "counterfactual-repair-to-performer-before",
+        "category": "occupation",
+        "component_scores": null,
+        "component_scores_available": false,
+        "dimensions": [
+          "occupation"
+        ],
+        "full_ranking": [
+          {
+            "character_name": "Nicole Demara",
+            "rank": 1,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score": 1,
+            "score_gap_from_previous": null,
+            "source_game": "zenless-zone-zero"
+          },
+          {
+            "character_name": "Furina",
+            "rank": 2,
+            "reference_id": "genshin-impact:furina",
+            "score": 0,
+            "score_gap_from_previous": 1,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Keqing",
+            "rank": 3,
+            "reference_id": "genshin-impact:keqing",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Nahida",
+            "rank": 4,
+            "reference_id": "genshin-impact:nahida",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Fadia",
+            "rank": 5,
+            "reference_id": "neverness-to-everness:fadia",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Shinku",
+            "rank": 6,
+            "reference_id": "neverness-to-everness:shinku",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Jinhsi",
+            "rank": 7,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Mortefi",
+            "rank": 8,
+            "reference_id": "wuthering-waves:mortefi",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank": 9,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank": 10,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          }
+        ],
+        "score_gaps": [
+          null,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "selected_references": [
+          "zenless-zone-zero:nicole",
+          "genshin-impact:furina",
+          "genshin-impact:keqing"
+        ],
+        "selected_top_k": 3,
+        "stable_on_repeat": true,
+        "tie_groups": [
+          [
+            "genshin-impact:furina",
+            "genshin-impact:keqing",
+            "genshin-impact:nahida",
+            "neverness-to-everness:fadia",
+            "neverness-to-everness:shinku",
+            "wuthering-waves:jinhsi",
+            "wuthering-waves:mortefi",
+            "wuthering-waves:shorekeeper",
+            "zenless-zone-zero:jane-doe"
+          ]
+        ]
+      },
+      "delta": {
+        "candidates": [
+          {
+            "character_name": "Furina",
+            "rank_after": 2,
+            "rank_before": 2,
+            "rank_delta": 0,
+            "reference_id": "genshin-impact:furina",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Keqing",
+            "rank_after": 3,
+            "rank_before": 3,
+            "rank_delta": 0,
+            "reference_id": "genshin-impact:keqing",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Nahida",
+            "rank_after": 4,
+            "rank_before": 4,
+            "rank_delta": 0,
+            "reference_id": "genshin-impact:nahida",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Fadia",
+            "rank_after": 5,
+            "rank_before": 5,
+            "rank_delta": 0,
+            "reference_id": "neverness-to-everness:fadia",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Shinku",
+            "rank_after": 6,
+            "rank_before": 6,
+            "rank_delta": 0,
+            "reference_id": "neverness-to-everness:shinku",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Jinhsi",
+            "rank_after": 7,
+            "rank_before": 7,
+            "rank_delta": 0,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Mortefi",
+            "rank_after": 8,
+            "rank_before": 8,
+            "rank_delta": 0,
+            "reference_id": "wuthering-waves:mortefi",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank_after": 9,
+            "rank_before": 9,
+            "rank_delta": 0,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank_after": 10,
+            "rank_before": 10,
+            "rank_delta": 0,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Nicole Demara",
+            "rank_after": 1,
+            "rank_before": 1,
+            "rank_delta": 0,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score_after": 1,
+            "score_before": 1,
+            "score_delta": 0
+          }
+        ],
+        "changed_candidate_count": 0,
+        "mean_absolute_rank_delta": 0.0,
+        "selected_overlap_jaccard": 1.0
+      },
+      "dimension": "occupation",
+      "pair_id": "counterfactual-repair-to-performer"
+    },
+    {
+      "after": "A youthful age-ambiguous magistrate.",
+      "after_result": {
+        "brief": "A youthful age-ambiguous magistrate.",
+        "brief_id": "counterfactual-mature-to-youthful-after",
+        "category": "life-stage",
+        "component_scores": null,
+        "component_scores_available": false,
+        "dimensions": [
+          "life-stage"
+        ],
+        "full_ranking": [
+          {
+            "character_name": "Jinhsi",
+            "rank": 1,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score": 1,
+            "score_gap_from_previous": null,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Nicole Demara",
+            "rank": 2,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          },
+          {
+            "character_name": "Furina",
+            "rank": 3,
+            "reference_id": "genshin-impact:furina",
+            "score": 0,
+            "score_gap_from_previous": 1,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Keqing",
+            "rank": 4,
+            "reference_id": "genshin-impact:keqing",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Nahida",
+            "rank": 5,
+            "reference_id": "genshin-impact:nahida",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Fadia",
+            "rank": 6,
+            "reference_id": "neverness-to-everness:fadia",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Shinku",
+            "rank": 7,
+            "reference_id": "neverness-to-everness:shinku",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Mortefi",
+            "rank": 8,
+            "reference_id": "wuthering-waves:mortefi",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank": 9,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank": 10,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          }
+        ],
+        "score_gaps": [
+          null,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "selected_references": [
+          "wuthering-waves:jinhsi",
+          "zenless-zone-zero:nicole",
+          "genshin-impact:furina"
+        ],
+        "selected_top_k": 3,
+        "stable_on_repeat": true,
+        "tie_groups": [
+          [
+            "wuthering-waves:jinhsi",
+            "zenless-zone-zero:nicole"
+          ],
+          [
+            "genshin-impact:furina",
+            "genshin-impact:keqing",
+            "genshin-impact:nahida",
+            "neverness-to-everness:fadia",
+            "neverness-to-everness:shinku",
+            "wuthering-waves:mortefi",
+            "wuthering-waves:shorekeeper",
+            "zenless-zone-zero:jane-doe"
+          ]
+        ]
+      },
+      "before": "A mature active magistrate.",
+      "before_result": {
+        "brief": "A mature active magistrate.",
+        "brief_id": "counterfactual-mature-to-youthful-before",
+        "category": "life-stage",
+        "component_scores": null,
+        "component_scores_available": false,
+        "dimensions": [
+          "life-stage"
+        ],
+        "full_ranking": [
+          {
+            "character_name": "Jinhsi",
+            "rank": 1,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score": 1,
+            "score_gap_from_previous": null,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Nicole Demara",
+            "rank": 2,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score": 1,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          },
+          {
+            "character_name": "Furina",
+            "rank": 3,
+            "reference_id": "genshin-impact:furina",
+            "score": 0,
+            "score_gap_from_previous": 1,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Keqing",
+            "rank": 4,
+            "reference_id": "genshin-impact:keqing",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Nahida",
+            "rank": 5,
+            "reference_id": "genshin-impact:nahida",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "genshin-impact"
+          },
+          {
+            "character_name": "Fadia",
+            "rank": 6,
+            "reference_id": "neverness-to-everness:fadia",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Shinku",
+            "rank": 7,
+            "reference_id": "neverness-to-everness:shinku",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "neverness-to-everness"
+          },
+          {
+            "character_name": "Mortefi",
+            "rank": 8,
+            "reference_id": "wuthering-waves:mortefi",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank": 9,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "wuthering-waves"
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank": 10,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score": 0,
+            "score_gap_from_previous": 0,
+            "source_game": "zenless-zone-zero"
+          }
+        ],
+        "score_gaps": [
+          null,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "selected_references": [
+          "wuthering-waves:jinhsi",
+          "zenless-zone-zero:nicole",
+          "genshin-impact:furina"
+        ],
+        "selected_top_k": 3,
+        "stable_on_repeat": true,
+        "tie_groups": [
+          [
+            "wuthering-waves:jinhsi",
+            "zenless-zone-zero:nicole"
+          ],
+          [
+            "genshin-impact:furina",
+            "genshin-impact:keqing",
+            "genshin-impact:nahida",
+            "neverness-to-everness:fadia",
+            "neverness-to-everness:shinku",
+            "wuthering-waves:mortefi",
+            "wuthering-waves:shorekeeper",
+            "zenless-zone-zero:jane-doe"
+          ]
+        ]
+      },
+      "delta": {
+        "candidates": [
+          {
+            "character_name": "Furina",
+            "rank_after": 3,
+            "rank_before": 3,
+            "rank_delta": 0,
+            "reference_id": "genshin-impact:furina",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Keqing",
+            "rank_after": 4,
+            "rank_before": 4,
+            "rank_delta": 0,
+            "reference_id": "genshin-impact:keqing",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Nahida",
+            "rank_after": 5,
+            "rank_before": 5,
+            "rank_delta": 0,
+            "reference_id": "genshin-impact:nahida",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Fadia",
+            "rank_after": 6,
+            "rank_before": 6,
+            "rank_delta": 0,
+            "reference_id": "neverness-to-everness:fadia",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Shinku",
+            "rank_after": 7,
+            "rank_before": 7,
+            "rank_delta": 0,
+            "reference_id": "neverness-to-everness:shinku",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Jinhsi",
+            "rank_after": 1,
+            "rank_before": 1,
+            "rank_delta": 0,
+            "reference_id": "wuthering-waves:jinhsi",
+            "score_after": 1,
+            "score_before": 1,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Mortefi",
+            "rank_after": 8,
+            "rank_before": 8,
+            "rank_delta": 0,
+            "reference_id": "wuthering-waves:mortefi",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Shorekeeper",
+            "rank_after": 9,
+            "rank_before": 9,
+            "rank_delta": 0,
+            "reference_id": "wuthering-waves:shorekeeper",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Jane Doe",
+            "rank_after": 10,
+            "rank_before": 10,
+            "rank_delta": 0,
+            "reference_id": "zenless-zone-zero:jane-doe",
+            "score_after": 0,
+            "score_before": 0,
+            "score_delta": 0
+          },
+          {
+            "character_name": "Nicole Demara",
+            "rank_after": 2,
+            "rank_before": 2,
+            "rank_delta": 0,
+            "reference_id": "zenless-zone-zero:nicole",
+            "score_after": 1,
+            "score_before": 1,
+            "score_delta": 0
+          }
+        ],
+        "changed_candidate_count": 0,
+        "mean_absolute_rank_delta": 0.0,
+        "selected_overlap_jaccard": 1.0
+      },
+      "dimension": "life-stage",
+      "pair_id": "counterfactual-mature-to-youthful"
+    }
+  ],
+  "historical_replays": [
+    {
+      "benchmark_brief_replay_top_k": [
+        "neverness-to-everness:shinku",
+        "zenless-zone-zero:nicole",
+        "wuthering-waves:shorekeeper"
+      ],
+      "brief": "五星可操作角色\n临洲小型家电维修店\n普通都市职业\nsupport\nrepair / troubleshooting combat fantasy\nno secret identity\nno special bloodline\nno combat background",
+      "brief_status": "APPROXIMATE_BRIEF_REPLAY",
+      "case_id": "P1",
+      "character_name": "麦嫂",
+      "direct_selector_replay_top_k": [
+        "neverness-to-everness:shinku",
+        "zenless-zone-zero:nicole",
+        "wuthering-waves:shorekeeper"
+      ],
+      "historical_expected_output_is_evidence_only": true,
+      "historical_match": "NO",
+      "historical_match_qualification": "Replay brief is approximate; list equality is not exact historical parity.",
+      "historical_top_k": [
+        "genshin-impact:furina",
+        "genshin-impact:keqing",
+        "genshin-impact:nahida"
+      ],
+      "input_differences": {
+        "benchmark_input_type": "raw brief string",
+        "benchmark_production_input_equal": true,
+        "brief_replay_is_approximate": true,
+        "direct_selector_input_type": "raw brief string plus corpus summaries",
+        "historical_exact_brief_available": false,
+        "historical_input_note": "Exact historical brief text was not found in repository docs/tests.",
+        "production_input_type": "raw brief string"
+      },
+      "preserved_sources": [
+        "docs/live_character_authoring_demo_v0.2.md"
+      ],
+      "production_input_replay_top_k": [
+        "neverness-to-everness:shinku",
+        "zenless-zone-zero:nicole",
+        "wuthering-waves:shorekeeper"
+      ],
+      "rank_differences": [
+        {
+          "historical_rank": 1,
+          "rank_delta": 4,
+          "reference_id": "genshin-impact:furina",
+          "replay_rank": 5
+        },
+        {
+          "historical_rank": 2,
+          "rank_delta": 4,
+          "reference_id": "genshin-impact:keqing",
+          "replay_rank": 6
+        },
+        {
+          "historical_rank": 3,
+          "rank_delta": 4,
+          "reference_id": "genshin-impact:nahida",
+          "replay_rank": 7
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "neverness-to-everness:shinku",
+          "replay_rank": 1
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "zenless-zone-zero:nicole",
+          "replay_rank": 2
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "replay_rank": 3
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "replay_rank": 4
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "neverness-to-everness:fadia",
+          "replay_rank": 8
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "wuthering-waves:jinhsi",
+          "replay_rank": 9
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "wuthering-waves:mortefi",
+          "replay_rank": 10
+        }
+      ],
+      "score_differences": {
+        "benchmark_production_direct_scores_equal": true,
+        "historical_scores_available": false,
+        "historical_scores_note": "Historical audit records names only; no historical selector scores were preserved.",
+        "replay_score_by_reference": {
+          "genshin-impact:furina": 0,
+          "genshin-impact:keqing": 0,
+          "genshin-impact:nahida": 0,
+          "neverness-to-everness:shinku": 2,
+          "wuthering-waves:shorekeeper": 1,
+          "zenless-zone-zero:nicole": 2
+        }
+      }
+    },
+    {
+      "benchmark_brief_replay_top_k": [
+        "genshin-impact:furina",
+        "genshin-impact:keqing",
+        "genshin-impact:nahida"
+      ],
+      "brief": "youthful / age unspecified\nindependent dangerous field work\nnot student\nno secret prodigy\nno experiment\nlimited authority\nplayable",
+      "brief_status": "APPROXIMATE_BRIEF_REPLAY",
+      "case_id": "P2",
+      "character_name": "土屑",
+      "direct_selector_replay_top_k": [
+        "genshin-impact:furina",
+        "genshin-impact:keqing",
+        "genshin-impact:nahida"
+      ],
+      "historical_expected_output_is_evidence_only": true,
+      "historical_match": "EXACT",
+      "historical_match_qualification": "Replay brief is approximate; list equality is not exact historical parity.",
+      "historical_top_k": [
+        "genshin-impact:furina",
+        "genshin-impact:keqing",
+        "genshin-impact:nahida"
+      ],
+      "input_differences": {
+        "benchmark_input_type": "raw brief string",
+        "benchmark_production_input_equal": true,
+        "brief_replay_is_approximate": true,
+        "direct_selector_input_type": "raw brief string plus corpus summaries",
+        "historical_exact_brief_available": false,
+        "historical_input_note": "Exact historical brief text was not found in repository docs/tests.",
+        "production_input_type": "raw brief string"
+      },
+      "preserved_sources": [
+        "docs/character_diversity_life_stage_v0.3.md"
+      ],
+      "production_input_replay_top_k": [
+        "genshin-impact:furina",
+        "genshin-impact:keqing",
+        "genshin-impact:nahida"
+      ],
+      "rank_differences": [
+        {
+          "historical_rank": 1,
+          "rank_delta": 0,
+          "reference_id": "genshin-impact:furina",
+          "replay_rank": 1
+        },
+        {
+          "historical_rank": 2,
+          "rank_delta": 0,
+          "reference_id": "genshin-impact:keqing",
+          "replay_rank": 2
+        },
+        {
+          "historical_rank": 3,
+          "rank_delta": 0,
+          "reference_id": "genshin-impact:nahida",
+          "replay_rank": 3
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "neverness-to-everness:fadia",
+          "replay_rank": 4
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "neverness-to-everness:shinku",
+          "replay_rank": 5
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "wuthering-waves:jinhsi",
+          "replay_rank": 6
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "wuthering-waves:mortefi",
+          "replay_rank": 7
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "replay_rank": 8
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "replay_rank": 9
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "zenless-zone-zero:nicole",
+          "replay_rank": 10
+        }
+      ],
+      "score_differences": {
+        "benchmark_production_direct_scores_equal": true,
+        "historical_scores_available": false,
+        "historical_scores_note": "Historical audit records names only; no historical selector scores were preserved.",
+        "replay_score_by_reference": {
+          "genshin-impact:furina": 0,
+          "genshin-impact:keqing": 0,
+          "genshin-impact:nahida": 0
+        }
+      }
+    },
+    {
+      "benchmark_brief_replay_top_k": [
+        "genshin-impact:furina",
+        "genshin-impact:keqing",
+        "genshin-impact:nahida"
+      ],
+      "brief": "mature active playable woman\nordinary mid-level urban identity\nnot mentor\nnot retired master\ncontrol fantasy\nsupply-station operator",
+      "brief_status": "APPROXIMATE_BRIEF_REPLAY",
+      "case_id": "P3",
+      "character_name": "覃雪岫",
+      "direct_selector_replay_top_k": [
+        "genshin-impact:furina",
+        "genshin-impact:keqing",
+        "genshin-impact:nahida"
+      ],
+      "historical_expected_output_is_evidence_only": true,
+      "historical_match": "EXACT",
+      "historical_match_qualification": "Replay brief is approximate; list equality is not exact historical parity.",
+      "historical_top_k": [
+        "genshin-impact:furina",
+        "genshin-impact:keqing",
+        "genshin-impact:nahida"
+      ],
+      "input_differences": {
+        "benchmark_input_type": "raw brief string",
+        "benchmark_production_input_equal": true,
+        "brief_replay_is_approximate": true,
+        "direct_selector_input_type": "raw brief string plus corpus summaries",
+        "historical_exact_brief_available": false,
+        "historical_input_note": "Exact historical brief text was not found in repository docs/tests.",
+        "production_input_type": "raw brief string"
+      },
+      "preserved_sources": [
+        "docs/character_diversity_life_stage_v0.3.md"
+      ],
+      "production_input_replay_top_k": [
+        "genshin-impact:furina",
+        "genshin-impact:keqing",
+        "genshin-impact:nahida"
+      ],
+      "rank_differences": [
+        {
+          "historical_rank": 1,
+          "rank_delta": 0,
+          "reference_id": "genshin-impact:furina",
+          "replay_rank": 1
+        },
+        {
+          "historical_rank": 2,
+          "rank_delta": 0,
+          "reference_id": "genshin-impact:keqing",
+          "replay_rank": 2
+        },
+        {
+          "historical_rank": 3,
+          "rank_delta": 0,
+          "reference_id": "genshin-impact:nahida",
+          "replay_rank": 3
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "neverness-to-everness:fadia",
+          "replay_rank": 4
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "neverness-to-everness:shinku",
+          "replay_rank": 5
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "wuthering-waves:jinhsi",
+          "replay_rank": 6
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "wuthering-waves:mortefi",
+          "replay_rank": 7
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "replay_rank": 8
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "replay_rank": 9
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "zenless-zone-zero:nicole",
+          "replay_rank": 10
+        }
+      ],
+      "score_differences": {
+        "benchmark_production_direct_scores_equal": true,
+        "historical_scores_available": false,
+        "historical_scores_note": "Historical audit records names only; no historical selector scores were preserved.",
+        "replay_score_by_reference": {
+          "genshin-impact:furina": 0,
+          "genshin-impact:keqing": 0,
+          "genshin-impact:nahida": 0
+        }
+      }
+    },
+    {
+      "benchmark_brief_replay_top_k": [
+        "neverness-to-everness:shinku",
+        "wuthering-waves:shorekeeper",
+        "zenless-zone-zero:nicole"
+      ],
+      "brief": "strict unknown age\npatchwork tailor\ncommunity social role\nsupport\nfamily responsibility allowed\nno age / school-history invention",
+      "brief_status": "APPROXIMATE_BRIEF_REPLAY",
+      "case_id": "P4",
+      "character_name": "沈蓝枝",
+      "direct_selector_replay_top_k": [
+        "neverness-to-everness:shinku",
+        "wuthering-waves:shorekeeper",
+        "zenless-zone-zero:nicole"
+      ],
+      "historical_expected_output_is_evidence_only": true,
+      "historical_match": "NO",
+      "historical_match_qualification": "Replay brief is approximate; list equality is not exact historical parity.",
+      "historical_top_k": [
+        "genshin-impact:furina",
+        "genshin-impact:keqing",
+        "genshin-impact:nahida"
+      ],
+      "input_differences": {
+        "benchmark_input_type": "raw brief string",
+        "benchmark_production_input_equal": true,
+        "brief_replay_is_approximate": true,
+        "direct_selector_input_type": "raw brief string plus corpus summaries",
+        "historical_exact_brief_available": false,
+        "historical_input_note": "Exact historical brief text was not found in repository docs/tests.",
+        "production_input_type": "raw brief string"
+      },
+      "preserved_sources": [
+        "docs/character_diversity_life_stage_v0.3.md",
+        "docs/character_age_information_preservation_v0.3.md"
+      ],
+      "production_input_replay_top_k": [
+        "neverness-to-everness:shinku",
+        "wuthering-waves:shorekeeper",
+        "zenless-zone-zero:nicole"
+      ],
+      "rank_differences": [
+        {
+          "historical_rank": 1,
+          "rank_delta": 3,
+          "reference_id": "genshin-impact:furina",
+          "replay_rank": 4
+        },
+        {
+          "historical_rank": 2,
+          "rank_delta": 3,
+          "reference_id": "genshin-impact:keqing",
+          "replay_rank": 5
+        },
+        {
+          "historical_rank": 3,
+          "rank_delta": 3,
+          "reference_id": "genshin-impact:nahida",
+          "replay_rank": 6
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "neverness-to-everness:shinku",
+          "replay_rank": 1
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "wuthering-waves:shorekeeper",
+          "replay_rank": 2
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "zenless-zone-zero:nicole",
+          "replay_rank": 3
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "neverness-to-everness:fadia",
+          "replay_rank": 7
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "wuthering-waves:jinhsi",
+          "replay_rank": 8
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "wuthering-waves:mortefi",
+          "replay_rank": 9
+        },
+        {
+          "historical_rank": null,
+          "rank_delta": null,
+          "reference_id": "zenless-zone-zero:jane-doe",
+          "replay_rank": 10
+        }
+      ],
+      "score_differences": {
+        "benchmark_production_direct_scores_equal": true,
+        "historical_scores_available": false,
+        "historical_scores_note": "Historical audit records names only; no historical selector scores were preserved.",
+        "replay_score_by_reference": {
+          "genshin-impact:furina": 0,
+          "genshin-impact:keqing": 0,
+          "genshin-impact:nahida": 0,
+          "neverness-to-everness:shinku": 1,
+          "wuthering-waves:shorekeeper": 1,
+          "zenless-zone-zero:nicole": 1
+        }
+      }
+    }
+  ],
+  "parity_classification": {
+    "audit_semantics_match": true,
+    "benchmark_scope": "deterministic pre-generation selector quality",
+    "classification": "HISTORICAL_CASE_DIFFERENCE",
+    "end_to_end_live_retrieval_scope": "same selection stage; generation itself remains out of scope",
+    "historical_exact_brief_inputs_available": false,
+    "model_or_tool_loop_influence_on_selection": false,
+    "recommendation": "FREEZE_V0.4_THEN_EXPAND_CORPUS",
+    "same_effective_selector_input_for_same_brief": true,
+    "same_selector_implementation": true
+  },
+  "production_path": {
+    "audit_path": "ReferenceGrounding.selected -> CharacterGenerationRuntimeView.reference_context -> CharacterGenerationAudit.reference_ids -> OfficialCharacterAuthoringRun",
+    "entry_point": "agents.official_character_authoring.main -> make_demo -> load_reference_grounding",
+    "feature_extraction": "load_reference_grounding tokenizes the raw brief and JSON summaries",
+    "input_object": "request.brief (raw str); hard_constraints, soft_preferences, and other request fields are not passed",
+    "invocation_timing": "once before CharacterGenerationAgent construction and before generation",
+    "live_model_dependency": false,
+    "reference_call_count_cli": 1,
+    "selected_reference_semantics": "final deterministic pre-generation top-k inserted into generation context and mirrored in generation audit",
+    "tool_loop_dependency": false,
+    "top_k": 3
+  },
+  "review_packet": {
+    "cases": [
+      {
+        "brief_id": "case-a-urban-support",
+        "evaluation": {
+          "ability_fantasy_relevance": null,
+          "copy_risk": null,
+          "life_identity_relevance": null,
+          "personality_hook_relevance": null,
+          "redundancy": null,
+          "role_relevance": null
+        },
+        "selected_references": [
+          "neverness-to-everness:shinku",
+          "wuthering-waves:mortefi",
+          "wuthering-waves:shorekeeper"
+        ]
+      },
+      {
+        "brief_id": "case-b-spatial-control",
+        "evaluation": {
+          "ability_fantasy_relevance": null,
+          "copy_risk": null,
+          "life_identity_relevance": null,
+          "personality_hook_relevance": null,
+          "redundancy": null,
+          "role_relevance": null
+        },
+        "selected_references": [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole",
+          "genshin-impact:furina"
+        ]
+      },
+      {
+        "brief_id": "case-c-aggressive-frontline",
+        "evaluation": {
+          "ability_fantasy_relevance": null,
+          "copy_risk": null,
+          "life_identity_relevance": null,
+          "personality_hook_relevance": null,
+          "redundancy": null,
+          "role_relevance": null
+        },
+        "selected_references": [
+          "genshin-impact:keqing",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi"
+        ]
+      },
+      {
+        "brief_id": "case-d-defensive-protective",
+        "evaluation": {
+          "ability_fantasy_relevance": null,
+          "copy_risk": null,
+          "life_identity_relevance": null,
+          "personality_hook_relevance": null,
+          "redundancy": null,
+          "role_relevance": null
+        },
+        "selected_references": [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole",
+          "neverness-to-everness:shinku"
+        ]
+      },
+      {
+        "brief_id": "case-e-mobility-repositioning",
+        "evaluation": {
+          "ability_fantasy_relevance": null,
+          "copy_risk": null,
+          "life_identity_relevance": null,
+          "personality_hook_relevance": null,
+          "redundancy": null,
+          "role_relevance": null
+        },
+        "selected_references": [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole",
+          "genshin-impact:furina"
+        ]
+      },
+      {
+        "brief_id": "case-f-information-investigation",
+        "evaluation": {
+          "ability_fantasy_relevance": null,
+          "copy_risk": null,
+          "life_identity_relevance": null,
+          "personality_hook_relevance": null,
+          "redundancy": null,
+          "role_relevance": null
+        },
+        "selected_references": [
+          "zenless-zone-zero:jane-doe",
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole"
+        ]
+      },
+      {
+        "brief_id": "case-g-expressive-performer",
+        "evaluation": {
+          "ability_fantasy_relevance": null,
+          "copy_risk": null,
+          "life_identity_relevance": null,
+          "personality_hook_relevance": null,
+          "redundancy": null,
+          "role_relevance": null
+        },
+        "selected_references": [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole",
+          "genshin-impact:furina"
+        ]
+      },
+      {
+        "brief_id": "case-h-mature-active",
+        "evaluation": {
+          "ability_fantasy_relevance": null,
+          "copy_risk": null,
+          "life_identity_relevance": null,
+          "personality_hook_relevance": null,
+          "redundancy": null,
+          "role_relevance": null
+        },
+        "selected_references": [
+          "wuthering-waves:jinhsi",
+          "wuthering-waves:mortefi",
+          "zenless-zone-zero:nicole"
+        ]
+      },
+      {
+        "brief_id": "case-i-youthful-ambiguous",
+        "evaluation": {
+          "ability_fantasy_relevance": null,
+          "copy_risk": null,
+          "life_identity_relevance": null,
+          "personality_hook_relevance": null,
+          "redundancy": null,
+          "role_relevance": null
+        },
+        "selected_references": [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole",
+          "genshin-impact:furina"
+        ]
+      },
+      {
+        "brief_id": "case-j-informal-social-role",
+        "evaluation": {
+          "ability_fantasy_relevance": null,
+          "copy_risk": null,
+          "life_identity_relevance": null,
+          "personality_hook_relevance": null,
+          "redundancy": null,
+          "role_relevance": null
+        },
+        "selected_references": [
+          "wuthering-waves:shorekeeper",
+          "genshin-impact:furina",
+          "genshin-impact:keqing"
+        ]
+      },
+      {
+        "brief_id": "case-k-charisma-low-authority",
+        "evaluation": {
+          "ability_fantasy_relevance": null,
+          "copy_risk": null,
+          "life_identity_relevance": null,
+          "personality_hook_relevance": null,
+          "redundancy": null,
+          "role_relevance": null
+        },
+        "selected_references": [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole",
+          "genshin-impact:furina"
+        ]
+      },
+      {
+        "brief_id": "case-l-quiet-practical",
+        "evaluation": {
+          "ability_fantasy_relevance": null,
+          "copy_risk": null,
+          "life_identity_relevance": null,
+          "personality_hook_relevance": null,
+          "redundancy": null,
+          "role_relevance": null
+        },
+        "selected_references": [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole",
+          "genshin-impact:furina"
+        ]
+      },
+      {
+        "brief_id": "contrast-occupation-role-onfield",
+        "evaluation": {
+          "ability_fantasy_relevance": null,
+          "copy_risk": null,
+          "life_identity_relevance": null,
+          "personality_hook_relevance": null,
+          "redundancy": null,
+          "role_relevance": null
+        },
+        "selected_references": [
+          "genshin-impact:keqing",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi"
+        ]
+      },
+      {
+        "brief_id": "contrast-occupation-role-support",
+        "evaluation": {
+          "ability_fantasy_relevance": null,
+          "copy_risk": null,
+          "life_identity_relevance": null,
+          "personality_hook_relevance": null,
+          "redundancy": null,
+          "role_relevance": null
+        },
+        "selected_references": [
+          "wuthering-waves:shorekeeper",
+          "zenless-zone-zero:nicole",
+          "neverness-to-everness:shinku"
+        ]
+      },
+      {
+        "brief_id": "contrast-role-quiet",
+        "evaluation": {
+          "ability_fantasy_relevance": null,
+          "copy_risk": null,
+          "life_identity_relevance": null,
+          "personality_hook_relevance": null,
+          "redundancy": null,
+          "role_relevance": null
+        },
+        "selected_references": [
+          "genshin-impact:keqing",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi"
+        ]
+      },
+      {
+        "brief_id": "contrast-role-flamboyant",
+        "evaluation": {
+          "ability_fantasy_relevance": null,
+          "copy_risk": null,
+          "life_identity_relevance": null,
+          "personality_hook_relevance": null,
+          "redundancy": null,
+          "role_relevance": null
+        },
+        "selected_references": [
+          "genshin-impact:keqing",
+          "neverness-to-everness:shinku",
+          "wuthering-waves:jinhsi"
+        ]
+      },
+      {
+        "brief_id": "contrast-personality-researcher",
+        "evaluation": {
+          "ability_fantasy_relevance": null,
+          "copy_risk": null,
+          "life_identity_relevance": null,
+          "personality_hook_relevance": null,
+          "redundancy": null,
+          "role_relevance": null
+        },
+        "selected_references": [
+          "wuthering-waves:mortefi",
+          "zenless-zone-zero:nicole",
+          "genshin-impact:furina"
+        ]
+      },
+      {
+        "brief_id": "contrast-personality-magistrate",
+        "evaluation": {
+          "ability_fantasy_relevance": null,
+          "copy_risk": null,
+          "life_identity_relevance": null,
+          "personality_hook_relevance": null,
+          "redundancy": null,
+          "role_relevance": null
+        },
+        "selected_references": [
+          "wuthering-waves:jinhsi",
+          "zenless-zone-zero:nicole",
+          "genshin-impact:furina"
+        ]
+      }
+    ],
+    "instruction": "Human/model review only; null values are intentional and are not machine relevance labels.",
+    "rubric": {
+      "ability_fantasy_relevance": [
+        0,
+        1,
+        2
+      ],
+      "copy_risk": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ],
+      "life_identity_relevance": [
+        0,
+        1,
+        2
+      ],
+      "personality_hook_relevance": [
+        0,
+        1,
+        2
+      ],
+      "redundancy": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ],
+      "role_relevance": [
+        0,
+        1,
+        2
+      ]
+    },
+    "status": "PENDING_MIMO_REVIEW"
+  },
+  "selector": {
+    "candidate_count": 10,
+    "candidate_filtering": "none",
+    "component_scores_available": false,
+    "entry_point": "agents.official_character_authoring.load_reference_grounding",
+    "production_behavior_changed": false,
+    "score_normalization": "none",
+    "scoring": "sum(1 for brief token present in tokenized JSON reference summary)",
+    "tie_breaking": "ascending reference_id after descending total score",
+    "top_k": 3
+  },
+  "summary": {
+    "average_top_k_overlap": 0.448485,
+    "counterfactual_sensitivity": {
+      "average_mean_absolute_rank_delta": 0.55,
+      "changed_candidate_count": 9,
+      "pair_count": 4
+    },
+    "overlap_metric": "Jaccard(selected top-k sets) across all pairs of the 12 broad cases",
+    "repeated_trio": {
+      "Furina": {
+        "top_1": 0,
+        "top_k": 9
+      },
+      "Keqing": {
+        "top_1": 4,
+        "top_k": 5
+      },
+      "Nahida": {
+        "top_1": 0,
+        "top_k": 0
+      }
+    },
+    "selection_concentration": {
+      "hhi": 0.159808,
+      "metric": "HHI = sum((reference selected top-k slots / all selected slots)^2)"
+    },
+    "source_concentration": {
+      "frequency": {
+        "genshin-impact": 14,
+        "neverness-to-everness": 7,
+        "wuthering-waves": 20,
+        "zenless-zone-zero": 13
+      },
+      "hhi": 0.27915
+    },
+    "stability": {
+      "all_cases_stable": true,
+      "unstable_case_ids": []
+    },
+    "top_1_frequency": {
+      "genshin-impact:keqing": 4,
+      "neverness-to-everness:shinku": 1,
+      "wuthering-waves:jinhsi": 2,
+      "wuthering-waves:mortefi": 1,
+      "wuthering-waves:shorekeeper": 9,
+      "zenless-zone-zero:jane-doe": 1
+    },
+    "top_k_frequency": {
+      "genshin-impact:furina": 9,
+      "genshin-impact:keqing": 5,
+      "neverness-to-everness:shinku": 7,
+      "wuthering-waves:jinhsi": 6,
+      "wuthering-waves:mortefi": 3,
+      "wuthering-waves:shorekeeper": 11,
+      "zenless-zone-zero:jane-doe": 1,
+      "zenless-zone-zero:nicole": 12
+    },
+    "unique_selected": 8
+  }
+}

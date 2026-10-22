@@ -1,0 +1,48 @@
+schema_version: "character-facts/0.3"
+reference_id: "zenless-zone-zero:piper-wheel"
+identity:
+  game_id: zenless-zone-zero
+  native_character_id: null
+  names:
+    canonical: "Piper Wheel"
+    localized:
+      en-US: "Piper Wheel"
+      zh-CN: "派派·韦尔"
+  release:
+    version: null
+    date: null
+  rarity:
+    native_value: "A"
+    normalized_tier: null
+combat:
+  native_taxonomy:
+    labels:
+      attribute: "Physical"
+      specialty: "Anomaly"
+      rank: "A"
+  abilities: []
+  mechanics:
+    resources: []
+    states: []
+    transformations: []
+    summons: []
+    mobility_mechanics: []
+    targeting_mechanics: []
+  team_mechanics:
+    buffs: []
+    debuffs: []
+    healing: []
+    shielding: []
+    grouping: []
+    off_field_effects: []
+    interactions: []
+  relations: []
+narrative:
+  faction: "Sons of Calydon"
+  occupation: "Vehicle expert / driver"
+  affiliations:
+    - "Sons of Calydon"
+  public_identity: "Vehicle expert and driver associated with the Sons of Calydon."
+presentation:
+  official_visual_tags: []
+  official_character_keywords: []

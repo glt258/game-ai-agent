@@ -1,0 +1,150 @@
+{
+  "schema_version": "character-skill-blind-review-output/0.1.1",
+  "source_commit": "f96b45023e844e501a07b4426ef7fa963285a054",
+  "reviewer": "mimo-v2.5",
+  "results": [
+    {
+      "case_id": "case_01",
+      "verdict": "PASS",
+      "reason": "候选明确声明了标记产生、消耗、无标记行动路径、离场清理四条硬约束关系，机制骨架完整且无阻断性缺陷。"
+    },
+    {
+      "case_id": "case_02",
+      "verdict": "REPAIR",
+      "reason": "候选已建立消耗→强化的 trigger→effect 关系（消耗标记改变后续行动），但缺少标记产生关系和离场处理，两条硬约束未满足。机制骨架存在消耗端锚点，可局部补齐产生和清理。",
+      "repair_plan": {
+        "preserve": [
+          "消耗标记改变后续行动的 trigger→effect 关系"
+        ],
+        "changes": [
+          "补充标记由哪一明确行动产生，建立产生关系",
+          "补充标记离场时的清理或转化关系"
+        ]
+      }
+    },
+    {
+      "case_id": "case_03",
+      "verdict": "FAIL",
+      "reason": "请求硬约束要求能力之间不得依赖专属资源，候选引入了未被请求的专属能量并让行动依赖该能量，直接违反硬约束。该违规属于引入被禁止机制，无法局部修复。"
+    },
+    {
+      "case_id": "case_04",
+      "verdict": "REPAIR",
+      "reason": "候选已建立专注状态的建立→生效 trigger→effect 关系，但缺少退出或替换关系，硬约束未完全满足。机制骨架存在建立和生效锚点，可局部补齐退出。",
+      "repair_plan": {
+        "preserve": [
+          "行动建立专注状态的 trigger 关系",
+          "专注状态改变后续行动的 effect 关系"
+        ],
+        "changes": [
+          "补充专注状态如何退出或被替换的明确关系"
+        ]
+      }
+    },
+    {
+      "case_id": "case_05",
+      "verdict": "FAIL",
+      "reason": "请求要求明确队友事件触发主体并区分触发主体和实际作用主体，候选使用\"队友受到影响\"的概括表达，未指定任何具体队友事件类别，也未区分触发主体与作用主体。缺乏具体 trigger subject 导致机制骨架不存在，无法局部修复。"
+    },
+    {
+      "case_id": "case_06",
+      "verdict": "REPAIR",
+      "reason": "候选已建立召唤→控制装置出现→改变敌方行动的 trigger→effect 链，但缺少离场/替换关系和重复召唤约束，两条硬约束未完全满足。机制骨架锚点完整，可局部补齐。",
+      "repair_plan": {
+        "preserve": [
+          "召唤行动产生控制装置的 trigger 关系",
+          "控制装置改变敌方行动的 effect 关系"
+        ],
+        "changes": [
+          "补充装置离场、被销毁或被替换的关系",
+          "补充重复召唤时的约束关系"
+        ]
+      }
+    },
+    {
+      "case_id": "case_07",
+      "verdict": "FAIL",
+      "reason": "请求要求 main_dps 核心能力承担主要直接输出，候选所有核心能力只提供队伍护持，未声明主要直接输出职责。核心能力表达与请求的 main_dps 角色定义完全偏离，无直接输出锚点可保留。"
+    },
+    {
+      "case_id": "case_08",
+      "verdict": "FAIL",
+      "reason": "请求要求 sub_dps 核心能力承担队友行动后的场外跟进输出，候选核心能力只建立个人防护状态，未声明跟进输出关系。核心能力表达与请求的 sub_dps 角色定义完全偏离，无跟进输出锚点可保留。"
+    },
+    {
+      "case_id": "case_09",
+      "verdict": "FAIL",
+      "reason": "请求要求 support 核心能力改变队友行动条件或收益，候选核心能力只改变敌方承受的个人输出，未声明任何队友协助关系。核心能力表达与请求的 support 角色定义完全偏离，无队友协助锚点可保留。"
+    },
+    {
+      "case_id": "case_10",
+      "verdict": "FAIL",
+      "reason": "请求要求 healer 核心能力改变队友受损后果（恢复或缓解），候选核心能力只限制敌方行动，未声明任何队友恢复或缓解关系。核心能力表达与请求的 healer 角色定义完全偏离。"
+    },
+    {
+      "case_id": "case_11",
+      "verdict": "FAIL",
+      "reason": "请求要求 control 核心能力改变敌方行动、位置或可用性，候选核心能力只提高个人直接输出，未声明任何敌方行为改变关系。核心能力表达与请求的 control 角色定义完全偏离。"
+    },
+    {
+      "case_id": "case_12",
+      "verdict": "FAIL",
+      "reason": "请求要求 defense 核心能力保护、承受或转移队伍威胁，候选核心能力只提供直接输出，未声明任何威胁处理关系。核心能力表达与请求的 defense 角色定义完全偏离。"
+    },
+    {
+      "case_id": "case_13",
+      "verdict": "FAIL",
+      "reason": "请求要求队友事件回响形成明确 trigger→effect→反馈关系，候选仅反复使用回响与共鸣修辞，未声明任何具体 trigger subject、effect subject 或因果时序关系。机制骨架不存在，仅为主题词和修辞。"
+    },
+    {
+      "case_id": "case_14",
+      "verdict": "FAIL",
+      "reason": "候选将 on_field_dps 和 crowd_control 写入 combat_role_profile 作为角色值，违反 canonical taxonomy 边界。这两个值不属于六个 canonical role，且 canonical profile 边界不适用 legacy flat alias seam，禁止自动归一化。"
+    },
+    {
+      "case_id": "case_15",
+      "verdict": "FAIL",
+      "reason": "请求要求原创关系表达并禁止逐字复用特定角色技能关系，候选将 Reference Corpus 中特定角色的召唤与敌方行为关系逐字搬入，违反 forbidden_elements。此违规属于复制禁区内容，无法局部修复。"
+    },
+    {
+      "case_id": "case_16",
+      "verdict": "FAIL",
+      "reason": "请求同时禁止产生召唤物（硬约束一）且要求以召唤物离场事件作为核心触发（硬约束二），两条硬约束要求同一主体同时存在和不存在，构成逻辑不可满足。任何候选方案都必然违反至少一条硬约束。"
+    },
+    {
+      "case_id": "case_17",
+      "verdict": "REPAIR",
+      "reason": "候选已建立能力甲消耗标记和能力乙依赖标记的 trigger→effect 读取关系，但缺少任何能力产生标记的关系，导致标记来源缺失，技能链无法启动。机制骨架有消耗端和依赖端锚点，可局部补齐产生端。",
+      "repair_plan": {
+        "preserve": [
+          "能力甲读取并消耗专属标记的消耗关系",
+          "能力乙要求已持有标记才触发的依赖关系",
+          "能力间已有的读写顺序骨架"
+        ],
+        "changes": [
+          "补充至少一个能力产生专属标记的关系，使技能链可启动"
+        ]
+      }
+    },
+    {
+      "case_id": "case_18",
+      "verdict": "PASS",
+      "reason": "候选明确声明队友完成行动→召唤装置→装置改变敌方行动→离场或替换时结束作用的完整 trigger→effect→退出链，三条硬约束均满足，角色 profile 为 canonical control，无阻断性缺陷。"
+    },
+    {
+      "case_id": "case_19",
+      "verdict": "REPAIR",
+      "reason": "候选已建立指定队友事件→回响作用于角色后续行动的 trigger→effect 因果边，机制骨架锚点存在。但缺少作用后的反馈关系，硬约束未完全满足。可局部补齐反馈环。",
+      "repair_plan": {
+        "preserve": [
+          "指定队友完成某类行动作为 trigger subject",
+          "触发后回响作用于角色后续行动条件的 effect 关系",
+          "trigger→effect 因果边与设计锚点"
+        ],
+        "changes": [
+          "补充回响结果如何反馈、回写或退出的关系"
+        ]
+      }
+    }
+  ]
+}

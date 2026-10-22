@@ -1,0 +1,142 @@
+schema_version: "character-facts/0.3"
+reference_id: "genshin-impact:furina"
+identity:
+  game_id: genshin-impact
+  native_character_id: null
+  names:
+    canonical: "Furina"
+    localized:
+      en-US: "Furina"
+      zh-CN: "芙宁娜"
+      zh-TW: "芙宁娜"
+  release:
+    version: "4.2"
+    date: 2023-11-08
+  rarity:
+    native_value: 5
+    normalized_tier: null
+combat:
+  native_taxonomy:
+    labels:
+      weapon_type: "Sword"
+      element: "Hydro"
+      rarity: "5-star"
+  abilities:
+    - ability_id: normal_attack
+      native_name: "Soloist's Solicitation"
+      native_category: "Normal Attack"
+      normalized_category: null
+      description_summary: "Performs up to four consecutive strikes, with a Charged Attack that deals Physical DMG to nearby opponents and switches Furina's own Arkhe alignment. 'Arkhe: Seats Sacred and Profane' adds a Spiritbreath Thorn or Surging Blade of corresponding alignment to Normal Attack hits at intervals; her starting alignment is Ousia."
+    - ability_id: elemental_skill
+      native_name: "Salon Solitaire"
+      native_category: "Elemental Skill"
+      normalized_category: null
+      description_summary: "Summons guests based on Furina's current Arkhe alignment. In Ousia it summons three Salon Members that intermittently deal Hydro DMG and, when attacking, consume the HP of nearby party members above 50% HP to strengthen the attack. In Pneuma it summons the Singer of Many Waters, which periodically heals nearby active characters based on Max HP. The Members and Singer share a duration, which is inherited when Furina's Charged Attack switches the lineup."
+    - ability_id: elemental_burst
+      native_name: "Let the People Rejoice"
+      native_category: "Elemental Burst"
+      normalized_category: null
+      description_summary: "Deals AoE Hydro DMG and causes nearby party members to enter the Universal Revelry state. While it lasts, each percentage point of Max HP by which a nearby party member's HP changes grants 1 Fanfare point; based on held Fanfare, the DMG dealt and Incoming Healing Bonus of nearby party members both increase. Fanfare is cleared when the Burst ends."
+    - ability_id: passive_endless_waltz
+      native_name: "Endless Waltz"
+      native_category: "1st Ascension Passive"
+      normalized_category: null
+      description_summary: "When the active character receives healing whose source is not Furina and the healing overflows, Furina heals nearby party members for 2% of their Max HP once every 2s for the next 4s."
+    - ability_id: passive_unheard_confession
+      native_name: "Unheard Confession"
+      native_category: "4th Ascension Passive"
+      normalized_category: null
+      description_summary: "Every 1000 points of Furina's Max HP strengthens the alignment-linked Elemental Skill: Salon Members' DMG +0.7% (max +28%) or the Singer of Many Waters' healing interval -0.4% (max -16%)."
+    - ability_id: passive_the_sea_is_my_stage
+      native_name: "The Sea Is My Stage"
+      native_category: "Utility Passive"
+      normalized_category: null
+      description_summary: "Decreases the cooldown of Xenochromatic Fontemer Aberrant abilities by 30%."
+  mechanics:
+    resources:
+      - resource_id: fanfare
+        native_name: "Fanfare"
+        description_summary: "Resource Furina accumulates while the Universal Revelry state from her Elemental Burst is active: each percentage point of Max HP by which a nearby party member's HP increases or decreases grants 1 Fanfare point. It scales the DMG dealt and Incoming Healing Bonus granted to nearby party members and is cleared when the Burst duration ends."
+        cap: 300
+    states:
+      - state_id: arkhe-alignment
+        native_name: "Seats Sacred and Profane"
+        subject_scope: self
+        description_summary: "Furina's current Arkhe alignment (Ousia or Pneuma). Her Charged Attack switches it, which alignment determines which guests her Elemental Skill summons; her starting alignment is Ousia."
+    transformations: []
+    summons:
+      - "Salon Members (Gentilhomme Usher, Surintendante Chevalmarin, Mademoiselle Crabaletta): three persistent combat entities summoned in Ousia alignment that intermittently attack nearby enemies, prioritizing the active character's target, dealing Hydro DMG and consuming nearby party members' HP above 50% to raise their attack power."
+      - "Singer of Many Waters: a persistent entity summoned in Pneuma alignment that periodically heals nearby active characters based on Furina's Max HP."
+    mobility_mechanics: []
+    targeting_mechanics: []
+  team_mechanics:
+    buffs:
+      - "Universal Revelry: while active, the DMG dealt and Incoming Healing Bonus of all nearby party members are increased based on Furina's accumulated Fanfare."
+    debuffs: []
+    healing:
+      - "Pneuma-aligned Singer of Many Waters periodically heals nearby active characters based on Furina's Max HP."
+      - "Endless Waltz: when a non-Furina healing source overheals the active character, Furina heals nearby party members for 2% of their Max HP every 2s for the next 4s."
+    shielding: []
+    grouping: []
+    off_field_effects:
+      - "Salon Members persist for their shared duration, continuing to attack nearby enemies at intervals regardless of whether Furina is the active character."
+      - "The Singer of Many Waters persists for the shared duration, healing nearby active characters at intervals regardless of Furina's field presence."
+    interactions:
+      - interaction_id: universal-revelry
+        native_name: "Universal Revelry"
+        description_summary: "Party-wide effect applied to nearby party members by Furina's Elemental Burst: HP increases and decreases of nearby party members generate Fanfare, and held Fanfare raises their DMG dealt and Incoming Healing Bonus while the effect lasts."
+  relations:
+    - relation_id: normal-attack-switches-arkhe-alignment
+      source:
+        kind: ability
+        id: normal_attack
+      relation_type: transitions_to
+      target:
+        kind: state
+        id: arkhe-alignment
+      description_summary: "Furina's Charged Attack, part of the Normal Attack talent, switches her current Arkhe alignment."
+    - relation_id: arkhe-alignment-modifies-salon-solitaire
+      source:
+        kind: state
+        id: arkhe-alignment
+      relation_type: modifies
+      target:
+        kind: ability
+        id: elemental_skill
+      description_summary: "Furina's current Arkhe alignment changes which guests Elemental Skill Salon Solitaire summons - Salon Members in Ousia or the Singer of Many Waters in Pneuma - without blocking the Skill itself."
+    - relation_id: burst-triggers-universal-revelry
+      source:
+        kind: ability
+        id: elemental_burst
+      relation_type: triggers
+      target:
+        kind: team_interaction
+        id: universal-revelry
+      description_summary: "Elemental Burst Let the People Rejoice causes nearby party members to enter the Universal Revelry effect."
+    - relation_id: universal-revelry-enables-fanfare
+      source:
+        kind: team_interaction
+        id: universal-revelry
+      relation_type: enables
+      target:
+        kind: resource
+        id: fanfare
+      description_summary: "Universal Revelry enables Fanfare accumulation: while it is active, each percentage point of Max HP by which a nearby party member's HP increases or decreases grants 1 Fanfare point to Furina."
+    - relation_id: fanfare-modifies-universal-revelry
+      source:
+        kind: resource
+        id: fanfare
+      relation_type: modifies
+      target:
+        kind: team_interaction
+        id: universal-revelry
+      description_summary: "The amount of Fanfare Furina holds scales the DMG dealt and Incoming Healing Bonus that Universal Revelry grants to nearby party members."
+narrative:
+  faction: "Fontaine"
+  occupation: null
+  affiliations:
+    - "Fontaine"
+  public_identity: null
+presentation:
+  official_visual_tags: []
+  official_character_keywords: []

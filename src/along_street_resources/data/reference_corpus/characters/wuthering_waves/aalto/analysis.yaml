@@ -1,0 +1,56 @@
+schema_version: "character-analysis/0.1"
+reference_id: "wuthering-waves:aalto"
+analysis_metadata:
+  analyzer: "aalto-source-reconciliation"
+  model: null
+  prompt_version: "reference-corpus-v0.5d1-aalto"
+  analyzed_at: "2026-08-20T00:00:00Z"
+combat_design:
+  attack_range: "ranged"
+  mobility: "high"
+  primary_loop:
+    summary: "Use ranged attacks and Gate of Quandary to create a favorable engagement, then reposition through Mistform and decoy pressure rather than forcing direct confrontation."
+    steps:
+      - "create_mist_avatar_decoy"
+      - "use_gate_of_quandary"
+      - "enhance_ranged_attacks"
+      - "reposition_through_mistform"
+  core_mechanics:
+    - "ranged_attack_enhancement"
+    - "decoy_taunt"
+    - "mobility_repositioning"
+character_design:
+  authoring_features:
+    personality: []
+    gameplay_fantasy: [mobility_repositioning, setup_payoff]
+    life_social_identity: [informal_worker, organization_member, independent_operator]
+    life_stage: []
+    authority: [low_formal_authority]
+    authority_scope: null
+    hook:
+      surface_traits: [organization_member_identity]
+      contrast_traits: []
+      behavioral_patterns: []
+    visual_behavioral_motifs: []
+    evidence:
+      gameplay_fantasy:
+        - {kind: source_fact, source_id: official-developer-notes-aalto, fact_path: combat}
+        - {kind: analyst_derivation, note: "Mistform maneuvering supports mobility_repositioning; the decoy/Gate setup followed by enhanced ranged attacks supports setup_payoff."
+        }
+      life_social_identity:
+        - {kind: source_fact, source_id: official-developer-notes-aalto, fact_path: narrative}
+        - {kind: analyst_derivation, note: "Personal pricing, variable external clientele, and self-directed transaction conditions support informal_worker; Black Shores membership independently supports organization_member. Independent operation is partial and coexists with that affiliation."
+        }
+      authority:
+        - {kind: source_fact, source_id: official-developer-notes-aalto, fact_path: narrative}
+        - {kind: analyst_derivation, note: "low_formal_authority is an analyst derivation from the broker's external commercial role and the absence of any stated command position; it is not a source fact claiming no authority."
+        }
+      hook.surface_traits:
+        - {kind: source_fact, source_id: official-developer-notes-aalto, fact_path: narrative}
+        - {kind: analyst_derivation, note: "organization_member_identity is the bounded hook surface for confirmed Black Shores membership."
+        }
+product_design: {}
+differentiation: {}
+design_patterns: {}
+similarity_features: {}
+confidence: {}

@@ -1,0 +1,72 @@
+schema_version: "character-facts/0.3"
+reference_id: "wuthering-waves:aalto"
+identity:
+  game_id: wuthering-waves
+  native_character_id: null
+  names:
+    canonical: "Aalto"
+    localized:
+      en-US: "Aalto"
+  release:
+    version: null
+    date: null
+  rarity:
+    native_value: null
+    normalized_tier: null
+combat:
+  native_taxonomy:
+    labels:
+      weapon_type: "Pistols"
+      attack_style: "Ranged attacks"
+  abilities:
+    - ability_id: normal_attack
+      native_name: "Normal Attack"
+      native_category: "Normal Attack"
+      normalized_category: null
+      description_summary: "Uses ranged bullets in combat."
+    - ability_id: mist_avatar
+      native_name: "Mist Avatar"
+      native_category: "Resonance Skill"
+      normalized_category: null
+      description_summary: "Creates a Mist Avatar decoy that taunts enemies."
+    - ability_id: gate_of_quandary
+      native_name: "Gate of Quandary"
+      native_category: "Resonance Liberation"
+      normalized_category: null
+      description_summary: "Creates a Gate of Quandary that enhances ranged attacks."
+  mechanics:
+    resources: []
+    states: []
+    transformations: []
+    summons: []
+    mobility_mechanics:
+      - "Mistform increases movement speed and lets Aalto maneuver around battle while avoiding direct confrontation."
+    targeting_mechanics: []
+  team_mechanics:
+    buffs:
+      - "Gate of Quandary enhances ranged attacks and supports maneuvering around battle."
+    debuffs: []
+    healing: []
+    shielding: []
+    grouping: []
+    off_field_effects: []
+    interactions: []
+  relations:
+    - relation_id: gate-of-quandary-enhances-ranged-attacks
+      source:
+        kind: ability
+        id: gate_of_quandary
+      relation_type: enhances
+      target:
+        kind: ability
+        id: normal_attack
+      description_summary: "Gate of Quandary enhances Aalto's ranged attacks."
+narrative:
+  faction: "Black Shores"
+  occupation: "Information Broker"
+  affiliations:
+    - "Black Shores"
+  public_identity: "Information Broker and Black Shores member who handles external intelligence transactions using personal pricing criteria."
+presentation:
+  official_visual_tags: []
+  official_character_keywords: []

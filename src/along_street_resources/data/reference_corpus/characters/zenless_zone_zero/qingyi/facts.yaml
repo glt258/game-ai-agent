@@ -1,0 +1,49 @@
+schema_version: "character-facts/0.3"
+reference_id: "zenless-zone-zero:qingyi"
+identity:
+  game_id: zenless-zone-zero
+  native_character_id: null
+  names:
+    canonical: "Qingyi"
+    localized:
+      en-US: "Qingyi"
+      zh-CN: "青衣"
+  release:
+    version: null
+    date: null
+  rarity:
+    native_value: "S"
+    normalized_tier: null
+combat:
+  native_taxonomy:
+    labels:
+      attribute: "Electric"
+      specialty: "Stun"
+      rank: "S"
+  abilities: []
+  mechanics:
+    resources: []
+    states: []
+    transformations: []
+    summons: []
+    mobility_mechanics: []
+    targeting_mechanics: []
+  team_mechanics:
+    buffs: []
+    debuffs: []
+    healing: []
+    shielding: []
+    grouping: []
+    off_field_effects: []
+    interactions: []
+  relations: []
+narrative:
+  faction: "Criminal Investigation Special Response Team"
+  occupation: "Public Security officer"
+  affiliations:
+    - "New Eridu Public Security (NEPS)"
+    - "Criminal Investigation Special Response Team"
+  public_identity: "Public Security officer assigned to the Criminal Investigation Special Response Team."
+presentation:
+  official_visual_tags: []
+  official_character_keywords: []
